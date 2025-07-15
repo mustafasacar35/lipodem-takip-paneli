@@ -517,23 +517,27 @@ function duzenleHafta(i) {
         let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
         if (tarifKelimeler.length < 2) return;
         let bigramMatches = [];
+        let bigramMatchNames = new Set();
         // Ardışık ikili kelime kombinasyonlarını bul
         for (let t = 0; t < tarifKelimeler.length - 1; t++) {
           const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
           tumKartlar.forEach(kart => {
             if (kullanilanKartlar.has(kart.name)) return;
             let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-            // menemen_1 gibi sonundaki _rakamı yok say
             let fileBaseClean = fileBase.replace(/_\d+$/, '');
             let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
             if (kartTemiz.includes(ikili)) {
-              bigramMatches.push({ kart, tarif, ikili });
+              if (!bigramMatchNames.has(kart.name)) {
+                bigramMatches.push({ kart, tarif, ikili });
+                bigramMatchNames.add(kart.name);
+              }
             }
           });
         }
         // Eğer birden fazla kart eşleştiyse, trigram dene
         if (bigramMatches.length > 1 && tarifKelimeler.length >= 3) {
           let trigramMatches = [];
+          let trigramMatchNames = new Set();
           for (let t = 0; t < tarifKelimeler.length - 2; t++) {
             const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
             tumKartlar.forEach(kart => {
@@ -542,7 +546,10 @@ function duzenleHafta(i) {
               let fileBaseClean = fileBase.replace(/_\d+$/, '');
               let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
               if (kartTemiz.includes(uclu)) {
-                trigramMatches.push({ kart, tarif });
+                if (!trigramMatchNames.has(kart.name)) {
+                  trigramMatches.push({ kart, tarif });
+                  trigramMatchNames.add(kart.name);
+                }
               }
             });
           }
@@ -552,9 +559,16 @@ function duzenleHafta(i) {
               eslesenKartlar.push(match);
             });
             return;
+          } else {
+            // Trigram yoksa, bigramları ekle
+            bigramMatches.forEach(match => {
+              kullanilanKartlar.add(match.kart.name);
+              eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
+            });
+            return;
           }
         }
-        // Eğer birden fazla yoksa veya trigram bulunamadıysa, bigram eşleşmelerini ekle
+        // Eğer sadece bir bigram eşleşmesi varsa veya trigram gerekmiyorsa
         if (bigramMatches.length > 0) {
           bigramMatches.forEach(match => {
             kullanilanKartlar.add(match.kart.name);
