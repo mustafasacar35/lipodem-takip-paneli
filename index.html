@@ -511,18 +511,14 @@ function duzenleHafta(i) {
       const kullanilanKartlar = new Set();
       let eslesenKartlar = [];
       hafta.tarifler.forEach(tarif => {
-        // Başında * varsa onu kaldır
-        let tarifSatir = tarif.trim();
-        if (tarifSatir.startsWith('*')) {
-          tarifSatir = tarifSatir.substring(1).trim();
-        }
+        // Başında * varsa onu kaldır (tüm baştaki yıldızları ve boşlukları sil)
+        let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
         // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
         let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
         let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
         // Eğer tek kelime ise, tek kelime eşleşmesi yap
         if (tarifKelimeler.length === 1) {
           let kelime = tarifKelimeler[0];
-          let matched = false;
           tumKartlar.forEach(kart => {
             if (kullanilanKartlar.has(kart.name)) return;
             let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
@@ -531,7 +527,6 @@ function duzenleHafta(i) {
             if (kartTemiz === kelime || kartTemiz.startsWith(kelime + '_') || kartTemiz.endsWith('_' + kelime) || kartTemiz.includes('_' + kelime + '_')) {
               kullanilanKartlar.add(kart.name);
               eslesenKartlar.push({ kart, tarif });
-              matched = true;
             }
           });
           return;
@@ -581,12 +576,11 @@ function duzenleHafta(i) {
             }
           });
         }
-        if (bigramMatches.length === 1) {
-          let match = bigramMatches[0];
+        // Tüm bigram eşleşmelerini ekle (hiçbir zaman boş bırakma)
+        bigramMatches.forEach(match => {
           kullanilanKartlar.add(match.kart.name);
           eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
-        }
-        // Hiç eşleşme yoksa hiçbir şey ekleme
+        });
       });
       if (eslesenKartlar.length === 0) {
         eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
