@@ -345,7 +345,11 @@
       });
     }
 
-    function otomatikEsleHafta(i) {
+    async function otomatikEsleHafta(i) {
+      // Eğer görseller henüz yüklenmediyse, önce yükle
+      if (tariflerKlasoruGorselleri.length === 0) {
+        await tariflerKlasoruGorselleriniYukle();
+      }
       const hafta = getHaftaListesi()[i];
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       eslesenDiv.innerHTML = '';
