@@ -54,22 +54,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
-    // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
-    let tariflerKlasoruGorselleri = [];
-    async function tariflerKlasoruGorselleriniYukle() {
-      try {
-        const resp = await fetch('tarifler/list.json');
-        const files = await resp.json();
-        tariflerKlasoruGorselleri = files.map(name => ({
-          name,
-          url: 'tarifler/' + name
-        }));
-      } catch (e) {
-        tariflerKlasoruGorselleri = [];
-      }
-    }
-    // Sayfa açılışında otomatik yükle
-    tariflerKlasoruGorselleriniYukle();
+    // ...existing code...
 
     // pdf.js worker ayarı (uyumluluk için)
     if (window['pdfjsLib']) {
@@ -362,6 +347,10 @@
       const hafta = getHaftaListesi()[i];
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       eslesenDiv.innerHTML = '';
+      // DEBUG: Görsel listesi ve tarifler loglanıyor
+      console.log('DEBUG - tariflerKlasoruGorselleri:', tariflerKlasoruGorselleri);
+      console.log('DEBUG - hafta.tarifKartlar:', hafta.tarifKartlar);
+      console.log('DEBUG - hafta.tarifler:', hafta.tarifler);
       if (!hafta.tarifler.length) {
         eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
         return;
@@ -371,6 +360,7 @@
         hafta.tarifKartlar || [],
         tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
       );
+      console.log('DEBUG - tumKartlar:', tumKartlar);
       if (!tumKartlar.length) {
         eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
         return;
@@ -379,10 +369,12 @@
       const kullanilanKartlar = new Set();
       hafta.tarifler.forEach(tarif => {
         const normTarif = normalizeNameDetay(tarif);
+        console.log('DEBUG - Tarif:', tarif, '->', normTarif);
         const match = tumKartlar.find(kart => {
           if (kullanilanKartlar.has(kart.name)) return false;
           const fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
           const normFile = normalizeNameDetay(fileBase);
+          console.log('DEBUG - Karşılaştır:', normFile, '<->', normTarif);
           return normFile === normTarif || normFile.includes(normTarif) || normTarif.includes(normFile);
         });
         if (match) {
