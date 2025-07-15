@@ -507,7 +507,7 @@ function duzenleHafta(i) {
         eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
         return;
       }
-      // Gelişmiş eşleşme: ardışık iki kelime zorunlu, parantezler yok sayılır, aynı isimli birden fazla kart varsa hepsi eklenir
+      // Gelişmiş eşleşme: ardışık iki kelime zorunlu, parantezler yok sayılır, aynı isimli birden fazla kart varsa üçlü kombinasyon denenir
       const kullanilanKartlar = new Set();
       let eslesenKartlar = [];
       let bulunamayanlar = [];
@@ -516,7 +516,7 @@ function duzenleHafta(i) {
         let tarifTemiz = tarif.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
         let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
         if (tarifKelimeler.length < 2) return;
-        let bulundu = false;
+        let bigramMatches = [];
         // Ardışık ikili kelime kombinasyonlarını bul
         for (let t = 0; t < tarifKelimeler.length - 1; t++) {
           const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
@@ -526,15 +526,41 @@ function duzenleHafta(i) {
             // menemen_1 gibi sonundaki _rakamı yok say
             let fileBaseClean = fileBase.replace(/_\d+$/, '');
             let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-            // Eşleşme: kart ismi içinde ardışık iki kelime varsa
             if (kartTemiz.includes(ikili)) {
-              kullanilanKartlar.add(kart.name);
-              eslesenKartlar.push({ kart, tarif });
-              bulundu = true;
+              bigramMatches.push({ kart, tarif, ikili });
             }
           });
         }
-        if (!bulundu) {
+        // Eğer birden fazla kart eşleştiyse, trigram dene
+        if (bigramMatches.length > 1 && tarifKelimeler.length >= 3) {
+          let trigramMatches = [];
+          for (let t = 0; t < tarifKelimeler.length - 2; t++) {
+            const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
+            tumKartlar.forEach(kart => {
+              if (kullanilanKartlar.has(kart.name)) return;
+              let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+              let fileBaseClean = fileBase.replace(/_\d+$/, '');
+              let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+              if (kartTemiz.includes(uclu)) {
+                trigramMatches.push({ kart, tarif });
+              }
+            });
+          }
+          if (trigramMatches.length > 0) {
+            trigramMatches.forEach(match => {
+              kullanilanKartlar.add(match.kart.name);
+              eslesenKartlar.push(match);
+            });
+            return;
+          }
+        }
+        // Eğer birden fazla yoksa veya trigram bulunamadıysa, bigram eşleşmelerini ekle
+        if (bigramMatches.length > 0) {
+          bigramMatches.forEach(match => {
+            kullanilanKartlar.add(match.kart.name);
+            eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
+          });
+        } else {
           bulunamayanlar.push(tarif);
         }
       });
