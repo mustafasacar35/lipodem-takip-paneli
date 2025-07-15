@@ -25,14 +25,14 @@
     const hastaId = urlParams.get("id");
     let hastalar = JSON.parse(localStorage.getItem("hastalar") || "[]");
     let hasta = hastalar.find(h => h.id === hastaId);
-    if (!hasta.haftalar) {
-      hasta.haftalar = [];
-      for (let i = 1; i <= 13; i++) hasta.haftalar.push({ no: i, mesaj: "", pdf: null, tarifler: [] });
-    }
 
     if (!hasta) {
       document.body.innerHTML = "<p>Hasta bulunamadı.</p><a href='index.html'>← Geri dön</a>";
     } else {
+      if (!hasta.haftalar || hasta.haftalar.length === 0) {
+        hasta.haftalar = [];
+        for (let i = 1; i <= 13; i++) hasta.haftalar.push({ no: i, mesaj: "", pdf: null, tarifler: [] });
+      }
       document.getElementById("hasta-baslik").innerText = hasta.isim + " (" + hasta.hafta + ". hafta)";
       document.getElementById("hasta-bilgi").innerHTML = `
         <p><strong>Başlangıç Tarihi:</strong> ${hasta.program_baslangici}</p>
