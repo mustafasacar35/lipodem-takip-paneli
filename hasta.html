@@ -5,47 +5,98 @@
   <meta charset="UTF-8">
   <title>Hasta Detayı</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
   <style>
     .hafta-kutusu { border: 1px solid #ccc; margin: 10px 0; padding: 10px; border-radius: 8px; }
     .hafta-kutusu h4 { margin: 0 0 5px 0; }
     textarea { width: 100%; height: 80px; margin-bottom: 5px; }
+    .hafta-kutusu button.sil { float: right; margin-left: 10px; }
   </style>
 </head>
 <body>
   <h2 id="hasta-baslik">Hasta Detayı</h2>
   <div id="hasta-bilgi"></div>
+  <button onclick="yeniHaftaEkle()">➕ Yeni Hafta Ekle</button>
   <div id="haftalar"></div>
   <p><a href="index.html">← Geri dön</a></p>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const hastaId = urlParams.get("id");
-    const hastalar = JSON.parse(localStorage.getItem("hastalar") || "[]");
-    const hasta = hastalar.find(h => h.id === hastaId);
+    let hastalar = JSON.parse(localStorage.getItem("hastalar") || "[]");
+    let hasta = hastalar.find(h => h.id === hastaId);
+    if (!hasta.haftalar) {
+      hasta.haftalar = [];
+      for (let i = 1; i <= 13; i++) hasta.haftalar.push({ no: i, mesaj: "", pdf: null, tarifler: [] });
+    }
 
     if (!hasta) {
       document.body.innerHTML = "<p>Hasta bulunamadı.</p><a href='index.html'>← Geri dön</a>";
     } else {
       document.getElementById("hasta-baslik").innerText = hasta.isim + " (" + hasta.hafta + ". hafta)";
-      const hb = document.getElementById("hasta-bilgi");
-      hb.innerHTML = `
+      document.getElementById("hasta-bilgi").innerHTML = `
         <p><strong>Başlangıç Tarihi:</strong> ${hasta.program_baslangici}</p>
         <p><strong>Notlar:</strong> ${hasta.notlar || "-"}</p>
       `;
+      guncelleHaftaListesi();
+    }
 
-      const haftalar = document.getElementById("haftalar");
-      for (let i = 1; i <= 13; i++) {
+    function yeniHaftaEkle() {
+      const yeniNo = hasta.haftalar.length + 1;
+      hasta.haftalar.push({ no: yeniNo, mesaj: "", pdf: null, tarifler: [] });
+      kaydetHasta();
+      guncelleHaftaListesi();
+    }
+
+    function haftaSil(index) {
+      if (confirm("Bu haftayı silmek istediğinize emin misiniz?")) {
+        hasta.haftalar.splice(index, 1);
+        kaydetHasta();
+        guncelleHaftaListesi();
+      }
+    }
+
+    function guncelleHaftaListesi() {
+      const hDiv = document.getElementById("haftalar");
+      hDiv.innerHTML = "";
+      hasta.haftalar.forEach((hafta, index) => {
         const div = document.createElement("div");
         div.className = "hafta-kutusu";
         div.innerHTML = `
-          <h4>Hafta ${i}</h4>
-          <textarea placeholder="Bu haftanın GPT mesajı..."></textarea>
-          <input type="file" accept="application/pdf" /> PDF Liste<br>
+          <h4>Hafta ${hafta.no} <button class="sil" onclick="haftaSil(${index})">❌</button></h4>
+          <textarea placeholder="Bu haftanın GPT mesajı...">${hafta.mesaj || ""}</textarea>
+          <input type="file" accept="application/pdf" onchange="pdfOku(event, ${index})"/> PDF Liste<br>
           <input type="file" accept="image/jpeg" multiple /> Tarif Kartları<br>
           <button onclick="alert('ZIP oluşturma yakında aktif olacak')">📦 ZIP OLUŞTUR</button>
+          <div id="pdf-output-${index}" style="font-size:12px; color:#555; margin-top:5px;"></div>
         `;
-        haftalar.appendChild(div);
-      }
+        hDiv.appendChild(div);
+      });
+    }
+
+    function kaydetHasta() {
+      const hastaIndex = hastalar.findIndex(h => h.id === hasta.id);
+      hastalar[hastaIndex] = hasta;
+      localStorage.setItem("hastalar", JSON.stringify(hastalar));
+    }
+
+    async function pdfOku(e, index) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const typedArray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        let fullText = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          fullText += text.items.map(item => item.str).join(" ") + " ";
+        }
+        document.getElementById("pdf-output-" + index).innerText = "PDF içeriği algılandı:
+" + fullText.slice(0, 300) + "...";
+      };
+      reader.readAsArrayBuffer(file);
     }
   </script>
 </body>
