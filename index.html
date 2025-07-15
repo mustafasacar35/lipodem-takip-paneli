@@ -510,7 +510,6 @@ function duzenleHafta(i) {
       // Gelişmiş eşleşme: ardışık iki kelime zorunlu, parantezler yok sayılır, aynı isimli birden fazla kart varsa üçlü kombinasyon denenir
       const kullanilanKartlar = new Set();
       let eslesenKartlar = [];
-      let bulunamayanlar = [];
       hafta.tarifler.forEach(tarif => {
         // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
         let tarifTemiz = tarif.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
@@ -560,27 +559,18 @@ function duzenleHafta(i) {
             });
             return;
           } else {
-            // Trigram yoksa, bigramları ekle
-            bigramMatches.forEach(match => {
-              kullanilanKartlar.add(match.kart.name);
-              eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
-            });
+            // Trigram yoksa, hiç eşleşme ekleme (fazla bigram varsa ve trigram yoksa eşleşme yok sayılır)
             return;
           }
         }
         // Eğer sadece bir bigram eşleşmesi varsa veya trigram gerekmiyorsa
-        if (bigramMatches.length > 0) {
-          bigramMatches.forEach(match => {
-            kullanilanKartlar.add(match.kart.name);
-            eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
-          });
-        } else {
-          bulunamayanlar.push(tarif);
+        if (bigramMatches.length === 1) {
+          let match = bigramMatches[0];
+          kullanilanKartlar.add(match.kart.name);
+          eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
         }
+        // Hiç eşleşme yoksa hiçbir şey ekleme
       });
-      if (bulunamayanlar.length > 0) {
-        console.log('Eşleşmeyen yemek kartları:', bulunamayanlar);
-      }
       if (eslesenKartlar.length === 0) {
         eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
       } else {
