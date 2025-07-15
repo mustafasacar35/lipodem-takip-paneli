@@ -53,6 +53,8 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
     let tariflerKlasoruGorselleri = [];
@@ -235,7 +237,8 @@
           <button onclick="otomatikEsleHafta(${i})">Otomatik Eşleştir (tarifler klasörü + manuel)</button>
           <div id="eslesenKartlar_${i}"></div>
           <b>GPT Mesajı:</b><br><textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
-          <button onclick="gptMesajKaydet(${i})">Kaydet</button>`;
+          <button onclick="gptMesajKaydet(${i})">Kaydet</button>
+          <button onclick="zipHaftaIndir(${i})">ZIP olarak indir</button>`;
         div.appendChild(haftaDiv);
         gosterTariflerHafta(i);
         gosterKartlarHafta(i);
