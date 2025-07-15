@@ -359,38 +359,39 @@
           otomatikEsleHafta(i);
         }
       });
-    // Hafta açıklama kaydet
-    function aciklamaKaydet(i) {
-      const haftalar = getHaftaListesi();
-      haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
-      saveToStorage();
-      alert('Açıklama kaydedildi.');
     }
 
-    // Hafta sil
-    function silHafta(i) {
-      if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
-      const haftalar = getHaftaListesi();
-      haftalar.splice(i, 1);
-      saveToStorage();
-      gosterHaftalar();
-    }
+// Hafta açıklama kaydet
+function aciklamaKaydet(i) {
+  const haftalar = getHaftaListesi();
+  haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
+  saveToStorage();
+  alert('Açıklama kaydedildi.');
+}
 
-    // Hafta düzenle (tarih ve açıklama)
-    function duzenleHafta(i) {
-      const haftalar = getHaftaListesi();
-      const hafta = haftalar[i];
-      const yeniBaslangic = prompt('Yeni başlangıç tarihi (YYYY-MM-DD):', hafta.baslangic);
-      if (!yeniBaslangic) return;
-      const yeniBitis = prompt('Yeni bitiş tarihi (YYYY-MM-DD):', hafta.bitis);
-      if (!yeniBitis) return;
-      hafta.baslangic = yeniBaslangic;
-      hafta.bitis = yeniBitis;
-      hafta.aciklama = document.getElementById('aciklama_' + i).value;
-      saveToStorage();
-      gosterHaftalar();
-    }
-    }
+// Hafta sil
+function silHafta(i) {
+  if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+  const haftalar = getHaftaListesi();
+  haftalar.splice(i, 1);
+  saveToStorage();
+  gosterHaftalar();
+}
+
+// Hafta düzenle (tarih ve açıklama)
+function duzenleHafta(i) {
+  const haftalar = getHaftaListesi();
+  const hafta = haftalar[i];
+  const yeniBaslangic = prompt('Yeni başlangıç tarihi (YYYY-MM-DD):', hafta.baslangic);
+  if (!yeniBaslangic) return;
+  const yeniBitis = prompt('Yeni bitiş tarihi (YYYY-MM-DD):', hafta.bitis);
+  if (!yeniBitis) return;
+  hafta.baslangic = yeniBaslangic;
+  hafta.bitis = yeniBitis;
+  hafta.aciklama = document.getElementById('aciklama_' + i).value;
+  saveToStorage();
+  gosterHaftalar();
+}
 
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
