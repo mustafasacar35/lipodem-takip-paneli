@@ -453,8 +453,8 @@
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       // Sadece img etiketlerini al
       const imgs = eslesenDiv.querySelectorAll('img');
-      if (!imgs.length) {
-        alert('İndirilecek görsel yok!');
+      if (!imgs.length && !hafta.pdf) {
+        alert('İndirilecek görsel veya PDF yok!');
         return;
       }
       const zip = new JSZip();
@@ -462,10 +462,15 @@
       for (let img of imgs) {
         const url = img.src;
         const name = img.title || img.alt || 'gorsel.jpg';
-        // fetch ile blob olarak al
         const response = await fetch(url);
         const blob = await response.blob();
         zip.file(name, blob);
+      }
+      // Eğer hafta.pdf varsa, onu da ekle
+      if (hafta.pdf) {
+        // DataURL'den base64 kısmını al
+        const base64 = hafta.pdf.split(',')[1];
+        zip.file('hafta.pdf', base64, {base64: true});
       }
       // ZIP dosyasını oluştur ve indir
       zip.generateAsync({type:'blob'}).then(function(content) {
