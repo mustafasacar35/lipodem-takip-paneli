@@ -1,0 +1,1 @@
+// Hasta listesi JS işlemleri buraya
