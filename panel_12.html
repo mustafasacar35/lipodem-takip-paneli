@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tarif Eşleştirme Paneli</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f7f7f7; }
+    textarea, input[type="file"] { width: 100%; margin-bottom: 10px; }
+    button { padding: 10px 20px; }
+    .matched img { width: 150px; margin: 5px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+
+  <h2>Lipedem Hasta Takip Sistemi</h2>
+  <div id="hastaPaneli">
+    <h3>Hasta Listesi</h3>
+    <input type="text" id="hastaAra" placeholder="İsme göre ara..." oninput="filtreleHastalar()" style="width:200px;">
+    <select id="arsivFiltre" onchange="filtreleHastalar()">
+      <option value="aktif">Aktif Hastalar</option>
+      <option value="arsiv">Arşivdekiler</option>
+      <option value="tum">Tümü</option>
+    </select>
+    <button onclick="yeniHastaFormu()">Yeni Hasta Ekle</button>
+    <ul id="hastaListesi"></ul>
+  </div>
+
+  <div id="hastaFormu" style="display:none; background:#fff; border:1px solid #ccc; padding:16px; margin:16px 0;">
+    <h3 id="hastaFormBaslik">Yeni Hasta</h3>
+    <input id="hastaIsim" placeholder="İsim" style="width:200px;"/><br>
+    <textarea id="hastaNot" placeholder="Özel Notlar" style="width:200px;"></textarea><br>
+    <button onclick="kaydetHasta()">Kaydet</button>
+    <button onclick="iptalHastaFormu()">İptal</button>
+  </div>
+
+  <div id="hastaDetay" style="display:none; background:#f9f9f9; border:1px solid #ccc; padding:16px; margin:16px 0;">
+    <h3 id="detayIsim"></h3>
+    <div id="detayNot"></div>
+    <button onclick="duzenleHasta()">Düzenle</button>
+    <button onclick="arsivleHasta()" id="arsivBtn"></button>
+    <button onclick="silHasta()">Sil</button>
+    <button onclick="kapatDetay()">Kapat</button>
+    <hr>
+    <div style="margin:10px 0; background:#eef; padding:8px;">
+      <b>Genel Bilgiler / Notlar:</b>
+      <div id="hastaGenelNot"></div>
+    </div>
+    <div style="margin:10px 0;">
+      <h4>Haftalar</h4>
+      <button onclick="haftaEkle()">Hafta Ekle</button>
+      <div id="haftaListesi"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>
+    // --- Hasta Yönetimi Modülü ---
+    let hastalar = [
+      { id: 1, isim: "Ayşe Yılmaz", not: "Hashimoto tiroiditi var", arsiv: false },
+      { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
+      { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
+    ];
+    let seciliHasta = null;
+    let duzenlemeModu = false;
+    let duzenlenenId = null;
+
+    function renderHastalar() {
+      const ul = document.getElementById('hastaListesi');
+      const ara = document.getElementById('hastaAra').value.toLowerCase();
+      const filtre = document.getElementById('arsivFiltre').value;
+      ul.innerHTML = '';
+      hastalar.filter(h =>
+        (filtre === 'tum' || (filtre === 'arsiv' ? h.arsiv : !h.arsiv)) &&
+        h.isim.toLowerCase().includes(ara)
+      ).forEach(hasta => {
+        const li = document.createElement('li');
+        li.textContent = hasta.isim + (hasta.arsiv ? ' (Arşiv)' : '');
+        li.style.cursor = 'pointer';
+        li.onclick = () => hastaDetayGoster(hasta.id);
+        ul.appendChild(li);
+      });
+    }
+
+    function filtreleHastalar() { renderHastalar(); }
+
+    function yeniHastaFormu() {
+      duzenlemeModu = false;
+      duzenlenenId = null;
+      document.getElementById('hastaFormBaslik').textContent = 'Yeni Hasta';
+      document.getElementById('hastaIsim').value = '';
+      document.getElementById('hastaNot').value = '';
+      document.getElementById('hastaFormu').style.display = 'block';
+      document.getElementById('hastaDetay').style.display = 'none';
+    }
+
+    function kaydetHasta() {
+      const isim = document.getElementById('hastaIsim').value.trim();
+      const not = document.getElementById('hastaNot').value.trim();
+      if (!isim) { alert('İsim zorunlu!'); return; }
+      if (duzenlemeModu && duzenlenenId != null) {
+        const h = hastalar.find(h => h.id === duzenlenenId);
+        h.isim = isim; h.not = not;
+      } else {
+        const yeni = { id: Date.now(), isim, not, arsiv: false };
+        hastalar.push(yeni);
+      }
+      document.getElementById('hastaFormu').style.display = 'none';
+      renderHastalar();
+    }
+
+    function iptalHastaFormu() {
+      document.getElementById('hastaFormu').style.display = 'none';
+    }
+
+    function hastaDetayGoster(id) {
+      seciliHasta = hastalar.find(h => h.id === id);
+      if (!seciliHasta) return;
+      document.getElementById('detayIsim').textContent = seciliHasta.isim;
+      document.getElementById('detayNot').textContent = seciliHasta.not;
+      document.getElementById('arsivBtn').textContent = seciliHasta.arsiv ? 'Arşivden Çıkar' : 'Arşivle';
+      document.getElementById('hastaDetay').style.display = 'block';
+      document.getElementById('hastaFormu').style.display = 'none';
+    }
+
+    function duzenleHasta() {
+      if (!seciliHasta) return;
+      duzenlemeModu = true;
+      duzenlenenId = seciliHasta.id;
+      document.getElementById('hastaFormBaslik').textContent = 'Hasta Düzenle';
+      document.getElementById('hastaIsim').value = seciliHasta.isim;
+      document.getElementById('hastaNot').value = seciliHasta.not;
+      document.getElementById('hastaFormu').style.display = 'block';
+      document.getElementById('hastaDetay').style.display = 'none';
+    }
+
+    function arsivleHasta() {
+      if (!seciliHasta) return;
+      seciliHasta.arsiv = !seciliHasta.arsiv;
+      document.getElementById('hastaDetay').style.display = 'none';
+      renderHastalar();
+    }
+
+    function silHasta() {
+      if (!seciliHasta) return;
+      if (!confirm('Silmek istediğinize emin misiniz?')) return;
+      hastalar = hastalar.filter(h => h.id !== seciliHasta.id);
+      document.getElementById('hastaDetay').style.display = 'none';
+      renderHastalar();
+    }
+
+    function kapatDetay() {
+      document.getElementById('hastaDetay').style.display = 'none';
+    }
+
+
+    // --- Hasta Haftaları ---
+    function getHaftaListesi() {
+      if (!seciliHasta) return [];
+      if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
+      return seciliHasta.haftalar;
+    }
+
+    function haftaEkle() {
+      if (!seciliHasta) return;
+      if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
+      let startDate = null;
+      if (seciliHasta.haftalar.length > 0) {
+        // Son haftanın pazarından bir gün sonrası
+        const last = seciliHasta.haftalar[seciliHasta.haftalar.length-1];
+        startDate = new Date(new Date(last.baslangic).getTime() + 7*24*60*60*1000);
+      } else {
+        // İlk hafta için bugünün pazartesisi
+        const now = new Date();
+        const day = now.getDay();
+        const diff = (day === 0 ? -6 : 1) - day; // Pazartesiye çek
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      }
+      const endDate = new Date(startDate.getTime() + 6*24*60*60*1000);
+      seciliHasta.haftalar.push({
+        baslangic: startDate.toISOString().slice(0,10),
+        bitis: endDate.toISOString().slice(0,10),
+        aciklama: '',
+        pdf: null,
+        tarifKartlar: [],
+        tarifler: [],
+        gptMesaj: ''
+      });
+      gosterHaftalar();
+    }
+
+    function gosterHaftalar() {
+      const div = document.getElementById('haftaListesi');
+      div.innerHTML = '';
+      const haftalar = getHaftaListesi();
+      haftalar.forEach((hafta, i) => {
+        const haftaDiv = document.createElement('div');
+        haftaDiv.style = 'border:1px solid #ccc; margin:8px 0; padding:8px; background:#f8f8ff;';
+        haftaDiv.innerHTML =
+          `<b>${i+1}. Hafta</b> (${hafta.baslangic} - ${hafta.bitis})
+          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-left:8px;width:180px;">
+          <button onclick="aciklamaKaydet(${i})">Kaydet</button>
+          <button onclick="duzenleHafta(${i})">Düzenle</button>
+          <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
+          <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
+          <button onclick="pdfOkuHafta(${i})">PDF'den Tarif Tara</button>
+          <ul id="haftaTarifListesi_${i}"></ul>
+          <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
+          <div id="haftaKartGorsel_${i}"></div>
+          <button onclick="otomatikEsleHafta(${i})">Otomatik Eşleştir (tarifler klasörü + manuel)</button>
+          <div id="eslesenKartlar_${i}"></div>
+          <b>GPT Mesajı:</b><br><textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
+          <button onclick="gptMesajKaydet(${i})">Kaydet</button>`;
+        div.appendChild(haftaDiv);
+        gosterTariflerHafta(i);
+        gosterKartlarHafta(i);
+      });
+    // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
+    let tariflerKlasoruGorselleri = [];
+    async function tariflerKlasoruGorselleriniYukle() {
+      try {
+        const resp = await fetch('tarifler/list.json');
+        const files = await resp.json();
+        tariflerKlasoruGorselleri = files.map(name => ({
+          name,
+          url: 'tarifler/' + name
+        }));
+      } catch (e) {
+        tariflerKlasoruGorselleri = [];
+      }
+    }
+    // Sayfa açılışında otomatik yükle
+    tariflerKlasoruGorselleriniYukle();
+    // Hafta açıklama kaydet
+    function aciklamaKaydet(i) {
+      const haftalar = getHaftaListesi();
+      haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
+      alert('Açıklama kaydedildi.');
+    }
+
+    // Hafta sil
+    function silHafta(i) {
+      if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+      const haftalar = getHaftaListesi();
+      haftalar.splice(i, 1);
+      gosterHaftalar();
+    }
+
+    // Hafta düzenle (tarih ve açıklama)
+    function duzenleHafta(i) {
+      const haftalar = getHaftaListesi();
+      const hafta = haftalar[i];
+      const yeniBaslangic = prompt('Yeni başlangıç tarihi (YYYY-MM-DD):', hafta.baslangic);
+      if (!yeniBaslangic) return;
+      const yeniBitis = prompt('Yeni bitiş tarihi (YYYY-MM-DD):', hafta.bitis);
+      if (!yeniBitis) return;
+      hafta.baslangic = yeniBaslangic;
+      hafta.bitis = yeniBitis;
+      hafta.aciklama = document.getElementById('aciklama_' + i).value;
+      gosterHaftalar();
+    }
+    }
+
+    function pdfYukleHafta(i, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        getHaftaListesi()[i].pdf = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function pdfOkuHafta(i) {
+      const hafta = getHaftaListesi()[i];
+      if (!hafta.pdf) return alert('Önce PDF yükleyin!');
+      const base64 = hafta.pdf.split(',')[1];
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let j = 0; j < len; j++) bytes[j] = binary.charCodeAt(j);
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      let fullText = '';
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const strings = content.items.map(item => item.str);
+        fullText += strings.join('\n') + '\n';
+      }
+      hafta.tarifler = extractTariflerDetay(fullText);
+      gosterTariflerHafta(i);
+    }
+
+    function gosterTariflerHafta(i) {
+      const hafta = getHaftaListesi()[i];
+      const ul = document.getElementById('haftaTarifListesi_' + i);
+      if (!ul) return;
+      ul.innerHTML = '';
+      (hafta.tarifler||[]).forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = t;
+        ul.appendChild(li);
+      });
+    }
+
+    function tarifKartYukleHafta(i, input) {
+      const hafta = getHaftaListesi()[i];
+      hafta.tarifKartlar = [];
+      const gorselDiv = document.getElementById('haftaKartGorsel_' + i);
+      gorselDiv.innerHTML = '';
+      Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          hafta.tarifKartlar.push({ name: file.name, data: e.target.result });
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = file.name;
+          img.style.width = '100px';
+          img.style.margin = '4px';
+          gorselDiv.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function gosterKartlarHafta(i) {
+      const hafta = getHaftaListesi()[i];
+      const gorselDiv = document.getElementById('haftaKartGorsel_' + i);
+      if (!gorselDiv) return;
+      gorselDiv.innerHTML = '';
+      (hafta.tarifKartlar||[]).forEach(kart => {
+        const img = document.createElement('img');
+        img.src = kart.data;
+        img.alt = kart.name;
+        img.style.width = '100px';
+        img.style.margin = '4px';
+        gorselDiv.appendChild(img);
+      });
+    }
+
+    function otomatikEsleHafta(i) {
+      const hafta = getHaftaListesi()[i];
+      const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
+      eslesenDiv.innerHTML = '';
+      if (!hafta.tarifler.length) {
+        eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
+        return;
+      }
+      // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
+      const tumKartlar = [].concat(
+        hafta.tarifKartlar || [],
+        tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+      );
+      if (!tumKartlar.length) {
+        eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
+        return;
+      }
+      // Her görsel sadece bir tarife atanacak şekilde eşleştir
+      const kullanilanKartlar = new Set();
+      hafta.tarifler.forEach(tarif => {
+        const normTarif = normalizeNameDetay(tarif);
+        const match = tumKartlar.find(kart => {
+          if (kullanilanKartlar.has(kart.name)) return false;
+          const fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+          const normFile = normalizeNameDetay(fileBase);
+          return normFile === normTarif || normFile.includes(normTarif) || normTarif.includes(normFile);
+        });
+        if (match) {
+          kullanilanKartlar.add(match.name);
+          const img = document.createElement('img');
+          img.src = match.data;
+          img.alt = tarif;
+          img.title = match.name;
+          img.style.width = '120px';
+          img.style.margin = '4px';
+          eslesenDiv.appendChild(img);
+        }
+      });
+      if (eslesenDiv.innerHTML === '') {
+        eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
+      }
+    }
+
+    function gptMesajKaydet(i) {
+      const hafta = getHaftaListesi()[i];
+      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+      alert('Mesaj kaydedildi.');
+    }
+
+    // Ortak fonksiyonlar
+    function extractTariflerDetay(text) {
+      const lines = text.split('\n').map(line => line.trim()).filter(l => l.length > 1);
+      const filtered = lines.filter(l => /^[0-9]+\./.test(l) || /^[A-ZİĞÜŞÖÇ]/.test(l));
+      return filtered.map(line => line.replace(/^[0-9]+\.\s*/, '').toLowerCase());
+    }
+
+    function normalizeNameDetay(name) {
+      return name
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+    }
+
+    // Hasta detayını gösterirken haftaları ve genel notu da göster
+    function hastaDetayGoster(id) {
+      seciliHasta = hastalar.find(h => h.id === id);
+      if (!seciliHasta) return;
+      document.getElementById('detayIsim').textContent = seciliHasta.isim;
+      document.getElementById('detayNot').textContent = seciliHasta.not;
+      document.getElementById('arsivBtn').textContent = seciliHasta.arsiv ? 'Arşivden Çıkar' : 'Arşivle';
+      document.getElementById('hastaDetay').style.display = 'block';
+      document.getElementById('hastaFormu').style.display = 'none';
+      document.getElementById('hastaGenelNot').textContent = seciliHasta.not;
+      gosterHaftalar();
+    }
+
+    // Sayfa açılışında listele
+    renderHastalar();
+  </script>
+</body>
+</html>
