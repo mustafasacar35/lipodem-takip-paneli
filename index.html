@@ -224,11 +224,15 @@
     let tariflerKlasoruGorselleri = [];
     async function tariflerKlasoruGorselleriniYukle() {
       try {
-        const resp = await fetch('tarifler/list.json');
+        // Otomatik dizin algılama (alt dizinlerde de çalışır)
+        let basePath = window.location.pathname;
+        if (!basePath.endsWith('/')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+        const tariflerPath = basePath + 'tarifler/';
+        const resp = await fetch(tariflerPath + 'list.json');
         const files = await resp.json();
         tariflerKlasoruGorselleri = files.map(name => ({
           name,
-          url: 'tarifler/' + name
+          url: tariflerPath + name
         }));
       } catch (e) {
         tariflerKlasoruGorselleri = [];
