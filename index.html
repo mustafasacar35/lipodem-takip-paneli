@@ -107,8 +107,25 @@
         }
       } catch (e) {}
 
-      // JSON verisini base64'e çevir
-      const content = btoa(unescape(encodeURIComponent(JSON.stringify(hastalar, null, 2))));
+      // Sadece eşleşen kart isimleri, hafta numarası ve tarih ile yeni bir veri yapısı oluştur
+      const now = new Date().toISOString();
+      const exportData = hastalar.map(hasta => {
+        return {
+          id: hasta.id,
+          isim: hasta.isim,
+          arsiv: hasta.arsiv,
+          haftalar: (hasta.haftalar || []).map((hafta, idx) => {
+            // Eşleşen kart isimleri (tarifKartlar)
+            const kartIsimleri = (hafta.tarifKartlar || []).map(k => k.name);
+            return {
+              haftaNo: idx + 1,
+              kayitTarihi: now,
+              kartlar: kartIsimleri
+            };
+          })
+        };
+      });
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(exportData, null, 2))));
 
       // Dosyayı yükle
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
