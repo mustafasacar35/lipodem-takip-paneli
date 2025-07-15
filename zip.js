@@ -1,1 +1,0 @@
-// ZIP oluşturma scripti
