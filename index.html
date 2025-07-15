@@ -54,10 +54,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
-    // pdf.js worker ayarı (uyumluluk için)
-    if (window['pdfjsLib']) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    }
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
     let tariflerKlasoruGorselleri = [];
     async function tariflerKlasoruGorselleriniYukle() {
@@ -77,6 +73,11 @@
       }
     }
     tariflerKlasoruGorselleriniYukle();
+
+    // pdf.js worker ayarı (uyumluluk için)
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    }
     // --- Hasta Yönetimi Modülü ---
     let hastalar = [
       { id: 1, isim: "Ayşe Yılmaz", not: "Hashimoto tiroiditi var", arsiv: false },
