@@ -405,6 +405,67 @@
     }
 
     function gptMesajKaydet(i) {
+    // --- ZIP olarak indir fonksiyonu ---
+    async function zipHaftaIndir(i) {
+      const hafta = getHaftaListesi()[i];
+      if (!hafta) return alert('Hafta bulunamadı!');
+      const zip = new JSZip();
+      // PDF ekle
+      if (hafta.pdf) {
+        const base64 = hafta.pdf.split(',')[1];
+        zip.file('hafta.pdf', base64, {base64: true});
+      }
+      // Eşleşen görselleri ekle (manuel ve otomatik)
+      // Önce otomatik eşleşen görselleri bul
+      let matchedImages = [];
+      if (hafta.tarifler && hafta.tarifler.length > 0) {
+        // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
+        const tumKartlar = [].concat(
+          hafta.tarifKartlar || [],
+          tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+        );
+        const kullanilanKartlar = new Set();
+        hafta.tarifler.forEach(tarif => {
+          const normTarif = normalizeNameDetay(tarif);
+          const match = tumKartlar.find(kart => {
+            if (kullanilanKartlar.has(kart.name)) return false;
+            const fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+            const normFile = normalizeNameDetay(fileBase);
+            return normFile === normTarif || normFile.includes(normTarif) || normTarif.includes(normFile);
+          });
+          if (match) {
+            kullanilanKartlar.add(match.name);
+            matchedImages.push(match);
+          }
+        });
+      }
+      // Görselleri ZIP'e ekle
+      for (const img of matchedImages) {
+        if (img.data.startsWith('data:')) {
+          // Manuel yüklenen (base64)
+          const base64 = img.data.split(',')[1];
+          const ext = img.name.split('.').pop();
+          zip.file('gorseller/' + img.name, base64, {base64: true});
+        } else {
+          // URL'den indir (tarifler klasörü)
+          try {
+            const res = await fetch(img.data);
+            const blob = await res.blob();
+            zip.file('gorseller/' + img.name, blob);
+          } catch (e) {
+            // Hata olursa atla
+          }
+        }
+      }
+      // GPT mesajını ekle
+      if (hafta.gptMesaj && hafta.gptMesaj.trim().length > 0) {
+        zip.file('gpt_mesaj.txt', hafta.gptMesaj);
+      }
+      // ZIP oluştur ve indir
+      zip.generateAsync({type: 'blob'}).then(function(content) {
+        saveAs(content, 'hafta_' + (i+1) + '.zip');
+      });
+    }
       const hafta = getHaftaListesi()[i];
       hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
       alert('Mesaj kaydedildi.');
