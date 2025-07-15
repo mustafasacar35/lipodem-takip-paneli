@@ -54,12 +54,29 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
-    // ...existing code...
-
     // pdf.js worker ayarı (uyumluluk için)
     if (window['pdfjsLib']) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     }
+    // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
+    let tariflerKlasoruGorselleri = [];
+    async function tariflerKlasoruGorselleriniYukle() {
+      try {
+        // Otomatik dizin algılama (alt dizinlerde de çalışır)
+        let basePath = window.location.pathname;
+        if (!basePath.endsWith('/')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+        const tariflerPath = basePath + 'tarifler/';
+        const resp = await fetch(tariflerPath + 'list.json');
+        const files = await resp.json();
+        tariflerKlasoruGorselleri = files.map(name => ({
+          name,
+          url: tariflerPath + name
+        }));
+      } catch (e) {
+        tariflerKlasoruGorselleri = [];
+      }
+    }
+    tariflerKlasoruGorselleriniYukle();
     // --- Hasta Yönetimi Modülü ---
     let hastalar = [
       { id: 1, isim: "Ayşe Yılmaz", not: "Hashimoto tiroiditi var", arsiv: false },
@@ -220,7 +237,6 @@
         gosterTariflerHafta(i);
         gosterKartlarHafta(i);
       });
-    // ...existing code...
     // Hafta açıklama kaydet
     function aciklamaKaydet(i) {
       const haftalar = getHaftaListesi();
