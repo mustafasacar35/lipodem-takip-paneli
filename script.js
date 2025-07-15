@@ -1,0 +1,1 @@
+// Hasta yönetimi scripti

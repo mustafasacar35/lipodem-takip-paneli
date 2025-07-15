@@ -1,0 +1,1 @@
+const USER = 'admin'; const PASS = 'lipodem123';
