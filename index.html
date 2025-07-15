@@ -506,32 +506,48 @@
         eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
         return;
       }
-      // Her görsel sadece bir tarife atanacak şekilde eşleştir
+      // Gelişmiş eşleşme: en az iki kelime örtüşmeli, parantezler yok sayılır, aynı isimli birden fazla kart varsa hepsi eklenir
       const kullanilanKartlar = new Set();
+      let eslesenKartlar = [];
       hafta.tarifler.forEach(tarif => {
-        const normTarif = normalizeNameDetay(tarif);
-        console.log('DEBUG - Tarif:', tarif, '->', normTarif);
-        const match = tumKartlar.find(kart => {
-          if (kullanilanKartlar.has(kart.name)) return false;
-          const fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-          const normFile = normalizeNameDetay(fileBase);
-          console.log('DEBUG - Karşılaştır:', normFile, '<->', normTarif);
-          return normFile === normTarif || normFile.includes(normTarif) || normTarif.includes(normFile);
+        // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
+        let tarifTemiz = tarif.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
+        let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
+        if (tarifKelimeler.length === 0) return;
+        tumKartlar.forEach(kart => {
+          if (kullanilanKartlar.has(kart.name)) return;
+          let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+          // menemen_1 gibi sonundaki _rakamı yok say
+          let fileBaseClean = fileBase.replace(/_\d+$/, '');
+          let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+          let kartKelimeler = kartTemiz.split(/[_\s]+/).filter(Boolean);
+          // En az iki ortak kelime olmalı
+          let ortak = tarifKelimeler.filter(kelime => kartKelimeler.includes(kelime));
+          if (ortak.length >= 2) {
+            kullanilanKartlar.add(kart.name);
+            eslesenKartlar.push({ kart, tarif });
+          }
         });
-        if (match) {
-          kullanilanKartlar.add(match.name);
+      });
+      // Aynı isimli birden fazla kart varsa hepsi eklenir (yukarıda zaten ekleniyor)
+      if (eslesenKartlar.length === 0) {
+        eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
+      } else {
+        eslesenKartlar.forEach(({ kart, tarif }) => {
           const img = document.createElement('img');
-          img.src = match.data;
+          img.src = kart.data;
           img.alt = tarif;
-          img.title = match.name;
+          img.title = kart.name;
           img.style.width = '120px';
           img.style.margin = '4px';
           eslesenDiv.appendChild(img);
-        }
-      });
-      if (eslesenDiv.innerHTML === '') {
-        eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
-      } else {
+          // Altına isim de yaz
+          const isimDiv = document.createElement('div');
+          isimDiv.textContent = kart.name;
+          isimDiv.style.fontSize = '12px';
+          isimDiv.style.marginBottom = '8px';
+          eslesenDiv.appendChild(isimDiv);
+        });
         // ZIP olarak indir butonu ekle
         const zipBtn = document.createElement('button');
         zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
@@ -642,20 +658,21 @@
         zip.file(name, blob);
       }
       // Eğer hafta.pdf varsa, orijinal adıyla ekle
-      if (hafta.pdf) {
+      let zipName = 'eslesen_gorseller_hafta' + (i+1) + '.zip';
+      if (hafta.pdfName) {
         const base64 = hafta.pdf.split(',')[1];
-        const pdfName = hafta.pdfName || 'hafta.pdf';
-        zip.file(pdfName, base64, {base64: true});
+        zip.file(hafta.pdfName, base64, {base64: true});
+        zipName = hafta.pdfName.replace(/\.[^.]+$/, '') + '.zip';
         // GPT mesajı varsa, aynı isimle .txt olarak ekle
         if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
-          const txtName = pdfName.replace(/\.[^.]+$/, '.txt');
+          const txtName = hafta.pdfName.replace(/\.[^.]+$/, '.txt');
           zip.file(txtName, hafta.gptMesaj);
         }
       } else if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
         zip.file('gpt_mesaji.txt', hafta.gptMesaj);
       }
       zip.generateAsync({type:'blob'}).then(function(content) {
-        saveAs(content, 'eslesen_gorseller_hafta' + (i+1) + '.zip');
+        saveAs(content, zipName);
       });
     }
     window.zipEslesenGorseller = zipEslesenGorseller;
