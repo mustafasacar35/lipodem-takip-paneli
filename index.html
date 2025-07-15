@@ -75,7 +75,7 @@
         console.error('tariflerKlasoruGorselleriniYukle Hatası:', e);
         tariflerKlasoruGorselleri = [];
       }
-    }
+
     tariflerKlasoruGorselleriniYukle();
 
     // pdf.js worker ayarı (uyumluluk için)
@@ -405,6 +405,11 @@
     }
 
     function gptMesajKaydet(i) {
+      const hafta = getHaftaListesi()[i];
+      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+      alert('Mesaj kaydedildi.');
+    }
+
     // --- ZIP olarak indir fonksiyonu ---
     async function zipHaftaIndir(i) {
       const hafta = getHaftaListesi()[i];
@@ -466,9 +471,6 @@
         saveAs(content, 'hafta_' + (i+1) + '.zip');
       });
     }
-      const hafta = getHaftaListesi()[i];
-      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
-      alert('Mesaj kaydedildi.');
     }
 
     // Ortak fonksiyonlar
