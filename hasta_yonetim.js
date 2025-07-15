@@ -33,7 +33,7 @@ function guncelleListe() {
       const kart = template.content.cloneNode(true);
       kart.querySelector(".isim").innerText = hasta.isim;
       kart.querySelector(".hafta").innerText = `(${hasta.hafta}. hafta)`;
-      kart.querySelector(".detay").onclick = () => alert(hasta.id);
+      kart.querySelector(".detay").onclick = () => window.location.href = `hasta.html?id=${hasta.id}`;
       kart.querySelector(".duzenle").onclick = () => duzenleHasta(index);
       kart.querySelector(".arsivle").onclick = () => arsivleHasta(index);
       liste.appendChild(kart);

@@ -1,17 +1,35 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Hasta Detay</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Hasta Detayı</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="hasta-detay">
-    <h2 id="hasta-isim">Hasta</h2>
-    <div id="haftalar"></div>
+  <h2 id="hasta-baslik">Hasta Detayı</h2>
+  <div id="detay-kutu">
+    <p><strong>Adı:</strong> <span id="isim"></span></p>
+    <p><strong>Hafta:</strong> <span id="hafta"></span></p>
+    <p><strong>Başlangıç Tarihi:</strong> <span id="baslangic"></span></p>
+    <p><strong>Notlar:</strong> <span id="notlar"></span></p>
+    <p><a href="index.html">← Geri dön</a></p>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <script src="hasta.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const hastaId = urlParams.get("id");
+    const hastalar = JSON.parse(localStorage.getItem("hastalar") || "[]");
+    const hasta = hastalar.find(h => h.id === hastaId);
+
+    if (hasta) {
+      document.getElementById("hasta-baslik").innerText = hasta.isim + " (" + hasta.hafta + ". hafta)";
+      document.getElementById("isim").innerText = hasta.isim;
+      document.getElementById("hafta").innerText = hasta.hafta;
+      document.getElementById("baslangic").innerText = hasta.program_baslangici;
+      document.getElementById("notlar").innerText = hasta.notlar || "-";
+    } else {
+      document.getElementById("detay-kutu").innerHTML = "<p>Hasta bulunamadı.</p><a href='index.html'>← Geri dön</a>";
+    }
+  </script>
 </body>
 </html>
