@@ -341,19 +341,23 @@
           <button onclick="duzenleHafta(${i})">Düzenle</button>
           <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
           <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
-          <button onclick="pdfOkuHafta(${i})">PDF'den Tarif Tara</button>
-          <ul id="haftaTarifListesi_${i}"></ul>
+          <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
           <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
           <div id="haftaKartGorsel_${i}"></div>
-          <button onclick="otomatikEsleHafta(${i})">Otomatik Eşleştir (tarifler klasörü + manuel)</button>
           <div id="eslesenKartlar_${i}"></div>
           <b>GPT Mesajı:</b><br>
           <textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
           <button onclick="gptMesajKaydet(${i})">Kaydet</button>
           <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
         div.appendChild(haftaDiv);
-        gosterTariflerHafta(i);
+        gosterTariflerHafta(i); // transkript gizli
         gosterKartlarHafta(i);
+        // Eğer PDF yüklü ve tarifler yoksa otomatik tara ve eşleştir
+        if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
+          pdfOkuVeEsleHafta(i);
+        } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+          otomatikEsleHafta(i);
+        }
       });
     // Hafta açıklama kaydet
     function aciklamaKaydet(i) {
@@ -397,13 +401,16 @@
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
         saveToStorage();
+        // PDF yüklenir yüklenmez otomatik tara ve eşleştir
+        pdfOkuVeEsleHafta(i);
       };
       reader.readAsDataURL(file);
     }
 
-    async function pdfOkuHafta(i) {
+    // PDF'den otomatik tara ve eşleştir
+    async function pdfOkuVeEsleHafta(i) {
       const hafta = getHaftaListesi()[i];
-      if (!hafta.pdf) return alert('Önce PDF yükleyin!');
+      if (!hafta.pdf) return;
       const base64 = hafta.pdf.split(',')[1];
       const binary = atob(base64);
       const len = binary.length;
@@ -419,8 +426,11 @@
       }
       hafta.tarifler = extractTariflerDetay(fullText);
       saveToStorage();
-      gosterTariflerHafta(i);
+      // Otomatik eşleştir
+      otomatikEsleHafta(i);
     }
+
+    // pdfOkuHafta fonksiyonu artık kullanılmıyor (otomatikleştirildi)
 
     function gosterTariflerHafta(i) {
       const hafta = getHaftaListesi()[i];
