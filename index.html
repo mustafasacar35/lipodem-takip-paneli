@@ -13,6 +13,13 @@
 <body>
 
   <h2>Lipedem Hasta Takip Sistemi</h2>
+  <div style="margin-bottom:10px;">
+    <button onclick="exportData()">Verileri Dışa Aktar (JSON)</button>
+    <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
+    <button onclick="document.getElementById('importFile').click()">Veri Yükle (JSON)</button>
+    <input type="password" id="githubToken" placeholder="GitHub API Token" style="width:220px;" oninput="saveTokenToStorage()">
+    <button onclick="uploadToGitHub()" id="githubSaveBtn">GitHub'a Kaydet</button>
+  </div>
   <div id="hastaPaneli">
     <h3>Hasta Listesi</h3>
     <input type="text" id="hastaAra" placeholder="İsme göre ara..." oninput="filtreleHastalar()" style="width:200px;">
@@ -56,6 +63,73 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+    // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
+    // Token'ı localStorage'da sakla ve input'a yükle
+    const TOKEN_KEY = 'github_api_token';
+    function saveTokenToStorage() {
+      const val = document.getElementById('githubToken').value;
+      localStorage.setItem(TOKEN_KEY, val);
+      updateGithubSaveBtn();
+    }
+    function loadTokenFromStorage() {
+      return localStorage.getItem(TOKEN_KEY) || '';
+    }
+    function updateGithubSaveBtn() {
+      const btn = document.getElementById('githubSaveBtn');
+      const token = document.getElementById('githubToken').value;
+      btn.disabled = !token;
+    }
+    // Sayfa açılışında token input'u doldur
+    window.addEventListener('DOMContentLoaded', function() {
+      const token = loadTokenFromStorage();
+      const input = document.getElementById('githubToken');
+      if (input) input.value = token;
+      updateGithubSaveBtn();
+    });
+
+    async function uploadToGitHub() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
+      const owner = 'mustafasacar35'; // GitHub kullanıcı adın
+      const repo = 'lipodem-takip-paneli'; // Repo adı
+      const path = 'data/hasta_kayitlari.json'; // Dosya yolu (repo içinde data/ klasörü olmalı)
+      const branch = 'main'; // Branch adı
+
+      // Önce mevcut dosyanın SHA'sını al (güncelleme için gerekli)
+      let sha = undefined;
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          sha = data.sha;
+        }
+      } catch (e) {}
+
+      // JSON verisini base64'e çevir
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(hastalar, null, 2))));
+
+      // Dosyayı yükle
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Hasta kayıtları güncellendi',
+          content,
+          branch,
+          sha
+        })
+      });
+      if (res.ok) {
+        alert('GitHub\'a başarıyla kaydedildi!');
+      } else {
+        alert('GitHub kaydı başarısız: ' + (await res.text()));
+      }
+    }
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
     let tariflerKlasoruGorselleri = [];
     async function tariflerKlasoruGorselleriniYukle() {
@@ -83,7 +157,23 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     }
     // --- Hasta Yönetimi Modülü ---
-    let hastalar = [
+    // --- Kalıcı veri yönetimi ---
+    const STORAGE_KEY = 'lipedem_hasta_kayitlari';
+    function saveToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+    }
+    function loadFromStorage() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (data) return JSON.parse(data);
+      } catch(e) { console.error('localStorage okuma hatası:', e); }
+      return null;
+    }
+
+    // Başlangıç verisi veya storage'dan yükle
+    let hastalar = loadFromStorage() || [
       { id: 1, isim: "Ayşe Yılmaz", not: "Hashimoto tiroiditi var", arsiv: false },
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
@@ -133,6 +223,7 @@
         hastalar.push(yeni);
       }
       document.getElementById('hastaFormu').style.display = 'none';
+      saveToStorage();
       renderHastalar();
     }
 
@@ -165,6 +256,7 @@
       if (!seciliHasta) return;
       seciliHasta.arsiv = !seciliHasta.arsiv;
       document.getElementById('hastaDetay').style.display = 'none';
+      saveToStorage();
       renderHastalar();
     }
 
@@ -172,6 +264,7 @@
       if (!seciliHasta) return;
       if (!confirm('Silmek istediğinize emin misiniz?')) return;
       hastalar = hastalar.filter(h => h.id !== seciliHasta.id);
+      saveToStorage();
       document.getElementById('hastaDetay').style.display = 'none';
       renderHastalar();
     }
@@ -213,6 +306,7 @@
         tarifler: [],
         gptMesaj: ''
       });
+      saveToStorage();
       gosterHaftalar();
     }
 
@@ -248,6 +342,7 @@
     function aciklamaKaydet(i) {
       const haftalar = getHaftaListesi();
       haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
+      saveToStorage();
       alert('Açıklama kaydedildi.');
     }
 
@@ -256,6 +351,7 @@
       if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
       const haftalar = getHaftaListesi();
       haftalar.splice(i, 1);
+      saveToStorage();
       gosterHaftalar();
     }
 
@@ -270,6 +366,7 @@
       hafta.baslangic = yeniBaslangic;
       hafta.bitis = yeniBitis;
       hafta.aciklama = document.getElementById('aciklama_' + i).value;
+      saveToStorage();
       gosterHaftalar();
     }
     }
@@ -282,6 +379,7 @@
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
+        saveToStorage();
       };
       reader.readAsDataURL(file);
     }
@@ -303,6 +401,7 @@
         fullText += strings.join('\n') + '\n';
       }
       hafta.tarifler = extractTariflerDetay(fullText);
+      saveToStorage();
       gosterTariflerHafta(i);
     }
 
@@ -333,6 +432,7 @@
           img.style.width = '100px';
           img.style.margin = '4px';
           gorselDiv.appendChild(img);
+          saveToStorage();
         };
         reader.readAsDataURL(file);
       });
@@ -417,7 +517,44 @@
     function gptMesajKaydet(i) {
       const hafta = getHaftaListesi()[i];
       hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+      saveToStorage();
       alert('Mesaj kaydedildi.');
+    // --- JSON dışa aktar/yükle fonksiyonları ---
+    function exportData() {
+      const dataStr = JSON.stringify(hastalar, null, 2);
+      const blob = new Blob([dataStr], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hasta_kayitlari.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data)) {
+            hastalar = data;
+            saveToStorage();
+            renderHastalar();
+            document.getElementById('hastaDetay').style.display = 'none';
+            alert('Veriler başarıyla yüklendi!');
+          } else {
+            alert('Geçersiz JSON formatı!');
+          }
+        } catch(err) {
+          alert('JSON okuma hatası: ' + err);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
     }
 
     function kopyalaGptMesaj(i) {
@@ -458,7 +595,7 @@
       gosterHaftalar();
     }
 
-    // Sayfa açılışında listele
+    // Sayfa açılışında storage'dan yükle ve listele
     renderHastalar();
 
     async function zipEslesenGorseller(i) {
