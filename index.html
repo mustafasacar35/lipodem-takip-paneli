@@ -279,7 +279,9 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        getHaftaListesi()[i].pdf = e.target.result;
+        const haftalar = getHaftaListesi();
+        haftalar[i].pdf = e.target.result;
+        haftalar[i].pdfName = file.name || 'hafta.pdf';
       };
       reader.readAsDataURL(file);
     }
@@ -462,14 +464,12 @@
     async function zipEslesenGorseller(i) {
       const hafta = getHaftaListesi()[i];
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
-      // Sadece img etiketlerini al
       const imgs = eslesenDiv.querySelectorAll('img');
       if (!imgs.length && !hafta.pdf && !(hafta.gptMesaj && hafta.gptMesaj.trim())) {
         alert('İndirilecek görsel, PDF veya mesaj yok!');
         return;
       }
       const zip = new JSZip();
-      // Her görseli base64 olarak zip'e ekle
       for (let img of imgs) {
         const url = img.src;
         const name = img.title || img.alt || 'gorsel.jpg';
@@ -477,16 +477,19 @@
         const blob = await response.blob();
         zip.file(name, blob);
       }
-      // Eğer hafta.pdf varsa, onu da ekle
+      // Eğer hafta.pdf varsa, orijinal adıyla ekle
       if (hafta.pdf) {
         const base64 = hafta.pdf.split(',')[1];
-        zip.file('hafta.pdf', base64, {base64: true});
-      }
-      // Eğer GPT mesajı varsa, onu da ekle
-      if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
+        const pdfName = hafta.pdfName || 'hafta.pdf';
+        zip.file(pdfName, base64, {base64: true});
+        // GPT mesajı varsa, aynı isimle .txt olarak ekle
+        if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
+          const txtName = pdfName.replace(/\.[^.]+$/, '.txt');
+          zip.file(txtName, hafta.gptMesaj);
+        }
+      } else if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
         zip.file('gpt_mesaji.txt', hafta.gptMesaj);
       }
-      // ZIP dosyasını oluştur ve indir
       zip.generateAsync({type:'blob'}).then(function(content) {
         saveAs(content, 'eslesen_gorseller_hafta' + (i+1) + '.zip');
       });
