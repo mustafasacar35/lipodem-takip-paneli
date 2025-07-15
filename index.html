@@ -236,8 +236,10 @@
           <div id="haftaKartGorsel_${i}"></div>
           <button onclick="otomatikEsleHafta(${i})">Otomatik Eşleştir (tarifler klasörü + manuel)</button>
           <div id="eslesenKartlar_${i}"></div>
-          <b>GPT Mesajı:</b><br><textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
-          <button onclick="gptMesajKaydet(${i})">Kaydet</button>`;
+          <b>GPT Mesajı:</b><br>
+          <textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
+          <button onclick="gptMesajKaydet(${i})">Kaydet</button>
+          <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
         div.appendChild(haftaDiv);
         gosterTariflerHafta(i);
         gosterKartlarHafta(i);
@@ -416,6 +418,15 @@
       alert('Mesaj kaydedildi.');
     }
 
+    function kopyalaGptMesaj(i) {
+      const textarea = document.getElementById('gptMesaj_' + i);
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // mobile uyumlu
+      document.execCommand('copy');
+      alert('GPT mesajı kopyalandı!');
+    }
+    window.kopyalaGptMesaj = kopyalaGptMesaj;
+
     // Ortak fonksiyonlar
     function extractTariflerDetay(text) {
       const lines = text.split('\n').map(line => line.trim()).filter(l => l.length > 1);
@@ -453,8 +464,8 @@
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       // Sadece img etiketlerini al
       const imgs = eslesenDiv.querySelectorAll('img');
-      if (!imgs.length && !hafta.pdf) {
-        alert('İndirilecek görsel veya PDF yok!');
+      if (!imgs.length && !hafta.pdf && !(hafta.gptMesaj && hafta.gptMesaj.trim())) {
+        alert('İndirilecek görsel, PDF veya mesaj yok!');
         return;
       }
       const zip = new JSZip();
@@ -468,9 +479,12 @@
       }
       // Eğer hafta.pdf varsa, onu da ekle
       if (hafta.pdf) {
-        // DataURL'den base64 kısmını al
         const base64 = hafta.pdf.split(',')[1];
         zip.file('hafta.pdf', base64, {base64: true});
+      }
+      // Eğer GPT mesajı varsa, onu da ekle
+      if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
+        zip.file('gpt_mesaji.txt', hafta.gptMesaj);
       }
       // ZIP dosyasını oluştur ve indir
       zip.generateAsync({type:'blob'}).then(function(content) {
