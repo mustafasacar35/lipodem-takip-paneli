@@ -513,12 +513,13 @@ function duzenleHafta(i) {
     return;
   }
   
-  // YENİ MANTIK: Her tarif için önce trigram, sonra bigram, sonra tüm kelimeler (sırasız) ile eşleşme; bir görsel birden fazla yemeğe eşleşmez
+  // GÜNCEL MANTIK: Her tarif için sadece bir görsel eşleşsin, başındaki * kesin olarak temizlensin, eksik ve çift eşleşme olmasın
   const kullanilanKartlar = new Set();
   let eslesenKartlar = [];
 
   hafta.tarifler.forEach(tarif => {
-    let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
+    // Baştaki * ve boşlukları kesin olarak temizle
+    let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
     let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
     let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
     if (tarifKelimeler.length === 1) return;
@@ -577,7 +578,7 @@ function duzenleHafta(i) {
     }
 
     // Eşleşme bulunduysa ekle ve o görseli bir daha kullanma
-    if (eslesen) {
+    if (eslesen && !kullanilanKartlar.has(eslesen.name)) {
       kullanilanKartlar.add(eslesen.name);
       eslesenKartlar.push({ tarif: tarif, kart: eslesen });
     }
