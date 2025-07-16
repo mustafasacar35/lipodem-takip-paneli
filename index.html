@@ -329,57 +329,9 @@
     }
 
     function gosterHaftalar() {
-      const div = document.getElementById('haftaListesi');
-      div.innerHTML = '';
-      const haftalar = getHaftaListesi();
-  hafta.tarifler.forEach(tarif => {
-    // Baştaki * ve boşlukları kesin olarak temizle
-    let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
-    // Baştaki miktar/gramajı temizle (örn: "150 gram ", "2 adet ", "1/2 su bardağı ")
-    tarifSatir = tarifSatir.replace(/^[0-9]+([\/.,0-9]*)?\s*(gram|adet|su bardağı|yemek kaşığı|tatlı kaşığı|çay kaşığı|kg|ml|litre|kase|dilim|parça|tane)?\s*/i, '');
-    // Parantez içi açıklamaları temizle
-    tarifSatir = tarifSatir.replace(/\(.*?\)/g, '').trim();
-    let tarifTemiz = tarifSatir.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
-    let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
-
-    let eslesen = null;
-
-    // 1. ADIM: normalize ile tam eşleşme (ör: kuzu güveç → kuzu_guvec)
-    const tarifNorm = normalize(tarifSatir);
-    for (let kart of tumKartlar) {
-      if (kullanilanKartlar.has(kart.name)) continue;
-      const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
-      if (kartNorm === tarifNorm) {
-        eslesen = kart;
-        break;
-      }
-    }
-
-    // ...existing code...
-
-    // Eşleşme bulunduysa ekle ve o görseli bir daha kullanma
-    if (eslesen && !kullanilanKartlar.has(eslesen.name)) {
-      kullanilanKartlar.add(eslesen.name);
-      eslesenKartlar.push({ tarif: tarif, kart: eslesen });
-    } else {
-      eslesmeyenTarifler.push(tarif);
-      // En yakın dosya adını öneri olarak bul
-      let minDist = 9999;
-      let enYakin = null;
-      tumKartlar.forEach(kart => {
-        const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
-        const dist = levenshtein(tarifNorm, kartNorm);
-        if (dist < minDist) {
-          minDist = dist;
-          enYakin = kart.name;
-        }
-      });
-      if (enYakin && minDist <= 4) { // 4 karakterden az fark varsa öneri olarak göster
-        eslesmeyenOneriler.push({ tarif, onerilen: enYakin });
-      }
-    }
-  });
-  gosterHaftalar();
+  const div = document.getElementById('haftaListesi');
+  div.innerHTML = '';
+  const haftalar = getHaftaListesi();
 }
 
 // Hafta düzenle (tarih ve açıklama)
