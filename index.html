@@ -329,9 +329,54 @@
     }
 
     function gosterHaftalar() {
-  const div = document.getElementById('haftaListesi');
-  div.innerHTML = '';
+      const div = document.getElementById('haftaListesi');
+      div.innerHTML = '';
+      const haftalar = getHaftaListesi();
+      haftalar.forEach((hafta, i) => {
+        const haftaDiv = document.createElement('div');
+        haftaDiv.style = 'border:1px solid #ccc; margin:8px 0; padding:8px; background:#f8f8ff;';
+        haftaDiv.innerHTML =
+          `<b>${i+1}. Hafta</b> (${hafta.baslangic} - ${hafta.bitis})
+          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-left:8px;width:180px;">
+          <button onclick="aciklamaKaydet(${i})">Kaydet</button>
+          <button onclick="duzenleHafta(${i})">Düzenle</button>
+          <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
+          <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
+          <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
+          <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
+          <div id="haftaKartGorsel_${i}"></div>
+          <div id="eslesenKartlar_${i}"></div>
+          <b>GPT Mesajı:</b><br>
+          <textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
+          <button onclick="gptMesajKaydet(${i})">Kaydet</button>
+          <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
+        div.appendChild(haftaDiv);
+        gosterTariflerHafta(i); // transkript gizli
+        gosterKartlarHafta(i);
+        // Eğer PDF yüklü ve tarifler yoksa otomatik tara ve eşleştir
+        if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
+          pdfOkuVeEsleHafta(i);
+        } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+          otomatikEsleHafta(i);
+        }
+      });
+    }
+
+// Hafta açıklama kaydet
+function aciklamaKaydet(i) {
   const haftalar = getHaftaListesi();
+  haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
+  saveToStorage();
+  alert('Açıklama kaydedildi.');
+}
+
+// Hafta sil
+function silHafta(i) {
+  if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+  const haftalar = getHaftaListesi();
+  haftalar.splice(i, 1);
+  saveToStorage();
+  gosterHaftalar();
 }
 
 // Hafta düzenle (tarih ve açıklama)
@@ -438,6 +483,18 @@ function duzenleHafta(i) {
     }
 
     async function otomatikEsleHafta(i) {
+  // Tarif satırından sadece yemek adını ayıkla
+  function extractYemekAdi(satir) {
+    // Baştaki miktar ve birimi temizle (örn: 150 gram, 1 adet, 2 yemek kaşığı)
+    let s = satir.replace(/^([0-9]+\s*(gram|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '');
+    // Parantez içini ve sonundaki açıklamaları temizle
+    s = s.replace(/\(.*?\)/g, '').replace(/\s*\-.*$/, '');
+    // Sondaki "istenilen baharatlarla" gibi açıklamaları temizle
+    s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
+    // Sondaki miktar tekrarını temizle
+    s = s.replace(/([0-9]+\s*(gram|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))$/i, '');
+    return s.trim();
+  }
   // Eğer görseller henüz yüklenmediyse, önce yükle
   if (tariflerKlasoruGorselleri.length === 0) {
     await tariflerKlasoruGorselleriniYukle();
@@ -499,14 +556,16 @@ function duzenleHafta(i) {
   hafta.tarifler.forEach(tarif => {
     // Baştaki * ve boşlukları kesin olarak temizle
     let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
-    let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
+    // Sadece yemek adını ayıkla
+    let yemekAdi = extractYemekAdi(tarifSatir);
+    let tarifTemiz = yemekAdi.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
     let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
     if (tarifKelimeler.length === 1) return;
 
     let eslesen = null;
 
     // 1. ADIM: normalize ile tam eşleşme (ör: kuzu güveç → kuzu_guvec)
-    const tarifNorm = normalize(tarifSatir);
+    const tarifNorm = normalize(yemekAdi);
     for (let kart of tumKartlar) {
       if (kullanilanKartlar.has(kart.name)) continue;
       const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
