@@ -490,32 +490,36 @@ function duzenleHafta(i) {
   const hafta = getHaftaListesi()[i];
   const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
   eslesenDiv.innerHTML = '';
-  
-  console.log('DEBUG - tariflerKlasoruGorselleri:', tariflerKlasoruGorselleri);
-  console.log('DEBUG - hafta.tarifKartlar:', hafta.tarifKartlar);
-  console.log('DEBUG - hafta.tarifler:', hafta.tarifler);
-  
+
   if (!hafta.tarifler.length) {
     eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
     return;
   }
-  
+
   // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
   const tumKartlar = [].concat(
     hafta.tarifKartlar || [],
     tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
   );
-  
-  console.log('DEBUG - tumKartlar:', tumKartlar);
-  
+
   if (!tumKartlar.length) {
     eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
     return;
   }
-  
-  // GÜNCEL MANTIK: Her tarif için sadece bir görsel eşleşsin, başındaki * kesin olarak temizlensin, eksik ve çift eşleşme olmasın
+
+  // Normalize fonksiyonu ile dosya adlarını ve tarifleri karşılaştır
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+      .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+  }
+
   const kullanilanKartlar = new Set();
   let eslesenKartlar = [];
+  let eslesmeyenTarifler = [];
 
   hafta.tarifler.forEach(tarif => {
     // Baştaki * ve boşlukları kesin olarak temizle
@@ -526,8 +530,19 @@ function duzenleHafta(i) {
 
     let eslesen = null;
 
-    // 1. ADIM: Ardışık 3 kelime (trigram) ile eşleşme
-    if (tarifKelimeler.length >= 3) {
+    // 1. ADIM: normalize ile tam eşleşme (ör: kuzu güveç → kuzu_guvec)
+    const tarifNorm = normalize(tarifSatir);
+    for (let kart of tumKartlar) {
+      if (kullanilanKartlar.has(kart.name)) continue;
+      const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
+      if (kartNorm === tarifNorm) {
+        eslesen = kart;
+        break;
+      }
+    }
+
+    // 2. ADIM: Ardışık 3 kelime (trigram) ile eşleşme
+    if (!eslesen && tarifKelimeler.length >= 3) {
       for (let t = 0; t < tarifKelimeler.length - 2; t++) {
         const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
         for (let kart of tumKartlar) {
@@ -544,7 +559,7 @@ function duzenleHafta(i) {
       }
     }
 
-    // 2. ADIM: Ardışık 2 kelime (bigram) ile eşleşme
+    // 3. ADIM: Ardışık 2 kelime (bigram) ile eşleşme
     if (!eslesen && tarifKelimeler.length >= 2) {
       for (let t = 0; t < tarifKelimeler.length - 1; t++) {
         const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
@@ -562,7 +577,7 @@ function duzenleHafta(i) {
       }
     }
 
-    // 3. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
+    // 4. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
     if (!eslesen && tarifKelimeler.length >= 2) {
       for (let kart of tumKartlar) {
         if (kullanilanKartlar.has(kart.name)) continue;
@@ -581,9 +596,11 @@ function duzenleHafta(i) {
     if (eslesen && !kullanilanKartlar.has(eslesen.name)) {
       kullanilanKartlar.add(eslesen.name);
       eslesenKartlar.push({ tarif: tarif, kart: eslesen });
+    } else {
+      eslesmeyenTarifler.push(tarif);
     }
   });
-  
+
   // Sonuçları göster
   if (eslesenKartlar.length === 0) {
     eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
@@ -612,7 +629,21 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(document.createElement('br'));
     eslesenDiv.appendChild(zipBtn);
   }
-  
+
+  // Eşleşmeyen tarifleri ayrı bir listede göster
+  if (eslesmeyenTarifler.length > 0) {
+    const baslik = document.createElement('h4');
+    baslik.textContent = 'Eşleşmeyen Tarifler:';
+    baslik.style.color = 'red';
+    eslesenDiv.appendChild(baslik);
+    eslesmeyenTarifler.forEach(tarif => {
+      const p = document.createElement('p');
+      p.textContent = tarif;
+      p.style.color = 'red';
+      eslesenDiv.appendChild(p);
+    });
+  }
+
   // Eşleşen kartları hafta verisine kaydet
   hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
   saveToStorage();
