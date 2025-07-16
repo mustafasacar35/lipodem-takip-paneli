@@ -788,9 +788,25 @@ function duzenleHafta(i) {
 
     // Ortak fonksiyonlar
     function extractTariflerDetay(text) {
+      // Her satırı temizle, başında * veya miktar varsa da al
       const lines = text.split('\n').map(line => line.trim()).filter(l => l.length > 1);
-      const filtered = lines.filter(l => /^[0-9]+\./.test(l) || /^[A-ZİĞÜŞÖÇ]/.test(l));
-      return filtered.map(line => line.replace(/^[0-9]+\.\s*/, '').toLowerCase());
+      // Satır başında rakam, *, miktar, büyük harf, veya yemek adı olabilecek her şeyi al
+      const filtered = lines.filter(l =>
+        /^[0-9]+\./.test(l) || // 1. ...
+        /^\*/.test(l) || // * ...
+        /^[0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)/i.test(l) || // miktar ile başlayan
+        /^[A-ZİĞÜŞÖÇ]/.test(l) // büyük harf ile başlayan
+      );
+      // Baştaki numara, *, ve fazla boşlukları temizle
+      return filtered.map(line =>
+        line
+          .replace(/^[0-9]+\.\s*/, '') // baştaki numara
+          .replace(/^\*+\s*/, '') // baştaki yıldız
+          .replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '') // baştaki miktar
+          .replace(/\s+/g, ' ') // fazla boşluk
+          .trim()
+          .toLowerCase()
+      );
     }
 
     function normalizeNameDetay(name) {
