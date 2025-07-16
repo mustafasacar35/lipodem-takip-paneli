@@ -518,10 +518,10 @@ function duzenleHafta(i) {
   let eslesenKartlar = [];
   
   hafta.tarifler.forEach(tarif => {
-      // Başında * veya ** varsa onu kaldır
+      // Başında * veya ** varsa onu kaldır ve tüm özel karakterleri temizle
       let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
       // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
-      let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
+      let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
       let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
     
     console.log('DEBUG - Tarif:', tarif, '-> Temizlendi:', tarifTemiz, '-> Kelimeler:', tarifKelimeler);
