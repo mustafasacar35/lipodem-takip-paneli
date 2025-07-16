@@ -588,12 +588,15 @@ function duzenleHafta(i) {
   if (eslesenKartlar.length === 0) {
     eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
   } else {
-    // Eşleşmeleri göster
+    // Aynı tarif birden fazla kez gösterilmesin
+    const yazilanTarifler = new Set();
     eslesenKartlar.forEach(({ tarif, kart }) => {
+      const tarifKey = tarif.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (yazilanTarifler.has(tarifKey)) return;
+      yazilanTarifler.add(tarifKey);
       const p = document.createElement('p');
       p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kart.name}</span>`;
       eslesenDiv.appendChild(p);
-      
       const img = document.createElement('img');
       img.src = kart.data;
       img.alt = tarif;
@@ -602,7 +605,6 @@ function duzenleHafta(i) {
       img.style.margin = '4px';
       eslesenDiv.appendChild(img);
     });
-    
     // ZIP olarak indir butonu ekle
     const zipBtn = document.createElement('button');
     zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
