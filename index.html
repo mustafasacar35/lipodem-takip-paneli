@@ -486,16 +486,26 @@ function duzenleHafta(i) {
   // Tarif satırından alternatifli yemek adlarını ayıkla
   function extractYemekAdlari(satir) {
     // Baştaki miktar ve birimi temizle (örn: 150 gram, 1 adet, 2 yemek kaşığı)
-    let s = satir.replace(/^([0-9]+\s*(gram|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '');
+    let s = satir.replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '');
     // Parantez içini ve sonundaki açıklamaları temizle
     s = s.replace(/\(.*?\)/g, '').replace(/\s*\-.*$/, '');
     // Sondaki "istenilen baharatlarla" gibi açıklamaları temizle
     s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
     // Sondaki miktar tekrarını temizle
-    s = s.replace(/([0-9]+\s*(gram|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))$/i, '');
+    s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))$/i, '');
     // Alternatifleri ayır ("ya da", "veya")
     let adlar = s.split(/\s*(ya da|veya)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
     return adlar;
+  }
+
+  // Dosya adındaki miktar ve açıklama kelimelerini temizle
+  function temizleDosyaAdi(ad) {
+    let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
+    s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, ''); // miktarları sil
+    s = s.replace(/\(.*?\)/g, ''); // parantez içi
+    s = s.replace(/_?(istenilen_baharatlarla|istenirse|istege_bagli|arzuya_gore|istege_gore|istege_bagli_olarak|istege_gore_baharat|istege_gore_malzeme|istege_gore_eklenebilir)/gi, '');
+    s = s.replace(/_+/g, '_');
+    return s.trim();
   }
   // Eğer görseller henüz yüklenmediyse, önce yükle
   if (tariflerKlasoruGorselleri.length === 0) {
@@ -572,7 +582,7 @@ function duzenleHafta(i) {
       const tarifNorm = normalize(yemekAdi);
       for (let kart of tumKartlar) {
         if (kullanilanKartlar.has(kart.name)) continue;
-        const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
+        const kartNorm = normalize(temizleDosyaAdi(kart.name));
         if (kartNorm === tarifNorm) {
           eslesen = kart;
           eslesenKart = kart;
@@ -588,9 +598,8 @@ function duzenleHafta(i) {
           const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
           for (let kart of tumKartlar) {
             if (kullanilanKartlar.has(kart.name)) continue;
-            let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-            let fileBaseClean = fileBase.replace(/_\d+$/, '');
-            let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+            let fileBase = temizleDosyaAdi(kart.name);
+            let kartTemiz = fileBase.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9_]/g, '').toLowerCase();
             if (kartTemiz.includes(uclu)) {
               eslesen = kart;
               eslesenKart = kart;
@@ -609,9 +618,8 @@ function duzenleHafta(i) {
           const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
           for (let kart of tumKartlar) {
             if (kullanilanKartlar.has(kart.name)) continue;
-            let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-            let fileBaseClean = fileBase.replace(/_\d+$/, '');
-            let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+            let fileBase = temizleDosyaAdi(kart.name);
+            let kartTemiz = fileBase.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9_]/g, '').toLowerCase();
             if (kartTemiz.includes(ikili)) {
               eslesen = kart;
               eslesenKart = kart;
@@ -628,10 +636,8 @@ function duzenleHafta(i) {
       if (!eslesen && tarifKelimeler.length >= 2) {
         for (let kart of tumKartlar) {
           if (kullanilanKartlar.has(kart.name)) continue;
-          let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-          let fileBaseClean = fileBase.replace(/_\d+$/, '');
-          let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-          let kartKelimeler = kartTemiz.split(/_+/).filter(Boolean);
+          let fileBase = temizleDosyaAdi(kart.name);
+          let kartKelimeler = fileBase.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9_]/g, '').toLowerCase().split(/_+/).filter(Boolean);
           // Sırasız ve eksiksiz eşleşme, fazlalık olmadan
           let tarifSet = new Set(tarifKelimeler);
           let kartSet = new Set(kartKelimeler);
