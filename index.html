@@ -707,17 +707,36 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(zipBtn);
   }
 
-  // Eşleşmeyen tarifleri ve önerileri ayrı bir listede göster
+  // Eşleşmeyen tarifleri ve önerileri akordiyon başlık altında göster
   if (eslesmeyenTarifler.length > 0) {
-    const baslik = document.createElement('h4');
-    baslik.textContent = 'Eşleşmeyen Tarifler:';
-    baslik.style.color = 'red';
-    eslesenDiv.appendChild(baslik);
+    // Akordiyon başlık
+    const akordiyonBaslik = document.createElement('button');
+    akordiyonBaslik.textContent = 'Eşleşmeyen Tarifler';
+    akordiyonBaslik.style.background = '#f8d7da';
+    akordiyonBaslik.style.color = 'darkred';
+    akordiyonBaslik.style.border = '1px solid #d9534f';
+    akordiyonBaslik.style.padding = '8px 16px';
+    akordiyonBaslik.style.marginTop = '12px';
+    akordiyonBaslik.style.cursor = 'pointer';
+    akordiyonBaslik.style.fontWeight = 'bold';
+    akordiyonBaslik.style.borderRadius = '6px';
+    akordiyonBaslik.setAttribute('aria-expanded', 'false');
+
+    // Akordiyon içerik
+    const akordiyonIcerik = document.createElement('div');
+    akordiyonIcerik.style.display = 'none';
+    akordiyonIcerik.style.background = '#fff0f0';
+    akordiyonIcerik.style.border = '1px solid #d9534f';
+    akordiyonIcerik.style.padding = '10px 16px';
+    akordiyonIcerik.style.marginTop = '4px';
+    akordiyonIcerik.style.borderRadius = '6px';
+
     eslesmeyenTarifler.forEach(tarif => {
       const p = document.createElement('p');
       p.textContent = tarif;
       p.style.color = 'red';
-      eslesenDiv.appendChild(p);
+      p.style.margin = '6px 0';
+      akordiyonIcerik.appendChild(p);
       // Eğer öneri varsa göster
       const oner = eslesmeyenOneriler.find(o => o.tarif === tarif);
       if (oner) {
@@ -727,6 +746,15 @@ function duzenleHafta(i) {
         p.appendChild(span);
       }
     });
+
+    akordiyonBaslik.onclick = function() {
+      const acikMi = akordiyonIcerik.style.display === 'block';
+      akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+      akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+    };
+
+    eslesenDiv.appendChild(akordiyonBaslik);
+    eslesenDiv.appendChild(akordiyonIcerik);
   }
 
   // Eşleşen kartları hafta verisine kaydet
