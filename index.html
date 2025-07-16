@@ -513,92 +513,70 @@ function duzenleHafta(i) {
     return;
   }
   
-  // GÜNCEL MANTIK: Önce tam eşleşme, sonra ardışık 3/2 kelime, sonra tüm kelimeler dosya adında var mı (sırasız)
+  // YENİ MANTIK: Her tarif için önce trigram, sonra bigram, sonra tüm kelimeler (sırasız) ile eşleşme; bir görsel birden fazla yemeğe eşleşmez
   const kullanilanKartlar = new Set();
   let eslesenKartlar = [];
 
   hafta.tarifler.forEach(tarif => {
-    // Başında * veya ** varsa onu kaldır ve tüm özel karakterleri temizle
     let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
-    // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
     let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
     let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
-
-    // Eğer tek kelime ise, eşleştirme YAPMA
-    if (tarifKelimeler.length === 1) {
-      return;
-    }
+    if (tarifKelimeler.length === 1) return;
 
     let eslesen = null;
 
-    // 1. ADIM: Tam eşleşme kontrolü (tüm kelimeler ardışık)
-    if (tarifKelimeler.length >= 2) {
-      const tamEslesme = tarifKelimeler.join('_');
-      tumKartlar.forEach(kart => {
-        if (kullanilanKartlar.has(kart.name) || eslesen) return;
-        let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-        let fileBaseClean = fileBase.replace(/_\d+$/, '');
-        let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-        if (kartTemiz === tamEslesme) {
-          eslesen = kart;
-          return;
-        }
-      });
-    }
-
-    // 2. ADIM: Ardışık 3 kelime kombinasyonları
-    if (!eslesen && tarifKelimeler.length >= 3) {
+    // 1. ADIM: Ardışık 3 kelime (trigram) ile eşleşme
+    if (tarifKelimeler.length >= 3) {
       for (let t = 0; t < tarifKelimeler.length - 2; t++) {
-        if (eslesen) break;
         const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
-        tumKartlar.forEach(kart => {
-          if (kullanilanKartlar.has(kart.name) || eslesen) return;
+        for (let kart of tumKartlar) {
+          if (kullanilanKartlar.has(kart.name)) continue;
           let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
           let fileBaseClean = fileBase.replace(/_\d+$/, '');
           let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
           if (kartTemiz.includes(uclu)) {
             eslesen = kart;
-            return;
+            break;
           }
-        });
+        }
+        if (eslesen) break;
       }
     }
 
-    // 3. ADIM: Ardışık 2 kelime kombinasyonları
+    // 2. ADIM: Ardışık 2 kelime (bigram) ile eşleşme
     if (!eslesen && tarifKelimeler.length >= 2) {
       for (let t = 0; t < tarifKelimeler.length - 1; t++) {
-        if (eslesen) break;
         const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
-        tumKartlar.forEach(kart => {
-          if (kullanilanKartlar.has(kart.name) || eslesen) return;
+        for (let kart of tumKartlar) {
+          if (kullanilanKartlar.has(kart.name)) continue;
           let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
           let fileBaseClean = fileBase.replace(/_\d+$/, '');
           let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
           if (kartTemiz.includes(ikili)) {
             eslesen = kart;
-            return;
+            break;
           }
-        });
+        }
+        if (eslesen) break;
       }
     }
 
-    // 4. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
+    // 3. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
     if (!eslesen && tarifKelimeler.length >= 2) {
-      tumKartlar.forEach(kart => {
-        if (kullanilanKartlar.has(kart.name) || eslesen) return;
+      for (let kart of tumKartlar) {
+        if (kullanilanKartlar.has(kart.name)) continue;
         let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
         let fileBaseClean = fileBase.replace(/_\d+$/, '');
         let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-        // Her kelime dosya adında var mı?
         let hepsiVar = tarifKelimeler.every(kelime => kartTemiz.includes(kelime));
         if (hepsiVar) {
           eslesen = kart;
-          return;
+          break;
         }
-      });
+      }
     }
 
-    // Eşleşme bulunduysa ekle
+    // Eşleşme bulunduysa ekle ve o görseli bir daha kullanma
     if (eslesen) {
       kullanilanKartlar.add(eslesen.name);
       eslesenKartlar.push({ tarif: tarif, kart: eslesen });
