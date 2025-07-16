@@ -485,28 +485,29 @@ function duzenleHafta(i) {
     async function otomatikEsleHafta(i) {
   // Tarif satırından alternatifli yemek adlarını ayıkla
   function extractYemekAdlari(satir) {
-    // Baştaki miktar ve birimi temizle (örn: 150 gram, 1 adet, 2 yemek kaşığı)
-    let s = satir.replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '');
+    // Baştaki * ve miktarları temizle
+    let s = satir.replace(/^\*+\s*/, '').replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '');
     // Parantez içini ve sonundaki açıklamaları temizle
     s = s.replace(/\(.*?\)/g, '').replace(/\s*\-.*$/, '');
-    // Sondaki "istenilen baharatlarla" gibi açıklamaları temizle
+    // Sondaki açıklamaları ve miktarları temizle
     s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
-    // Sondaki miktar tekrarını temizle
-    s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))$/i, '');
-    // Alternatifleri ayır ("ya da", "veya", "/", ",")
-    let adlar = s.split(/\s*(ya da|veya|\/|,|\sve\s)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
-    // Ana yemek adını ayıkla: "kabak böreği 2 dilim için" → "kabak böreği"
-    adlar = adlar.map(a => a.replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*icin?$/i, '').trim());
+    s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))($|\s)/i, '');
+    s = s.replace(/\s*icin?$/i, '');
+    // Alternatifleri ayır ("ya da", "veya", "/", ",", " ve ")
+    let adlar = s.split(/\s*(ya da|veya|\/|,| ve )\s*/i).map(a => a.trim()).filter(a => a.length > 0);
+    // Sadece ana yemek adını ayıkla: miktar, birim, "için" ve fazlalıkları sil
+    adlar = adlar.map(a => a.replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').trim());
     return adlar;
   }
 
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
-    s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, ''); // miktarları sil
-    s = s.replace(/\(.*?\)/g, ''); // parantez içi
+    s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, '');
+    s = s.replace(/\(.*?\)/g, '');
     s = s.replace(/_?(istenilen_baharatlarla|istenirse|istege_bagli|arzuya_gore|istege_gore|istege_bagli_olarak|istege_gore_baharat|istege_gore_malzeme|istege_gore_eklenebilir)/gi, '');
     s = s.replace(/_+/g, '_');
+    s = s.replace(/\s+/g, '_');
     return s.trim();
   }
   // Eğer görseller henüz yüklenmediyse, önce yükle
@@ -539,9 +540,11 @@ function duzenleHafta(i) {
       .toLowerCase()
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
       .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-      .replace(/i̇/g, 'i') // PDF'den gelen İ harfi hatası için
+      .replace(/i̇/g, 'i')
       .replace(/\s+/g, '_')
-      .replace(/[^a-z0-9_]/g, '');
+      .replace(/[^a-z0-9_]/g, '')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
   }
 
   // Basit Levenshtein mesafesi (benzerlik için)
