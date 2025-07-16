@@ -513,100 +513,95 @@ function duzenleHafta(i) {
     return;
   }
   
-  // YENİ MANTIK: Önce tam eşleşme, sonra 3 kelime, sonra 2 kelime, tek kelime HİÇ
+  // GÜNCEL MANTIK: Önce tam eşleşme, sonra ardışık 3/2 kelime, sonra tüm kelimeler dosya adında var mı (sırasız)
   const kullanilanKartlar = new Set();
   let eslesenKartlar = [];
-  
+
   hafta.tarifler.forEach(tarif => {
-      // Başında * veya ** varsa onu kaldır ve tüm özel karakterleri temizle
-      let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
-      // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
-      let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
-      let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
-    
-    console.log('DEBUG - Tarif:', tarif, '-> Temizlendi:', tarifTemiz, '-> Kelimeler:', tarifKelimeler);
-    
+    // Başında * veya ** varsa onu kaldır ve tüm özel karakterleri temizle
+    let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
+    // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
+    let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
+    let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
+
     // Eğer tek kelime ise, eşleştirme YAPMA
     if (tarifKelimeler.length === 1) {
-      console.log('DEBUG - Tek kelime, eşleştirme yapılmıyor:', tarifKelimeler[0]);
       return;
     }
-    
+
     let eslesen = null;
-    
-    // 1. ADIM: Tam eşleşme kontrolü (tüm kelimeler)
+
+    // 1. ADIM: Tam eşleşme kontrolü (tüm kelimeler ardışık)
     if (tarifKelimeler.length >= 2) {
       const tamEslesme = tarifKelimeler.join('_');
-      console.log('DEBUG - Tam eşleşme aranan:', tamEslesme);
-      
       tumKartlar.forEach(kart => {
         if (kullanilanKartlar.has(kart.name) || eslesen) return;
-        
         let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
         let fileBaseClean = fileBase.replace(/_\d+$/, '');
         let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-        
         if (kartTemiz === tamEslesme) {
-          console.log('DEBUG - TAM EŞLEŞME BULUNDU:', kart.name, 'ile', tamEslesme);
           eslesen = kart;
           return;
         }
       });
     }
-    
-    // 2. ADIM: Eğer tam eşleşme yoksa, ardışık 3 kelime kombinasyonlarını kontrol et
+
+    // 2. ADIM: Ardışık 3 kelime kombinasyonları
     if (!eslesen && tarifKelimeler.length >= 3) {
       for (let t = 0; t < tarifKelimeler.length - 2; t++) {
         if (eslesen) break;
         const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
-        console.log('DEBUG - Aranan 3lü:', uclu);
-        
         tumKartlar.forEach(kart => {
           if (kullanilanKartlar.has(kart.name) || eslesen) return;
-          
           let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
           let fileBaseClean = fileBase.replace(/_\d+$/, '');
           let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-          
           if (kartTemiz.includes(uclu)) {
-            console.log('DEBUG - 3LÜ EŞLEŞME:', kart.name, 'içinde', uclu);
             eslesen = kart;
             return;
           }
         });
       }
     }
-    
-    // 3. ADIM: Eğer 3lü eşleşme yoksa, ardışık 2 kelime kombinasyonlarını kontrol et
+
+    // 3. ADIM: Ardışık 2 kelime kombinasyonları
     if (!eslesen && tarifKelimeler.length >= 2) {
       for (let t = 0; t < tarifKelimeler.length - 1; t++) {
         if (eslesen) break;
         const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
-        console.log('DEBUG - Aranan 2li:', ikili);
-        
         tumKartlar.forEach(kart => {
           if (kullanilanKartlar.has(kart.name) || eslesen) return;
-          
           let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
           let fileBaseClean = fileBase.replace(/_\d+$/, '');
           let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-          
           if (kartTemiz.includes(ikili)) {
-            console.log('DEBUG - 2Lİ EŞLEŞME:', kart.name, 'içinde', ikili);
             eslesen = kart;
             return;
           }
         });
       }
     }
-    
+
+    // 4. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
+    if (!eslesen && tarifKelimeler.length >= 2) {
+      tumKartlar.forEach(kart => {
+        if (kullanilanKartlar.has(kart.name) || eslesen) return;
+        let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+        let fileBaseClean = fileBase.replace(/_\d+$/, '');
+        let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+        // Her kelime dosya adında var mı?
+        let hepsiVar = tarifKelimeler.every(kelime => kartTemiz.includes(kelime));
+        if (hepsiVar) {
+          eslesen = kart;
+          return;
+        }
+      });
+    }
+
     // Eşleşme bulunduysa ekle
     if (eslesen) {
       kullanilanKartlar.add(eslesen.name);
       eslesenKartlar.push({ tarif: tarif, kart: eslesen });
-      console.log('DEBUG - Eşleşme kaydedildi:', tarif, '->', eslesen.name);
-    } else {
-      console.log('DEBUG - Eşleşme bulunamadı:', tarif);
     }
   });
   
