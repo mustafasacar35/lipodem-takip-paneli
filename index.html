@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -482,127 +483,164 @@ function duzenleHafta(i) {
     }
 
     async function otomatikEsleHafta(i) {
-      // Eğer görseller henüz yüklenmediyse, önce yükle
-      if (tariflerKlasoruGorselleri.length === 0) {
-        await tariflerKlasoruGorselleriniYukle();
-      }
-      const hafta = getHaftaListesi()[i];
-      const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
-      eslesenDiv.innerHTML = '';
-      // DEBUG: Görsel listesi ve tarifler loglanıyor
-      console.log('DEBUG - tariflerKlasoruGorselleri:', tariflerKlasoruGorselleri);
-      console.log('DEBUG - hafta.tarifKartlar:', hafta.tarifKartlar);
-      console.log('DEBUG - hafta.tarifler:', hafta.tarifler);
-      if (!hafta.tarifler.length) {
-        eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
-        return;
-      }
-      // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
-      const tumKartlar = [].concat(
-        hafta.tarifKartlar || [],
-        tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
-      );
-      console.log('DEBUG - tumKartlar:', tumKartlar);
-      if (!tumKartlar.length) {
-        eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
-        return;
-      }
-      // Gelişmiş eşleşme: ardışık iki kelime zorunlu, parantezler yok sayılır, aynı isimli birden fazla kart varsa üçlü kombinasyon denenir
-      const kullanilanKartlar = new Set();
-      let eslesenKartlar = [];
-      hafta.tarifler.forEach(tarif => {
-        // Başında * varsa onu kaldır (tüm baştaki yıldızları ve boşlukları sil)
-        let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
-        // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
-        let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
-        let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
-        // Eğer tek kelime ise, tek kelime eşleşmesi yap
-        if (tarifKelimeler.length === 1) {
-          let kelime = tarifKelimeler[0];
-          tumKartlar.forEach(kart => {
-            if (kullanilanKartlar.has(kart.name)) return;
-            let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-            let fileBaseClean = fileBase.replace(/_\d+$/, '');
-            let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-            if (kartTemiz === kelime || kartTemiz.startsWith(kelime + '_') || kartTemiz.endsWith('_' + kelime) || kartTemiz.includes('_' + kelime + '_')) {
-              kullanilanKartlar.add(kart.name);
-              eslesenKartlar.push({ kart, tarif });
-            }
-          });
+  // Eğer görseller henüz yüklenmediyse, önce yükle
+  if (tariflerKlasoruGorselleri.length === 0) {
+    await tariflerKlasoruGorselleriniYukle();
+  }
+  const hafta = getHaftaListesi()[i];
+  const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
+  eslesenDiv.innerHTML = '';
+  
+  console.log('DEBUG - tariflerKlasoruGorselleri:', tariflerKlasoruGorselleri);
+  console.log('DEBUG - hafta.tarifKartlar:', hafta.tarifKartlar);
+  console.log('DEBUG - hafta.tarifler:', hafta.tarifler);
+  
+  if (!hafta.tarifler.length) {
+    eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
+    return;
+  }
+  
+  // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
+  const tumKartlar = [].concat(
+    hafta.tarifKartlar || [],
+    tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+  );
+  
+  console.log('DEBUG - tumKartlar:', tumKartlar);
+  
+  if (!tumKartlar.length) {
+    eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
+    return;
+  }
+  
+  // YENİ MANTIK: Önce tam eşleşme, sonra 3 kelime, sonra 2 kelime, tek kelime HİÇ
+  const kullanilanKartlar = new Set();
+  let eslesenKartlar = [];
+  
+  hafta.tarifler.forEach(tarif => {
+    // Başında * varsa onu kaldır
+    let tarifSatir = tarif.trim().replace(/^\*+\s*/, '');
+    // Parantezleri ve özel karakterleri kaldır, küçük harfe çevir
+    let tarifTemiz = tarifSatir.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase();
+    let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
+    
+    console.log('DEBUG - Tarif:', tarif, '-> Temizlendi:', tarifTemiz, '-> Kelimeler:', tarifKelimeler);
+    
+    // Eğer tek kelime ise, eşleştirme YAPMA
+    if (tarifKelimeler.length === 1) {
+      console.log('DEBUG - Tek kelime, eşleştirme yapılmıyor:', tarifKelimeler[0]);
+      return;
+    }
+    
+    let eslesen = null;
+    
+    // 1. ADIM: Tam eşleşme kontrolü (tüm kelimeler)
+    if (tarifKelimeler.length >= 2) {
+      const tamEslesme = tarifKelimeler.join('_');
+      console.log('DEBUG - Tam eşleşme aranan:', tamEslesme);
+      
+      tumKartlar.forEach(kart => {
+        if (kullanilanKartlar.has(kart.name) || eslesen) return;
+        
+        let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+        let fileBaseClean = fileBase.replace(/_\d+$/, '');
+        let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+        
+        if (kartTemiz === tamEslesme) {
+          console.log('DEBUG - TAM EŞLEŞME BULUNDU:', kart.name, 'ile', tamEslesme);
+          eslesen = kart;
           return;
         }
-        // Ardışık üçlü kelime kombinasyonlarını bul ve önce trigram eşleşmelerini kontrol et
-        let trigramMatches = [];
-        let trigramMatchNames = new Set();
-        if (tarifKelimeler.length >= 3) {
-          for (let t = 0; t < tarifKelimeler.length - 2; t++) {
-            const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
-            tumKartlar.forEach(kart => {
-              if (kullanilanKartlar.has(kart.name)) return;
-              let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-              let fileBaseClean = fileBase.replace(/_\d+$/, '');
-              let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-              if (kartTemiz.includes(uclu)) {
-                if (!trigramMatchNames.has(kart.name)) {
-                  trigramMatches.push({ kart, tarif });
-                  trigramMatchNames.add(kart.name);
-                }
-              }
-            });
-          }
-        }
-        if (trigramMatches.length > 0) {
-          trigramMatches.forEach(match => {
-            kullanilanKartlar.add(match.kart.name);
-            eslesenKartlar.push(match);
-          });
-          return;
-        }
-        // Ardışık ikili kelime kombinasyonlarını bul
-        let bigramMatches = [];
-        let bigramMatchNames = new Set();
-        for (let t = 0; t < tarifKelimeler.length - 1; t++) {
-          const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
-          tumKartlar.forEach(kart => {
-            if (kullanilanKartlar.has(kart.name)) return;
-            let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
-            let fileBaseClean = fileBase.replace(/_\d+$/, '');
-            let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-            if (kartTemiz.includes(ikili)) {
-              if (!bigramMatchNames.has(kart.name)) {
-                bigramMatches.push({ kart, tarif, ikili });
-                bigramMatchNames.add(kart.name);
-              }
-            }
-          });
-        }
-        // Tüm bigram eşleşmelerini ekle (hiçbir zaman boş bırakma)
-        bigramMatches.forEach(match => {
-          kullanilanKartlar.add(match.kart.name);
-          eslesenKartlar.push({ kart: match.kart, tarif: match.tarif });
-        });
       });
-      if (eslesenKartlar.length === 0) {
-        eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
-      } else {
-        eslesenKartlar.forEach(({ kart, tarif }) => {
-          const img = document.createElement('img');
-          img.src = kart.data;
-          img.alt = tarif;
-          img.title = kart.name;
-          img.style.width = '120px';
-          img.style.margin = '4px';
-          // Tooltip olarak isim göster, altında yazma
-          eslesenDiv.appendChild(img);
+    }
+    
+    // 2. ADIM: Eğer tam eşleşme yoksa, ardışık 3 kelime kombinasyonlarını kontrol et
+    if (!eslesen && tarifKelimeler.length >= 3) {
+      for (let t = 0; t < tarifKelimeler.length - 2; t++) {
+        if (eslesen) break;
+        const uclu = tarifKelimeler[t] + '_' + tarifKelimeler[t+1] + '_' + tarifKelimeler[t+2];
+        console.log('DEBUG - Aranan 3lü:', uclu);
+        
+        tumKartlar.forEach(kart => {
+          if (kullanilanKartlar.has(kart.name) || eslesen) return;
+          
+          let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+          let fileBaseClean = fileBase.replace(/_\d+$/, '');
+          let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+          
+          if (kartTemiz.includes(uclu)) {
+            console.log('DEBUG - 3LÜ EŞLEŞME:', kart.name, 'içinde', uclu);
+            eslesen = kart;
+            return;
+          }
         });
-        // ZIP olarak indir butonu ekle
-        const zipBtn = document.createElement('button');
-        zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
-        zipBtn.onclick = function() { zipEslesenGorseller(i); };
-        eslesenDiv.appendChild(document.createElement('br'));
-        eslesenDiv.appendChild(zipBtn);
       }
     }
+    
+    // 3. ADIM: Eğer 3lü eşleşme yoksa, ardışık 2 kelime kombinasyonlarını kontrol et
+    if (!eslesen && tarifKelimeler.length >= 2) {
+      for (let t = 0; t < tarifKelimeler.length - 1; t++) {
+        if (eslesen) break;
+        const ikili = tarifKelimeler[t] + '_' + tarifKelimeler[t+1];
+        console.log('DEBUG - Aranan 2li:', ikili);
+        
+        tumKartlar.forEach(kart => {
+          if (kullanilanKartlar.has(kart.name) || eslesen) return;
+          
+          let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
+          let fileBaseClean = fileBase.replace(/_\d+$/, '');
+          let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
+          
+          if (kartTemiz.includes(ikili)) {
+            console.log('DEBUG - 2Lİ EŞLEŞME:', kart.name, 'içinde', ikili);
+            eslesen = kart;
+            return;
+          }
+        });
+      }
+    }
+    
+    // Eşleşme bulunduysa ekle
+    if (eslesen) {
+      kullanilanKartlar.add(eslesen.name);
+      eslesenKartlar.push({ tarif: tarif, kart: eslesen });
+      console.log('DEBUG - Eşleşme kaydedildi:', tarif, '->', eslesen.name);
+    } else {
+      console.log('DEBUG - Eşleşme bulunamadı:', tarif);
+    }
+  });
+  
+  // Sonuçları göster
+  if (eslesenKartlar.length === 0) {
+    eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
+  } else {
+    // Eşleşmeleri göster
+    eslesenKartlar.forEach(({ tarif, kart }) => {
+      const p = document.createElement('p');
+      p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kart.name}</span>`;
+      eslesenDiv.appendChild(p);
+      
+      const img = document.createElement('img');
+      img.src = kart.data;
+      img.alt = tarif;
+      img.title = kart.name;
+      img.style.width = '120px';
+      img.style.margin = '4px';
+      eslesenDiv.appendChild(img);
+    });
+    
+    // ZIP olarak indir butonu ekle
+    const zipBtn = document.createElement('button');
+    zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
+    zipBtn.onclick = function() { zipEslesenGorseller(i); };
+    eslesenDiv.appendChild(document.createElement('br'));
+    eslesenDiv.appendChild(zipBtn);
+  }
+  
+  // Eşleşen kartları hafta verisine kaydet
+  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
+  saveToStorage();
+}
 
     function gptMesajKaydet(i) {
       const hafta = getHaftaListesi()[i];
