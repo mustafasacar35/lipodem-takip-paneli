@@ -493,8 +493,10 @@ function duzenleHafta(i) {
     s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
     // Sondaki miktar tekrarını temizle
     s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))$/i, '');
-    // Alternatifleri ayır ("ya da", "veya")
-    let adlar = s.split(/\s*(ya da|veya)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
+    // Alternatifleri ayır ("ya da", "veya", "/", ",")
+    let adlar = s.split(/\s*(ya da|veya|\/|,|\sve\s)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
+    // Ana yemek adını ayıkla: "kabak böreği 2 dilim için" → "kabak böreği"
+    adlar = adlar.map(a => a.replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*icin?$/i, '').trim());
     return adlar;
   }
 
@@ -825,7 +827,7 @@ function duzenleHafta(i) {
         /^[0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)/i.test(l) || // miktar ile başlayan
         /^[A-ZİĞÜŞÖÇ]/.test(l) // büyük harf ile başlayan
       );
-      // Baştaki numara, *, ve fazla boşlukları temizle
+      // Baştaki numara, * işareti ve fazla boşlukları her zaman temizle
       return filtered.map(line =>
         line
           .replace(/^[0-9]+\.\s*/, '') // baştaki numara
