@@ -513,13 +513,33 @@ function duzenleHafta(i) {
       .toLowerCase()
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
       .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+      .replace(/i̇/g, 'i') // PDF'den gelen İ harfi hatası için
       .replace(/\s+/g, '_')
       .replace(/[^a-z0-9_]/g, '');
+  }
+
+  // Basit Levenshtein mesafesi (benzerlik için)
+  function levenshtein(a, b) {
+    const matrix = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(null));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[a.length][b.length];
   }
 
   const kullanilanKartlar = new Set();
   let eslesenKartlar = [];
   let eslesmeyenTarifler = [];
+  let eslesmeyenOneriler = [];
 
   hafta.tarifler.forEach(tarif => {
     // Baştaki * ve boşlukları kesin olarak temizle
@@ -598,6 +618,20 @@ function duzenleHafta(i) {
       eslesenKartlar.push({ tarif: tarif, kart: eslesen });
     } else {
       eslesmeyenTarifler.push(tarif);
+      // En yakın dosya adını öneri olarak bul
+      let minDist = 9999;
+      let enYakin = null;
+      tumKartlar.forEach(kart => {
+        const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
+        const dist = levenshtein(tarifNorm, kartNorm);
+        if (dist < minDist) {
+          minDist = dist;
+          enYakin = kart.name;
+        }
+      });
+      if (enYakin && minDist <= 4) { // 4 karakterden az fark varsa öneri olarak göster
+        eslesmeyenOneriler.push({ tarif, onerilen: enYakin });
+      }
     }
   });
 
@@ -630,7 +664,7 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(zipBtn);
   }
 
-  // Eşleşmeyen tarifleri ayrı bir listede göster
+  // Eşleşmeyen tarifleri ve önerileri ayrı bir listede göster
   if (eslesmeyenTarifler.length > 0) {
     const baslik = document.createElement('h4');
     baslik.textContent = 'Eşleşmeyen Tarifler:';
@@ -641,6 +675,14 @@ function duzenleHafta(i) {
       p.textContent = tarif;
       p.style.color = 'red';
       eslesenDiv.appendChild(p);
+      // Eğer öneri varsa göster
+      const oner = eslesmeyenOneriler.find(o => o.tarif === tarif);
+      if (oner) {
+        const span = document.createElement('span');
+        span.textContent = ` (En yakın dosya: ${oner.onerilen})`;
+        span.style.color = 'orange';
+        p.appendChild(span);
+      }
     });
   }
 
