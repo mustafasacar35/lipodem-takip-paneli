@@ -332,50 +332,53 @@
       const div = document.getElementById('haftaListesi');
       div.innerHTML = '';
       const haftalar = getHaftaListesi();
-      haftalar.forEach((hafta, i) => {
-        const haftaDiv = document.createElement('div');
-        haftaDiv.style = 'border:1px solid #ccc; margin:8px 0; padding:8px; background:#f8f8ff;';
-        haftaDiv.innerHTML =
-          `<b>${i+1}. Hafta</b> (${hafta.baslangic} - ${hafta.bitis})
-          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-left:8px;width:180px;">
-          <button onclick="aciklamaKaydet(${i})">Kaydet</button>
-          <button onclick="duzenleHafta(${i})">Düzenle</button>
-          <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
-          <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
-          <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
-          <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
-          <div id="haftaKartGorsel_${i}"></div>
-          <div id="eslesenKartlar_${i}"></div>
-          <b>GPT Mesajı:</b><br>
-          <textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
-          <button onclick="gptMesajKaydet(${i})">Kaydet</button>
-          <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
-        div.appendChild(haftaDiv);
-        gosterTariflerHafta(i); // transkript gizli
-        gosterKartlarHafta(i);
-        // Eğer PDF yüklü ve tarifler yoksa otomatik tara ve eşleştir
-        if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
-          pdfOkuVeEsleHafta(i);
-        } else if (hafta.tarifler && hafta.tarifler.length > 0) {
-          otomatikEsleHafta(i);
-        }
-      });
+  hafta.tarifler.forEach(tarif => {
+    // Baştaki * ve boşlukları kesin olarak temizle
+    let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
+    // Baştaki miktar/gramajı temizle (örn: "150 gram ", "2 adet ", "1/2 su bardağı ")
+    tarifSatir = tarifSatir.replace(/^[0-9]+([\/.,0-9]*)?\s*(gram|adet|su bardağı|yemek kaşığı|tatlı kaşığı|çay kaşığı|kg|ml|litre|kase|dilim|parça|tane)?\s*/i, '');
+    // Parantez içi açıklamaları temizle
+    tarifSatir = tarifSatir.replace(/\(.*?\)/g, '').trim();
+    let tarifTemiz = tarifSatir.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g, '').toLowerCase().trim();
+    let tarifKelimeler = tarifTemiz.split(/\s+/).filter(Boolean);
+
+    let eslesen = null;
+
+    // 1. ADIM: normalize ile tam eşleşme (ör: kuzu güveç → kuzu_guvec)
+    const tarifNorm = normalize(tarifSatir);
+    for (let kart of tumKartlar) {
+      if (kullanilanKartlar.has(kart.name)) continue;
+      const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
+      if (kartNorm === tarifNorm) {
+        eslesen = kart;
+        break;
+      }
     }
 
-// Hafta açıklama kaydet
-function aciklamaKaydet(i) {
-  const haftalar = getHaftaListesi();
-  haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
-  saveToStorage();
-  alert('Açıklama kaydedildi.');
-}
+    // ...existing code...
 
-// Hafta sil
-function silHafta(i) {
-  if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
-  const haftalar = getHaftaListesi();
-  haftalar.splice(i, 1);
-  saveToStorage();
+    // Eşleşme bulunduysa ekle ve o görseli bir daha kullanma
+    if (eslesen && !kullanilanKartlar.has(eslesen.name)) {
+      kullanilanKartlar.add(eslesen.name);
+      eslesenKartlar.push({ tarif: tarif, kart: eslesen });
+    } else {
+      eslesmeyenTarifler.push(tarif);
+      // En yakın dosya adını öneri olarak bul
+      let minDist = 9999;
+      let enYakin = null;
+      tumKartlar.forEach(kart => {
+        const kartNorm = normalize(kart.name.replace(/\.(jpg|jpeg|png)$/i, ''));
+        const dist = levenshtein(tarifNorm, kartNorm);
+        if (dist < minDist) {
+          minDist = dist;
+          enYakin = kart.name;
+        }
+      });
+      if (enYakin && minDist <= 4) { // 4 karakterden az fark varsa öneri olarak göster
+        eslesmeyenOneriler.push({ tarif, onerilen: enYakin });
+      }
+    }
+  });
   gosterHaftalar();
 }
 
@@ -597,15 +600,19 @@ function duzenleHafta(i) {
       }
     }
 
-    // 4. ADIM: Tüm kelimeler dosya adında var mı (sırasız, eksiksiz)
+    // 4. ADIM: Dosya adındaki kelimeler ile tarifteki kelimeler birebir aynı olmalı (sırasız, eksiksiz, fazlalık olmadan)
     if (!eslesen && tarifKelimeler.length >= 2) {
       for (let kart of tumKartlar) {
         if (kullanilanKartlar.has(kart.name)) continue;
         let fileBase = kart.name.replace(/\.(jpg|jpeg|png)$/i, '');
         let fileBaseClean = fileBase.replace(/_\d+$/, '');
         let kartTemiz = fileBaseClean.replace(/\(.*?\)/g, '').replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s_]/g, '').toLowerCase();
-        let hepsiVar = tarifKelimeler.every(kelime => kartTemiz.includes(kelime));
-        if (hepsiVar) {
+        let kartKelimeler = kartTemiz.split(/_+/).filter(Boolean);
+        // Sırasız ve eksiksiz eşleşme, fazlalık olmadan
+        let tarifSet = new Set(tarifKelimeler);
+        let kartSet = new Set(kartKelimeler);
+        let ayniMi = tarifSet.size === kartSet.size && [...tarifSet].every(kelime => kartSet.has(kelime));
+        if (ayniMi) {
           eslesen = kart;
           break;
         }
