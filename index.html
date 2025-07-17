@@ -1499,7 +1499,28 @@
           throw new Error(`list.json bulunamadı: ${resp.status} - ${tariflerPath}list.json`);
         }
         
-        const files = await resp.json();
+        const responseText = await resp.text();
+        console.log('Tarifler klasöründen ham JSON (ilk 200 karakter):', responseText.substring(0, 200));
+        
+        let files;
+        try {
+          files = JSON.parse(responseText);
+        } catch (jsonError) {
+          console.error('❌ JSON parsing hatası:', jsonError.message);
+          console.log('📄 Hatalı JSON içeriği (ilk 1000 karakter):', responseText.substring(0, 1000));
+          
+          // JSON'u satır satır kontrol et
+          const lines = responseText.split('\n');
+          console.log('📊 Toplam satır sayısı:', lines.length);
+          
+          // 200-210 arası satırları göster (hata 204. satırda)
+          for (let i = 200; i < Math.min(210, lines.length); i++) {
+            console.log(`❌ Satır ${i + 1}: "${lines[i]}"`);
+          }
+          
+          throw new Error(`JSON format hatası: ${jsonError.message}`);
+        }
+        
         console.log('Tarifler klasöründen yüklenen dosyalar:', files);
         
         tariflerKlasoruGorselleri = files.map(name => ({
@@ -2379,17 +2400,34 @@ function duzenleHafta(i) {
         console.log('📄 list.json response status:', resp.status);
         
         if (resp.ok) {
-          const files = await resp.json();
-          console.log('✅ list.json başarıyla okundu:', files);
-          console.log('📁 Dosya sayısı:', files.length);
+          const responseText = await resp.text();
+          console.log('📄 Ham list.json içeriği (ilk 500 karakter):', responseText.substring(0, 500));
           
-          // Her dosyanın erişilebilirliğini test et
-          for (let fileName of files.slice(0, 3)) { // İlk 3 dosyayı test et
-            try {
-              const fileResp = await fetch(tariflerPath + fileName);
-              console.log(`🖼️ ${fileName}: ${fileResp.ok ? '✅ Erişilebilir' : '❌ Erişilemez'} (${fileResp.status})`);
-            } catch (e) {
-              console.log(`🖼️ ${fileName}: ❌ Hata - ${e.message}`);
+          try {
+            const files = JSON.parse(responseText);
+            console.log('✅ list.json başarıyla okundu:', files);
+            console.log('📁 Dosya sayısı:', files.length);
+            
+            // Her dosyanın erişilebilirliğini test et
+            for (let fileName of files.slice(0, 3)) { // İlk 3 dosyayı test et
+              try {
+                const fileResp = await fetch(tariflerPath + fileName);
+                console.log(`🖼️ ${fileName}: ${fileResp.ok ? '✅ Erişilebilir' : '❌ Erişilemez'} (${fileResp.status})`);
+              } catch (e) {
+                console.log(`🖼️ ${fileName}: ❌ Hata - ${e.message}`);
+              }
+            }
+          } catch (jsonError) {
+            console.log('❌ JSON parsing hatası:', jsonError.message);
+            console.log('📄 Hatalı JSON içeriği:', responseText);
+            
+            // JSON'u satır satır kontrol et
+            const lines = responseText.split('\n');
+            console.log('📊 Toplam satır sayısı:', lines.length);
+            
+            // 200-210 arası satırları göster (hata 204. satırda)
+            for (let i = 200; i < Math.min(210, lines.length); i++) {
+              console.log(`Satır ${i + 1}: "${lines[i]}"`);
             }
           }
         } else {
@@ -2400,7 +2438,6 @@ function duzenleHafta(i) {
       }
       
       // Hasta verilerini kontrol et
-      const hastalar = getHastalar();
       console.log('👥 Toplam hasta sayısı:', hastalar.length);
       
       if (hastalar.length > 0) {
