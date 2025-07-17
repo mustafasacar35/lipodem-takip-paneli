@@ -13,6 +13,13 @@
 <body>
 
   <h2>Lipedem Hasta Takip Sistemi</h2>
+  
+  <!-- Sistem Durumu -->
+  <div id="sistemDurumu" style="background:#e9ecef; padding:10px; margin-bottom:15px; border-radius:5px; border-left:4px solid #6c757d;">
+    <span style="font-weight:bold;">📊 Sistem Durumu:</span>
+    <span id="tariflerKlasoruDurumu">🔄 Tarifler klasörü kontrol ediliyor...</span>
+  </div>
+  
   <div style="margin-bottom:10px;">
     <button onclick="exportData()">Verileri Dışa Aktar (JSON)</button>
     <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
@@ -23,6 +30,7 @@
     <button onclick="kartSilFormGoster()">Tarif Kartı Sil</button>
     <button onclick="manuelEslestirmePaneliGoster()">Manuel Eşleştirme Paneli</button>
     <button onclick="eslesmemeRegeleriPaneliGoster()">Eşleşme Yasakları Paneli</button>
+    <button onclick="debugTariflerKlasoru()" style="background:#17a2b8; color:white;">🔍 Debug: Tarifler Klasörü</button>
   </div>
 
   <!-- Eşleşme Yasakları Paneli -->
@@ -1456,23 +1464,58 @@
     }
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
     let tariflerKlasoruGorselleri = [];
+    
+    function durumGuncelle() {
+      const durumElement = document.getElementById('tariflerKlasoruDurumu');
+      if (durumElement) {
+        if (tariflerKlasoruGorselleri.length > 0) {
+          durumElement.innerHTML = `✅ Tarifler klasörü: <span style="color:green; font-weight:bold;">${tariflerKlasoruGorselleri.length} görsel</span>`;
+          durumElement.parentElement.style.borderLeftColor = '#28a745';
+        } else {
+          durumElement.innerHTML = `⚠️ Tarifler klasörü: <span style="color:orange; font-weight:bold;">Görsel bulunamadı</span> - Manuel yükleme gerekli`;
+          durumElement.parentElement.style.borderLeftColor = '#ffc107';
+        }
+      }
+    }
+    
     async function tariflerKlasoruGorselleriniYukle() {
+      const durumElement = document.getElementById('tariflerKlasoruDurumu');
+      if (durumElement) {
+        durumElement.innerHTML = '🔄 Tarifler klasörü kontrol ediliyor...';
+        durumElement.parentElement.style.borderLeftColor = '#6c757d';
+      }
+      
       try {
         // Her zaman bulunduğun dizinin köküne göre tarifler/ yolunu oluştur
         let basePath = window.location.pathname;
         if (!basePath.endsWith('/')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
         const tariflerPath = window.location.origin + basePath + 'tarifler/';
+        
+        console.log('Tarifler klasörü aranıyor:', tariflerPath);
+        
         const resp = await fetch(tariflerPath + 'list.json');
-        if (!resp.ok) throw new Error('list.json bulunamadı: ' + resp.status);
+        if (!resp.ok) {
+          console.warn(`list.json bulunamadı (${resp.status}): ${tariflerPath}list.json`);
+          throw new Error(`list.json bulunamadı: ${resp.status} - ${tariflerPath}list.json`);
+        }
+        
         const files = await resp.json();
+        console.log('Tarifler klasöründen yüklenen dosyalar:', files);
+        
         tariflerKlasoruGorselleri = files.map(name => ({
           name,
           url: tariflerPath + name
         }));
+        
+        console.log(`✅ Tarifler klasöründen ${tariflerKlasoruGorselleri.length} görsel yüklendi`);
+        
       } catch (e) {
-        console.error('tariflerKlasoruGorselleriniYukle Hatası:', e);
+        console.warn('⚠️ Tarifler klasörü yüklenemedi:', e.message);
+        console.log('💡 Çözüm: Ana dizinde "tarifler/" klasörü oluşturun ve içine list.json dosyası ekleyin');
         tariflerKlasoruGorselleri = [];
       }
+      
+      durumGuncelle();
     }
     tariflerKlasoruGorselleriniYukle();
 
@@ -1927,7 +1970,45 @@ function duzenleHafta(i) {
   );
 
   if (!tumKartlar.length) {
-    eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
+    // Daha detaylı hata mesajı ve çözüm önerileri
+    const hataDiv = document.createElement('div');
+    hataDiv.style.padding = '15px';
+    hataDiv.style.border = '2px solid #dc3545';
+    hataDiv.style.borderRadius = '8px';
+    hataDiv.style.backgroundColor = '#f8d7da';
+    hataDiv.style.color = '#721c24';
+    hataDiv.innerHTML = `
+      <h4 style="margin-top:0; color:#721c24;">❌ Tarif kartları bulunamadı</h4>
+      <p><strong>Sebep:</strong> Bu hafta için eşleşme yapılabilecek hiçbir tarif kartı bulunamadı.</p>
+      <div style="margin-top:15px;">
+        <p><strong>Çözüm seçenekleri:</strong></p>
+        <ol style="margin-left:20px;">
+          <li><strong>Manuel görsel yükle:</strong> Bu hafta için "Tarif Kartları" bölümünden görsel dosyaları yükleyin</li>
+          <li><strong>Tarifler klasörü oluştur:</strong> Web sitenizin ana dizininde "tarifler/" klasörü oluşturun ve içine görsel dosyalarını ekleyin</li>
+          <li><strong>list.json dosyası:</strong> "tarifler/" klasöründe dosya listesini içeren "list.json" dosyası oluşturun</li>
+        </ol>
+      </div>
+      <div style="margin-top:15px; padding:10px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:5px;">
+        <strong>💡 İpucu:</strong> Tarifler klasörü durumu: 
+        <span style="color:${tariflerKlasoruGorselleri.length > 0 ? 'green' : 'red'};">
+          ${tariflerKlasoruGorselleri.length} görsel bulundu
+        </span>
+        <br>
+        Manuel yüklenen kartlar: 
+        <span style="color:${(hafta.tarifKartlar && hafta.tarifKartlar.length > 0) ? 'green' : 'red'};">
+          ${(hafta.tarifKartlar && hafta.tarifKartlar.length) || 0} adet
+        </span>
+      </div>
+      <div style="margin-top:15px; text-align:center;">
+        <button onclick="yeniBirDenemeEt(${i})" style="background:#28a745; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-right:10px;">
+          🔄 Tarifler Klasörünü Yeniden Yükle
+        </button>
+        <button onclick="debugTariflerKlasoru()" style="background:#17a2b8; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">
+          🔍 Detaylı Debug
+        </button>
+      </div>
+    `;
+    eslesenDiv.appendChild(hataDiv);
     return;
   }
 
@@ -2276,6 +2357,97 @@ function duzenleHafta(i) {
       });
     }
     window.zipEslesenGorseller = zipEslesenGorseller;
+
+    // Debug fonksiyonu - Tarifler klasörü durumunu kontrol et
+    async function debugTariflerKlasoru() {
+      console.log('🔍 Tarifler Klasörü Debug Başlıyor...');
+      
+      // Mevcut durum
+      console.log('📊 Mevcut tariflerKlasoruGorselleri:', tariflerKlasoruGorselleri);
+      console.log('📊 Görsel sayısı:', tariflerKlasoruGorselleri.length);
+      
+      // Yol hesaplama
+      let basePath = window.location.pathname;
+      if (!basePath.endsWith('/')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+      const tariflerPath = window.location.origin + basePath + 'tarifler/';
+      console.log('🌐 Hesaplanan tarifler yolu:', tariflerPath);
+      
+      // list.json kontrolü
+      try {
+        console.log('📂 list.json dosyası kontrol ediliyor...');
+        const resp = await fetch(tariflerPath + 'list.json');
+        console.log('📄 list.json response status:', resp.status);
+        
+        if (resp.ok) {
+          const files = await resp.json();
+          console.log('✅ list.json başarıyla okundu:', files);
+          console.log('📁 Dosya sayısı:', files.length);
+          
+          // Her dosyanın erişilebilirliğini test et
+          for (let fileName of files.slice(0, 3)) { // İlk 3 dosyayı test et
+            try {
+              const fileResp = await fetch(tariflerPath + fileName);
+              console.log(`🖼️ ${fileName}: ${fileResp.ok ? '✅ Erişilebilir' : '❌ Erişilemez'} (${fileResp.status})`);
+            } catch (e) {
+              console.log(`🖼️ ${fileName}: ❌ Hata - ${e.message}`);
+            }
+          }
+        } else {
+          console.log('❌ list.json bulunamadı');
+        }
+      } catch (e) {
+        console.log('❌ list.json okuma hatası:', e.message);
+      }
+      
+      // Hasta verilerini kontrol et
+      const hastalar = getHastalar();
+      console.log('👥 Toplam hasta sayısı:', hastalar.length);
+      
+      if (hastalar.length > 0) {
+        const seciliHasta = hastalar.find(h => h.secili);
+        if (seciliHasta) {
+          console.log('👤 Seçili hasta:', seciliHasta.ad);
+          const haftalar = seciliHasta.haftalar || [];
+          console.log('📅 Hafta sayısı:', haftalar.length);
+          
+          haftalar.forEach((hafta, index) => {
+            const manuelKartSayisi = (hafta.tarifKartlar && hafta.tarifKartlar.length) || 0;
+            const tarifSayisi = (hafta.tarifler && hafta.tarifler.length) || 0;
+            console.log(`📅 Hafta ${index + 1}: ${manuelKartSayisi} manuel kart, ${tarifSayisi} tarif`);
+          });
+        } else {
+          console.log('⚠️ Seçili hasta yok');
+        }
+      }
+      
+      // Sonuç özeti
+      alert(`🔍 Debug Sonuçları (Konsolu kontrol edin):
+      
+📊 Tarifler klasörü görsel sayısı: ${tariflerKlasoruGorselleri.length}
+🌐 Tarifler yolu: ${tariflerPath}
+👥 Hasta sayısı: ${hastalar.length}
+
+Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
+    }
+    window.debugTariflerKlasoru = debugTariflerKlasoru;
+
+    // Tarifler klasörünü yeniden yükleme ve eşleştirme fonksiyonu
+    async function yeniBirDenemeEt(haftaIndex) {
+      console.log('🔄 Yeniden deneme başlıyor...');
+      
+      // Önce tarifler klasörünü sıfırla ve yeniden yükle
+      tariflerKlasoruGorselleri = [];
+      await tariflerKlasoruGorselleriniYukle();
+      
+      // Durum güncelle
+      durumGuncelle();
+      
+      // Sonra o hafta için eşleştirmeyi yeniden çalıştır
+      await otomatikEsleHafta(haftaIndex);
+      
+      console.log('✅ Yeniden deneme tamamlandı');
+    }
+    window.yeniBirDenemeEt = yeniBirDenemeEt;
   </script>
 </body>
 </html>
