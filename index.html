@@ -384,8 +384,20 @@
         return;
       }
       
-      // Normalize et
-      const normalizeEdilmis = normalize(tarifAdi);
+      // Normalize et - fonksiyonu burada tanımla
+      function normalizeLocal(str) {
+        return str
+          .toLowerCase()
+          .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+          .replace(/i̇/g, 'i')
+          .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
+          .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
+          .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
+          .trim();
+      }
+      
+      const normalizeEdilmis = normalizeLocal(tarifAdi);
       
       // Kaydet
       manuelEslestirmeler[normalizeEdilmis] = {
@@ -1407,7 +1419,20 @@ function duzenleHafta(i) {
 
   // Manuel eşleştirme kontrolü
   function manuelEslestirmeKontrol(tarifSatir) {
-    const normalizeEdilmis = normalize(tarifSatir);
+    // Normalize fonksiyonu burada da tanımla
+    function normalizeLocal(str) {
+      return str
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/i̇/g, 'i')
+        .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
+        .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
+        .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
+        .trim();
+    }
+    
+    const normalizeEdilmis = normalizeLocal(tarifSatir);
     
     if (manuelEslestirmeler[normalizeEdilmis]) {
       const eslestirme = manuelEslestirmeler[normalizeEdilmis];
