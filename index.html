@@ -645,13 +645,17 @@ function duzenleHafta(i) {
         const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
         // Debug: mantarlı tavuk sote kartı için özel çıktı
-        if (kart.name.toLowerCase().includes('mantarli_tavuk_sote')) {
+        if (kart.name.toLowerCase().includes('mantarli_tavuk_sote') || kart.name.toLowerCase().includes('mantarli')) {
           console.log('DEBUG - Kart adı:', kart.name);
           console.log('DEBUG - Temizlenmiş kart adı:', temizleDosyaAdi(kart.name));
           console.log('DEBUG - Normalize edilmiş kart:', kartNorm);
           console.log('DEBUG - Kart kelimeleri:', kartKelimeler);
           console.log('DEBUG - Tarif norm === Kart norm?', tarifNorm === kartNorm);
+          console.log('DEBUG - Tarif kelimeleri:', tarifKelimeler);
+          console.log('DEBUG - Kart metni:', kartKelimeler.join(' '));
+          console.log('DEBUG - Tarif metni:', tarifKelimeler.join(' '));
           console.log('DEBUG - Ardışık kontrol:', kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler));
+          console.log('DEBUG - Kart kullanılmış mı?', kullanilanKartlar.has(kart.name));
         }
 
         // 1. Önce tam eşleşme kontrol et
