@@ -553,19 +553,9 @@ function duzenleHafta(i) {
     }
     return true;
   }
-// Kelime gruplarını kontrol et (3 kelime, 2 kelime) - YENİ: Kart kelimelerini de kontrol et
+// Kelime gruplarını kontrol et (3 kelime, 2 kelime)
   function kelimeleriKontrolEt(tarifKelimeler, kartKelimeler) {
-    // Önce kart kelimelerinin tamamının tarif kelimelerinde bulunup bulunmadığını kontrol et
-    if (!kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-      return { eslesme: false };
-    }
-
-    // Tam eşleşme kontrolü
-    if (tarifKelimeler.join(' ') === kartKelimeler.join(' ')) {
-      return { eslesme: true, tip: 'tam eşleşme', kelimeler: kartKelimeler.join(' ') };
-    }
-
-    // 3 ardışık kelime ara
+    // Önce 3 ardışık kelime ara
     for (let i = 0; i <= tarifKelimeler.length - 3; i++) {
       const ucKelime = tarifKelimeler.slice(i, i + 3).join(' ');
       for (let j = 0; j <= kartKelimeler.length - 3; j++) {
@@ -576,7 +566,7 @@ function duzenleHafta(i) {
       }
     }
 
-    // 2 ardışık kelime ara
+    // Sonra 2 ardışık kelime ara
     for (let i = 0; i <= tarifKelimeler.length - 2; i++) {
       const ikiKelime = tarifKelimeler.slice(i, i + 2).join(' ');
       for (let j = 0; j <= kartKelimeler.length - 2; j++) {
@@ -587,11 +577,9 @@ function duzenleHafta(i) {
       }
     }
 
-    // Eğer kart kelimelerinin tamamı tarif kelimelerinde bulunuyorsa, genel eşleşme kabul et
-    return { eslesme: true, tip: 'genel eşleşme', kelimeler: kartKelimeler.join(' ') };
+    return { eslesme: false };
   }
-
-  // Eğer görseller henüz yüklenmediyse, önce yükle
+ // Eğer görseller henüz yüklenmediyse, önce yükle
   if (tariflerKlasoruGorselleri.length === 0) {
     await tariflerKlasoruGorselleriniYukle();
   }
@@ -615,7 +603,6 @@ function duzenleHafta(i) {
     eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
     return;
   }
-
 
   // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
   function normalize(str) {
@@ -660,7 +647,6 @@ function duzenleHafta(i) {
     let eslesen = null;
     let eslesenKart = null;
     let eslesenTip = '';
-    let enIyiPuan = -1;
 
     // Her yemek adı için eşleştirme dene
     for (let yemekAdi of yemekAdlari) {
@@ -674,34 +660,26 @@ function duzenleHafta(i) {
         const kartNorm = normalize(temizleDosyaAdi(kart.name));
         const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
-        // Kelime gruplarını kontrol et
+        // 1. Önce tam eşleşme kontrol et
+        if (tarifNorm === kartNorm) {
+          eslesen = kart;
+          eslesenKart = kart;
+          eslesenTip = 'tam eşleşme';
+          break;
+        }
+
+        // 2. Kelime gruplarını kontrol et
         const kelimeKontrol = kelimeleriKontrolEt(tarifKelimeler, kartKelimeler);
         if (kelimeKontrol.eslesme) {
-          let puan = 0;
-          switch (kelimeKontrol.tip) {
-            case 'tam eşleşme':
-              puan = 100;
-              break;
-            case '3 kelime':
-              puan = 50;
-              break;
-            case '2 kelime':
-              puan = 25;
-              break;
-            case 'genel eşleşme':
-              puan = 10;
-              break;
-          }
-
-          // Daha iyi puan varsa güncelle
-          if (puan > enIyiPuan) {
-            enIyiPuan = puan;
-            eslesen = kart;
-            eslesenKart = kart;
-            eslesenTip = kelimeKontrol.tip;
-          }
+          eslesen = kart;
+          eslesenKart = kart;
+          eslesenTip = kelimeKontrol.tip;
+          break;
         }
       }
+
+      // Eşleşme bulunursa bu yemek adı için dur
+      if (eslesen) break;
     }
 
     // Eşleşme bulunduysa kaydet ve kartı kullanılmış olarak işaretle
@@ -741,7 +719,7 @@ function duzenleHafta(i) {
       eslesenDiv.appendChild(img);
     });
     
-   // ZIP olarak indir butonu ekle
+    // ZIP olarak indir butonu ekle
     const zipBtn = document.createElement('button');
     zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
     zipBtn.onclick = function() { zipEslesenGorseller(i); };
@@ -791,12 +769,8 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(akordiyonIcerik);
   }
 
-  // SADECE eşleşen kartları hafta verisine kaydet (manuel yüklenenlerden temizle)
-  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart).filter(k => hafta.tarifKartlar && hafta.tarifKartlar.some(hk => hk.name === k.name));
-  
-  // Eşleşen kartları göster
-  gosterKartlarHafta(i);
-  
+  // Eşleşen kartları hafta verisine kaydet
+  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
   saveToStorage();
 }
 
