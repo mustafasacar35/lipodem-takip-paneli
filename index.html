@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -536,48 +535,16 @@ function duzenleHafta(i) {
       .trim();
   }
 
-  // Tarif kartındaki TÜM kelimelerin liste yemeğinde bulunup bulunmadığını kontrol et
+  // Tarif kartındaki TÜM kelimelerin PDF yemeğinde ardışık olarak bulunup bulunmadığını kontrol et
   function kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler) {
-    // Kart kelimelerinin her biri tarif kelimelerinde bulunmalı
-    for (let kartKelime of kartKelimeler) {
-      let bulundu = false;
-      for (let tarifKelime of tarifKelimeler) {
-        if (tarifKelime.includes(kartKelime) || kartKelime.includes(tarifKelime)) {
-          bulundu = true;
-          break;
-        }
-      }
-      if (!bulundu) {
-        return false;
-      }
-    }
-    return true;
-  }
-// Kelime gruplarını kontrol et (3 kelime, 2 kelime)
-  function kelimeleriKontrolEt(tarifKelimeler, kartKelimeler) {
-    // Önce 3 ardışık kelime ara
-    for (let i = 0; i <= tarifKelimeler.length - 3; i++) {
-      const ucKelime = tarifKelimeler.slice(i, i + 3).join(' ');
-      for (let j = 0; j <= kartKelimeler.length - 3; j++) {
-        const kartUcKelime = kartKelimeler.slice(j, j + 3).join(' ');
-        if (ucKelime === kartUcKelime) {
-          return { eslesme: true, tip: '3 kelime', kelimeler: ucKelime };
-        }
-      }
-    }
-
-    // Sonra 2 ardışık kelime ara
-    for (let i = 0; i <= tarifKelimeler.length - 2; i++) {
-      const ikiKelime = tarifKelimeler.slice(i, i + 2).join(' ');
-      for (let j = 0; j <= kartKelimeler.length - 2; j++) {
-        const kartIkiKelime = kartKelimeler.slice(j, j + 2).join(' ');
-        if (ikiKelime === kartIkiKelime) {
-          return { eslesme: true, tip: '2 kelime', kelimeler: ikiKelime };
-        }
-      }
-    }
-
-    return { eslesme: false };
+    if (kartKelimeler.length === 0) return false;
+    
+    // Kart kelimelerini birleştir (ardışık arama için)
+    const kartMetni = kartKelimeler.join(' ');
+    const tarifMetni = tarifKelimeler.join(' ');
+    
+    // Kart metninin tarif metninde ardışık olarak bulunup bulunmadığını kontrol et
+    return tarifMetni.includes(kartMetni);
   }
  // Eğer görseller henüz yüklenmediyse, önce yükle
   if (tariflerKlasoruGorselleri.length === 0) {
@@ -668,12 +635,11 @@ function duzenleHafta(i) {
           break;
         }
 
-        // 2. Kelime gruplarını kontrol et
-        const kelimeKontrol = kelimeleriKontrolEt(tarifKelimeler, kartKelimeler);
-        if (kelimeKontrol.eslesme) {
+        // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
+        if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
           eslesen = kart;
           eslesenKart = kart;
-          eslesenTip = kelimeKontrol.tip;
+          eslesenTip = 'ardışık eşleşme';
           break;
         }
       }
