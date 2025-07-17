@@ -504,8 +504,8 @@ function duzenleHafta(i) {
       let adlar = alt.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
       // Sadece ana yemek adını ayıkla: baştaki ve sondaki boşlukları, miktarları, "için" ve fazlalıkları sil
       adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
-      // Çok kısa (1 kelime) olanları at
-      adlar = adlar.filter(a => a.split(' ').length > 0);
+      // Çok kısa olanları atma - sadece boş olanları at
+      adlar = adlar.filter(a => a.length > 0);
       tumAdlar = tumAdlar.concat(adlar);
     });
     
@@ -615,10 +615,24 @@ function duzenleHafta(i) {
     let eslesenKart = null;
     let eslesenTip = '';
 
+    // Debug: mantarlı tavuk sote için özel çıktı
+    if (tarifSatir.toLowerCase().includes('mantarlı tavuk sote') || tarifSatir.toLowerCase().includes('mantarli tavuk sote')) {
+      console.log('DEBUG - Mantarlı tavuk sote analizi:');
+      console.log('Orijinal tarif:', tarifSatir);
+      console.log('Çıkarılan yemek adları:', yemekAdlari);
+    }
+
     // Her yemek adı için eşleştirme dene
     for (let yemekAdi of yemekAdlari) {
       const tarifNorm = normalize(yemekAdi);
       const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
+
+      // Debug: mantarlı tavuk sote için özel çıktı
+      if (yemekAdi.toLowerCase().includes('mantarlı tavuk sote') || yemekAdi.toLowerCase().includes('mantarli tavuk sote')) {
+        console.log('DEBUG - Yemek adı:', yemekAdi);
+        console.log('DEBUG - Normalize edilmiş:', tarifNorm);
+        console.log('DEBUG - Kelimeler:', tarifKelimeler);
+      }
 
       // Kullanılmayan kartlar arasında ara
       for (let kart of tumKartlar) {
@@ -626,6 +640,16 @@ function duzenleHafta(i) {
 
         const kartNorm = normalize(temizleDosyaAdi(kart.name));
         const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
+
+        // Debug: mantarlı tavuk sote kartı için özel çıktı
+        if (kart.name.toLowerCase().includes('mantarli_tavuk_sote')) {
+          console.log('DEBUG - Kart adı:', kart.name);
+          console.log('DEBUG - Temizlenmiş kart adı:', temizleDosyaAdi(kart.name));
+          console.log('DEBUG - Normalize edilmiş kart:', kartNorm);
+          console.log('DEBUG - Kart kelimeleri:', kartKelimeler);
+          console.log('DEBUG - Tarif norm === Kart norm?', tarifNorm === kartNorm);
+          console.log('DEBUG - Ardışık kontrol:', kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler));
+        }
 
         // 1. Önce tam eşleşme kontrol et
         if (tarifNorm === kartNorm) {
