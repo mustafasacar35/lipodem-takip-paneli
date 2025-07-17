@@ -20,6 +20,31 @@
     <input type="password" id="githubToken" placeholder="GitHub API Token" style="width:220px;" oninput="saveTokenToStorage()">
     <button onclick="uploadToGitHub()" id="githubSaveBtn">GitHub'a Kaydet</button>
     <button onclick="yeniKartFormGoster()">Yeni Tarif Kartı Ekle</button>
+    <button onclick="kartSilFormGoster()">Tarif Kartı Sil</button>
+  </div>
+
+  <!-- Kart Silme Formu -->
+  <div id="kartSilFormu" style="display:none; background:#fff; border:2px solid #dc3545; padding:20px; margin:16px 0; border-radius:8px;">
+    <h3>Tarif Kartı Sil</h3>
+    <div style="margin-bottom:15px;">
+      <label style="display:block; margin-bottom:5px; font-weight:bold;">Silinecek Kartı Seçin:</label>
+      <select id="silinecekKart" style="width:300px; padding:8px;">
+        <option value="">Kart seçin...</option>
+      </select>
+      <small style="display:block; color:#666; margin-top:5px;">
+        Bu işlem hem dosyayı hem de list.json'dan kaydı siler
+      </small>
+    </div>
+    <div id="onizlemeAlani" style="margin-bottom:15px; text-align:center;"></div>
+    <div style="margin-bottom:15px;">
+      <button onclick="kartSil()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">
+        Kartı Sil
+      </button>
+      <button onclick="kartSilFormGizle()" style="background:#6c757d; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        İptal
+      </button>
+    </div>
+    <div id="silmeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
   </div>
 
   <!-- Yeni Kart Ekleme Formu -->
@@ -174,6 +199,194 @@
         alert('GitHub\'a başarıyla kaydedildi!');
       } else {
         alert('GitHub kaydı başarısız: ' + (await res.text()));
+      }
+    }
+
+    // --- Kart Silme Fonksiyonları ---
+    function kartSilFormGoster() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('Önce GitHub API token girin!');
+        return;
+      }
+      
+      // Mevcut kartları listele
+      kartListesiniYenile();
+      document.getElementById('kartSilFormu').style.display = 'block';
+    }
+
+    function kartSilFormGizle() {
+      document.getElementById('kartSilFormu').style.display = 'none';
+      document.getElementById('silinecekKart').value = '';
+      document.getElementById('onizlemeAlani').innerHTML = '';
+      document.getElementById('silmeStatus').style.display = 'none';
+    }
+
+    async function kartListesiniYenile() {
+      const select = document.getElementById('silinecekKart');
+      select.innerHTML = '<option value="">Kart seçin...</option>';
+      
+      // Eğer tarifler listesi boşsa yükle
+      if (tariflerKlasoruGorselleri.length === 0) {
+        await tariflerKlasoruGorselleriniYukle();
+      }
+      
+      // Kartları seçeneklere ekle
+      tariflerKlasoruGorselleri.forEach(kart => {
+        const option = document.createElement('option');
+        option.value = kart.name;
+        option.textContent = kart.name;
+        select.appendChild(option);
+      });
+      
+      // Kart seçildiğinde önizleme göster
+      select.onchange = function() {
+        const seciliKart = this.value;
+        const onizleme = document.getElementById('onizlemeAlani');
+        onizleme.innerHTML = '';
+        
+        if (seciliKart) {
+          const kartBilgisi = tariflerKlasoruGorselleri.find(k => k.name === seciliKart);
+          if (kartBilgisi) {
+            onizleme.innerHTML = `
+              <p><strong>Silinecek kart:</strong> ${seciliKart}</p>
+              <img src="${kartBilgisi.url}" alt="${seciliKart}" style="width:150px; border:1px solid #ccc;">
+            `;
+          }
+        }
+      };
+    }
+
+    function silmeStatusGoster(mesaj, tip = 'info') {
+      const statusDiv = document.getElementById('silmeStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = mesaj;
+      
+      if (tip === 'success') {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.color = '#155724';
+        statusDiv.style.border = '1px solid #c3e6cb';
+      } else if (tip === 'error') {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+        statusDiv.style.border = '1px solid #f5c6cb';
+      } else {
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        statusDiv.style.border = '1px solid #bee5eb';
+      }
+    }
+
+    async function kartSil() {
+      const token = document.getElementById('githubToken').value.trim();
+      const silinecekKart = document.getElementById('silinecekKart').value;
+      
+      if (!token) {
+        alert('GitHub API token gerekli!');
+        return;
+      }
+      
+      if (!silinecekKart) {
+        alert('Silinecek kartı seçin!');
+        return;
+      }
+
+      // Onay al
+      if (!confirm(`"${silinecekKart}" kartını gerçekten silmek istiyorsan? Bu işlem geri alınamaz!`)) {
+        return;
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const branch = 'main';
+
+      try {
+        silmeStatusGoster('Dosya bilgisi alınıyor...', 'info');
+
+        // 1. Önce dosyanın SHA'sını al (silmek için gerekli)
+        const dosyaPath = `tarifler/${silinecekKart}`;
+        const dosyaRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dosyaPath}?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+
+        if (!dosyaRes.ok) {
+          throw new Error('Dosya bulunamadı veya erişim hatası');
+        }
+
+        const dosyaData = await dosyaRes.json();
+
+        silmeStatusGoster('Dosya GitHub\'dan siliniyor...', 'info');
+
+        // 2. Dosyayı sil
+        const silRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dosyaPath}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Tarif kartı silindi: ${silinecekKart}`,
+            sha: dosyaData.sha,
+            branch
+          })
+        });
+
+        if (!silRes.ok) {
+          throw new Error('Dosya silme başarısız: ' + (await silRes.text()));
+        }
+
+        silmeStatusGoster('list.json güncelleniyor...', 'info');
+
+        // 3. list.json'u güncelle
+        const listRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+
+        if (!listRes.ok) {
+          throw new Error('list.json dosyası alınamadı');
+        }
+
+        const listData = await listRes.json();
+        const mevcutListe = JSON.parse(atob(listData.content));
+        
+        // Silinen dosyayı listeden çıkar
+        const guncelListe = mevcutListe.filter(kart => kart !== silinecekKart);
+
+        // Güncellenmiş listeyi yükle
+        const yeniListeContent = btoa(JSON.stringify(guncelListe, null, 2));
+        const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `list.json güncellendi - ${silinecekKart} silindi`,
+            content: yeniListeContent,
+            sha: listData.sha,
+            branch
+          })
+        });
+
+        if (!listUpdateRes.ok) {
+          throw new Error('list.json güncelleme başarısız: ' + (await listUpdateRes.text()));
+        }
+
+        silmeStatusGoster(`✅ Başarılı! ${silinecekKart} kartı silindi ve list.json güncellendi.`, 'success');
+        
+        // Lokal listeyi de güncelle
+        await tariflerKlasoruGorselleriniYukle();
+        
+        // Liste güncelle
+        kartListesiniYenile();
+        
+        // Önizlemeyi temizle
+        document.getElementById('onizlemeAlani').innerHTML = '';
+        document.getElementById('silinecekKart').value = '';
+
+      } catch (error) {
+        console.error('Kart silme hatası:', error);
+        silmeStatusGoster(`❌ Hata: ${error.message}`, 'error');
       }
     }
 
