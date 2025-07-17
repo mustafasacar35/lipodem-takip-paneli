@@ -2003,9 +2003,6 @@ function duzenleHafta(i) {
         const tarifNorm = normalize(yemekAdi);
         const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
 
-        // Eşleştirme adaylarını topla ve puanla
-        let eslesmeAdaylari = [];
-
         // Kullanılmayan kartlar arasında ara
         for (let kart of tumKartlar) {
           if (kullanilanKartlar.has(kart.name)) continue;
@@ -2018,58 +2015,25 @@ function duzenleHafta(i) {
           const kartNorm = normalize(temizleDosyaAdi(kart.name));
           const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
-          // 1. Tam eşleşme (en yüksek öncelik)
+          // 1. Önce tam eşleşme kontrol et
           if (tarifNorm === kartNorm) {
-            eslesmeAdaylari.push({
-              kart: kart,
-              puan: 1000,
-              tip: 'tam eşleşme',
-              eslesmeSayisi: kartKelimeler.length
-            });
-            continue;
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'tam eşleşme';
+            break;
           }
 
-          // 2. Ardışık kelime eşleşmesi kontrolü
+          // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
           if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-            let puan = 500 + (kartKelimeler.length * 50); // Kelime sayısı kadar bonus
-            eslesmeAdaylari.push({
-              kart: kart,
-              puan: puan,
-              tip: `${kartKelimeler.length} kelime ardışık`,
-              eslesmeSayisi: kartKelimeler.length
-            });
-            continue;
-          }
-
-          // 3. Kelime eşleşme sayısını kontrol et
-          const eslesenKelimeler = kartKelimeler.filter(kKelime => 
-            tarifKelimeler.some(tKelime => tKelime === kKelime)
-          );
-          
-          if (eslesenKelimeler.length >= 2) {
-            let puan = 100 + (eslesenKelimeler.length * 25); // Her eşleşen kelime için bonus
-            eslesmeAdaylari.push({
-              kart: kart,
-              puan: puan,
-              tip: `${eslesenKelimeler.length} kelime eşleşmesi`,
-              eslesmeSayisi: eslesenKelimeler.length
-            });
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'ardışık eşleşme';
+            break;
           }
         }
 
-        // En yüksek puanlı eşleştirmeyi seç
-        if (eslesmeAdaylari.length > 0) {
-          // Puana göre sırala (yüksek puan önce)
-          eslesmeAdaylari.sort((a, b) => {
-            if (b.puan !== a.puan) return b.puan - a.puan;
-            // Puan eşitse, daha fazla kelime eşleşeni tercih et
-            return b.eslesmeSayisi - a.eslesmeSayisi;
-          });
-          
-          const enIyi = eslesmeAdaylari[0];
-          eslesen = enIyi.kart;
-          eslesenKartlar = [enIyi.kart];
-          eslesenTip = enIyi.tip;
+        // Eşleşme bulunursa bu yemek adı için dur
+        if (eslesen) {
           kullanilanKartlar.add(eslesen.name);
           break;
         }
