@@ -29,10 +29,14 @@
     <h3>Tarif Kartı Sil</h3>
     <div style="margin-bottom:15px;">
       <label style="display:block; margin-bottom:5px; font-weight:bold;">Silinecek Kartı Seçin:</label>
+      <input type="text" id="kartAramaInput" placeholder="Kart adında ara... (örn: avok salat)" style="width:300px; padding:8px; margin-bottom:8px;" />
       <select id="silinecekKart" style="width:300px; padding:8px;">
         <option value="">Kart seçin...</option>
       </select>
       <small style="display:block; color:#666; margin-top:5px;">
+        Yukarıdaki arama kutusuna yazarak filtreleyin veya listeden seçin
+      </small>
+      <small style="display:block; color:#666; margin-top:2px;">
         Bu işlem hem dosyayı hem de list.json'dan kaydı siler
       </small>
     </div>
@@ -220,43 +224,132 @@
     function kartSilFormGizle() {
       document.getElementById('kartSilFormu').style.display = 'none';
       document.getElementById('silinecekKart').value = '';
+      document.getElementById('kartAramaInput').value = '';
       document.getElementById('onizlemeAlani').innerHTML = '';
       document.getElementById('silmeStatus').style.display = 'none';
     }
 
     async function kartListesiniYenile() {
       const select = document.getElementById('silinecekKart');
-      select.innerHTML = '<option value="">Kart seçin...</option>';
+      const aramaInput = document.getElementById('kartAramaInput');
       
       // Eğer tarifler listesi boşsa yükle
       if (tariflerKlasoruGorselleri.length === 0) {
         await tariflerKlasoruGorselleriniYukle();
       }
       
-      // Kartları seçeneklere ekle
-      tariflerKlasoruGorselleri.forEach(kart => {
-        const option = document.createElement('option');
-        option.value = kart.name;
-        option.textContent = kart.name;
-        select.appendChild(option);
-      });
+      // Tüm kartları sakla (filtreleme için)
+      window.tumKartListesi = [...tariflerKlasoruGorselleri];
+      
+      // İlk yüklemede tüm kartları göster
+      kartListesiniFiltrele('');
+      
+      // Arama input'una olay dinleyicisi ekle
+      aramaInput.oninput = function() {
+        const aramaMetni = this.value.toLowerCase();
+        kartListesiniFiltrele(aramaMetni);
+      };
       
       // Kart seçildiğinde önizleme göster
       select.onchange = function() {
-        const seciliKart = this.value;
-        const onizleme = document.getElementById('onizlemeAlani');
-        onizleme.innerHTML = '';
+        kartOnizlemeGoster(this.value);
+      };
+    }
+
+    function kartListesiniFiltrele(aramaMetni) {
+      const select = document.getElementById('silinecekKart');
+      select.innerHTML = '<option value="">Kart seçin...</option>';
+      
+      if (!window.tumKartListesi) return;
+      
+      // Arama metnini kelimelere ayır
+      const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0);
+      
+      // Filtreleme fonksiyonu
+      function kartEslesiyorMu(kartAdi) {
+        if (aramaKelimeleri.length === 0) return true;
         
-        if (seciliKart) {
-          const kartBilgisi = tariflerKlasoruGorselleri.find(k => k.name === seciliKart);
-          if (kartBilgisi) {
-            onizleme.innerHTML = `
-              <p><strong>Silinecek kart:</strong> ${seciliKart}</p>
-              <img src="${kartBilgisi.url}" alt="${seciliKart}" style="width:150px; border:1px solid #ccc;">
-            `;
+        const kartMetni = kartAdi.toLowerCase()
+          .replace(/\.(jpg|jpeg|png)$/i, '') // dosya uzantısını kaldır
+          .replace(/_/g, ' '); // alt çizgileri boşluğa çevir
+        
+        // Tüm arama kelimelerinin kart adında bulunup bulunmadığını kontrol et
+        return aramaKelimeleri.every(kelime => kartMetni.includes(kelime));
+      }
+      
+      // Filtrelenmiş kartları ekle
+      const filtrelenmisKartlar = window.tumKartListesi.filter(kart => 
+        kartEslesiyorMu(kart.name)
+      );
+      
+      // Eşleşme skoruna göre sırala (daha iyi eşleşenler üstte)
+      filtrelenmisKartlar.sort((a, b) => {
+        const aMetni = a.name.toLowerCase().replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        const bMetni = b.name.toLowerCase().replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        
+        // Tam eşleşme kontrolü
+        if (aramaKelimeleri.length > 0) {
+          const aramaMetniTam = aramaKelimeleri.join(' ');
+          const aIceriyor = aMetni.includes(aramaMetniTam);
+          const bIceriyor = bMetni.includes(aramaMetniTam);
+          
+          if (aIceriyor && !bIceriyor) return -1;
+          if (!aIceriyor && bIceriyor) return 1;
+        }
+        
+        // Alfabetik sıralama
+        return a.name.localeCompare(b.name);
+      });
+      
+      // Seçenekleri ekle
+      filtrelenmisKartlar.forEach(kart => {
+        const option = document.createElement('option');
+        option.value = kart.name;
+        option.textContent = kart.name;
+        
+        // Eşleşen kelimeleri vurgula (sadece görsel amaçlı)
+        if (aramaKelimeleri.length > 0) {
+          let vurguluMetin = kart.name;
+          aramaKelimeleri.forEach(kelime => {
+            const regex = new RegExp(`(${kelime})`, 'gi');
+            vurguluMetin = vurguluMetin.replace(regex, '→$1←');
+          });
+          option.setAttribute('title', vurguluMetin.replace(/→/g, '').replace(/←/g, ''));
+        }
+        
+        select.appendChild(option);
+      });
+      
+      // Sonuç sayısını göster
+      const sonucSayisi = filtrelenmisKartlar.length;
+      if (aramaMetni && sonucSayisi === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Eşleşen kart bulunamadı';
+        option.disabled = true;
+        select.appendChild(option);
+      }
+    }
+
+    function kartOnizlemeGoster(seciliKart) {
+      const onizleme = document.getElementById('onizlemeAlani');
+      onizleme.innerHTML = '';
+      
+      if (seciliKart && window.tumKartListesi) {
+        const kartBilgisi = window.tumKartListesi.find(k => k.name === seciliKart);
+        if (kartBilgisi) {
+          onizleme.innerHTML = `
+            <p><strong>Silinecek kart:</strong> ${seciliKart}</p>
+            <img src="${kartBilgisi.url}" alt="${seciliKart}" style="width:150px; border:1px solid #ccc;">
+          `;
+          
+          // Arama input'unu seçilen kart adıyla güncelle
+          const aramaInput = document.getElementById('kartAramaInput');
+          if (aramaInput.value.trim() === '') {
+            aramaInput.value = seciliKart.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
           }
         }
-      };
+      }
     }
 
     function silmeStatusGoster(mesaj, tip = 'info') {
@@ -382,9 +475,12 @@
         // Liste güncelle
         kartListesiniYenile();
         
+        // Arama kutusunu ve seçimi temizle
+        document.getElementById('kartAramaInput').value = '';
+        document.getElementById('silinecekKart').value = '';
+        
         // Önizlemeyi temizle
         document.getElementById('onizlemeAlani').innerHTML = '';
-        document.getElementById('silinecekKart').value = '';
 
       } catch (error) {
         console.error('Kart silme hatası:', error);
