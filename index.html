@@ -21,6 +21,51 @@
     <button onclick="uploadToGitHub()" id="githubSaveBtn">GitHub'a Kaydet</button>
     <button onclick="yeniKartFormGoster()">Yeni Tarif Kartı Ekle</button>
     <button onclick="kartSilFormGoster()">Tarif Kartı Sil</button>
+    <button onclick="manuelEslestirmePaneliGoster()">Manuel Eşleştirme Paneli</button>
+  </div>
+
+  <!-- Manuel Eşleştirme Paneli -->
+  <div id="manuelEslestirmePanel" style="display:none; background:#fff; border:2px solid #28a745; padding:20px; margin:16px 0; border-radius:8px; position:relative;">
+    <button onclick="manuelEslestirmePaneliGizle()" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:20px; cursor:pointer; color:#28a745; font-weight:bold; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;" title="Kapat">×</button>
+    <h3>Manuel Eşleştirme Paneli</h3>
+    <div style="display:flex; gap:20px; margin-bottom:20px;">
+      <div style="flex:1;">
+        <label style="display:block; margin-bottom:5px; font-weight:bold;">PDF'deki Yemek Adı:</label>
+        <textarea id="manuelTarifAdi" placeholder="Örn: *Kıymalı karnabahar /bamya yemeği" style="width:100%; height:80px; padding:8px; resize:vertical;"></textarea>
+        <small style="display:block; color:#666; margin-top:5px;">
+          PDF'de görünen tam metni yazın (*, / işaretleri dahil)
+        </small>
+      </div>
+      <div style="flex:1;">
+        <label style="display:block; margin-bottom:5px; font-weight:bold;">Eşleşecek Kartlar:</label>
+        <select id="manuelKartSecimi" multiple style="width:100%; height:120px; padding:8px;">
+        </select>
+        <small style="display:block; color:#666; margin-top:5px;">
+          Ctrl+tıklayarak birden fazla kart seçebilirsiniz
+        </small>
+      </div>
+    </div>
+    <div style="margin-bottom:15px;">
+      <button onclick="manuelEslestirmeEkle()" style="background:#28a745; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">
+        Eşleştirme Ekle
+      </button>
+      <button onclick="manuelEslestirmeleriTemizle()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        Tüm Eşleştirmeleri Temizle
+      </button>
+      <button onclick="manuelEslestirmeleriGitHubKaydet()" style="background:#007bff; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        GitHub'a Kaydet
+      </button>
+      <button onclick="manuelEslestirmeleriGitHubYukle()" style="background:#6f42c1; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        GitHub'dan Yükle
+      </button>
+    </div>
+    <div id="manuelEslestirmeStatus" style="margin-bottom:15px; padding:10px; border-radius:5px; display:none;"></div>
+    <div>
+      <h4>Kayıtlı Manuel Eşleştirmeler:</h4>
+      <div id="manuelEslestirmeListesi" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:10px; background:#f8f9fa;">
+        <em>Henüz manuel eşleştirme yok</em>
+      </div>
+    </div>
   </div>
 
   <!-- Kart Silme Formu -->
@@ -139,13 +184,35 @@
       const token = document.getElementById('githubToken').value;
       btn.disabled = !token;
     }
-    // Sayfa açılışında token input'u doldur
+    // Sayfa açılışında token input'u doldur ve manuel eşleştirmeleri yükle
     window.addEventListener('DOMContentLoaded', function() {
       const token = loadTokenFromStorage();
       const input = document.getElementById('githubToken');
       if (input) input.value = token;
       updateGithubSaveBtn();
+      
+      // Manuel eşleştirmeleri hemen yükle
+      initManuelEslestirmeler();
     });
+
+    // Manuel eşleştirmeleri başlangıçta yükle
+    async function initManuelEslestirmeler() {
+      // Önce localStorage'dan yükle
+      manuelEslestirmeleriYukle();
+      
+      // Token varsa GitHub'dan da yükle
+      const token = document.getElementById('githubToken').value.trim();
+      if (token) {
+        try {
+          await manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
+          console.log('Manuel eşleştirmeler GitHub\'dan yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
+        } catch (error) {
+          console.warn('GitHub\'dan manuel eşleştirme yüklenemedi:', error);
+        }
+      } else {
+        console.log('Manuel eşleştirmeler localStorage\'dan yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
+      }
+    }
 
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
@@ -205,6 +272,312 @@
         alert('GitHub\'a başarıyla kaydedildi!');
       } else {
         alert('GitHub kaydı başarısız: ' + (await res.text()));
+      }
+    }
+
+    // --- Manuel Eşleştirme Paneli Fonksiyonları ---
+    const MANUEL_ESLESTIRME_KEY = 'lipedem_manuel_eslestirmeler';
+    let manuelEslestirmeler = {};
+
+    function manuelEslestirmeleriYukle() {
+      try {
+        const data = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
+        if (data) {
+          manuelEslestirmeler = JSON.parse(data);
+        }
+      } catch(e) {
+        console.error('Manuel eşleştirme yükleme hatası:', e);
+        manuelEslestirmeler = {};
+      }
+    }
+
+    function manuelEslestirmeleriKaydet() {
+      try {
+        localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+        // Otomatik GitHub kaydı (token varsa)
+        const token = document.getElementById('githubToken').value.trim();
+        if (token && Object.keys(manuelEslestirmeler).length > 0) {
+          // 2 saniye bekle sonra otomatik kaydet (çok sık kaydetmeyi önlemek için)
+          setTimeout(() => {
+            manuelEslestirmeleriGitHubKaydet(true); // true = sessiz kaydetme
+          }, 2000);
+        }
+      } catch(e) {
+        console.error('Manuel eşleştirme kaydetme hatası:', e);
+      }
+    }
+
+    async function manuelEslestirmePaneliGoster() {
+      // Kartları yükle
+      if (tariflerKlasoruGorselleri.length === 0) {
+        await tariflerKlasoruGorselleriniYukle();
+      }
+      
+      // Kart listesini doldur
+      const select = document.getElementById('manuelKartSecimi');
+      select.innerHTML = '';
+      tariflerKlasoruGorselleri.forEach(kart => {
+        const option = document.createElement('option');
+        option.value = kart.name;
+        option.textContent = kart.name;
+        select.appendChild(option);
+      });
+      
+      // Manuel eşleştirmeleri göster (zaten yüklü olmalı)
+      manuelEslestirmeListesiniGoster();
+      
+      document.getElementById('manuelEslestirmePanel').style.display = 'block';
+    }
+
+    function manuelEslestirmePaneliGizle() {
+      document.getElementById('manuelEslestirmePanel').style.display = 'none';
+      document.getElementById('manuelTarifAdi').value = '';
+      document.getElementById('manuelKartSecimi').selectedIndex = -1;
+      document.getElementById('manuelEslestirmeStatus').style.display = 'none';
+    }
+
+    function manuelEslestirmeStatusGoster(mesaj, tip = 'info') {
+      const statusDiv = document.getElementById('manuelEslestirmeStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = mesaj;
+      
+      if (tip === 'success') {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.color = '#155724';
+        statusDiv.style.border = '1px solid #c3e6cb';
+      } else if (tip === 'error') {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+        statusDiv.style.border = '1px solid #f5c6cb';
+      } else {
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        statusDiv.style.border = '1px solid #bee5eb';
+      }
+    }
+
+    function manuelEslestirmeEkle() {
+      const tarifAdi = document.getElementById('manuelTarifAdi').value.trim();
+      const select = document.getElementById('manuelKartSecimi');
+      const secilenKartlar = Array.from(select.selectedOptions).map(option => option.value);
+      
+      if (!tarifAdi) {
+        manuelEslestirmeStatusGoster('Yemek adı boş olamaz!', 'error');
+        return;
+      }
+      
+      if (secilenKartlar.length === 0) {
+        manuelEslestirmeStatusGoster('En az bir kart seçmelisiniz!', 'error');
+        return;
+      }
+      
+      // Normalize et
+      const normalizeEdilmis = normalize(tarifAdi);
+      
+      // Kaydet
+      manuelEslestirmeler[normalizeEdilmis] = {
+        orijinalMetin: tarifAdi,
+        kartlar: secilenKartlar,
+        eklemeTarihi: new Date().toISOString()
+      };
+      
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      
+      manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart`, 'success');
+      
+      // Formu temizle
+      document.getElementById('manuelTarifAdi').value = '';
+      select.selectedIndex = -1;
+    }
+
+    function manuelEslestirmeleriTemizle() {
+      if (!confirm('Tüm manuel eşleştirmeleri silmek istediğinize emin misiniz?')) return;
+      
+      manuelEslestirmeler = {};
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      manuelEslestirmeStatusGoster('Tüm manuel eşleştirmeler temizlendi.', 'success');
+    }
+
+    function manuelEslestirmeListesiniGoster() {
+      const div = document.getElementById('manuelEslestirmeListesi');
+      div.innerHTML = '';
+      
+      const anahtarlar = Object.keys(manuelEslestirmeler);
+      if (anahtarlar.length === 0) {
+        div.innerHTML = '<em>Henüz manuel eşleştirme yok</em>';
+        return;
+      }
+      
+      anahtarlar.forEach(anahtar => {
+        const eslestirme = manuelEslestirmeler[anahtar];
+        const eslestirmeDiv = document.createElement('div');
+        eslestirmeDiv.style.cssText = 'border:1px solid #ddd; margin:8px 0; padding:8px; background:#fff; border-radius:4px;';
+        eslestirmeDiv.innerHTML = `
+          <div style="font-weight:bold; color:#28a745;">${eslestirme.orijinalMetin}</div>
+          <div style="margin:5px 0; font-size:0.9em;">→ ${eslestirme.kartlar.join(', ')}</div>
+          <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">Sil</button>
+        `;
+        div.appendChild(eslestirmeDiv);
+      });
+    }
+
+    function manuelEslestirmeSil(anahtar) {
+      if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
+      
+      delete manuelEslestirmeler[anahtar];
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      manuelEslestirmeStatusGoster('Eşleştirme silindi.', 'success');
+    }
+
+    // Sayfa yüklenirken manuel eşleştirmeleri yükle
+    window.addEventListener('DOMContentLoaded', function() {
+      // Bu fonksiyon yukarıda initManuelEslestirmeler() ile birleştirildi
+      // Çift yüklemeyi önlemek için kaldırıldı
+    });
+
+    // GitHub'a manuel eşleştirmeleri kaydetme
+    async function manuelEslestirmeleriGitHubKaydet(sessizKaydetme = false) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        if (!sessizKaydetme) {
+          alert('GitHub API token gerekli!');
+        }
+        return;
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/manuel_eslestirmeler.json';
+      const branch = 'main';
+
+      try {
+        if (!sessizKaydetme) {
+          manuelEslestirmeStatusGoster('GitHub\'a kaydediliyor...', 'info');
+        }
+
+        // Önce mevcut dosyanın SHA'sını al (güncelleme için gerekli)
+        let sha = undefined;
+        try {
+          const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            headers: { Authorization: `token ${token}` }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            sha = data.sha;
+          }
+        } catch (e) {}
+
+        // Veriyi hazırla
+        const kayitVerisi = {
+          version: '1.0',
+          sonGuncelleme: new Date().toISOString(),
+          eslestirmeler: manuelEslestirmeler
+        };
+
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(kayitVerisi, null, 2))));
+
+        // Dosyayı yükle
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Manuel eşleştirmeler güncellendi',
+            content,
+            branch,
+            sha
+          })
+        });
+
+        if (res.ok) {
+          if (!sessizKaydetme) {
+            manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi!', 'success');
+          }
+        } else {
+          throw new Error('GitHub kaydı başarısız: ' + (await res.text()));
+        }
+
+      } catch (error) {
+        console.error('GitHub kaydetme hatası:', error);
+        if (!sessizKaydetme) {
+          manuelEslestirmeStatusGoster(`❌ GitHub kaydetme hatası: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    // GitHub'dan manuel eşleştirmeleri yükleme
+    async function manuelEslestirmeleriGitHubYukle(sessizYukleme = false) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        if (!sessizYukleme) {
+          alert('GitHub API token gerekli!');
+        }
+        return;
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/manuel_eslestirmeler.json';
+      const branch = 'main';
+
+      try {
+        if (!sessizYukleme) {
+          manuelEslestirmeStatusGoster('GitHub\'dan yükleniyor...', 'info');
+        }
+
+        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const jsonContent = atob(data.content);
+          const kayitVerisi = JSON.parse(jsonContent);
+          
+          // Eski format kontrolü
+          if (kayitVerisi.eslestirmeler) {
+            manuelEslestirmeler = kayitVerisi.eslestirmeler;
+          } else {
+            // Eski format (direkt object)
+            manuelEslestirmeler = kayitVerisi;
+          }
+          
+          // LocalStorage'a da kaydet
+          localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+          
+          // Listeyi güncelle (eğer panel açıksa)
+          if (document.getElementById('manuelEslestirmePanel').style.display !== 'none') {
+            manuelEslestirmeListesiniGoster();
+          }
+
+          if (!sessizYukleme) {
+            const eslestirmeSayisi = Object.keys(manuelEslestirmeler).length;
+            manuelEslestirmeStatusGoster(`✅ GitHub'dan ${eslestirmeSayisi} eşleştirme yüklendi!`, 'success');
+          } else {
+            // Sessiz yükleme olsa bile konsola yazdır
+            const eslestirmeSayisi = Object.keys(manuelEslestirmeler).length;
+            console.log(`Manuel eşleştirmeler GitHub'dan güncellendi: ${eslestirmeSayisi} adet`);
+          }
+
+        } else if (resp.status === 404) {
+          // Dosya henüz yok, normal
+          if (!sessizYukleme) {
+            manuelEslestirmeStatusGoster('ℹ️ GitHub\'da henüz eşleştirme dosyası yok', 'info');
+          }
+        } else {
+          throw new Error('GitHub\'dan okuma başarısız: ' + resp.status);
+        }
+
+      } catch (error) {
+        console.error('GitHub yükleme hatası:', error);
+        if (!sessizYukleme) {
+          manuelEslestirmeStatusGoster(`❌ GitHub yükleme hatası: ${error.message}`, 'error');
+        }
       }
     }
 
@@ -1007,7 +1380,7 @@ function duzenleHafta(i) {
     alternatifler.forEach(alt => {
       // "ile", "için", "ve" kelimelerini temizle
       alt = alt.replace(/\b(ile|için|ve)\b/gi, '');
-      // "/" ve "," ile ayrılmış alt seçenekleri de ayır
+      // "/" ve "," ile ayrılmış alt seçenekleri de ayır - YENİ: / işaretini de dahil et
       let adlar = alt.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
       // Sadece ana yemek adını ayıkla: baştaki ve sondaki boşlukları, miktarları, "için" ve fazlalıkları sil
       adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
@@ -1017,6 +1390,21 @@ function duzenleHafta(i) {
     });
     
     return tumAdlar;
+  }
+
+  // Manuel eşleştirme kontrolü
+  function manuelEslestirmeKontrol(tarifSatir) {
+    const normalizeEdilmis = normalize(tarifSatir);
+    
+    if (manuelEslestirmeler[normalizeEdilmis]) {
+      const eslestirme = manuelEslestirmeler[normalizeEdilmis];
+      return eslestirme.kartlar.map(kartAdi => {
+        const kart = tumKartlar.find(k => k.name === kartAdi);
+        return kart || null;
+      }).filter(k => k !== null);
+    }
+    
+    return null;
   }
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
@@ -1110,94 +1498,86 @@ function duzenleHafta(i) {
   }
 
   const kullanilanKartlar = new Set();
-  let eslesenKartlar = [];
+  let eslesenKartlarListesi = [];
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
 
   // Her tarif için eşleştirme yap
   hafta.tarifler.forEach(tarif => {
     let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
-    let yemekAdlari = extractYemekAdlari(tarifSatir);
     let eslesen = null;
-    let eslesenKart = null;
+    let eslesenKartlar = [];
     let eslesenTip = '';
 
     // Debug: mantarlı tavuk sote için özel çıktı
     if (tarifSatir.toLowerCase().includes('mantarlı tavuk sote') || tarifSatir.toLowerCase().includes('mantarli tavuk sote')) {
       console.log('DEBUG - Mantarlı tavuk sote analizi:');
       console.log('Orijinal tarif:', tarifSatir);
-      console.log('Çıkarılan yemek adları:', yemekAdlari);
       console.log('DEBUG - Toplam kart sayısı:', tumKartlar.length);
-      console.log('DEBUG - İlk 10 kart:', tumKartlar.slice(0, 10).map(k => k.name));
-      console.log('DEBUG - Son 10 kart:', tumKartlar.slice(-10).map(k => k.name));
-      console.log('DEBUG - Mantarli içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('mantarli')));
-      console.log('DEBUG - Tavuk içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('tavuk')));
-      console.log('DEBUG - Mantar içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('mantar')));
-      console.log('DEBUG - Sote içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('sote')));
       console.log('DEBUG - mantarli_tavuk_sote.jpg var mı?', tumKartlar.some(k => k.name === 'mantarli_tavuk_sote.jpg'));
     }
 
-    // Her yemek adı için eşleştirme dene
-    for (let yemekAdi of yemekAdlari) {
-      const tarifNorm = normalize(yemekAdi);
-      const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
-
-      // Debug: mantarlı tavuk sote için özel çıktı
-      if (yemekAdi.toLowerCase().includes('mantarlı tavuk sote') || yemekAdi.toLowerCase().includes('mantarli tavuk sote')) {
-        console.log('DEBUG - Yemek adı:', yemekAdi);
-        console.log('DEBUG - Normalize edilmiş:', tarifNorm);
-        console.log('DEBUG - Kelimeler:', tarifKelimeler);
+    // 1. Önce manuel eşleştirme kontrol et
+    const manuelEslesenler = manuelEslestirmeKontrol(tarif);
+    if (manuelEslesenler && manuelEslesenler.length > 0) {
+      // Manuel eşleştirme bulundu
+      const kullanilamayacaklar = manuelEslesenler.filter(kart => kullanilanKartlar.has(kart.name));
+      const kullanilabilirler = manuelEslesenler.filter(kart => !kullanilanKartlar.has(kart.name));
+      
+      if (kullanilabilirler.length > 0) {
+        eslesenKartlar = kullanilabilirler;
+        eslesenTip = 'manuel eşleştirme';
+        kullanilabilirler.forEach(kart => kullanilanKartlar.add(kart.name));
       }
+    } else {
+      // 2. Otomatik eşleştirme dene
+      let yemekAdlari = extractYemekAdlari(tarifSatir);
 
-      // Kullanılmayan kartlar arasında ara
-      for (let kart of tumKartlar) {
-        if (kullanilanKartlar.has(kart.name)) continue;
+      // Her yemek adı için eşleştirme dene
+      for (let yemekAdi of yemekAdlari) {
+        const tarifNorm = normalize(yemekAdi);
+        const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
 
-        const kartNorm = normalize(temizleDosyaAdi(kart.name));
-        const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
+        // Kullanılmayan kartlar arasında ara
+        for (let kart of tumKartlar) {
+          if (kullanilanKartlar.has(kart.name)) continue;
 
-        // Debug: mantarlı tavuk sote kartı için özel çıktı
-        if (kart.name.toLowerCase().includes('mantarli_tavuk_sote') || kart.name.toLowerCase().includes('mantarli')) {
-          console.log('DEBUG - Kart adı:', kart.name);
-          console.log('DEBUG - Temizlenmiş kart adı:', temizleDosyaAdi(kart.name));
-          console.log('DEBUG - Normalize edilmiş kart:', kartNorm);
-          console.log('DEBUG - Kart kelimeleri:', kartKelimeler);
-          console.log('DEBUG - Tarif norm === Kart norm?', tarifNorm === kartNorm);
-          console.log('DEBUG - Tarif kelimeleri:', tarifKelimeler);
-          console.log('DEBUG - Kart metni:', kartKelimeler.join(' '));
-          console.log('DEBUG - Tarif metni:', tarifKelimeler.join(' '));
-          console.log('DEBUG - Ardışık kontrol:', kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler));
-          console.log('DEBUG - Kart kullanılmış mı?', kullanilanKartlar.has(kart.name));
+          const kartNorm = normalize(temizleDosyaAdi(kart.name));
+          const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
+
+          // 1. Önce tam eşleşme kontrol et
+          if (tarifNorm === kartNorm) {
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'tam eşleşme';
+            break;
+          }
+
+          // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
+          if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'ardışık eşleşme';
+            break;
+          }
         }
 
-        // 1. Önce tam eşleşme kontrol et
-        if (tarifNorm === kartNorm) {
-          eslesen = kart;
-          eslesenKart = kart;
-          eslesenTip = 'tam eşleşme';
+        // Eşleşme bulunursa bu yemek adı için dur
+        if (eslesen) {
+          kullanilanKartlar.add(eslesen.name);
           break;
         }
-
-        // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
-        if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-          eslesen = kart;
-          eslesenKart = kart;
-          eslesenTip = 'ardışık eşleşme';
-          break;
-        }
       }
-
-      // Eşleşme bulunursa bu yemek adı için dur
-      if (eslesen) break;
     }
 
-    // Eşleşme bulunduysa kaydet ve kartı kullanılmış olarak işaretle
-    if (eslesen && eslesenKart && !kullanilanKartlar.has(eslesenKart.name)) {
-      kullanilanKartlar.add(eslesenKart.name);
-      eslesenKartlar.push({ 
-        tarif: tarif, 
-        kart: eslesenKart, 
-        tip: eslesenTip 
+    // Eşleşme bulunduysa kaydet
+    if (eslesenKartlar.length > 0) {
+      eslesenKartlar.forEach(kart => {
+        eslesenKartlarListesi.push({ 
+          tarif: tarif, 
+          kart: kart, 
+          tip: eslesenTip 
+        });
       });
     } else {
       eslesmeyenTarifler.push(tarif);
@@ -1205,27 +1585,35 @@ function duzenleHafta(i) {
   });
 
   // Sonuçları göster
-  if (eslesenKartlar.length === 0) {
+  if (eslesenKartlarListesi.length === 0) {
     eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
   } else {
-    // Aynı tarif birden fazla kez gösterilmesin
-    const yazilanTarifler = new Set();
-    eslesenKartlar.forEach(({ tarif, kart, tip }) => {
-      const tarifKey = tarif.toLowerCase().replace(/\s+/g, ' ').trim();
-      if (yazilanTarifler.has(tarifKey)) return;
-      yazilanTarifler.add(tarifKey);
-      
+    // Tarifleri grupla ve göster
+    const tarifGruplari = {};
+    eslesenKartlarListesi.forEach(({ tarif, kart, tip }) => {
+      if (!tarifGruplari[tarif]) {
+        tarifGruplari[tarif] = { kartlar: [], tip: tip };
+      }
+      tarifGruplari[tarif].kartlar.push(kart);
+    });
+
+    Object.keys(tarifGruplari).forEach(tarif => {
+      const grup = tarifGruplari[tarif];
       const p = document.createElement('p');
-      p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kart.name}</span> <small style="color:blue;">(${tip})</small>`;
+      const kartIsimleri = grup.kartlar.map(k => k.name).join(', ');
+      p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kartIsimleri}</span> <small style="color:blue;">(${grup.tip})</small>`;
       eslesenDiv.appendChild(p);
       
-      const img = document.createElement('img');
-      img.src = kart.data;
-      img.alt = tarif;
-      img.title = kart.name;
-      img.style.width = '120px';
-      img.style.margin = '4px';
-      eslesenDiv.appendChild(img);
+      // Her kart için görsel ekle
+      grup.kartlar.forEach(kart => {
+        const img = document.createElement('img');
+        img.src = kart.data;
+        img.alt = tarif;
+        img.title = kart.name;
+        img.style.width = '120px';
+        img.style.margin = '4px';
+        eslesenDiv.appendChild(img);
+      });
     });
     
     // ZIP olarak indir butonu ekle
@@ -1279,7 +1667,7 @@ function duzenleHafta(i) {
   }
 
   // Eşleşen kartları hafta verisine kaydet
-  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
+  hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   saveToStorage();
 }
 
