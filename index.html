@@ -279,6 +279,19 @@
     const MANUEL_ESLESTIRME_KEY = 'lipedem_manuel_eslestirmeler';
     let manuelEslestirmeler = {};
 
+    // Normalize fonksiyonu - Manuel eşleştirme için
+    function normalize(str) {
+      return str
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/i̇/g, 'i')
+        .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
+        .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
+        .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
+        .trim();
+    }
+
     function manuelEslestirmeleriYukle() {
       try {
         const data = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
