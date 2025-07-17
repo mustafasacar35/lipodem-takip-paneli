@@ -255,10 +255,11 @@
       if (token) {
         try {
           await manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
+          await eslesmemeKurallariniGitHubYukle(true); // sessiz yükleme
           console.log('Manuel eşleştirmeler GitHub\'dan yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
-          console.log('Eşleşme yasakları localStorage\'dan yüklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
+          console.log('Eşleşme yasakları GitHub\'dan yüklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
         } catch (error) {
-          console.warn('GitHub\'dan manuel eşleştirme yüklenemedi:', error);
+          console.warn('GitHub\'dan veri yüklenemedi:', error);
         }
       } else {
         console.log('Manuel eşleştirmeler localStorage\'dan yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
@@ -450,6 +451,14 @@
     function eslesmemeKurallariniKaydet() {
       try {
         localStorage.setItem(ESLESMEME_KURALLARI_KEY, JSON.stringify(eslesmemeKurallari));
+        // Otomatik GitHub kaydı (token varsa)
+        const token = document.getElementById('githubToken').value.trim();
+        if (token && Object.keys(eslesmemeKurallari).length > 0) {
+          // 2 saniye bekle sonra otomatik kaydet
+          setTimeout(() => {
+            eslesmemeKurallariniGitHubKaydet(true); // true = sessiz kaydetme
+          }, 2000);
+        }
       } catch(e) {
         console.error('Eşleşme yasakları kaydetme hatası:', e);
       }
@@ -508,13 +517,145 @@
       eslesmemeStatusGoster('Yasak silindi.', 'success');
     }
 
-    // GitHub entegrasyonu için placeholder fonksiyonlar
-    async function eslesmemeKurallariniGitHubKaydet() {
-      eslesmemeStatusGoster('GitHub kaydı henüz implementasyonda...', 'info');
+    // GitHub entegrasyonu için fonksiyonlar
+    async function eslesmemeKurallariniGitHubKaydet(sessizKaydetme = false) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        if (!sessizKaydetme) {
+          alert('GitHub API token gerekli!');
+        }
+        return;
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/eslesmeme_kurallari.json';
+      const branch = 'main';
+
+      try {
+        if (!sessizKaydetme) {
+          eslesmemeStatusGoster('GitHub\'a kaydediliyor...', 'info');
+        }
+
+        // Önce mevcut dosyanın SHA'sını al
+        let sha = undefined;
+        try {
+          const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            headers: { Authorization: `token ${token}` }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            sha = data.sha;
+          }
+        } catch (e) {}
+
+        // Veriyi hazırla
+        const kayitVerisi = {
+          version: '1.0',
+          sonGuncelleme: new Date().toISOString(),
+          eslesmemeKurallari: eslesmemeKurallari
+        };
+
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(kayitVerisi, null, 2))));
+
+        // Dosyayı yükle
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Eşleşme yasakları güncellendi',
+            content,
+            branch,
+            sha
+          })
+        });
+
+        if (res.ok) {
+          if (!sessizKaydetme) {
+            eslesmemeStatusGoster('✅ GitHub\'a başarıyla kaydedildi!', 'success');
+          }
+        } else {
+          throw new Error('GitHub kaydı başarısız: ' + (await res.text()));
+        }
+
+      } catch (error) {
+        console.error('GitHub kaydetme hatası:', error);
+        if (!sessizKaydetme) {
+          eslesmemeStatusGoster(`❌ GitHub kaydetme hatası: ${error.message}`, 'error');
+        }
+      }
     }
 
-    async function eslesmemeKurallariniGitHubYukle() {
-      eslesmemeStatusGoster('GitHub yükleme henüz implementasyonda...', 'info');
+    async function eslesmemeKurallariniGitHubYukle(sessizYukleme = false) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        if (!sessizYukleme) {
+          alert('GitHub API token gerekli!');
+        }
+        return;
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/eslesmeme_kurallari.json';
+      const branch = 'main';
+
+      try {
+        if (!sessizYukleme) {
+          eslesmemeStatusGoster('GitHub\'dan yükleniyor...', 'info');
+        }
+
+        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const jsonContent = atob(data.content);
+          const kayitVerisi = JSON.parse(jsonContent);
+          
+          // Eski format kontrolü
+          if (kayitVerisi.eslesmemeKurallari) {
+            eslesmemeKurallari = kayitVerisi.eslesmemeKurallari;
+          } else {
+            // Eski format (direkt object)
+            eslesmemeKurallari = kayitVerisi;
+          }
+          
+          // LocalStorage'a da kaydet
+          localStorage.setItem(ESLESMEME_KURALLARI_KEY, JSON.stringify(eslesmemeKurallari));
+          
+          // Listeyi güncelle (eğer panel açıksa)
+          if (document.getElementById('eslesmemePanel').style.display !== 'none') {
+            eslesmemeListesiniGoster();
+          }
+
+          if (!sessizYukleme) {
+            const kuralSayisi = Object.keys(eslesmemeKurallari).length;
+            eslesmemeStatusGoster(`✅ GitHub'dan ${kuralSayisi} yasak yüklendi!`, 'success');
+          } else {
+            const kuralSayisi = Object.keys(eslesmemeKurallari).length;
+            console.log(`Eşleşme yasakları GitHub'dan güncellendi: ${kuralSayisi} adet`);
+          }
+
+        } else if (resp.status === 404) {
+          // Dosya henüz yok, normal
+          if (!sessizYukleme) {
+            eslesmemeStatusGoster('ℹ️ GitHub\'da henüz yasak dosyası yok', 'info');
+          }
+        } else {
+          throw new Error('GitHub\'dan okuma başarısız: ' + resp.status);
+        }
+
+      } catch (error) {
+        console.error('GitHub yükleme hatası:', error);
+        if (!sessizYukleme) {
+          eslesmemeStatusGoster(`❌ GitHub yükleme hatası: ${error.message}`, 'error');
+        }
+      }
     }
 
     // --- Manuel Eşleştirme Paneli Fonksiyonları ---
@@ -1705,6 +1846,31 @@ function duzenleHafta(i) {
     
     return null;
   }
+
+  // Eşleşme yasağı kontrolü
+  function eslesmemeKontrolu(tarifSatir, kartAdi) {
+    // Normalize fonksiyonu
+    function normalizeLocal(str) {
+      return str
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/i̇/g, 'i')
+        .replace(/[_*\/()]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim();
+    }
+    
+    const normalizeEdilmis = normalizeLocal(tarifSatir);
+    
+    if (eslesmemeKurallari[normalizeEdilmis]) {
+      const yasak = eslesmemeKurallari[normalizeEdilmis];
+      return yasak.yasakliKartlar.includes(kartAdi);
+    }
+    
+    return false; // Yasak yok, eşleşebilir
+  }
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
@@ -1840,6 +2006,11 @@ function duzenleHafta(i) {
         // Kullanılmayan kartlar arasında ara
         for (let kart of tumKartlar) {
           if (kullanilanKartlar.has(kart.name)) continue;
+
+          // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
+          if (eslesmemeKontrolu(tarif, kart.name)) {
+            continue; // Bu kart yasaklı, sonrakine geç
+          }
 
           const kartNorm = normalize(temizleDosyaAdi(kart.name));
           const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
