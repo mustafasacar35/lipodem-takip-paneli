@@ -536,7 +536,7 @@ function duzenleHafta(i) {
       .trim();
   }
 
-  // Tarif kartındaki TÜM kelimelerin liste yemeğinde bulunup bulunmadığını kontrol et
+// ÖNEMLİ: Tarif kartındaki TÜM kelimelerin liste yemeğinde bulunup bulunmadığını kontrol et
   function kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler) {
     // Kart kelimelerinin her biri tarif kelimelerinde bulunmalı
     for (let kartKelime of kartKelimeler) {
@@ -660,7 +660,12 @@ function duzenleHafta(i) {
         const kartNorm = normalize(temizleDosyaAdi(kart.name));
         const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
-        // 1. Önce tam eşleşme kontrol et
+        // ÖNEMLİ: Önce kart kelimelerinin TÜM kelimelerinin tarif kelimelerinde bulunup bulunmadığını kontrol et
+        if (!kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+          continue; // Kart kelimelerinin tamamı tarif kelimelerinde yoksa geç
+        }
+
+        // 1. Tam eşleşme kontrol et
         if (tarifNorm === kartNorm) {
           eslesen = kart;
           eslesenKart = kart;
@@ -674,6 +679,14 @@ function duzenleHafta(i) {
           eslesen = kart;
           eslesenKart = kart;
           eslesenTip = kelimeKontrol.tip;
+          break;
+        }
+
+        // 3. Eğer kart kelimelerinin tamamı tarif kelimelerinde bulunuyorsa, bu da eşleşme sayılır
+        if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+          eslesen = kart;
+          eslesenKart = kart;
+          eslesenTip = 'kelime kapsama';
           break;
         }
       }
@@ -695,11 +708,8 @@ function duzenleHafta(i) {
     }
   });
 
-  // Sonuçları göster
-  if (eslesenKartlar.length === 0) {
-    eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
-  } else {
-    // Aynı tarif birden fazla kez gösterilmesin
+  // Eşleşen kartları göster
+  if (eslesenKartlar.length > 0) {
     const yazilanTarifler = new Set();
     eslesenKartlar.forEach(({ tarif, kart, tip }) => {
       const tarifKey = tarif.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -727,9 +737,29 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(zipBtn);
   }
 
+  // Kullanılmayan kartları göster (eşleşmeyenler)
+  const kullanilmayanKartlar = tumKartlar.filter(kart => !kullanilanKartlar.has(kart.name));
+  if (kullanilmayanKartlar.length > 0) {
+    const kullanilmayanBaslik = document.createElement('h4');
+    kullanilmayanBaslik.textContent = 'Kullanılmayan Kartlar:';
+    kullanilmayanBaslik.style.marginTop = '20px';
+    kullanilmayanBaslik.style.color = 'orange';
+    eslesenDiv.appendChild(kullanilmayanBaslik);
+    
+    kullanilmayanKartlar.forEach(kart => {
+      const img = document.createElement('img');
+      img.src = kart.data;
+      img.alt = kart.name;
+      img.title = kart.name;
+      img.style.width = '120px';
+      img.style.margin = '4px';
+      img.style.border = '2px solid orange';
+      eslesenDiv.appendChild(img);
+    });
+  }
+
   // Eşleşmeyen tarifleri akordiyon başlık altında göster
   if (eslesmeyenTarifler.length > 0) {
-    // Akordiyon başlık
     const akordiyonBaslik = document.createElement('button');
     akordiyonBaslik.textContent = `Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
     akordiyonBaslik.style.background = '#f8d7da';
@@ -742,7 +772,6 @@ function duzenleHafta(i) {
     akordiyonBaslik.style.borderRadius = '6px';
     akordiyonBaslik.setAttribute('aria-expanded', 'false');
 
-    // Akordiyon içerik
     const akordiyonIcerik = document.createElement('div');
     akordiyonIcerik.style.display = 'none';
     akordiyonIcerik.style.background = '#fff0f0';
@@ -769,7 +798,9 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(akordiyonIcerik);
   }
 
-  // Eşleşen kartları hafta verisine kaydet
+  // Eşleşen kartları hafta verisine kaydet (ZIP için)
+  hafta.eslesenKartlar = eslesenKartlar;
+  // Eski tarifKartlar alanını da güncelle (geriye dönük uyumluluk için)
   hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
   saveToStorage();
 }
