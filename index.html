@@ -19,6 +19,35 @@
     <button onclick="document.getElementById('importFile').click()">Veri Yükle (JSON)</button>
     <input type="password" id="githubToken" placeholder="GitHub API Token" style="width:220px;" oninput="saveTokenToStorage()">
     <button onclick="uploadToGitHub()" id="githubSaveBtn">GitHub'a Kaydet</button>
+    <button onclick="yeniKartFormGoster()">Yeni Tarif Kartı Ekle</button>
+  </div>
+
+  <!-- Yeni Kart Ekleme Formu -->
+  <div id="yeniKartFormu" style="display:none; background:#fff; border:2px solid #007bff; padding:20px; margin:16px 0; border-radius:8px;">
+    <h3>Yeni Tarif Kartı Ekle</h3>
+    <div style="margin-bottom:15px;">
+      <label style="display:block; margin-bottom:5px; font-weight:bold;">Kart Adı:</label>
+      <input id="yeniKartAdi" placeholder="Örn: mantarli_tavuk_sote" style="width:300px; padding:8px;" />
+      <small style="display:block; color:#666; margin-top:5px;">
+        Not: Türkçe karakterler kullanmayın, boşluk yerine _ kullanın, .jpg eklemeyin
+      </small>
+    </div>
+    <div style="margin-bottom:15px;">
+      <label style="display:block; margin-bottom:5px; font-weight:bold;">Görsel Dosyası:</label>
+      <input type="file" id="yeniKartDosya" accept="image/jpeg,image/jpg,image/png" style="padding:8px;" />
+      <small style="display:block; color:#666; margin-top:5px;">
+        Sadece JPG/PNG dosyaları kabul edilir
+      </small>
+    </div>
+    <div style="margin-bottom:15px;">
+      <button onclick="yeniKartKaydet()" style="background:#28a745; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">
+        Kartı Kaydet ve GitHub'a Yükle
+      </button>
+      <button onclick="yeniKartFormGizle()" style="background:#6c757d; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        İptal
+      </button>
+    </div>
+    <div id="yuklemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
   </div>
   <div id="hastaPaneli">
     <h3>Hasta Listesi</h3>
@@ -145,6 +174,173 @@
         alert('GitHub\'a başarıyla kaydedildi!');
       } else {
         alert('GitHub kaydı başarısız: ' + (await res.text()));
+      }
+    }
+
+    // --- Yeni Kart Ekleme Fonksiyonları ---
+    function yeniKartFormGoster() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('Önce GitHub API token girin!');
+        return;
+      }
+      document.getElementById('yeniKartFormu').style.display = 'block';
+    }
+
+    function yeniKartFormGizle() {
+      document.getElementById('yeniKartFormu').style.display = 'none';
+      document.getElementById('yeniKartAdi').value = '';
+      document.getElementById('yeniKartDosya').value = '';
+      document.getElementById('yuklemeStatus').style.display = 'none';
+    }
+
+    function statusGoster(mesaj, tip = 'info') {
+      const statusDiv = document.getElementById('yuklemeStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = mesaj;
+      
+      if (tip === 'success') {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.color = '#155724';
+        statusDiv.style.border = '1px solid #c3e6cb';
+      } else if (tip === 'error') {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+        statusDiv.style.border = '1px solid #f5c6cb';
+      } else {
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        statusDiv.style.border = '1px solid #bee5eb';
+      }
+    }
+
+    async function yeniKartKaydet() {
+      const token = document.getElementById('githubToken').value.trim();
+      const kartAdi = document.getElementById('yeniKartAdi').value.trim();
+      const dosyaInput = document.getElementById('yeniKartDosya');
+      
+      // Validasyon
+      if (!token) {
+        alert('GitHub API token gerekli!');
+        return;
+      }
+      
+      if (!kartAdi) {
+        alert('Kart adı gerekli!');
+        return;
+      }
+      
+      if (!dosyaInput.files || !dosyaInput.files[0]) {
+        alert('Görsel dosyası seçin!');
+        return;
+      }
+
+      // Dosya adını normalize et
+      let dosyaAdi = kartAdi.toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+      
+      if (!dosyaAdi.endsWith('.jpg')) {
+        dosyaAdi += '.jpg';
+      }
+
+      const dosya = dosyaInput.files[0];
+      
+      try {
+        statusGoster('Dosya hazırlanıyor...', 'info');
+        
+        // Dosyayı base64'e çevir
+        const dosyaBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1]; // data:image/jpeg;base64, kısmını çıkar
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(dosya);
+        });
+
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        const branch = 'main';
+
+        statusGoster('Görsel GitHub\'a yükleniyor...', 'info');
+
+        // 1. Önce görseli tarifler klasörüne yükle
+        const gorselPath = `tarifler/${dosyaAdi}`;
+        const gorselRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${gorselPath}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Yeni tarif kartı eklendi: ${dosyaAdi}`,
+            content: dosyaBase64,
+            branch
+          })
+        });
+
+        if (!gorselRes.ok) {
+          throw new Error('Görsel yükleme başarısız: ' + (await gorselRes.text()));
+        }
+
+        statusGoster('list.json güncelleniyor...', 'info');
+
+        // 2. list.json dosyasını güncelle
+        // Önce mevcut list.json'u al
+        const listRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json?ref=${branch}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+
+        if (!listRes.ok) {
+          throw new Error('list.json dosyası alınamadı');
+        }
+
+        const listData = await listRes.json();
+        const mevcutListe = JSON.parse(atob(listData.content));
+        
+        // Yeni dosyayı listeye ekle (eğer yoksa)
+        if (!mevcutListe.includes(dosyaAdi)) {
+          mevcutListe.push(dosyaAdi);
+          mevcutListe.sort(); // Alfabetik sırala
+        }
+
+        // Güncellenmiş listeyi yükle
+        const yeniListeContent = btoa(JSON.stringify(mevcutListe, null, 2));
+        const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `list.json güncellendi - ${dosyaAdi} eklendi`,
+            content: yeniListeContent,
+            sha: listData.sha,
+            branch
+          })
+        });
+
+        if (!listUpdateRes.ok) {
+          throw new Error('list.json güncelleme başarısız: ' + (await listUpdateRes.text()));
+        }
+
+        statusGoster(`✅ Başarılı! ${dosyaAdi} kartı eklendi ve list.json güncellendi.`, 'success');
+        
+        // Lokal listeyi de güncelle (anında görünmesi için)
+        await tariflerKlasoruGorselleriniYukle();
+        
+        // Formu temizle
+        setTimeout(() => {
+          yeniKartFormGizle();
+        }, 2000);
+
+      } catch (error) {
+        console.error('Kart yükleme hatası:', error);
+        statusGoster(`❌ Hata: ${error.message}`, 'error');
       }
     }
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
@@ -621,8 +817,13 @@ function duzenleHafta(i) {
       console.log('Orijinal tarif:', tarifSatir);
       console.log('Çıkarılan yemek adları:', yemekAdlari);
       console.log('DEBUG - Toplam kart sayısı:', tumKartlar.length);
-      console.log('DEBUG - Kart isimleri:', tumKartlar.map(k => k.name));
+      console.log('DEBUG - İlk 10 kart:', tumKartlar.slice(0, 10).map(k => k.name));
+      console.log('DEBUG - Son 10 kart:', tumKartlar.slice(-10).map(k => k.name));
       console.log('DEBUG - Mantarli içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('mantarli')));
+      console.log('DEBUG - Tavuk içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('tavuk')));
+      console.log('DEBUG - Mantar içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('mantar')));
+      console.log('DEBUG - Sote içeren kartlar:', tumKartlar.filter(k => k.name.toLowerCase().includes('sote')));
+      console.log('DEBUG - mantarli_tavuk_sote.jpg var mı?', tumKartlar.some(k => k.name === 'mantarli_tavuk_sote.jpg'));
     }
 
     // Her yemek adı için eşleştirme dene
