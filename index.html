@@ -487,21 +487,31 @@ function duzenleHafta(i) {
   function extractYemekAdlari(satir) {
     // Baştaki * ve miktarları temizle
     let s = satir.replace(/^\*+\s*/, '');
-    // Parantez içini, + ile eklenenleri, miktarları, "ile", "için" ve sonundaki açıklamaları tamamen sil
+    // Parantez içini, + ile eklenenleri, miktarları temizle
     s = s.replace(/\(.*?\)/g, '');
     s = s.replace(/\+.*$/, '');
     s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))($|\s)/gi, '');
-    s = s.replace(/\b(ile|için|ve|veya|ya da)\b/gi, '');
     s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
-    // Alternatifleri ayır ("/", ",")
-    let adlar = s.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
-    // Sadece ana yemek adını ayıkla: baştaki ve sondaki boşlukları, miktarları, "için" ve fazlalıkları sil
-    adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
-    // Çok kısa (1 kelime) olanları at
-    adlar = adlar.filter(a => a.split(' ').length > 1);
-    return adlar;
+    
+    // Önce "ya da", "veya" ile ayrılmış alternatifleri ayır
+    let alternatifler = s.split(/\s*(ya da|veya)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
+    let tumAdlar = [];
+    
+    // Her alternatif için ayrı işlem yap
+    alternatifler.forEach(alt => {
+      // "ile", "için", "ve" kelimelerini temizle
+      alt = alt.replace(/\b(ile|için|ve)\b/gi, '');
+      // "/" ve "," ile ayrılmış alt seçenekleri de ayır
+      let adlar = alt.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
+      // Sadece ana yemek adını ayıkla: baştaki ve sondaki boşlukları, miktarları, "için" ve fazlalıkları sil
+      adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
+      // Çok kısa (1 kelime) olanları at
+      adlar = adlar.filter(a => a.split(' ').length > 0);
+      tumAdlar = tumAdlar.concat(adlar);
+    });
+    
+    return tumAdlar;
   }
-
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
@@ -513,9 +523,49 @@ function duzenleHafta(i) {
     s = s.replace(/\+.*$/, '');
     return s.trim();
   }
-// Kelime gruplarını kontrol et (3 kelime, 2 kelime)
+   // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+      .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+      .replace(/i̇/g, 'i')
+      .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
+      .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
+      .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
+      .trim();
+  }
+
+  // Tarif kartındaki TÜM kelimelerin liste yemeğinde bulunup bulunmadığını kontrol et
+  function kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler) {
+    // Kart kelimelerinin her biri tarif kelimelerinde bulunmalı
+    for (let kartKelime of kartKelimeler) {
+      let bulundu = false;
+      for (let tarifKelime of tarifKelimeler) {
+        if (tarifKelime.includes(kartKelime) || kartKelime.includes(tarifKelime)) {
+          bulundu = true;
+          break;
+        }
+      }
+      if (!bulundu) {
+        return false;
+      }
+    }
+    return true;
+  }
+// Kelime gruplarını kontrol et (3 kelime, 2 kelime) - YENİ: Kart kelimelerini de kontrol et
   function kelimeleriKontrolEt(tarifKelimeler, kartKelimeler) {
-    // Önce 3 ardışık kelime ara
+    // Önce kart kelimelerinin tamamının tarif kelimelerinde bulunup bulunmadığını kontrol et
+    if (!kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+      return { eslesme: false };
+    }
+
+    // Tam eşleşme kontrolü
+    if (tarifKelimeler.join(' ') === kartKelimeler.join(' ')) {
+      return { eslesme: true, tip: 'tam eşleşme', kelimeler: kartKelimeler.join(' ') };
+    }
+
+    // 3 ardışık kelime ara
     for (let i = 0; i <= tarifKelimeler.length - 3; i++) {
       const ucKelime = tarifKelimeler.slice(i, i + 3).join(' ');
       for (let j = 0; j <= kartKelimeler.length - 3; j++) {
@@ -526,7 +576,7 @@ function duzenleHafta(i) {
       }
     }
 
-    // Sonra 2 ardışık kelime ara
+    // 2 ardışık kelime ara
     for (let i = 0; i <= tarifKelimeler.length - 2; i++) {
       const ikiKelime = tarifKelimeler.slice(i, i + 2).join(' ');
       for (let j = 0; j <= kartKelimeler.length - 2; j++) {
@@ -537,9 +587,11 @@ function duzenleHafta(i) {
       }
     }
 
-    return { eslesme: false };
+    // Eğer kart kelimelerinin tamamı tarif kelimelerinde bulunuyorsa, genel eşleşme kabul et
+    return { eslesme: true, tip: 'genel eşleşme', kelimeler: kartKelimeler.join(' ') };
   }
- // Eğer görseller henüz yüklenmediyse, önce yükle
+
+  // Eğer görseller henüz yüklenmediyse, önce yükle
   if (tariflerKlasoruGorselleri.length === 0) {
     await tariflerKlasoruGorselleriniYukle();
   }
@@ -563,6 +615,7 @@ function duzenleHafta(i) {
     eslesenDiv.innerHTML = '<i>Önce görselleri yükleyin veya tarifler klasörüne ekleyin.</i>';
     return;
   }
+
 
   // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
   function normalize(str) {
@@ -607,6 +660,7 @@ function duzenleHafta(i) {
     let eslesen = null;
     let eslesenKart = null;
     let eslesenTip = '';
+    let enIyiPuan = -1;
 
     // Her yemek adı için eşleştirme dene
     for (let yemekAdi of yemekAdlari) {
@@ -620,26 +674,34 @@ function duzenleHafta(i) {
         const kartNorm = normalize(temizleDosyaAdi(kart.name));
         const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
-        // 1. Önce tam eşleşme kontrol et
-        if (tarifNorm === kartNorm) {
-          eslesen = kart;
-          eslesenKart = kart;
-          eslesenTip = 'tam eşleşme';
-          break;
-        }
-
-        // 2. Kelime gruplarını kontrol et
+        // Kelime gruplarını kontrol et
         const kelimeKontrol = kelimeleriKontrolEt(tarifKelimeler, kartKelimeler);
         if (kelimeKontrol.eslesme) {
-          eslesen = kart;
-          eslesenKart = kart;
-          eslesenTip = kelimeKontrol.tip;
-          break;
+          let puan = 0;
+          switch (kelimeKontrol.tip) {
+            case 'tam eşleşme':
+              puan = 100;
+              break;
+            case '3 kelime':
+              puan = 50;
+              break;
+            case '2 kelime':
+              puan = 25;
+              break;
+            case 'genel eşleşme':
+              puan = 10;
+              break;
+          }
+
+          // Daha iyi puan varsa güncelle
+          if (puan > enIyiPuan) {
+            enIyiPuan = puan;
+            eslesen = kart;
+            eslesenKart = kart;
+            eslesenTip = kelimeKontrol.tip;
+          }
         }
       }
-
-      // Eşleşme bulunursa bu yemek adı için dur
-      if (eslesen) break;
     }
 
     // Eşleşme bulunduysa kaydet ve kartı kullanılmış olarak işaretle
@@ -679,7 +741,7 @@ function duzenleHafta(i) {
       eslesenDiv.appendChild(img);
     });
     
-    // ZIP olarak indir butonu ekle
+   // ZIP olarak indir butonu ekle
     const zipBtn = document.createElement('button');
     zipBtn.textContent = 'Eşleşenleri ZIP olarak indir';
     zipBtn.onclick = function() { zipEslesenGorseller(i); };
@@ -729,8 +791,12 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(akordiyonIcerik);
   }
 
-  // Eşleşen kartları hafta verisine kaydet
-  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart);
+  // SADECE eşleşen kartları hafta verisine kaydet (manuel yüklenenlerden temizle)
+  hafta.tarifKartlar = eslesenKartlar.map(e => e.kart).filter(k => hafta.tarifKartlar && hafta.tarifKartlar.some(hk => hk.name === k.name));
+  
+  // Eşleşen kartları göster
+  gosterKartlarHafta(i);
+  
   saveToStorage();
 }
 
