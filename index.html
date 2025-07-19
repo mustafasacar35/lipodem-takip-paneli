@@ -8,6 +8,24 @@
     textarea, input[type="file"] { width: 100%; margin-bottom: 10px; }
     button { padding: 10px 20px; }
     .matched img { width: 150px; margin: 5px; border: 1px solid #ccc; }
+    
+    /* PDF Upload Area Styles */
+    .pdf-upload-area:hover {
+      border-color: #007bff !important;
+      background-color: #f0f8ff !important;
+      transform: scale(1.01) !important;
+    }
+    
+    .pdf-upload-area.dragover {
+      border-color: #007bff !important;
+      background-color: #e3f2fd !important;
+      transform: scale(1.02) !important;
+    }
+    
+    .pdf-upload-area.success {
+      border-color: #28a745 !important;
+      background-color: #d4edda !important;
+    }
   </style>
 </head>
 <body>
@@ -107,6 +125,9 @@
     <div style="margin-bottom:15px;">
       <button onclick="manuelEslestirmeEkle()" style="background:#28a745; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">
         Eşleştirme Ekle
+      </button>
+      <button onclick="otomatikEncodingDuzeltmeleriEkle()" style="background:#fd7e14; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
+        🔧 Encoding Düzeltmeleri Ekle
       </button>
       <button onclick="manuelEslestirmeleriTemizle()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         Tüm Eşleştirmeleri Temizle
@@ -275,6 +296,88 @@
         console.log('Manuel eşleştirmeler localStorage\'dan yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
         console.log('Eşleşme yasakları localStorage\'dan yüklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
       }
+    }
+
+    // Global normalize fonksiyonu - encoding sorunlarını ve Türkçe karakterleri temizle
+    function normalize(str) {
+      // Önce encoding sorunlarını düzelt
+      let cleaned = str
+        // UTF-8 encoding sorunlarını temizle
+        .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+        .replace(/Ã\x82/g, '') // Bozuk encoding
+        .replace(/Ã\x83/g, '') // Bozuk encoding
+        .replace(/â/g, 'a')    // â -> a
+        .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+        .replace(/Â/g, '')     // Â karakterini sil
+        .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+        // Yaygın encoding sorunları
+        .replace(/ÃŸ/g, 's')   // ß -> s
+        .replace(/Ã§/g, 'c')   // ç encoding sorunu
+        .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+        .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+        .replace(/Ä±/g, 'i')   // ı encoding sorunu
+        .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+        .replace(/Å?/g, 's')   // ş encoding sorunu
+        .toLowerCase()
+        // Normal Türkçe karakterleri temizle
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/i̇/g, 'i')
+        // Sembolleri ve fazlalıkları temizle
+        .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
+        .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
+        .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
+        .trim();
+      
+      return cleaned;
+    }
+
+    // Global tarif satırından yemek adlarını ayıklama fonksiyonu
+    function extractYemekAdlari(satir) {
+      // Önce encoding sorunlarını düzelt
+      let s = satir
+        // UTF-8 encoding sorunlarını temizle
+        .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+        .replace(/Ã\x82/g, '') // Bozuk encoding
+        .replace(/Ã\x83/g, '') // Bozuk encoding
+        .replace(/â/g, 'a')    // â -> a
+        .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+        .replace(/Â/g, '')     // Â karakterini sil
+        .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+        // Yaygın encoding sorunları
+        .replace(/ÃŸ/g, 's')   // ß -> s
+        .replace(/Ã§/g, 'c')   // ç encoding sorunu
+        .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+        .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+        .replace(/Ä±/g, 'i')   // ı encoding sorunu
+        .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+        .replace(/Å?/g, 's')   // ş encoding sorunu
+        .replace(/^\*+\s*/, ''); // Baştaki * temizle
+
+      // Parantez içini, + ile eklenenleri, miktarları temizle
+      s = s.replace(/\(.*?\)/g, '');
+      s = s.replace(/\+.*$/, '');
+      s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))($|\s)/gi, '');
+      s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
+      
+      // Önce "ya da", "veya" ile ayrılmış alternatifleri ayır
+      let alternatifler = s.split(/\s*(ya da|veya)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
+      let tumAdlar = [];
+      
+      // Her alternatif için ayrı işlem yap
+      alternatifler.forEach(alt => {
+        // "ile", "için", "ve" kelimelerini temizle
+        alt = alt.replace(/\b(ile|için|ve)\b/gi, '');
+        // "/" ve "," ile ayrılmış alt seçenekleri de ayır - YENİ: / işaretini de dahil et
+        let adlar = alt.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
+        // Sadece ana yemek adını ayıkla: baştaki ve sondaki boşlukları, miktarları, "için" ve fazlalıkları sil
+        adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
+        // Çok kısa olanları atma - sadece boş olanları at
+        adlar = adlar.filter(a => a.length > 0);
+        tumAdlar = tumAdlar.concat(adlar);
+      });
+      
+      return tumAdlar;
     }
 
     async function uploadToGitHub() {
@@ -1584,6 +1687,15 @@
       setTimeout(durumGuncelle, 1000); // 1 saniye sonra güncelle
     });
 
+    // Global drag & drop event'lerini önle (sayfa dışına dosya düşürme)
+    window.addEventListener('dragover', function(e) {
+      e.preventDefault();
+    });
+    
+    window.addEventListener('drop', function(e) {
+      e.preventDefault();
+    });
+
     // pdf.js worker ayarı (uyumluluk için)
     if (window['pdfjsLib']) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -1755,7 +1867,24 @@
           <button onclick="aciklamaKaydet(${i})">Kaydet</button>
           <button onclick="duzenleHafta(${i})">Düzenle</button>
           <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
-          <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
+          <b>PDF:</b> 
+          <div class="pdf-upload-area" id="pdfUploadArea_${i}" 
+               style="border: 2px dashed #ccc; padding: 20px; margin: 10px 0; text-align: center; background: #f9f9f9; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;"
+               onclick="document.getElementById('pdfFileInput_${i}').click()"
+               ondrop="handlePdfDrop(event, ${i})" 
+               ondragover="handlePdfDragOver(event)"
+               ondragenter="handlePdfDragEnter(event, ${i})"
+               ondragleave="handlePdfDragLeave(event, ${i})">
+            <div style="pointer-events: none;">
+              <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+              <div style="font-weight: bold; margin-bottom: 5px;">PDF Dosyası Yükle</div>
+              <div style="font-size: 14px; color: #666;">
+                Dosyayı buraya sürükleyip bırakın veya <span style="color: #007bff; text-decoration: underline;">tıklayarak seçin</span>
+              </div>
+              <div id="pdfFileName_${i}" style="margin-top: 10px; font-size: 12px; color: #28a745; font-weight: bold;"></div>
+            </div>
+          </div>
+          <input type="file" id="pdfFileInput_${i}" accept="application/pdf" style="display: none;" onchange="pdfYukleHafta(${i}, this)">
           <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
           <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
           <div id="haftaKartGorsel_${i}"></div>
@@ -1765,6 +1894,12 @@
           <button onclick="gptMesajKaydet(${i})">Kaydet</button>
           <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
         div.appendChild(haftaDiv);
+        
+        // Eğer PDF zaten yüklüyse dosya adını göster
+        if (hafta.pdf && hafta.pdfName) {
+          pdfYuklemeBasarili(i, hafta.pdfName);
+        }
+        
         gosterTariflerHafta(i); // transkript gizli
         gosterKartlarHafta(i);
         // Eğer PDF yüklü ve tarifler yoksa otomatik tara ve eşleştir
@@ -1811,12 +1946,29 @@ function duzenleHafta(i) {
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
       if (!file) return;
+      
+      // Dosya tipini kontrol et
+      if (file.type !== 'application/pdf') {
+        alert('❌ Lütfen sadece PDF dosyası yükleyin!');
+        return;
+      }
+      
+      // Dosya boyutu kontrolü (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('❌ Dosya boyutu 10MB\'dan büyük olamaz!');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = function(e) {
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
         saveToStorage();
+        
+        // UI'da başarı göster
+        pdfYuklemeBasarili(i, file.name);
+        
         // PDF yüklenir yüklenmez otomatik tara ve eşleştir
         pdfOkuVeEsleHafta(i);
       };
@@ -1855,7 +2007,35 @@ function duzenleHafta(i) {
       ul.innerHTML = '';
       (hafta.tarifler||[]).forEach(t => {
         const li = document.createElement('li');
-        li.textContent = t;
+        li.style.marginBottom = '10px';
+        li.style.padding = '8px';
+        li.style.border = '1px solid #eee';
+        li.style.borderRadius = '4px';
+        
+        // Orijinal metin
+        const originalDiv = document.createElement('div');
+        originalDiv.innerHTML = `<strong>Orijinal:</strong> <span style="color:#666;">${t}</span>`;
+        li.appendChild(originalDiv);
+        
+        // Temizlenmiş metin
+        const cleanedText = normalize(t);
+        if (cleanedText !== t.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()) {
+          const cleanedDiv = document.createElement('div');
+          cleanedDiv.innerHTML = `<strong>Temizlenmiş:</strong> <span style="color:#28a745;">${cleanedText}</span>`;
+          cleanedDiv.style.marginTop = '4px';
+          li.appendChild(cleanedDiv);
+        }
+        
+        // Çıkarılan yemek adları
+        const yemekAdlari = extractYemekAdlari(t);
+        if (yemekAdlari.length > 0) {
+          const yemekDiv = document.createElement('div');
+          yemekDiv.innerHTML = `<strong>Yemek adları:</strong> <span style="color:#007bff;">${yemekAdlari.join(', ')}</span>`;
+          yemekDiv.style.marginTop = '4px';
+          yemekDiv.style.fontSize = '0.9em';
+          li.appendChild(yemekDiv);
+        }
+        
         ul.appendChild(li);
       });
     }
@@ -1897,10 +2077,28 @@ function duzenleHafta(i) {
     }
 
     async function otomatikEsleHafta(i) {
-  // Tarif satırından alternatifli yemek adlarını ayıkla
+  // Tarif satırından alternatifli yemek adlarını ayıkla - encoding sorunları düzeltilmiş
   function extractYemekAdlari(satir) {
-    // Baştaki * ve miktarları temizle
-    let s = satir.replace(/^\*+\s*/, '');
+    // Önce encoding sorunlarını düzelt
+    let s = satir
+      // UTF-8 encoding sorunlarını temizle
+      .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+      .replace(/Ã\x82/g, '') // Bozuk encoding
+      .replace(/Ã\x83/g, '') // Bozuk encoding
+      .replace(/â/g, 'a')    // â -> a
+      .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+      .replace(/Â/g, '')     // Â karakterini sil
+      .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+      // Yaygın encoding sorunları
+      .replace(/ÃŸ/g, 's')   // ß -> s
+      .replace(/Ã§/g, 'c')   // ç encoding sorunu
+      .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+      .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+      .replace(/Ä±/g, 'i')   // ı encoding sorunu
+      .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+      .replace(/Å?/g, 's')   // ş encoding sorunu
+      .replace(/^\*+\s*/, ''); // Baştaki * temizle
+
     // Parantez içini, + ile eklenenleri, miktarları temizle
     s = s.replace(/\(.*?\)/g, '');
     s = s.replace(/\+.*$/, '');
@@ -1929,10 +2127,28 @@ function duzenleHafta(i) {
 
   // Manuel eşleştirme kontrolü
   function manuelEslestirmeKontrol(tarifSatir) {
-    // Normalize fonksiyonu burada da tanımla
+    // Geliştirilmiş normalize fonksiyonu burada da tanımla
     function normalizeLocal(str) {
-      return str
+      // Önce encoding sorunlarını düzelt
+      let cleaned = str
+        // UTF-8 encoding sorunlarını temizle
+        .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+        .replace(/Ã\x82/g, '') // Bozuk encoding
+        .replace(/Ã\x83/g, '') // Bozuk encoding
+        .replace(/â/g, 'a')    // â -> a
+        .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+        .replace(/Â/g, '')     // Â karakterini sil
+        .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+        // Yaygın encoding sorunları
+        .replace(/ÃŸ/g, 's')   // ß -> s
+        .replace(/Ã§/g, 'c')   // ç encoding sorunu
+        .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+        .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+        .replace(/Ä±/g, 'i')   // ı encoding sorunu
+        .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+        .replace(/Å?/g, 's')   // ş encoding sorunu
         .toLowerCase()
+        // Normal Türkçe karakterleri temizle
         .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
         .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
         .replace(/i̇/g, 'i')
@@ -1940,6 +2156,8 @@ function duzenleHafta(i) {
         .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
         .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
         .trim();
+      
+      return cleaned;
     }
     
     const normalizeEdilmis = normalizeLocal(tarifSatir);
@@ -1957,10 +2175,28 @@ function duzenleHafta(i) {
 
   // Eşleşme yasağı kontrolü
   function eslesmemeKontrolu(tarifSatir, kartAdi) {
-    // Normalize fonksiyonu
+    // Geliştirilmiş normalize fonksiyonu
     function normalizeLocal(str) {
-      return str
+      // Önce encoding sorunlarını düzelt
+      let cleaned = str
+        // UTF-8 encoding sorunlarını temizle
+        .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+        .replace(/Ã\x82/g, '') // Bozuk encoding
+        .replace(/Ã\x83/g, '') // Bozuk encoding
+        .replace(/â/g, 'a')    // â -> a
+        .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+        .replace(/Â/g, '')     // Â karakterini sil
+        .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+        // Yaygın encoding sorunları
+        .replace(/ÃŸ/g, 's')   // ß -> s
+        .replace(/Ã§/g, 'c')   // ç encoding sorunu
+        .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+        .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+        .replace(/Ä±/g, 'i')   // ı encoding sorunu
+        .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+        .replace(/Å?/g, 's')   // ş encoding sorunu
         .toLowerCase()
+        // Normal Türkçe karakterleri temizle
         .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
         .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
         .replace(/i̇/g, 'i')
@@ -1968,6 +2204,8 @@ function duzenleHafta(i) {
         .replace(/\s+/g, ' ')
         .replace(/[^a-z0-9\s]/g, '')
         .trim();
+      
+      return cleaned;
     }
     
     const normalizeEdilmis = normalizeLocal(tarifSatir);
@@ -2077,17 +2315,38 @@ function duzenleHafta(i) {
     return;
   }
 
-  // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
+  // Geliştirilmiş normalize fonksiyonu - encoding sorunlarını ve Türkçe karakterleri temizle
   function normalize(str) {
-    return str
+    // Önce encoding sorunlarını düzelt
+    let cleaned = str
+      // UTF-8 encoding sorunlarını temizle
+      .replace(/ÃÂ+/g, '')  // Bozuk encoding karakterlerini sil
+      .replace(/Ã\x82/g, '') // Bozuk encoding
+      .replace(/Ã\x83/g, '') // Bozuk encoding
+      .replace(/â/g, 'a')    // â -> a
+      .replace(/±/g, 'i')    // ± -> i (bozuk ı karakteri)
+      .replace(/Â/g, '')     // Â karakterini sil
+      .replace(/\u00A0/g, ' ') // Non-breaking space'i normal space yap
+      // Yaygın encoding sorunları
+      .replace(/ÃŸ/g, 's')   // ß -> s
+      .replace(/Ã§/g, 'c')   // ç encoding sorunu
+      .replace(/Ã¼/g, 'u')   // ü encoding sorunu
+      .replace(/Ã¶/g, 'o')   // ö encoding sorunu
+      .replace(/Ä±/g, 'i')   // ı encoding sorunu
+      .replace(/ÄŸ/g, 'g')   // ğ encoding sorunu
+      .replace(/Å?/g, 's')   // ş encoding sorunu
       .toLowerCase()
+      // Normal Türkçe karakterleri temizle
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
       .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
       .replace(/i̇/g, 'i')
+      // Sembolleri ve fazlalıkları temizle
       .replace(/[_*\/()]/g, ' ')  // Sembolleri boşlukla değiştir
       .replace(/\s+/g, ' ')       // Çoklu boşlukları tek boşluğa çevir
       .replace(/[^a-z0-9\s]/g, '') // Sadece harf, rakam ve boşluk bırak
       .trim();
+    
+    return cleaned;
   }
 
   // Basit Levenshtein mesafesi (benzerlik için)
@@ -2120,12 +2379,27 @@ function duzenleHafta(i) {
     let eslesenKartlar = [];
     let eslesenTip = '';
 
-    // Debug: mantarlı tavuk sote için özel çıktı
-    if (tarifSatir.toLowerCase().includes('mantarlı tavuk sote') || tarifSatir.toLowerCase().includes('mantarli tavuk sote')) {
-      console.log('DEBUG - Mantarlı tavuk sote analizi:');
-      console.log('Orijinal tarif:', tarifSatir);
-      console.log('DEBUG - Toplam kart sayısı:', tumKartlar.length);
-      console.log('DEBUG - mantarli_tavuk_sote.jpg var mı?', tumKartlar.some(k => k.name === 'mantarli_tavuk_sote.jpg'));
+    // Geliştirilmiş debug çıktısı - encoding sorunları için
+    if (tarifSatir.includes('köfte') || tarifSatir.includes('kebap') || tarifSatir.includes('adana') || tarifSatir.includes('urfa')) {
+      console.log('🔍 ENCODING DEBUG - Köfte/Kebap eşleştirme analizi:');
+      console.log('Orijinal tarif (raw):', JSON.stringify(tarifSatir));
+      console.log('Orijinal tarif (görsel):', tarifSatir);
+      
+      // Yemek adlarını çıkar ve normalize et
+      let yemekAdlari = extractYemekAdlari(tarifSatir);
+      console.log('Çıkarılan yemek adları:', yemekAdlari);
+      
+      yemekAdlari.forEach((yemek, index) => {
+        const normalized = normalize(yemek);
+        console.log(`Yemek ${index + 1}: "${yemek}" -> normalized: "${normalized}"`);
+      });
+      
+      // Mevcut kartlar içinde köfte/kebap olanları listele
+      const kofte_kebap_kartlar = tumKartlar.filter(k => 
+        k.name.includes('kofte') || k.name.includes('kebap') || 
+        k.name.includes('adana') || k.name.includes('urfa')
+      );
+      console.log('Mevcut köfte/kebap kartları:', kofte_kebap_kartlar.map(k => k.name));
     }
 
     // 1. Önce manuel eşleştirme kontrol et
@@ -2265,11 +2539,49 @@ function duzenleHafta(i) {
     akordiyonIcerik.style.borderRadius = '6px';
 
     eslesmeyenTarifler.forEach(tarif => {
+      const tarifDiv = document.createElement('div');
+      tarifDiv.style.border = '1px solid #ddd';
+      tarifDiv.style.padding = '8px';
+      tarifDiv.style.margin = '4px 0';
+      tarifDiv.style.borderRadius = '4px';
+      tarifDiv.style.background = '#fff';
+      
       const p = document.createElement('p');
       p.textContent = tarif;
       p.style.color = 'red';
-      p.style.margin = '6px 0';
-      akordiyonIcerik.appendChild(p);
+      p.style.margin = '0 0 8px 0';
+      tarifDiv.appendChild(p);
+      
+      // Hızlı manuel eşleştirme butonu
+      const hizliEsleBtn = document.createElement('button');
+      hizliEsleBtn.textContent = '🔗 Hızlı Eşleştir';
+      hizliEsleBtn.style.padding = '4px 12px';
+      hizliEsleBtn.style.marginRight = '8px';
+      hizliEsleBtn.style.background = '#28a745';
+      hizliEsleBtn.style.color = 'white';
+      hizliEsleBtn.style.border = 'none';
+      hizliEsleBtn.style.borderRadius = '4px';
+      hizliEsleBtn.style.cursor = 'pointer';
+      hizliEsleBtn.onclick = function() {
+        hizliManuelEslestir(tarif, i);
+      };
+      
+      // Debug butonu - encoding sorunlarını görmek için
+      const debugBtn = document.createElement('button');
+      debugBtn.textContent = '🔍 Debug';
+      debugBtn.style.padding = '4px 12px';
+      debugBtn.style.background = '#17a2b8';
+      debugBtn.style.color = 'white';
+      debugBtn.style.border = 'none';
+      debugBtn.style.borderRadius = '4px';
+      debugBtn.style.cursor = 'pointer';
+      debugBtn.onclick = function() {
+        debugTarifDetay(tarif);
+      };
+      
+      tarifDiv.appendChild(hizliEsleBtn);
+      tarifDiv.appendChild(debugBtn);
+      akordiyonIcerik.appendChild(tarifDiv);
     });
 
     akordiyonBaslik.onclick = function() {
@@ -2286,6 +2598,220 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   saveToStorage();
 }
+
+    // Hızlı manuel eşleştirme fonksiyonu
+    function hizliManuelEslestir(tarifSatir, haftaIndex) {
+      // Modal oluştur
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100%';
+      modal.style.height = '100%';
+      modal.style.background = 'rgba(0,0,0,0.7)';
+      modal.style.zIndex = '10000';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      
+      const modalContent = document.createElement('div');
+      modalContent.style.background = 'white';
+      modalContent.style.padding = '20px';
+      modalContent.style.borderRadius = '10px';
+      modalContent.style.maxWidth = '600px';
+      modalContent.style.maxHeight = '80vh';
+      modalContent.style.overflow = 'auto';
+      
+      modalContent.innerHTML = `
+        <h3>🔗 Hızlı Manuel Eşleştirme</h3>
+        <p><strong>Tarif:</strong> ${tarifSatir}</p>
+        <p><strong>Normalize edilmiş:</strong> <code>${normalize(tarifSatir)}</code></p>
+        <div style="margin: 15px 0;">
+          <label>Eşleştirmek istediğin kartları seç:</label>
+          <div id="kartSecimListesi" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-top: 5px;"></div>
+        </div>
+        <div style="margin-top: 15px; text-align: center;">
+          <button id="eslestirmeKaydet" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-right: 10px;">Kaydet</button>
+          <button id="eslestirmeIptal" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px;">İptal</button>
+        </div>
+      `;
+      
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      // Mevcut kartları listele
+      const kartListesi = document.getElementById('kartSecimListesi');
+      const tumKartlar = [].concat(
+        tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+      );
+      
+      tumKartlar.forEach(kart => {
+        const kartDiv = document.createElement('div');
+        kartDiv.style.display = 'flex';
+        kartDiv.style.alignItems = 'center';
+        kartDiv.style.padding = '5px';
+        kartDiv.style.borderBottom = '1px solid #eee';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = kart.name;
+        checkbox.style.marginRight = '10px';
+        
+        const img = document.createElement('img');
+        img.src = kart.data;
+        img.style.width = '40px';
+        img.style.height = '40px';
+        img.style.objectFit = 'cover';
+        img.style.marginRight = '10px';
+        
+        const label = document.createElement('span');
+        label.textContent = kart.name;
+        
+        kartDiv.appendChild(checkbox);
+        kartDiv.appendChild(img);
+        kartDiv.appendChild(label);
+        kartListesi.appendChild(kartDiv);
+      });
+      
+      // Kaydet butonu
+      document.getElementById('eslestirmeKaydet').onclick = function() {
+        const secilenKartlar = Array.from(kartListesi.querySelectorAll('input:checked')).map(cb => cb.value);
+        if (secilenKartlar.length > 0) {
+          // Manuel eşleştirmeyi kaydet
+          const normalizeEdilmis = normalize(tarifSatir);
+          if (!manuelEslestirmeler[normalizeEdilmis]) {
+            manuelEslestirmeler[normalizeEdilmis] = { kartlar: [] };
+          }
+          manuelEslestirmeler[normalizeEdilmis].kartlar = secilenKartlar;
+          manuelEslestirmeleriKaydet();
+          
+          // GitHub'a kaydet
+          manuelEslestirmeleriGitHubKaydet(true);
+          
+          // Modalı kapat ve eşleştirmeyi yenile
+          document.body.removeChild(modal);
+          otomatikEsleHafta(haftaIndex);
+          
+          alert(`✅ Manuel eşleştirme kaydedildi!\n"${tarifSatir}" -> ${secilenKartlar.join(', ')}`);
+        } else {
+          alert('Lütfen en az bir kart seçin!');
+        }
+      };
+      
+      // İptal butonu
+      document.getElementById('eslestirmeIptal').onclick = function() {
+        document.body.removeChild(modal);
+      };
+      
+      // Modal dışına tıklayınca kapat
+      modal.onclick = function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      };
+    }
+
+    // Debug detay fonksiyonu
+    function debugTarifDetay(tarifSatir) {
+      console.log('🔍 DETAYLI DEBUG ANALİZİ:');
+      console.log('================================');
+      console.log('Orijinal tarif:', JSON.stringify(tarifSatir));
+      console.log('Görsel:', tarifSatir);
+      
+      // Character code analizi
+      console.log('Character codes:', tarifSatir.split('').map(c => `${c}(${c.charCodeAt(0)})`).join(' '));
+      
+      // Encoding düzeltme adımları
+      let step1 = tarifSatir.replace(/ÃÂ+/g, '');
+      console.log('1. ÃÂ+ temizlik:', step1);
+      
+      let step2 = step1.replace(/±/g, 'i');
+      console.log('2. ± -> i:', step2);
+      
+      let step3 = step2.replace(/Â/g, '');
+      console.log('3. Â temizlik:', step3);
+      
+      // Yemek adları çıkarma
+      let yemekAdlari = extractYemekAdlari(tarifSatir);
+      console.log('Çıkarılan yemek adları:', yemekAdlari);
+      
+      yemekAdlari.forEach((yemek, index) => {
+        const normalized = normalize(yemek);
+        console.log(`Yemek ${index + 1}:`, {
+          orijinal: yemek,
+          normalized: normalized,
+          kelimeler: normalized.split(' ')
+        });
+      });
+      
+      // Benzer kartları ara
+      const tumKartlar = [].concat(
+        tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+      );
+      
+      console.log('Potansiyel eşleşmeler:');
+      yemekAdlari.forEach(yemek => {
+        const tarifNorm = normalize(yemek);
+        const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
+        
+        tumKartlar.forEach(kart => {
+          const kartNorm = normalize(kart.name);
+          const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
+          
+          // Kelime benzerlik analizi
+          const ortakKelimeler = tarifKelimeler.filter(tk => kartKelimeler.some(kk => kk.includes(tk) || tk.includes(kk)));
+          
+          if (ortakKelimeler.length > 0) {
+            console.log(`Benzerlik: "${yemek}" <-> "${kart.name}"`);
+            console.log(`  Tarif normalize: "${tarifNorm}"`);
+            console.log(`  Kart normalize: "${kartNorm}"`);
+            console.log(`  Ortak kelimeler: ${ortakKelimeler.join(', ')}`);
+            console.log(`  Benzerlik skoru: ${ortakKelimeler.length}/${Math.max(tarifKelimeler.length, kartKelimeler.length)}`);
+          }
+        });
+      });
+      
+      alert('Debug analizi tamamlandı! Detaylar için konsolda (F12) kontrol edin.');
+    }
+
+    // Yaygın encoding sorunları için otomatik düzeltmeler ekle
+    function otomatikEncodingDuzeltmeleriEkle() {
+      const otomatikEslestirmeler = {
+        // Köfte eşleştirmeleri
+        '150 gram kofte': ['keto_kofte.jpg'],
+        '200 gram kofte': ['keto_kofte.jpg'], 
+        'kiymali karnabahar bamya yemegi': ['kiymali_karnabahar_yemegi.jpg', 'kiymali_bamya_yemegi.jpg'],
+        'avokado ve rokali salata': ['avokadolu_roka_salatasi.jpg'],
+        'kiymali kabak yesil fasulye yemegi': ['kiymali_kabak_yemegi.jpg', 'taze_fasulyeli_kiymali_sote.jpg'],
+        'enginar ya da karnabahar mantisi': ['enginar_mantisi.jpg', 'karnabahar_manti.jpg'],
+        'yogurtlu enginar ya da kereviz salatasi': ['yogurtlu_enginar.jpg', 'yogurtlu_kereviz_salatasi.jpg'],
+        'ispanakli ya da pazili tavuk dolmasi': ['ispanakli_tavuk_dolmasi.jpg'],
+        'kabak ya da kereviz cokertme kebabi': ['kerevizli_cokertme_keba2.jpg', 'kerevizli_cokertme_kebabi.jpg'],
+        'kiymali lahana kabak patlican yemegi': ['kiymali_kabak_yemegi.jpg', 'kiymali_lahana_yemegi.jpg'],
+        'kiymali karnabahar kabak yemegi': ['kiymali_kabak_yemegi.jpg', 'kiymali_karnabahar_yemegi.jpg'],
+        '200 gram kirmizi et ile guvec': ['kuzu_guvec.jpg'],
+        'brokoli corbasi': ['ketojenik_brokoli_corbasi.jpg'],
+        'kuzu guvec': ['kuzu_guvec.jpg'],
+        'urfa adana kebap 200 gram': ['adana_urfa_kebap.jpg']
+      };
+
+      let eklenenSayisi = 0;
+      
+      Object.keys(otomatikEslestirmeler).forEach(anahtar => {
+        if (!manuelEslestirmeler[anahtar]) {
+          manuelEslestirmeler[anahtar] = { kartlar: otomatikEslestirmeler[anahtar] };
+          eklenenSayisi++;
+        }
+      });
+      
+      if (eklenenSayisi > 0) {
+        manuelEslestirmeleriKaydet();
+        manuelEslestirmeleriGitHubKaydet(true);
+        alert(`✅ ${eklenenSayisi} otomatik encoding düzeltmesi eklendi!`);
+      } else {
+        alert('Tüm encoding düzeltmeleri zaten mevcut.');
+      }
+    }
 
     function gptMesajKaydet(i) {
       const hafta = getHaftaListesi()[i];
@@ -2603,6 +3129,90 @@ Devam edilsin mi?`)) {
       }
     }
     window.cacheTemizle = cacheTemizle;
+
+    // PDF Sürükle-Bırak Event Handler'ları
+    function handlePdfDragOver(event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    }
+
+    function handlePdfDragEnter(event, haftaIndex) {
+      event.preventDefault();
+      const uploadArea = document.getElementById(`pdfUploadArea_${haftaIndex}`);
+      uploadArea.style.borderColor = '#007bff';
+      uploadArea.style.backgroundColor = '#e3f2fd';
+      uploadArea.style.transform = 'scale(1.02)';
+    }
+
+    function handlePdfDragLeave(event, haftaIndex) {
+      event.preventDefault();
+      const uploadArea = document.getElementById(`pdfUploadArea_${haftaIndex}`);
+      // Sadece gerçekten alanı terk ediyorsak style'ı sıfırla
+      if (!uploadArea.contains(event.relatedTarget)) {
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = '#f9f9f9';
+        uploadArea.style.transform = 'scale(1)';
+      }
+    }
+
+    function handlePdfDrop(event, haftaIndex) {
+      event.preventDefault();
+      
+      const uploadArea = document.getElementById(`pdfUploadArea_${haftaIndex}`);
+      uploadArea.style.borderColor = '#ccc';
+      uploadArea.style.backgroundColor = '#f9f9f9';
+      uploadArea.style.transform = 'scale(1)';
+      
+      const files = event.dataTransfer.files;
+      
+      if (files.length === 0) {
+        alert('❌ Dosya bulunamadı!');
+        return;
+      }
+      
+      const file = files[0];
+      
+      // PDF kontrolü
+      if (file.type !== 'application/pdf') {
+        alert('❌ Lütfen sadece PDF dosyası yükleyin!');
+        return;
+      }
+      
+      // Dosya boyutu kontrolü (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('❌ Dosya boyutu 10MB\'dan büyük olamaz!');
+        return;
+      }
+      
+      // Dosya adını göster
+      const fileNameDiv = document.getElementById(`pdfFileName_${haftaIndex}`);
+      fileNameDiv.textContent = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      
+      // Input'a dosyayı atayarak mevcut fonksiyonu kullan
+      const fileInput = document.getElementById(`pdfFileInput_${haftaIndex}`);
+      
+      // FileList oluştur (biraz hacky ama çalışıyor)
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      
+      // Mevcut yükleme fonksiyonunu çağır
+      pdfYukleHafta(haftaIndex, fileInput);
+    }
+
+    // PDF dosyası yüklendiğinde dosya adını göster
+    function pdfYuklemeBasarili(haftaIndex, fileName) {
+      const fileNameDiv = document.getElementById(`pdfFileName_${haftaIndex}`);
+      if (fileNameDiv) {
+        fileNameDiv.innerHTML = `✅ <strong>${fileName}</strong> başarıyla yüklendi`;
+      }
+      
+      const uploadArea = document.getElementById(`pdfUploadArea_${haftaIndex}`);
+      if (uploadArea) {
+        uploadArea.style.borderColor = '#28a745';
+        uploadArea.style.backgroundColor = '#d4edda';
+      }
+    }
   </script>
 </body>
 </html>
