@@ -18,6 +18,7 @@
   <div id="sistemDurumu" style="background:#e9ecef; padding:10px; margin-bottom:15px; border-radius:5px; border-left:4px solid #6c757d;">
     <span style="font-weight:bold;">📊 Sistem Durumu:</span>
     <span id="tariflerKlasoruDurumu">🔄 Tarifler klasörü kontrol ediliyor...</span>
+    <span id="cacheDurumu" style="margin-left:15px; font-size:0.9em; color:#6c757d;">📱 Cache: Aktif</span>
   </div>
   
   <div style="margin-bottom:10px;">
@@ -31,6 +32,7 @@
     <button onclick="manuelEslestirmePaneliGoster()">Manuel Eşleştirme Paneli</button>
     <button onclick="eslesmemeRegeleriPaneliGoster()">Eşleşme Yasakları Paneli</button>
     <button onclick="debugTariflerKlasoru()" style="background:#17a2b8; color:white;">🔍 Debug: Tarifler Klasörü</button>
+    <button onclick="cacheTemizle()" style="background:#dc3545; color:white;">🗑️ Cache Temizle</button>
   </div>
 
   <!-- Eşleşme Yasakları Paneli -->
@@ -616,8 +618,11 @@
           eslesmemeStatusGoster('GitHub\'dan yükleniyor...', 'info');
         }
 
-        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-          headers: { Authorization: `token ${token}` }
+        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
+          headers: { 
+            Authorization: `token ${token}`,
+            'Cache-Control': 'no-cache'
+          }
         });
 
         if (resp.ok) {
@@ -965,8 +970,11 @@
           manuelEslestirmeStatusGoster('GitHub\'dan yükleniyor...', 'info');
         }
 
-        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-          headers: { Authorization: `token ${token}` }
+        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
+          headers: { 
+            Authorization: `token ${token}`,
+            'Cache-Control': 'no-cache'
+          }
         });
 
         if (resp.ok) {
@@ -1467,6 +1475,8 @@
     
     function durumGuncelle() {
       const durumElement = document.getElementById('tariflerKlasoruDurumu');
+      const cacheDurumElement = document.getElementById('cacheDurumu');
+      
       if (durumElement) {
         if (tariflerKlasoruGorselleri.length > 0) {
           durumElement.innerHTML = `✅ Tarifler klasörü: <span style="color:green; font-weight:bold;">${tariflerKlasoruGorselleri.length} görsel</span>`;
@@ -1474,6 +1484,25 @@
         } else {
           durumElement.innerHTML = `⚠️ Tarifler klasörü: <span style="color:orange; font-weight:bold;">Görsel bulunamadı</span> - Manuel yükleme gerekli`;
           durumElement.parentElement.style.borderLeftColor = '#ffc107';
+        }
+      }
+      
+      // Cache durumunu güncelle
+      if (cacheDurumElement) {
+        const sonTemizlik = localStorage.getItem('son_cache_temizlik');
+        if (sonTemizlik) {
+          const gecenSure = Math.floor((Date.now() - parseInt(sonTemizlik)) / (1000 * 60)); // dakika cinsinden
+          if (gecenSure < 60) {
+            cacheDurumElement.innerHTML = `🟢 Cache: ${gecenSure}dk önce temizlendi`;
+            cacheDurumElement.style.color = '#28a745';
+          } else {
+            const gecenSaat = Math.floor(gecenSure / 60);
+            cacheDurumElement.innerHTML = `🟡 Cache: ${gecenSaat}s önce temizlendi`;
+            cacheDurumElement.style.color = '#ffc107';
+          }
+        } else {
+          cacheDurumElement.innerHTML = '📱 Cache: Aktif (hiç temizlenmedi)';
+          cacheDurumElement.style.color = '#dc3545';
         }
       }
     }
@@ -1493,7 +1522,17 @@
         
         console.log('Tarifler klasörü aranıyor:', tariflerPath);
         
-        const resp = await fetch(tariflerPath + 'list.json');
+        // Cache bypass için timestamp ekle
+        const timestamp = new Date().getTime();
+        const resp = await fetch(tariflerPath + 'list.json?v=' + timestamp, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         if (!resp.ok) {
           console.warn(`list.json bulunamadı (${resp.status}): ${tariflerPath}list.json`);
           throw new Error(`list.json bulunamadı: ${resp.status} - ${tariflerPath}list.json`);
@@ -1539,6 +1578,11 @@
       durumGuncelle();
     }
     tariflerKlasoruGorselleriniYukle();
+    
+    // Sayfa yüklendiğinde durum güncelle
+    window.addEventListener('load', function() {
+      setTimeout(durumGuncelle, 1000); // 1 saniye sonra güncelle
+    });
 
     // pdf.js worker ayarı (uyumluluk için)
     if (window['pdfjsLib']) {
@@ -2485,6 +2529,80 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       console.log('✅ Yeniden deneme tamamlandı');
     }
     window.yeniBirDenemeEt = yeniBirDenemeEt;
+
+    // Cache temizleme fonksiyonu
+    async function cacheTemizle() {
+      if (!confirm(`⚠️ CACHE TEMİZLEME
+      
+Bu işlem:
+• Tüm tarayıcı cache'lerini temizler
+• GitHub'dan en güncel verileri yükler  
+• Tarifler klasörünü yeniden kontrol eder
+• Sayfayı yeniden yükler
+
+⚠️ Kaydedilmemiş değişiklikler kaybolabilir!
+
+Devam edilsin mi?`)) {
+        return;
+      }
+
+      console.log('🗑️ Cache temizleme başlıyor...');
+      
+      try {
+        // 1. Service Worker cache temizle
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            await registration.unregister();
+            console.log('🗑️ Service Worker temizlendi');
+          }
+        }
+
+        // 2. Browser cache temizle (mümkün olduğu kadar)
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          for (let cacheName of cacheNames) {
+            await caches.delete(cacheName);
+            console.log('🗑️ Cache silindi:', cacheName);
+          }
+        }
+
+        // 3. localStorage ve sessionStorage temizle (sadece bu uygulamaya ait olmayan genel cache)
+        const oncekiVeriler = localStorage.getItem(STORAGE_KEY);
+        
+        // 4. Tarifler klasörü cache'ini sıfırla
+        tariflerKlasoruGorselleri = [];
+        
+        // 5. Manuel eşleştirmeler ve yasakları da yeniden yükle
+        manuelEslestirmeler = {};
+        eslesmemeKurallari = {};
+        
+        console.log('✅ Cache temizleme tamamlandı');
+        
+        // Son temizlik zamanını kaydet
+        localStorage.setItem('son_cache_temizlik', Date.now().toString());
+        
+        // Kullanıcıya bilgi ver
+        alert(`✅ Cache temizlendi! 
+
+🔄 Sayfa yeniden yüklenecek ve:
+• Tarifler klasörü yeniden kontrol edilecek
+• Manuel eşleştirmeler GitHub'dan yeniden yüklenecek  
+• Tüm cache'ler temizlenecek
+• En güncel kod sürümü yüklenecek
+
+📊 Hasta verileri korundu.`);
+        
+        // Sayfayı zorla yenile (cache bypass ile)
+        window.location.reload(true);
+        
+      } catch (error) {
+        console.error('❌ Cache temizleme hatası:', error);
+        alert(`❌ Cache temizleme sırasında hata oluştu: ${error.message}\n\nSayfa yine de yeniden yüklenecek.`);
+        window.location.reload(true);
+      }
+    }
+    window.cacheTemizle = cacheTemizle;
   </script>
 </body>
 </html>
