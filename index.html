@@ -8,6 +8,115 @@
     textarea, input[type="file"] { width: 100%; margin-bottom: 10px; }
     button { padding: 10px 20px; }
     .matched img { width: 150px; margin: 5px; border: 1px solid #ccc; }
+    
+    /* Tab Sistemi CSS */
+    .hafta-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 20px;
+      background: #f8f9fa;
+      padding: 5px;
+      border-radius: 8px 8px 0 0;
+    }
+    
+    .hafta-tab {
+      background: #e9ecef;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      padding: 10px 15px;
+      margin-right: 3px;
+      margin-bottom: 3px;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.3s ease;
+      min-width: 120px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .hafta-tab:hover {
+      background: #dee2e6;
+      transform: translateY(-2px);
+    }
+    
+    .hafta-tab.active {
+      background: #fff;
+      border-color: #007bff;
+      border-width: 2px;
+      font-weight: bold;
+      color: #007bff;
+      transform: translateY(-3px);
+      box-shadow: 0 3px 10px rgba(0,123,255,0.2);
+    }
+    
+    .hafta-tab-content {
+      display: none;
+      border: 2px solid #ddd;
+      padding: 20px;
+      border-radius: 0 8px 8px 8px;
+      background: #fff;
+      min-height: 400px;
+    }
+    
+    .hafta-tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .hafta-tab-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .hafta-no-input {
+      width: 50px;
+      font-weight: bold;
+      text-align: center;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 5px;
+    }
+    
+    .tab-status-indicators {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+      justify-content: center;
+    }
+    
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .status-pdf { background: #28a745; }
+    .status-kartlar { background: #ffc107; }
+    .status-eslesen { background: #17a2b8; }
+    .status-empty { background: #dc3545; }
+    
+    .yeni-hafta-tab {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+      font-weight: bold;
+    }
+    
+    .yeni-hafta-tab:hover {
+      background: #218838;
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -234,7 +343,16 @@
     <div style="margin:10px 0;">
       <h4>Haftalar</h4>
       <button onclick="haftaEkle()">Hafta Ekle</button>
-      <div id="haftaListesi"></div>
+      
+      <!-- Tab Sistemi -->
+      <div id="haftaTabContainer">
+        <div id="haftaTabs" class="hafta-tabs">
+          <!-- Tablar buraya dinamik eklenecek -->
+        </div>
+        <div id="haftaTabContent">
+          <!-- Tab içerikleri buraya dinamik eklenecek -->
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1753,12 +1871,22 @@
         gptMesaj: ''
       });
       saveToStorage();
+      
+      // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
+      const yeniTabIndex = seciliHasta.haftalar.length - 1;
+      setTimeout(() => switchTab(yeniTabIndex), 100);
     }
 
     function gosterHaftalar() {
-      const div = document.getElementById('haftaListesi');
-      div.innerHTML = '';
+      const tabsDiv = document.getElementById('haftaTabs');
+      const contentDiv = document.getElementById('haftaTabContent');
+      
+      if (!tabsDiv || !contentDiv) return;
+      
+      tabsDiv.innerHTML = '';
+      contentDiv.innerHTML = '';
+      
       const haftalar = getHaftaListesi();
       
       // Backward compatibility: Mevcut haftalara hafta numarası ekle
@@ -1774,44 +1902,144 @@
         console.log('🔄 Mevcut haftalara hafta numaraları eklendi');
       }
       
+      // Tabları oluştur
       haftalar.forEach((hafta, i) => {
-        // Hafta numarasını backward compatibility için kontrol et
         const haftaNo = hafta.haftaNo || (i + 1);
         
-        const haftaDiv = document.createElement('div');
-        haftaDiv.style = 'border:1px solid #ccc; margin:8px 0; padding:8px; background:#f8f8ff;';
-        haftaDiv.innerHTML =
-          `<div style="display:flex; align-items:center; margin-bottom:8px;">
-            <label style="font-weight:bold; margin-right:5px;">Hafta No:</label>
-            <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" style="width:60px; margin-right:10px;" onchange="haftaNoKaydet(${i})">
-            <span style="font-weight:bold;">. Hafta</span>
-            <span style="margin-left:15px;">(${hafta.baslangic} - ${hafta.bitis})</span>
-            <button onclick="duzenleHafta(${i})" style="margin-left:auto;">Düzenle</button>
-            <button onclick="silHafta(${i})" style="color:red; margin-left:5px;">Sil</button>
+        // Tab başlığı oluştur
+        const tabDiv = document.createElement('div');
+        tabDiv.className = `hafta-tab ${i === 0 ? 'active' : ''}`;
+        tabDiv.onclick = () => switchTab(i);
+        
+        // Status göstergeleri
+        const hasPdf = hafta.pdf ? 'status-pdf' : 'status-empty';
+        const hasKartlar = (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) ? 'status-kartlar' : 'status-empty';
+        const hasEslesen = (hafta.tarifler && hafta.tarifler.length > 0) ? 'status-eslesen' : 'status-empty';
+        
+        tabDiv.innerHTML = `
+          <div style="font-weight: bold; font-size: 14px;">${haftaNo}. Hafta</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">
+            ${hafta.baslangic.split('-')[1]}/${hafta.baslangic.split('-')[2]} - ${hafta.bitis.split('-')[1]}/${hafta.bitis.split('-')[2]}
           </div>
-          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-bottom:8px;width:280px;">
-          <button onclick="aciklamaKaydet(${i})">Açıklama Kaydet</button><br>
-          <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
-          ${hafta.pdf ? `<span style="color:green; margin-left:10px;">✅ PDF yüklü: ${hafta.pdfName || 'hafta.pdf'}</span>` : ''}
-          <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
-          <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
-          <div id="haftaKartGorsel_${i}"></div>
-          <div id="eslesenKartlar_${i}"></div>
-          <b>GPT Mesajı:</b><br>
-          <textarea id="gptMesaj_${i}" rows="2" style="width:98%;">${hafta.gptMesaj||''}</textarea>
-          <button onclick="gptMesajKaydet(${i})">Kaydet</button>
-          <button onclick="kopyalaGptMesaj(${i})">Kopyala</button>`;
-        div.appendChild(haftaDiv);
-        gosterTariflerHafta(i); // transkript gizli
-        gosterKartlarHafta(i);
-        // Eğer PDF yüklü ve tarifler yoksa otomatik tara ve eşleştir
-        if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
-          pdfOkuVeEsleHafta(i);
-        } else if (hafta.tarifler && hafta.tarifler.length > 0) {
-          otomatikEsleHafta(i);
-        }
+          <div class="tab-status-indicators">
+            <span class="status-indicator ${hasPdf}" title="PDF durumu"></span>
+            <span class="status-indicator ${hasKartlar}" title="Manuel kartlar"></span>
+            <span class="status-indicator ${hasEslesen}" title="Eşleşen kartlar"></span>
+          </div>
+        `;
+        tabsDiv.appendChild(tabDiv);
+        
+        // Tab içeriği oluştur
+        const contentTab = document.createElement('div');
+        contentTab.className = `hafta-tab-content ${i === 0 ? 'active' : ''}`;
+        contentTab.id = `haftaContent_${i}`;
+        
+        contentTab.innerHTML = `
+          <div class="hafta-tab-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <label style="font-weight: bold;">Hafta No:</label>
+              <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" 
+                     class="hafta-no-input" onchange="haftaNoKaydet(${i})" title="Hafta numarasını değiştir">
+              <span style="font-weight: bold;">. Hafta</span>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
+              <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Hafta Tarihleri:</label>
+            <span style="background: #e9ecef; padding: 8px 12px; border-radius: 5px; display: inline-block;">
+              📅 ${hafta.baslangic} - ${hafta.bitis}
+            </span>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Hafta Açıklaması:</label>
+            <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
+                   placeholder="Bu hafta hakkında not ekleyin..." 
+                   style="width: 300px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+            <button onclick="aciklamaKaydet(${i})" style="margin-left: 10px; padding: 8px 15px;">💾 Kaydet</button>
+          </div>
+          
+          <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">📄 PDF Yükle:</label>
+            <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
+                   style="margin-bottom: 10px;">
+            ${hafta.pdf ? `
+              <div style="color: green; font-weight: bold; margin-top: 10px;">
+                ✅ PDF yüklü: ${hafta.pdfName || 'hafta.pdf'}
+                <span style="margin-left: 15px; color: #666; font-weight: normal;">
+                  (${hafta.tarifler ? hafta.tarifler.length : 0} tarif çıkarıldı)
+                </span>
+              </div>
+            ` : '<div style="color: #666;">PDF henüz yüklenmedi</div>'}
+          </div>
+          
+          <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">🖼️ Tarif Kartları (Manuel):</label>
+            <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
+                   onchange="tarifKartYukleHafta(${i}, this)" style="margin-bottom: 10px;">
+            <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">🔗 Eşleşen Kartlar:</label>
+            <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 100px;"></div>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">💬 GPT Mesajı:</label>
+            <textarea id="gptMesaj_${i}" rows="3" 
+                      style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
+                      placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
+            <div style="margin-top: 10px;">
+              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px;">💾 Kaydet</button>
+              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px;">📋 Kopyala</button>
+            </div>
+          </div>
+        `;
+        
+        contentDiv.appendChild(contentTab);
+        
+        // Alt işlemleri çalıştır (async olarak)
+        setTimeout(() => {
+          gosterTariflerHafta(i);
+          gosterKartlarHafta(i);
+          
+          // PDF yüklü ama tarifler yoksa otomatik tara
+          if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
+            pdfOkuVeEsleHafta(i);
+          } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+            otomatikEsleHafta(i);
+          }
+        }, 100 * i); // Sıralı yükleme
       });
+      
+      // İlk tab'ı aktif yap
+      if (haftalar.length > 0) {
+        switchTab(0);
+      }
     }
+    
+    // Tab değiştirme fonksiyonu
+    function switchTab(activeIndex) {
+      // Tüm tabları pasif yap
+      document.querySelectorAll('.hafta-tab').forEach((tab, index) => {
+        tab.classList.toggle('active', index === activeIndex);
+      });
+      
+      // Tüm içerikleri gizle
+      document.querySelectorAll('.hafta-tab-content').forEach((content, index) => {
+        content.classList.toggle('active', index === activeIndex);
+      });
+      
+      console.log(`🏷️ ${activeIndex + 1}. hafta tab'ına geçildi`);
+    }
+    
+    // Tab değiştirme fonksiyonunu global yap
+    window.switchTab = switchTab;
 
 // Hafta açıklama kaydet
 function aciklamaKaydet(i) {
@@ -1834,6 +2062,16 @@ function haftaNoKaydet(i) {
   
   haftalar[i].haftaNo = yeniHaftaNo;
   saveToStorage();
+  
+  // Tab başlığını güncelle
+  const tablar = document.querySelectorAll('.hafta-tab');
+  if (tablar[i]) {
+    const tabBaslik = tablar[i].querySelector('div:first-child');
+    if (tabBaslik) {
+      tabBaslik.textContent = `${yeniHaftaNo}. Hafta`;
+    }
+  }
+  
   console.log(`Hafta numarası güncellendi: ${yeniHaftaNo}. hafta`);
 }
 
@@ -1902,6 +2140,8 @@ function silHafta(i) {
   const haftalar = getHaftaListesi();
   haftalar.splice(i, 1);
   saveToStorage();
+  
+  // Tab sistemini yeniden yükle
   gosterHaftalar();
 }
 
