@@ -2516,100 +2516,173 @@ function duzenleHafta(i) {
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
 
-  // Her tarif için eşleştirme yap
+  // Kart kullanım durumunu sıfırla
+  kartKullanimDurumu = {};
+  console.log('🔄 Kart kullanım durumu sıfırlandı');
+
+  // Her tarif için eşleştirme yap - YENİ GÜÇLÜ ALGORİTMA
   hafta.tarifler.forEach(tarif => {
+    console.log('\n=== YENİ TARİF İŞLEME ===');
+    console.log('Tarif:', tarif);
+    
     let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
-    let eslesen = null;
     let eslesenKartlar = [];
     let eslesenTip = '';
 
-    // Debug: köfte ve kebap için özel çıktı
-    if (tarifSatir.toLowerCase().includes('köfte') || 
-        tarifSatir.toLowerCase().includes('kebap') || 
-        tarifSatir.toLowerCase().includes('mantarlı tavuk sote') || 
-        tarifSatir.toLowerCase().includes('mantarli tavuk sote')) {
-      console.log('DEBUG - Özel yemek analizi:');
-      console.log('Orijinal tarif:', tarifSatir);
-      console.log('DEBUG - Toplam kart sayısı:', tumKartlar.length);
-      console.log('DEBUG - Manuel eşleştirme sayısı:', Object.keys(manuelEslestirmeler).length);
-      if (tarifSatir.toLowerCase().includes('köfte')) {
-        console.log('DEBUG - keto_kofte.jpg var mı?', tumKartlar.some(k => k.name === 'keto_kofte.jpg'));
-      }
-      if (tarifSatir.toLowerCase().includes('kebap')) {
-        console.log('DEBUG - adana_urfa_kebap.jpg var mı?', tumKartlar.some(k => k.name === 'adana_urfa_kebap.jpg'));
+    // ADIM 1: YASAK KONTROLÜ - Tüm kartları kontrol et ve yasaklı olanları listele
+    console.log('ADIM 1: YASAK KONTROLÜ');
+    const yasakliKartlar = new Set();
+    
+    for (const kart of tumKartlar) {
+      if (eslesmemeKontrolu(tarif, kart.name)) {
+        yasakliKartlar.add(kart.name);
+        console.log('🚫 YASAK KART:', kart.name);
       }
     }
+    console.log(`Toplam ${yasakliKartlar.size} kart yasaklı`);
 
-    // 1. Önce manuel eşleştirme kontrol et
+    // ADIM 2: MANUEL EŞLEŞTIRME KONTROLÜ - %100 öncelik
+    console.log('ADIM 2: MANUEL EŞLEŞTIRME KONTROLÜ');
     const manuelEslesenler = manuelEslestirmeKontrol(tarif);
+    
     if (manuelEslesenler && manuelEslesenler.length > 0) {
-      // Manuel eşleştirme bulundu
-      console.log('MANUEL EŞLEŞTIRME BULUNDU:', {
-        tarif: tarif,
-        bulunanKartlar: manuelEslesenler.map(k => k.name),
-        kullanilanKartlar: Array.from(kullanilanKartlar)
+      console.log('✅ MANUEL EŞLEŞTIRME BULUNDU:', manuelEslesenler.map(k => k.name));
+      
+      // Manuel eşleştirmeleri yasak ve kullanım kontrolünden geçir
+      const gecerliManuelKartlar = manuelEslesenler.filter(kart => {
+        const yasakMi = yasakliKartlar.has(kart.name);
+        const kullanimdaMi = kullanilanKartlar.has(kart.name);
+        
+        if (yasakMi) {
+          console.log('❌ MANUEL KART YASAK:', kart.name);
+          return false;
+        }
+        if (kullanimdaMi) {
+          console.log('⚠️ MANUEL KART ZATEN KULLANILIYOR:', kart.name);
+          return false;
+        }
+        return true;
       });
       
-      const kullanilamayacaklar = manuelEslesenler.filter(kart => kullanilanKartlar.has(kart.name));
-      const kullanilabilirler = manuelEslesenler.filter(kart => !kullanilanKartlar.has(kart.name));
-      
-      if (kullanilamayacaklar.length > 0) {
-        console.log('ZATEN KULLANILAN KARTLAR:', kullanilamayacaklar.map(k => k.name));
-      }
-      
-      if (kullanilabilirler.length > 0) {
-        eslesenKartlar = kullanilabilirler;
+      if (gecerliManuelKartlar.length > 0) {
+        // İlk geçerli manuel kartı kullan
+        const secilenKart = gecerliManuelKartlar[0];
+        eslesenKartlar = [secilenKart];
         eslesenTip = 'manuel eşleştirme';
-        kullanilabilirler.forEach(kart => {
-          kullanilanKartlar.add(kart.name);
-          console.log('KART KULLANILDI OLARAK İŞARETLENDİ:', kart.name);
-        });
+        kullanilanKartlar.add(secilenKart.name);
+        console.log('🎯 MANUEL KART SEÇİLDİ:', secilenKart.name);
       } else {
-        console.log('TÜM MANUEL KARTLAR ZATEN KULLANILMIŞ:', manuelEslesenler.map(k => k.name));
+        console.log('❌ HİÇBİR MANUEL KART GEÇERLİ DEĞİL');
       }
     } else {
-      // 2. Otomatik eşleştirme dene
-      let yemekAdlari = extractYemekAdlari(tarifSatir);
+      console.log('❌ MANUEL EŞLEŞTIRME YOK');
+    }
 
-      // Her yemek adı için eşleştirme dene
-      for (let yemekAdi of yemekAdlari) {
-        const tarifNorm = normalize(yemekAdi);
-        const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
-
-        // Kullanılmayan kartlar arasında ara
-        for (let kart of tumKartlar) {
-          if (kullanilanKartlar.has(kart.name)) continue;
-
-          // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
-          if (eslesmemeKontrolu(tarif, kart.name)) {
-            continue; // Bu kart yasaklı, sonrakine geç
+    // ADIM 3: OTOMATİK EŞLEŞTIRME - Sadece manuel eşleştirme yoksa
+    if (eslesenKartlar.length === 0) {
+      console.log('ADIM 3: OTOMATİK EŞLEŞTIRME');
+      
+      // Kullanılabilir kartları bul (yasaklı veya kullanılan olmayan)
+      const kullanilabilirKartlar = tumKartlar.filter(kart => {
+        const yasakMi = yasakliKartlar.has(kart.name);
+        const kullanimdaMi = kullanilanKartlar.has(kart.name);
+        return !yasakMi && !kullanimdaMi;
+      });
+      
+      console.log(`${kullanilabilirKartlar.length} kullanılabilir kart var`);
+      
+      if (kullanilabilirKartlar.length > 0) {
+        // Yemek adlarını ayıkla
+        let yemekAdlari = extractYemekAdlari(tarifSatir);
+        console.log('Ayıklanan yemek adları:', yemekAdlari);
+        
+        let enIyiKart = null;
+        let enYuksekSkor = 0;
+        let enIyiTip = '';
+        
+        // Her yemek adı için eşleştirme dene
+        for (let yemekAdi of yemekAdlari) {
+          const tarifNorm = normalize(yemekAdi);
+          const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 2);
+          
+          console.log('Yemek adı analizi:', { yemekAdi, normalize: tarifNorm, kelimeler: tarifKelimeler });
+          
+          for (let kart of kullanilabilirKartlar) {
+            const kartNorm = normalize(temizleDosyaAdi(kart.name));
+            const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 2);
+            
+            let skor = 0;
+            let tip = '';
+            
+            // 1. TAM EŞLEŞME KONTROLÜ (en yüksek öncelik)
+            if (tarifNorm === kartNorm) {
+              skor = 1000;
+              tip = 'tam eşleşme';
+            }
+            // 2. ARDIŞ​IK KELİME EŞLEŞME KONTROLÜ
+            else if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+              skor = 500;
+              tip = 'ardışık eşleşme';
+            }
+            // 3. KELİME EŞLEŞME SKORU
+            else {
+              let eslesenKelimeSayisi = 0;
+              let tamEslesenSayisi = 0;
+              
+              for (const tarifKelime of tarifKelimeler) {
+                for (const kartKelime of kartKelimeler) {
+                  if (tarifKelime === kartKelime) {
+                    tamEslesenSayisi++;
+                    eslesenKelimeSayisi++;
+                  } else if (tarifKelime.includes(kartKelime) || kartKelime.includes(tarifKelime)) {
+                    eslesenKelimeSayisi++;
+                  }
+                }
+              }
+              
+              if (tamEslesenSayisi > 0) {
+                skor = tamEslesenSayisi * 50 + eslesenKelimeSayisi * 10;
+                tip = 'kelime eşleşme';
+              } else if (eslesenKelimeSayisi > 0) {
+                skor = eslesenKelimeSayisi * 10;
+                tip = 'kısmi eşleşme';
+              }
+            }
+            
+            console.log('Kart skoru:', {
+              kart: kart.name,
+              kartNorm,
+              skor,
+              tip,
+              yemekAdi
+            });
+            
+            if (skor > enYuksekSkor) {
+              enYuksekSkor = skor;
+              enIyiKart = kart;
+              enIyiTip = tip;
+            }
           }
-
-          const kartNorm = normalize(temizleDosyaAdi(kart.name));
-          const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
-
-          // 1. Önce tam eşleşme kontrol et
-          if (tarifNorm === kartNorm) {
-            eslesen = kart;
-            eslesenKartlar = [kart];
-            eslesenTip = 'tam eşleşme';
-            break;
-          }
-
-          // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
-          if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-            eslesen = kart;
-            eslesenKartlar = [kart];
-            eslesenTip = 'ardışık eşleşme';
-            break;
-          }
+          
+          // Tam eşleşme bulunursa diğer yemek adlarına bakma
+          if (enYuksekSkor >= 1000) break;
         }
-
-        // Eşleşme bulunursa bu yemek adı için dur
-        if (eslesen) {
-          kullanilanKartlar.add(eslesen.name);
-          break;
+        
+        // Minimum skor şartını karşılıyorsa kartı seç
+        if (enIyiKart && enYuksekSkor >= 10) {
+          eslesenKartlar = [enIyiKart];
+          eslesenTip = enIyiTip;
+          kullanilanKartlar.add(enIyiKart.name);
+          console.log('🎯 OTOMATİK KART SEÇİLDİ:', {
+            kart: enIyiKart.name,
+            skor: enYuksekSkor,
+            tip: enIyiTip
+          });
+        } else {
+          console.log('❌ YETERLİ SKOR YOK (min: 10, bulunan:', enYuksekSkor, ')');
         }
+      } else {
+        console.log('❌ KULLANILABILIR KART YOK');
       }
     }
 
@@ -2622,8 +2695,10 @@ function duzenleHafta(i) {
           tip: eslesenTip 
         });
       });
+      console.log('✅ TARİF EŞLEŞTÎ:', tarif, '→', eslesenKartlar[0].name);
     } else {
       eslesmeyenTarifler.push(tarif);
+      console.log('❌ TARİF EŞLEŞMEDI:', tarif);
     }
   });
 
