@@ -272,6 +272,12 @@
         varsayilanManuelEslestirmeleriEkle();
       }
       
+      // Eğer hiç yasak kuralı yoksa, varsayılan yasakları ekle
+      if (Object.keys(eslesmemeKurallari).length === 0) {
+        console.log('Varsayılan eşleşme yasakları ekleniyor...');
+        varsayilanYasaklariEkle();
+      }
+      
       // Token varsa GitHub'dan da yükle
       const token = document.getElementById('githubToken').value.trim();
       if (token) {
@@ -329,11 +335,8 @@
         'kuzu guvec': ['kuzu_guvec.jpg'],
         'kırmızı et ile guvec': ['kuzu_guvec.jpg'],
         'brokoli corbası': ['ketojenik_brokoli_corbasi.jpg'],
-        // Sadece spesifik avokado+roka kombinasyonları
         'avokado ve roka salata': ['avokadolu_roka_salatasi.jpg'],
         'avokadolu roka salatası': ['avokadolu_roka_salatasi.jpg'],
-        'avokado roka salatası': ['avokadolu_roka_salatasi.jpg'],
-        'roka avokado salatası': ['avokadolu_roka_salatasi.jpg'],
         'taze fasulyeli kıymalı sote': ['taze_fasulyeli_kiymali_sote.jpg']
       };
 
@@ -353,6 +356,53 @@
       // Kaydet
       manuelEslestirmeleriKaydet();
       console.log('Varsayılan manuel eşleştirmeler eklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
+    }
+
+    // Varsayılan yasakları ekle
+    function varsayilanYasaklariEkle() {
+      // Normalize fonksiyonu
+      function normalizeLocal(str) {
+        return str
+          .toLowerCase()
+          .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+          .replace(/i̇/g, 'i')
+          .replace(/[_*\/()]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/[^a-z0-9\s]/g, '')
+          .trim();
+      }
+
+      // Varsayılan yasaklar - mantıksız eşleşmeleri önler
+      const varsayilanYasaklar = {
+        'brokoli corbası': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'kuzu_guvec.jpg'], // Çorba yemekleri et ile eşleşmesin
+        'ketojenik brokoli corbası': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'kuzu_guvec.jpg'],
+        'avokado salata': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'kuzu_guvec.jpg'], // Salata et ile eşleşmesin
+        'avokadolu roka salatası': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'kuzu_guvec.jpg'],
+        'roka salatası': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'kuzu_guvec.jpg'],
+        'yogurtlu enginar': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg'], // Yoğurtlu yemekler et ile karışmasın
+        'yogurtlu kereviz salatası': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg'],
+        'manti': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg'], // Mantı köfte ile karışmasın
+        'enginar mantisi': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg'],
+        'karnabahar manti': ['keto_kofte.jpg', 'adana_urfa_kebap.jpg']
+      };
+
+      // Varsayılan yasakları ekle
+      Object.entries(varsayilanYasaklar).forEach(([tarifAdi, yasakliKartlar]) => {
+        const normalizeEdilmis = normalizeLocal(tarifAdi);
+        if (!eslesmemeKurallari[normalizeEdilmis]) {
+          eslesmemeKurallari[normalizeEdilmis] = {
+            orijinalMetin: tarifAdi,
+            yasakliKartlar: yasakliKartlar,
+            eklemeTarihi: new Date().toISOString(),
+            varsayilan: true
+          };
+        }
+      });
+
+      // Kaydet
+      eslesmemeKurallariniKaydet();
+      console.log('Varsayılan eşleşme yasakları eklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
     }
 
     // Debug fonksiyonu - eşleşme yasaklarını detaylı analiz et
@@ -375,44 +425,47 @@
 
       // Test cümleleri
       const testCumleleri = [
-        '*kıymalı karnabahar /bamya yemegi(150 gr kıyma)',
-        'Avokado ve Roka Salata',
-        '*KÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±ymalÃÂÃÂÃÂÃÂÃÂÃÂÃÂ± karnabahar /bamya yemegi',
-        'kıymalı kabak/ yeşil fasulye yemegi',
-        'enginar ya da karnabahar mantısı (150 gr kıyma ile)',
-        '200 gram köfte / ya da 150 gram kuzu kavurma'
+        'brokoli corbası',
+        'ketojenik brokoli corbası', 
+        'avokado ve roka salata',
+        'yogurtlu enginar',
+        'enginar mantısı',
+        '*Kıymalı karnabahar /bamya yemegi(150 gr kıyma)',
+        'Avokado ve Roka Salata'
       ];
 
       console.log('\n=== MEVCUT YASAK KURALLARI ===');
       Object.entries(eslesmemeKurallari).forEach(([anahtar, deger]) => {
-        console.log(`"${anahtar}" → YASAKLI: [${deger.yasakliKartlar.join(', ')}]`);
-        console.log(`  Orijinal: "${deger.orijinalMetin}"`);
+        console.log(`"${anahtar}" → Yasaklı kartlar: [${deger.yasakliKartlar.join(', ')}]`);
+        if (deger.varsayilan) console.log('  (Varsayılan yasak)');
       });
 
       console.log('\n=== TEST EDİLEN CÜMLELER ===');
       testCumleleri.forEach(cumle => {
         const normalize = normalizeLocal(cumle);
-        console.log(`\n"${cumle}"`);
-        console.log(`  Normalize: "${normalize}"`);
         
         // Test kartları
-        const testKartlari = ['kiymali_karnabahar_yemegi.jpg', 'kiymali_bamya_yemegi.jpg', 'avokadolu_roka_salatasi.jpg'];
+        const testKartlari = ['keto_kofte.jpg', 'adana_urfa_kebap.jpg', 'ketojenik_brokoli_corbasi.jpg'];
+        
+        console.log(`"${cumle}"`);
+        console.log(`  Normalize: "${normalize}"`);
+        
         testKartlari.forEach(kart => {
-          const yasakVarMi = eslesmemeKontrolu(cumle, kart);
-          console.log(`  ${kart}: ${yasakVarMi ? '🚫 YASAKLI' : '✅ İZİNLİ'}`);
+          const yasakli = eslesmemeKontrolu(cumle, kart);
+          console.log(`  ${kart}: ${yasakli ? '🚫 YASAKLI' : '✅ İzinli'}`);
         });
+        console.log('');
       });
 
       // Konsol mesajını da UI'de göster
       const statusDiv = document.getElementById('eslesmemeStatus');
       statusDiv.style.display = 'block';
-      statusDiv.style.background = '#d1ecf1';
-      statusDiv.style.color = '#0c5460';
+      statusDiv.style.background = '#f8d7da';
+      statusDiv.style.color = '#721c24';
       statusDiv.innerHTML = `
         <strong>🔍 YASAK KURALLARI DEBUG RAPORU</strong><br>
         Toplam yasak kuralı: ${Object.keys(eslesmemeKurallari).length} adet<br>
-        Detaylı analiz konsola yazdırıldı (F12 > Console)<br>
-        <small>Yasaklar artık kısmi eşleşme ve yemek adı çıkarımı ile çalışır</small>
+        Detaylar konsola yazdırıldı (F12 > Console)
       `;
     }
 
@@ -638,17 +691,24 @@
       
       const normalizeEdilmis = normalizeLocal(tarifAdi);
       
-      // Kaydet
-      eslesmemeKurallari[normalizeEdilmis] = {
-        orijinalMetin: tarifAdi,
-        yasakliKartlar: secilenKartlar,
-        eklemeTarihi: new Date().toISOString()
-      };
+      // Eğer zaten varsa, kartları birleştir
+      if (eslesmemeKurallari[normalizeEdilmis]) {
+        const mevcutKartlar = eslesmemeKurallari[normalizeEdilmis].yasakliKartlar;
+        const yeniKartlar = secilenKartlar.filter(k => !mevcutKartlar.includes(k));
+        eslesmemeKurallari[normalizeEdilmis].yasakliKartlar = [...mevcutKartlar, ...yeniKartlar];
+        eslesmemeStatusGoster(`✅ Mevcut yasağa ${yeniKartlar.length} yeni kart eklendi!`, 'success');
+      } else {
+        // Yeni yasak oluştur
+        eslesmemeKurallari[normalizeEdilmis] = {
+          orijinalMetin: tarifAdi,
+          yasakliKartlar: secilenKartlar,
+          eklemeTarihi: new Date().toISOString()
+        };
+        eslesmemeStatusGoster(`✅ Yeni yasak eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart yasaklandı`, 'success');
+      }
       
       eslesmemeKurallariniKaydet();
       eslesmemeListesiniGoster();
-      
-      eslesmemeStatusGoster(`✅ Yasak eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart yasaklandı`, 'success');
       
       // Formu temizle
       document.getElementById('yasakTarifAdi').value = '';
@@ -2146,60 +2206,18 @@ function duzenleHafta(i) {
     
     // Orijinal tarif satırını normalize et
     const normalizeEdilmis = normalizeLocal(tarifSatir);
-    console.log('MANUEL EŞLEŞTIRME KONTROL:', {
+    console.log('Manuel eşleştirme kontrol:', {
       orijinal: tarifSatir,
       normalize: normalizeEdilmis,
-      mevcutEslestirmeSayisi: Object.keys(manuelEslestirmeler).length
+      mevcutEslestirmeler: Object.keys(manuelEslestirmeler)
     });
-
-    // Özel durum: "yeşil salata" kontrolü
-    // Sadece "avokado" VE "roka" içeriyorsa "avokadolu_roka_salatasi.jpg" kullanılabilir
-    if (normalizeEdilmis.includes('yesil salata')) {
-      console.log('🥗 Yeşil salata tespit edildi, özel kontrol yapılıyor');
-      const avokadoVarMi = normalizeEdilmis.includes('avokado');
-      const rokaVarMi = normalizeEdilmis.includes('roka');
-      
-      console.log('Yeşil salata içerik analizi:', {
-        avokado: avokadoVarMi,
-        roka: rokaVarMi,
-        metin: normalizeEdilmis
-      });
-      
-      if (!avokadoVarMi || !rokaVarMi) {
-        console.log('❌ Yeşil salata avokado veya roka içermiyor, avokadolu_roka_salatasi.jpg engelleniyor');
-        // Avokadolu roka salatası eşleştirmelerini filtrele
-        const filtreliEslestirmeler = {};
-        Object.entries(manuelEslestirmeler).forEach(([anahtar, eslestirme]) => {
-          if (!eslestirme.kartlar.includes('avokadolu_roka_salatasi.jpg')) {
-            filtreliEslestirmeler[anahtar] = eslestirme;
-          }
-        });
-        
-        // Filtrelenmiş eşleştirmelerle devam et
-        return manuelEslestirmeAra(tarifSatir, filtreliEslestirmeler, normalizeLocal);
-      }
-    }
-    
-    // Normal manuel eşleştirme kontrolü
-    return manuelEslestirmeAra(tarifSatir, manuelEslestirmeler, normalizeLocal);
-  }
-
-  // Manuel eşleştirme arama fonksiyonu
-  function manuelEslestirmeAra(tarifSatir, eslestirmeler, normalizeFunc) {
-    const normalizeEdilmis = normalizeFunc(tarifSatir);
     
     // Önce tam eşleşme kontrol et
-    if (eslestirmeler[normalizeEdilmis]) {
-      const eslestirme = eslestirmeler[normalizeEdilmis];
-      console.log('TAM EŞLEŞME BULUNDU:', {
-        kural: eslestirme.orijinalMetin,
-        kartlar: eslestirme.kartlar
-      });
+    if (manuelEslestirmeler[normalizeEdilmis]) {
+      const eslestirme = manuelEslestirmeler[normalizeEdilmis];
+      console.log('TAM EŞLEŞME BULUNDU:', eslestirme);
       return eslestirme.kartlar.map(kartAdi => {
         const kart = tumKartlar.find(k => k.name === kartAdi);
-        if (!kart) {
-          console.log('KART BULUNAMADI:', kartAdi);
-        }
         return kart || null;
       }).filter(k => k !== null);
     }
@@ -2207,7 +2225,7 @@ function duzenleHafta(i) {
     // Eğer tam eşleşme yoksa, anahtar kelimeler ile eşleşme dene
     const tarifKelimeler = normalizeEdilmis.split(' ').filter(k => k.length > 2); // 2 karakterden uzun kelimeler
     
-    for (let [anahtar, eslestirme] of Object.entries(eslestirmeler)) {
+    for (let [anahtar, eslestirme] of Object.entries(manuelEslestirmeler)) {
       const anahtarKelimeler = anahtar.split(' ').filter(k => k.length > 2);
       
       // Anahtar kelimelerin çoğu varsa eşleşme say
@@ -2219,26 +2237,21 @@ function duzenleHafta(i) {
       if (eslesenKelimeSayisi >= Math.max(1, Math.floor(anahtarKelimeler.length * 0.7))) {
         console.log('KİSMİ EŞLEŞME BULUNDU:', {
           anahtar: anahtar,
-          orijinalKural: eslestirme.orijinalMetin,
           eslesenKelimeSayisi: eslesenKelimeSayisi,
           toplamKelime: anahtarKelimeler.length,
-          kartlar: eslestirme.kartlar
+          eslestirme: eslestirme
         });
         return eslestirme.kartlar.map(kartAdi => {
           const kart = tumKartlar.find(k => k.name === kartAdi);
-          if (!kart) {
-            console.log('KART BULUNAMADI:', kartAdi);
-          }
           return kart || null;
         }).filter(k => k !== null);
       }
     }
     
-    console.log('MANUEL EŞLEŞTIRME YOK');
     return null;
   }
 
-  // Eşleşme yasağı kontrolü - Geliştirilmiş versiyon
+  // Eşleşme yasağı kontrolü - Gelişmiş versiyon
   function eslesmemeKontrolu(tarifSatir, kartAdi) {
     // Normalize fonksiyonu
     function normalizeLocal(str) {
@@ -2253,107 +2266,49 @@ function duzenleHafta(i) {
         .trim();
     }
     
-    const normalizeEdilmis = normalizeLocal(tarifSatir);
-
-    // Özel yasak: "yeşil salata" ve "avokadolu_roka_salatasi.jpg" kontrolü
-    if (normalizeEdilmis.includes('yesil salata') && kartAdi === 'avokadolu_roka_salatasi.jpg') {
-      const avokadoVarMi = normalizeEdilmis.includes('avokado');
-      const rokaVarMi = normalizeEdilmis.includes('roka');
-      
-      console.log('ÖZEL YASAK KONTROL - Yeşil salata + avokadolu roka salatası:', {
-        tarif: tarifSatir,
-        avokado: avokadoVarMi,
-        roka: rokaVarMi
-      });
-      
-      // Eğer avokado VE roka yoksa yasak
-      if (!avokadoVarMi || !rokaVarMi) {
-        console.log('❌ YASAK: Yeşil salata avokado veya roka içermiyor, avokadolu_roka_salatasi.jpg kullanılamaz');
-        return true;
-      }
-    }
+    // Debug için
+    console.log('Yasak kontrolü:', {
+      tarif: tarifSatir,
+      kart: kartAdi,
+      yasakSayisi: Object.keys(eslesmemeKurallari).length
+    });
+    
+    const normalizeEdilmisTarif = normalizeLocal(tarifSatir);
+    const tarifKelimeler = normalizeEdilmisTarif.split(' ').filter(k => k.length > 2); // 2 karakterden uzun kelimeler
     
     // 1. Önce tam eşleşme kontrol et
-    if (eslesmemeKurallari[normalizeEdilmis]) {
-      const yasak = eslesmemeKurallari[normalizeEdilmis];
-      const yasakVarMi = yasak.yasakliKartlar.includes(kartAdi);
-      if (yasakVarMi) {
-        console.log('YASAK - Tam eşleşme:', {
+    if (eslesmemeKurallari[normalizeEdilmisTarif]) {
+      const yasak = eslesmemeKurallari[normalizeEdilmisTarif];
+      const yasakli = yasak.yasakliKartlar.includes(kartAdi);
+      if (yasakli) {
+        console.log('TAM YASAK EŞLEŞME:', {
           tarif: tarifSatir,
           kart: kartAdi,
-          yasakKural: yasak.orijinalMetin
+          yasakKurali: yasak.orijinalMetin
         });
-        return true;
       }
+      return yasakli;
     }
     
-    // 2. Kısmi eşleşme kontrolü - anahtar kelimeler
-    const tarifKelimeler = normalizeEdilmis.split(' ').filter(k => k.length > 2);
-    
-    for (let [anahtar, yasak] of Object.entries(eslesmemeKurallari)) {
-      const anahtarKelimeler = anahtar.split(' ').filter(k => k.length > 2);
+    // 2. Kısmi eşleşme kontrol et - yasaklı tarif cümlesinin anahtar kelimeleri varsa
+    for (let [yasakAnahtar, yasak] of Object.entries(eslesmemeKurallari)) {
+      const yasakKelimeler = yasakAnahtar.split(' ').filter(k => k.length > 2);
       
-      // Anahtar kelimelerin çoğu eşleşiyorsa yasak kontrol et
-      const eslesenKelimeSayisi = anahtarKelimeler.filter(ak => 
-        tarifKelimeler.some(tk => tk.includes(ak) || ak.includes(tk))
+      // Yasak kurallı anahtar kelimelerin %70'i varsa yasak
+      const eslesenKelimeSayisi = yasakKelimeler.filter(yk => 
+        tarifKelimeler.some(tk => tk.includes(yk) || yk.includes(tk))
       ).length;
       
-      // Eğer %60'dan fazla kelime eşleşiyorsa yasak kontrol et
-      if (eslesenKelimeSayisi >= Math.max(1, Math.floor(anahtarKelimeler.length * 0.6))) {
-        const yasakVarMi = yasak.yasakliKartlar.includes(kartAdi);
-        if (yasakVarMi) {
-          console.log('YASAK - Kısmi eşleşme:', {
+      if (eslesenKelimeSayisi >= Math.max(1, Math.floor(yasakKelimeler.length * 0.7))) {
+        if (yasak.yasakliKartlar.includes(kartAdi)) {
+          console.log('KİSMİ YASAK EŞLEŞME:', {
             tarif: tarifSatir,
             kart: kartAdi,
-            yasakKural: yasak.orijinalMetin,
+            yasakKurali: yasak.orijinalMetin,
             eslesenKelimeSayisi: eslesenKelimeSayisi,
-            toplamKelime: anahtarKelimeler.length
+            toplamYasakKelime: yasakKelimeler.length
           });
           return true;
-        }
-      }
-    }
-    
-    // 3. Yemek adı çıkarımı ile yasak kontrolü
-    const yemekAdlari = extractYemekAdlari(tarifSatir);
-    for (let yemekAdi of yemekAdlari) {
-      const yemekNorm = normalizeLocal(yemekAdi);
-      
-      // Bu yemek adı için yasak var mı?
-      if (eslesmemeKurallari[yemekNorm]) {
-        const yasak = eslesmemeKurallari[yemekNorm];
-        const yasakVarMi = yasak.yasakliKartlar.includes(kartAdi);
-        if (yasakVarMi) {
-          console.log('YASAK - Yemek adı eşleşmesi:', {
-            tarif: tarifSatir,
-            yemekAdi: yemekAdi,
-            kart: kartAdi,
-            yasakKural: yasak.orijinalMetin
-          });
-          return true;
-        }
-      }
-      
-      // Yemek adının kelimelerini de kontrol et
-      const yemekKelimeler = yemekNorm.split(' ').filter(k => k.length > 2);
-      for (let [anahtar, yasak] of Object.entries(eslesmemeKurallari)) {
-        const anahtarKelimeler = anahtar.split(' ').filter(k => k.length > 2);
-        
-        const eslesenKelimeSayisi = anahtarKelimeler.filter(ak => 
-          yemekKelimeler.some(yk => yk.includes(ak) || ak.includes(yk))
-        ).length;
-        
-        if (eslesenKelimeSayisi >= Math.max(1, Math.floor(anahtarKelimeler.length * 0.7))) {
-          const yasakVarMi = yasak.yasakliKartlar.includes(kartAdi);
-          if (yasakVarMi) {
-            console.log('YASAK - Yemek kelime eşleşmesi:', {
-              tarif: tarifSatir,
-              yemekAdi: yemekAdi,
-              kart: kartAdi,
-              yasakKural: yasak.orijinalMetin
-            });
-            return true;
-          }
         }
       }
     }
@@ -2516,173 +2471,110 @@ function duzenleHafta(i) {
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
 
-  // Kart kullanım durumunu sıfırla
-  kartKullanimDurumu = {};
-  console.log('🔄 Kart kullanım durumu sıfırlandı');
-
-  // Her tarif için eşleştirme yap - YENİ GÜÇLÜ ALGORİTMA
+  // Her tarif için eşleştirme yap
   hafta.tarifler.forEach(tarif => {
-    console.log('\n=== YENİ TARİF İŞLEME ===');
-    console.log('Tarif:', tarif);
-    
     let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
+    let eslesen = null;
     let eslesenKartlar = [];
     let eslesenTip = '';
 
-    // ADIM 1: YASAK KONTROLÜ - Tüm kartları kontrol et ve yasaklı olanları listele
-    console.log('ADIM 1: YASAK KONTROLÜ');
-    const yasakliKartlar = new Set();
-    
-    for (const kart of tumKartlar) {
-      if (eslesmemeKontrolu(tarif, kart.name)) {
-        yasakliKartlar.add(kart.name);
-        console.log('🚫 YASAK KART:', kart.name);
+    // Debug: köfte ve kebap için özel çıktı
+    if (tarifSatir.toLowerCase().includes('köfte') || 
+        tarifSatir.toLowerCase().includes('kebap') || 
+        tarifSatir.toLowerCase().includes('mantarlı tavuk sote') || 
+        tarifSatir.toLowerCase().includes('mantarli tavuk sote')) {
+      console.log('DEBUG - Özel yemek analizi:');
+      console.log('Orijinal tarif:', tarifSatir);
+      console.log('DEBUG - Toplam kart sayısı:', tumKartlar.length);
+      console.log('DEBUG - Manuel eşleştirme sayısı:', Object.keys(manuelEslestirmeler).length);
+      if (tarifSatir.toLowerCase().includes('köfte')) {
+        console.log('DEBUG - keto_kofte.jpg var mı?', tumKartlar.some(k => k.name === 'keto_kofte.jpg'));
+      }
+      if (tarifSatir.toLowerCase().includes('kebap')) {
+        console.log('DEBUG - adana_urfa_kebap.jpg var mı?', tumKartlar.some(k => k.name === 'adana_urfa_kebap.jpg'));
       }
     }
-    console.log(`Toplam ${yasakliKartlar.size} kart yasaklı`);
 
-    // ADIM 2: MANUEL EŞLEŞTIRME KONTROLÜ - %100 öncelik
-    console.log('ADIM 2: MANUEL EŞLEŞTIRME KONTROLÜ');
+    // 1. Önce manuel eşleştirme kontrol et
     const manuelEslesenler = manuelEslestirmeKontrol(tarif);
-    
     if (manuelEslesenler && manuelEslesenler.length > 0) {
-      console.log('✅ MANUEL EŞLEŞTIRME BULUNDU:', manuelEslesenler.map(k => k.name));
+      // Manuel eşleştirme bulundu - ama yasaklı kartları filtrele
+      const yasakOlmayanlar = manuelEslesenler.filter(kart => !eslesmemeKontrolu(tarif, kart.name));
+      const kullanilamayacaklar = yasakOlmayanlar.filter(kart => kullanilanKartlar.has(kart.name));
+      const kullanilabilirler = yasakOlmayanlar.filter(kart => !kullanilanKartlar.has(kart.name));
       
-      // Manuel eşleştirmeleri yasak ve kullanım kontrolünden geçir
-      const gecerliManuelKartlar = manuelEslesenler.filter(kart => {
-        const yasakMi = yasakliKartlar.has(kart.name);
-        const kullanimdaMi = kullanilanKartlar.has(kart.name);
-        
-        if (yasakMi) {
-          console.log('❌ MANUEL KART YASAK:', kart.name);
-          return false;
-        }
-        if (kullanimdaMi) {
-          console.log('⚠️ MANUEL KART ZATEN KULLANILIYOR:', kart.name);
-          return false;
-        }
-        return true;
-      });
-      
-      if (gecerliManuelKartlar.length > 0) {
-        // İlk geçerli manuel kartı kullan
-        const secilenKart = gecerliManuelKartlar[0];
-        eslesenKartlar = [secilenKart];
+      if (kullanilabilirler.length > 0) {
+        eslesenKartlar = kullanilabilirler;
         eslesenTip = 'manuel eşleştirme';
-        kullanilanKartlar.add(secilenKart.name);
-        console.log('🎯 MANUEL KART SEÇİLDİ:', secilenKart.name);
-      } else {
-        console.log('❌ HİÇBİR MANUEL KART GEÇERLİ DEĞİL');
+        kullanilabilirler.forEach(kart => kullanilanKartlar.add(kart.name));
+        
+        // Eğer yasaklı kartlar varsa konsola bilgi ver
+        const yasakliSayisi = manuelEslesenler.length - yasakOlmayanlar.length;
+        if (yasakliSayisi > 0) {
+          console.log(`⚠️ "${tarif}" için ${yasakliSayisi} manuel eşleştirme yasak kuralı nedeniyle atlandı`);
+          // Bu bilgiyi kullanıcıya da göster
+          const yasak = document.createElement('div');
+          yasak.innerHTML = `<small style="color: orange;">⚠️ ${yasakliSayisi} eşleştirme yasak kuralları nedeniyle atlandı</small>`;
+          eslesenDiv.appendChild(yasak);
+        }
       }
     } else {
-      console.log('❌ MANUEL EŞLEŞTIRME YOK');
-    }
+      // 2. Otomatik eşleştirme dene
+      let yemekAdlari = extractYemekAdlari(tarifSatir);
 
-    // ADIM 3: OTOMATİK EŞLEŞTIRME - Sadece manuel eşleştirme yoksa
-    if (eslesenKartlar.length === 0) {
-      console.log('ADIM 3: OTOMATİK EŞLEŞTIRME');
-      
-      // Kullanılabilir kartları bul (yasaklı veya kullanılan olmayan)
-      const kullanilabilirKartlar = tumKartlar.filter(kart => {
-        const yasakMi = yasakliKartlar.has(kart.name);
-        const kullanimdaMi = kullanilanKartlar.has(kart.name);
-        return !yasakMi && !kullanimdaMi;
-      });
-      
-      console.log(`${kullanilabilirKartlar.length} kullanılabilir kart var`);
-      
-      if (kullanilabilirKartlar.length > 0) {
-        // Yemek adlarını ayıkla
-        let yemekAdlari = extractYemekAdlari(tarifSatir);
-        console.log('Ayıklanan yemek adları:', yemekAdlari);
-        
-        let enIyiKart = null;
-        let enYuksekSkor = 0;
-        let enIyiTip = '';
-        
-        // Her yemek adı için eşleştirme dene
-        for (let yemekAdi of yemekAdlari) {
-          const tarifNorm = normalize(yemekAdi);
-          const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 2);
-          
-          console.log('Yemek adı analizi:', { yemekAdi, normalize: tarifNorm, kelimeler: tarifKelimeler });
-          
-          for (let kart of kullanilabilirKartlar) {
-            const kartNorm = normalize(temizleDosyaAdi(kart.name));
-            const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 2);
-            
-            let skor = 0;
-            let tip = '';
-            
-            // 1. TAM EŞLEŞME KONTROLÜ (en yüksek öncelik)
-            if (tarifNorm === kartNorm) {
-              skor = 1000;
-              tip = 'tam eşleşme';
-            }
-            // 2. ARDIŞ​IK KELİME EŞLEŞME KONTROLÜ
-            else if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-              skor = 500;
-              tip = 'ardışık eşleşme';
-            }
-            // 3. KELİME EŞLEŞME SKORU
-            else {
-              let eslesenKelimeSayisi = 0;
-              let tamEslesenSayisi = 0;
-              
-              for (const tarifKelime of tarifKelimeler) {
-                for (const kartKelime of kartKelimeler) {
-                  if (tarifKelime === kartKelime) {
-                    tamEslesenSayisi++;
-                    eslesenKelimeSayisi++;
-                  } else if (tarifKelime.includes(kartKelime) || kartKelime.includes(tarifKelime)) {
-                    eslesenKelimeSayisi++;
-                  }
-                }
-              }
-              
-              if (tamEslesenSayisi > 0) {
-                skor = tamEslesenSayisi * 50 + eslesenKelimeSayisi * 10;
-                tip = 'kelime eşleşme';
-              } else if (eslesenKelimeSayisi > 0) {
-                skor = eslesenKelimeSayisi * 10;
-                tip = 'kısmi eşleşme';
-              }
-            }
-            
-            console.log('Kart skoru:', {
-              kart: kart.name,
-              kartNorm,
-              skor,
-              tip,
-              yemekAdi
-            });
-            
-            if (skor > enYuksekSkor) {
-              enYuksekSkor = skor;
-              enIyiKart = kart;
-              enIyiTip = tip;
-            }
+      // Her yemek adı için eşleştirme dene
+      for (let yemekAdi of yemekAdlari) {
+        const tarifNorm = normalize(yemekAdi);
+        const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
+        let eslesen = null;
+        let eslesenTip = '';
+
+        // Debug için yasaklı kartları say ve göster
+        const yasakliKartlar = [];
+        tumKartlar.forEach(kart => {
+          if (eslesmemeKontrolu(tarif, kart.name)) {
+            yasakliKartlar.push(kart.name);
           }
-          
-          // Tam eşleşme bulunursa diğer yemek adlarına bakma
-          if (enYuksekSkor >= 1000) break;
-        }
+        });
         
-        // Minimum skor şartını karşılıyorsa kartı seç
-        if (enIyiKart && enYuksekSkor >= 10) {
-          eslesenKartlar = [enIyiKart];
-          eslesenTip = enIyiTip;
-          kullanilanKartlar.add(enIyiKart.name);
-          console.log('🎯 OTOMATİK KART SEÇİLDİ:', {
-            kart: enIyiKart.name,
-            skor: enYuksekSkor,
-            tip: enIyiTip
-          });
-        } else {
-          console.log('❌ YETERLİ SKOR YOK (min: 10, bulunan:', enYuksekSkor, ')');
+        if (yasakliKartlar.length > 0) {
+          console.log(`🚫 "${tarif}" için yasaklanan kartlar:`, yasakliKartlar);
         }
-      } else {
-        console.log('❌ KULLANILABILIR KART YOK');
+
+        // Kullanılmayan kartlar arasında ara
+        for (let kart of tumKartlar) {
+          if (kullanilanKartlar.has(kart.name)) continue;
+
+          // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
+          if (eslesmemeKontrolu(tarif, kart.name)) {
+            continue; // Bu kart yasaklı, sonrakine geç
+          }
+
+          const kartNorm = normalize(temizleDosyaAdi(kart.name));
+          const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
+
+          // 1. Önce tam eşleşme kontrol et
+          if (tarifNorm === kartNorm) {
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'tam eşleşme';
+            break;
+          }
+
+          // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
+          if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
+            eslesen = kart;
+            eslesenKartlar = [kart];
+            eslesenTip = 'ardışık eşleşme';
+            break;
+          }
+        }
+
+        // Eşleşme bulunursa bu yemek adı için dur
+        if (eslesen) {
+          kullanilanKartlar.add(eslesen.name);
+          break;
+        }
       }
     }
 
@@ -2695,10 +2587,8 @@ function duzenleHafta(i) {
           tip: eslesenTip 
         });
       });
-      console.log('✅ TARİF EŞLEŞTÎ:', tarif, '→', eslesenKartlar[0].name);
     } else {
       eslesmeyenTarifler.push(tarif);
-      console.log('❌ TARİF EŞLEŞMEDI:', tarif);
     }
   });
 
