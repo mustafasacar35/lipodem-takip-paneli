@@ -1721,6 +1721,14 @@
     function haftaEkle() {
       if (!seciliHasta) return;
       if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
+      
+      // Bir sonraki hafta numarasını hesapla
+      let sonrakiHaftaNo = 1;
+      if (seciliHasta.haftalar.length > 0) {
+        const sonHafta = seciliHasta.haftalar[seciliHasta.haftalar.length - 1];
+        sonrakiHaftaNo = (sonHafta.haftaNo || seciliHasta.haftalar.length) + 1;
+      }
+      
       let startDate = null;
       if (seciliHasta.haftalar.length > 0) {
         // Son haftanın pazarından bir gün sonrası
@@ -1735,6 +1743,7 @@
       }
       const endDate = new Date(startDate.getTime() + 6*24*60*60*1000);
       seciliHasta.haftalar.push({
+        haftaNo: sonrakiHaftaNo, // YENİ: Hafta numarası
         baslangic: startDate.toISOString().slice(0,10),
         bitis: endDate.toISOString().slice(0,10),
         aciklama: '',
@@ -1751,16 +1760,39 @@
       const div = document.getElementById('haftaListesi');
       div.innerHTML = '';
       const haftalar = getHaftaListesi();
+      
+      // Backward compatibility: Mevcut haftalara hafta numarası ekle
+      let haftaNumarasiDegisti = false;
       haftalar.forEach((hafta, i) => {
+        if (!hafta.haftaNo) {
+          hafta.haftaNo = i + 1;
+          haftaNumarasiDegisti = true;
+        }
+      });
+      if (haftaNumarasiDegisti) {
+        saveToStorage();
+        console.log('🔄 Mevcut haftalara hafta numaraları eklendi');
+      }
+      
+      haftalar.forEach((hafta, i) => {
+        // Hafta numarasını backward compatibility için kontrol et
+        const haftaNo = hafta.haftaNo || (i + 1);
+        
         const haftaDiv = document.createElement('div');
         haftaDiv.style = 'border:1px solid #ccc; margin:8px 0; padding:8px; background:#f8f8ff;';
         haftaDiv.innerHTML =
-          `<b>${i+1}. Hafta</b> (${hafta.baslangic} - ${hafta.bitis})
-          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-left:8px;width:180px;">
-          <button onclick="aciklamaKaydet(${i})">Kaydet</button>
-          <button onclick="duzenleHafta(${i})">Düzenle</button>
-          <button onclick="silHafta(${i})" style="color:red;">Sil</button><br>
+          `<div style="display:flex; align-items:center; margin-bottom:8px;">
+            <label style="font-weight:bold; margin-right:5px;">Hafta No:</label>
+            <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" style="width:60px; margin-right:10px;" onchange="haftaNoKaydet(${i})">
+            <span style="font-weight:bold;">. Hafta</span>
+            <span style="margin-left:15px;">(${hafta.baslangic} - ${hafta.bitis})</span>
+            <button onclick="duzenleHafta(${i})" style="margin-left:auto;">Düzenle</button>
+            <button onclick="silHafta(${i})" style="color:red; margin-left:5px;">Sil</button>
+          </div>
+          <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" placeholder="Açıklama" style="margin-bottom:8px;width:280px;">
+          <button onclick="aciklamaKaydet(${i})">Açıklama Kaydet</button><br>
           <b>PDF:</b> <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)">
+          ${hafta.pdf ? `<span style="color:green; margin-left:10px;">✅ PDF yüklü: ${hafta.pdfName || 'hafta.pdf'}</span>` : ''}
           <ul id="haftaTarifListesi_${i}" style="display:none;"></ul>
           <b>Tarif Kartı (manuel yükleme):</b> <input type="file" accept="image/jpeg,image/jpg,image/png" multiple onchange="tarifKartYukleHafta(${i}, this)">
           <div id="haftaKartGorsel_${i}"></div>
@@ -1787,6 +1819,81 @@ function aciklamaKaydet(i) {
   haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
   saveToStorage();
   alert('Açıklama kaydedildi.');
+}
+
+// Hafta numarası kaydet
+function haftaNoKaydet(i) {
+  const haftalar = getHaftaListesi();
+  const yeniHaftaNo = parseInt(document.getElementById('haftaNo_' + i).value);
+  
+  if (yeniHaftaNo < 1 || yeniHaftaNo > 52) {
+    alert('Hafta numarası 1-52 arasında olmalıdır!');
+    document.getElementById('haftaNo_' + i).value = haftalar[i].haftaNo || (i + 1);
+    return;
+  }
+  
+  haftalar[i].haftaNo = yeniHaftaNo;
+  saveToStorage();
+  console.log(`Hafta numarası güncellendi: ${yeniHaftaNo}. hafta`);
+}
+
+// PDF dosya adından hafta numarasını çıkar
+function pdfDosyaAdindenHaftaNoAl(dosyaAdi) {
+  if (!dosyaAdi) return null;
+  
+  // Farklı hafta formatlarını kontrol et
+  const patterns = [
+    /(\d+)\.?\s*hafta/i,           // "8. hafta", "8 hafta", "8.hafta"
+    /hafta\s*(\d+)/i,              // "hafta 8", "hafta8"
+    /week\s*(\d+)/i,               // "week 8", "week8"
+    /(\d+)\.?\s*week/i,            // "8. week", "8 week"
+    /w(\d+)/i,                     // "w8", "W8"
+    /(\d+)\.?\s*hf/i,              // "8. hf", "8 hf", "8hf"
+    /hf\s*(\d+)/i,                 // "hf 8", "hf8"
+    /(\d+)\.?\s*h(?![a-z])/i,      // "8. h", "8 h", "8h" (ama "hafta" olmayacak)
+  ];
+  
+  for (let pattern of patterns) {
+    const match = dosyaAdi.match(pattern);
+    if (match) {
+      const haftaNo = parseInt(match[1]);
+      if (haftaNo >= 1 && haftaNo <= 52) {
+        console.log(`📅 PDF dosya adından hafta numarası bulundu: "${dosyaAdi}" → ${haftaNo}. hafta`);
+        return haftaNo;
+      }
+    }
+  }
+  
+  console.log(`⚠️ PDF dosya adından hafta numarası çıkarılamadı: "${dosyaAdi}"`);
+  return null;
+}
+
+// PDF içeriğinden hafta numarasını çıkar
+function pdfIcerigindenhaftaNoAl(pdfIcerik) {
+  if (!pdfIcerik) return null;
+  
+  // İlk birkaç satırdan hafta numarasını ara
+  const ilkSatirlar = pdfIcerik.split('\n').slice(0, 20).join(' ');
+  
+  const patterns = [
+    /(\d+)\.?\s*hafta/i,
+    /hafta\s*(\d+)/i,
+    /week\s*(\d+)/i,
+    /(\d+)\.?\s*week/i,
+  ];
+  
+  for (let pattern of patterns) {
+    const match = ilkSatirlar.match(pattern);
+    if (match) {
+      const haftaNo = parseInt(match[1]);
+      if (haftaNo >= 1 && haftaNo <= 52) {
+        console.log(`📄 PDF içeriğinden hafta numarası bulundu: ${haftaNo}. hafta`);
+        return haftaNo;
+      }
+    }
+  }
+  
+  return null;
 }
 
 // Hafta sil
@@ -1821,6 +1928,30 @@ function duzenleHafta(i) {
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
+        
+        // PDF dosya adından hafta numarasını otomatik tespit et
+        const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
+        if (dosyaAdindenHaftaNo) {
+          const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+          haftalar[i].haftaNo = dosyaAdindenHaftaNo;
+          
+          console.log(`🎯 Hafta numarası otomatik güncellendi: ${eskiHaftaNo}. hafta → ${dosyaAdindenHaftaNo}. hafta`);
+          
+          // UI'da görsel feedback göster
+          setTimeout(() => {
+            const haftaNoInput = document.getElementById('haftaNo_' + i);
+            if (haftaNoInput) {
+              haftaNoInput.value = dosyaAdindenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d4edda';
+              haftaNoInput.style.borderColor = '#28a745';
+              setTimeout(() => {
+                haftaNoInput.style.backgroundColor = '';
+                haftaNoInput.style.borderColor = '';
+              }, 2000);
+            }
+          }, 100);
+        }
+        
         saveToStorage();
         // PDF yüklenir yüklenmez otomatik tara ve eşleştir
         pdfOkuVeEsleHafta(i);
@@ -1845,6 +1976,31 @@ function duzenleHafta(i) {
         const strings = content.items.map(item => item.str);
         fullText += strings.join('\n') + '\n';
       }
+      
+      // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
+      const haftalar = getHaftaListesi();
+      const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+      if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(hafta.pdfName)) {
+        const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+        haftalar[i].haftaNo = iceriktenHaftaNo;
+        
+        console.log(`📄 PDF içeriğinden hafta numarası güncellendi: ${eskiHaftaNo}. hafta → ${iceriktenHaftaNo}. hafta`);
+        
+        // UI'da görsel feedback göster
+        setTimeout(() => {
+          const haftaNoInput = document.getElementById('haftaNo_' + i);
+          if (haftaNoInput) {
+            haftaNoInput.value = iceriktenHaftaNo;
+            haftaNoInput.style.backgroundColor = '#d1ecf1';
+            haftaNoInput.style.borderColor = '#17a2b8';
+            setTimeout(() => {
+              haftaNoInput.style.backgroundColor = '';
+              haftaNoInput.style.borderColor = '';
+            }, 2000);
+          }
+        }, 100);
+      }
+      
       hafta.tarifler = extractTariflerDetay(fullText);
       saveToStorage();
       // Otomatik eşleştir
@@ -2499,7 +2655,9 @@ function duzenleHafta(i) {
           haftalar.forEach((hafta, index) => {
             const manuelKartSayisi = (hafta.tarifKartlar && hafta.tarifKartlar.length) || 0;
             const tarifSayisi = (hafta.tarifler && hafta.tarifler.length) || 0;
-            console.log(`📅 Hafta ${index + 1}: ${manuelKartSayisi} manuel kart, ${tarifSayisi} tarif`);
+            const haftaNo = hafta.haftaNo || (index + 1);
+            const pdfDurum = hafta.pdf ? '✅ PDF var' : '❌ PDF yok';
+            console.log(`📅 Hafta ${haftaNo} (sıra: ${index + 1}): ${manuelKartSayisi} manuel kart, ${tarifSayisi} tarif, ${pdfDurum}`);
           });
         } else {
           console.log('⚠️ Seçili hasta yok');
