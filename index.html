@@ -178,6 +178,7 @@
       <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
       <button onclick="document.getElementById('testPdfInput').click()" style="background:#fd7e14; color:white;">📄 PDF Analiz Et</button>
       <button onclick="generatePatientPDF()" style="background:#dc3545; color:white; margin-left:5px;">📋 Takip Tablosu PDF Oluştur</button>
+      <button onclick="testPDFGenerator()" style="background:#28a745; color:white; margin-left:5px;">🧪 PDF Test</button>
     </div>
   </div>
 
@@ -2391,149 +2392,192 @@ function duzenleHafta(i) {
 
     // PDF Generator - Hasta Takip Tablosu Oluştur
     function generatePatientPDF() {
+      console.log('🎯 PDF Generator başlatılıyor...');
+      
       if (!seciliHasta) {
         alert('Lütfen önce bir hasta seçin!');
+        console.log('❌ Hasta seçilmemiş');
         return;
       }
+      
+      console.log('✅ Seçili hasta:', seciliHasta.isim);
       
       const haftalar = getHaftaListesi();
       if (haftalar.length === 0) {
         alert('Bu hasta için hiç hafta kaydı bulunamadı!');
+        console.log('❌ Hafta kaydı bulunamadı');
         return;
       }
       
+      console.log('✅ Hafta sayısı:', haftalar.length);
+      
       // Kaç hafta PDF'e dahil edilecek
       const haftaSayisi = parseInt(prompt('Kaç hafta PDF\'e dahil edilsin?', '12')) || 12;
+      console.log('✅ PDF için hafta sayısı:', haftaSayisi);
       
       generatePDFTable(seciliHasta.isim, haftalar, haftaSayisi);
     }
     
     function generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi) {
-      // jsPDF kütüphanesini dinamik yükle
-      if (typeof jsPDF === 'undefined') {
+      console.log('📄 PDF Tablo oluşturuluyor...', { hastaAdi, toplamHaftaSayisi });
+      
+      // jsPDF kütüphanesini kontrol et
+      console.log('jsPDF kontrol:', typeof window.jspdf, typeof jsPDF);
+      
+      let jsPDFLib;
+      if (typeof window.jspdf !== 'undefined') {
+        jsPDFLib = window.jspdf.jsPDF;
+        console.log('✅ jsPDF window.jspdf.jsPDF üzerinden yüklendi');
+      } else if (typeof jsPDF !== 'undefined') {
+        jsPDFLib = jsPDF;
+        console.log('✅ jsPDF global jsPDF üzerinden yüklendi');
+      } else {
+        console.log('❌ jsPDF bulunamadı, dinamik yükleme yapılıyor...');
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        script.onload = () => generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi);
+        script.onload = () => {
+          console.log('✅ jsPDF dinamik olarak yüklendi');
+          setTimeout(() => generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi), 100);
+        };
+        script.onerror = () => {
+          console.log('❌ jsPDF yüklenemedi');
+          alert('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+        };
         document.head.appendChild(script);
         return;
       }
       
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('l', 'mm', 'a4'); // Landscape format
-      
-      // Türkçe font support için
-      doc.setFont('helvetica');
-      
-      // Başlık
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text(hastaAdi.toUpperCase(), 20, 20);
-      
-      // Tablo parametreleri
-      const startX = 20;
-      const startY = 35;
-      const rowHeight = 6;
-      const colWidths = [15, 25, 20, 35, 35, 35, 35, 35, 35, 35]; // Sütun genişlikleri
-      
-      // Tablo başlıkları
-      const headers = ['Hafta', 'Gün', 'Tarih', 'Lenf drenaj masajı', 'Lenf drenaj masajı', '', '', '', '', ''];
-      
-      // Başlık satırını çiz
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      let currentX = startX;
-      headers.forEach((header, index) => {
-        doc.rect(currentX, startY, colWidths[index], rowHeight);
-        if (header) {
-          doc.text(header, currentX + 2, startY + 4);
-        }
-        currentX += colWidths[index];
-      });
-      
-      // Her hafta için satırları oluştur
-      let currentY = startY + rowHeight;
-      
-      for (let haftaIndex = 0; haftaIndex < toplamHaftaSayisi; haftaIndex++) {
-        const hafta = mevcutHaftalar[haftaIndex];
-        const haftaNo = haftaIndex + 1;
+      try {
+        console.log('📝 PDF dökümanı oluşturuluyor...');
+        const doc = new jsPDFLib('l', 'mm', 'a4'); // Landscape format
         
-        // Hafta başlangıç tarihini hesapla
-        let haftaBaslangic;
-        if (hafta && hafta.baslangic) {
-          haftaBaslangic = new Date(hafta.baslangic);
-        } else {
-          // İlk hafta için bugünün pazartesini al, sonraki haftalar için ekle
-          const bugün = new Date();
-          const pazartesi = new Date(bugün);
-          pazartesi.setDate(bugün.getDate() - bugün.getDay() + 1);
-          haftaBaslangic = new Date(pazartesi.getTime() + (haftaIndex * 7 * 24 * 60 * 60 * 1000));
-        }
+        // Türkçe font support için
+        doc.setFont('helvetica');
         
-        // Günler
-        const gunler = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+        // Başlık
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(hastaAdi.toUpperCase(), 20, 20);
+        console.log('✅ Başlık eklendi:', hastaAdi);
         
-        gunler.forEach((gun, gunIndex) => {
-          const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
-          const tarihStr = `${gunTarihi.getDate().toString().padStart(2, '0')}.${(gunTarihi.getMonth() + 1).toString().padStart(2, '0')}.${gunTarihi.getFullYear()}`;
-          
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-          
-          let currentX = startX;
-          
-          // Hafta numarası (sadece ilk satırda)
-          if (gunIndex === 0) {
-            doc.rect(currentX, currentY, colWidths[0], rowHeight * 7); // 7 gün için birleşik hücre
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${haftaNo}. hafta`, currentX + 2, currentY + 20);
-            doc.setFont('helvetica', 'normal');
+        // Tablo parametreleri
+        const startX = 20;
+        const startY = 35;
+        const rowHeight = 6;
+        const colWidths = [15, 25, 20, 35, 35, 35, 35, 35, 35, 35]; // Sütun genişlikleri
+        
+        // Tablo başlıkları
+        const headers = ['Hafta', 'Gün', 'Tarih', 'Lenf drenaj masajı', 'Lenf drenaj masajı', '', '', '', '', ''];
+        
+        // Başlık satırını çiz
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        let currentX = startX;
+        headers.forEach((header, index) => {
+          doc.rect(currentX, startY, colWidths[index], rowHeight);
+          if (header) {
+            doc.text(header, currentX + 2, startY + 4);
           }
-          currentX += colWidths[0];
+          currentX += colWidths[index];
+        });
+        console.log('✅ Tablo başlıkları eklendi');
+        
+        // Her hafta için satırları oluştur
+        let currentY = startY + rowHeight;
+        console.log('📋 Satırlar oluşturuluyor, toplam hafta:', toplamHaftaSayisi);
+        
+        for (let haftaIndex = 0; haftaIndex < toplamHaftaSayisi; haftaIndex++) {
+          const hafta = mevcutHaftalar[haftaIndex];
+          const haftaNo = haftaIndex + 1;
           
-          // Gün
-          doc.rect(currentX, currentY, colWidths[1], rowHeight);
-          doc.text(gun, currentX + 2, currentY + 4);
-          currentX += colWidths[1];
+          // Hafta başlangıç tarihini hesapla
+          let haftaBaslangic;
+          if (hafta && hafta.baslangic) {
+            haftaBaslangic = new Date(hafta.baslangic);
+          } else {
+            // İlk hafta için bugünün pazartesini al, sonraki haftalar için ekle
+            const bugün = new Date();
+            const pazartesi = new Date(bugün);
+            pazartesi.setDate(bugün.getDate() - bugün.getDay() + 1);
+            haftaBaslangic = new Date(pazartesi.getTime() + (haftaIndex * 7 * 24 * 60 * 60 * 1000));
+          }
           
-          // Tarih
-          doc.rect(currentX, currentY, colWidths[2], rowHeight);
-          doc.text(tarihStr, currentX + 2, currentY + 4);
-          currentX += colWidths[2];
+          // Günler
+          const gunler = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
           
-          // Aktivite sütunları (boş bırak - manuel doldurma için)
-          for (let i = 3; i < colWidths.length; i++) {
-            doc.rect(currentX, currentY, colWidths[i], rowHeight);
+          gunler.forEach((gun, gunIndex) => {
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = `${gunTarihi.getDate().toString().padStart(2, '0')}.${(gunTarihi.getMonth() + 1).toString().padStart(2, '0')}.${gunTarihi.getFullYear()}`;
             
-            // İlk aktivite sütununa önceden yazılmış metin ekle
-            if (i === 3 && (gunIndex < 5)) { // Sadece hafta içi günlerde
-              doc.setFontSize(6);
-              doc.text('Lenf drenaj masajı', currentX + 2, currentY + 4);
-              doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            
+            let currentX = startX;
+            
+            // Hafta numarası (sadece ilk satırda)
+            if (gunIndex === 0) {
+              doc.rect(currentX, currentY, colWidths[0], rowHeight * 7); // 7 gün için birleşik hücre
+              doc.setFont('helvetica', 'bold');
+              doc.text(`${haftaNo}. hafta`, currentX + 2, currentY + 20);
+              doc.setFont('helvetica', 'normal');
+            }
+            currentX += colWidths[0];
+            
+            // Gün
+            doc.rect(currentX, currentY, colWidths[1], rowHeight);
+            doc.text(gun, currentX + 2, currentY + 4);
+            currentX += colWidths[1];
+            
+            // Tarih
+            doc.rect(currentX, currentY, colWidths[2], rowHeight);
+            doc.text(tarihStr, currentX + 2, currentY + 4);
+            currentX += colWidths[2];
+            
+            // Aktivite sütunları (boş bırak - manuel doldurma için)
+            for (let i = 3; i < colWidths.length; i++) {
+              doc.rect(currentX, currentY, colWidths[i], rowHeight);
+              
+              // İlk aktivite sütununa önceden yazılmış metin ekle
+              if (i === 3 && (gunIndex < 5)) { // Sadece hafta içi günlerde
+                doc.setFontSize(6);
+                doc.text('Lenf drenaj masajı', currentX + 2, currentY + 4);
+                doc.setFontSize(7);
+              }
+              
+              currentX += colWidths[i];
             }
             
-            currentX += colWidths[i];
-          }
-          
-          currentY += rowHeight;
-          
-          // Sayfa sonu kontrolü
-          if (currentY > 180) {
-            doc.addPage('l');
-            currentY = 20;
+            currentY += rowHeight;
             
-            // Yeni sayfa başlığı
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${hastaAdi.toUpperCase()} (devam)`, 20, 15);
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'normal');
-          }
-        });
+            // Sayfa sonu kontrolü
+            if (currentY > 180) {
+              doc.addPage('l');
+              currentY = 20;
+              
+              // Yeni sayfa başlığı
+              doc.setFontSize(16);
+              doc.setFont('helvetica', 'bold');
+              doc.text(`${hastaAdi.toUpperCase()} (devam)`, 20, 15);
+              doc.setFontSize(7);
+              doc.setFont('helvetica', 'normal');
+            }
+          });
+        }
+        
+        console.log('✅ Tablo tamamlandı, PDF indiriliyor...');
+        
+        // PDF'yi indir
+        const tarih = new Date().toISOString().slice(0, 10);
+        const dosyaAdi = `${hastaAdi}_Takip_Tablosu_${tarih}.pdf`;
+        doc.save(dosyaAdi);
+        
+        console.log('✅ PDF başarıyla oluşturuldu:', dosyaAdi);
+        alert(`PDF başarıyla oluşturuldu: ${dosyaAdi}`);
+        
+      } catch (error) {
+        console.error('❌ PDF oluşturma hatası:', error);
+        alert('PDF oluştururken hata oluştu: ' + error.message);
       }
-      
-      // PDF'yi indir
-      const tarih = new Date().toISOString().slice(0, 10);
-      doc.save(`${hastaAdi}_Takip_Tablosu_${tarih}.pdf`);
     }
 
     function gosterTariflerHafta(i) {
@@ -3151,6 +3195,26 @@ function duzenleHafta(i) {
       });
     }
     window.zipEslesenGorseller = zipEslesenGorseller;
+    window.generatePatientPDF = generatePatientPDF;
+    
+    // PDF Test fonksiyonu
+    function testPDFGenerator() {
+      console.log('🧪 PDF Test başlatılıyor...');
+      console.log('jsPDF kontrol:', typeof window.jspdf, typeof jsPDF);
+      
+      if (typeof window.jspdf !== 'undefined') {
+        console.log('✅ jsPDF mevcut, test PDF oluşturuluyor...');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text('Test PDF - Türkçe karakter: çğıöşüÇĞIÖŞÜ', 10, 10);
+        doc.save('test.pdf');
+        console.log('✅ Test PDF oluşturuldu!');
+      } else {
+        console.log('❌ jsPDF bulunamadı');
+        alert('jsPDF kütüphanesi yüklenmemiş');
+      }
+    }
+    window.testPDFGenerator = testPDFGenerator;
 
     // Debug fonksiyonu - Tarifler klasörü durumunu kontrol et
     async function debugTariflerKlasoru() {
