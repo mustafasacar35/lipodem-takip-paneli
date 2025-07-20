@@ -117,6 +117,28 @@
       background: #218838;
       transform: translateY(-2px);
     }
+    
+    /* Hafta numarası düzenleme */
+    .hafta-no-display {
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    
+    .hafta-no-display:hover {
+      background: #e3f2fd;
+      border-color: #90caf9;
+      transform: scale(1.05);
+    }
+    
+    /* Grid responsive */
+    @media (max-width: 768px) {
+      .hafta-tab-content > div:first-of-type {
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1936,11 +1958,16 @@
         
         contentTab.innerHTML = `
           <div class="hafta-tab-header">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <label style="font-weight: bold;">Hafta No:</label>
-              <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" 
-                     class="hafta-no-input" onchange="haftaNoKaydet(${i})" title="Hafta numarasını değiştir">
-              <span style="font-weight: bold;">. Hafta</span>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <span id="haftaNoDisplay_${i}" style="font-weight: bold; font-size: 18px; cursor: text; padding: 4px 8px; border-radius: 4px; min-width: 20px; text-align: center;" 
+                      onclick="editHaftaNo(${i})" title="Hafta numarasını düzenlemek için tıklayın">${haftaNo}</span>
+                <span style="font-weight: bold; font-size: 18px;">. Hafta</span>
+                <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" 
+                       style="display: none; width: 50px; font-weight: bold; text-align: center; border: 2px solid #007bff; border-radius: 4px; padding: 4px;"
+                       onblur="saveHaftaNo(${i})" onkeypress="if(event.key==='Enter') saveHaftaNo(${i})">
+              </div>
+              <span style="color: #666; font-size: 14px;">📅 ${hafta.baslangic} - ${hafta.bitis}</span>
             </div>
             <div style="display: flex; gap: 5px;">
               <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
@@ -1948,55 +1975,57 @@
             </div>
           </div>
           
-          <div style="margin-bottom: 15px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Hafta Tarihleri:</label>
-            <span style="background: #e9ecef; padding: 8px 12px; border-radius: 5px; display: inline-block;">
-              📅 ${hafta.baslangic} - ${hafta.bitis}
-            </span>
+          <!-- Ana İçerik - Horizontal Layout -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            
+            <!-- PDF Bölümü -->
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+              <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
+              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
+                     style="width: 100%; margin-bottom: 10px; font-size: 12px;">
+              ${hafta.pdf ? `
+                <div style="color: green; font-weight: bold; font-size: 12px;">
+                  ✅ ${hafta.pdfName || 'hafta.pdf'}
+                  <div style="color: #666; font-weight: normal; margin-top: 3px;">
+                    ${hafta.tarifler ? hafta.tarifler.length : 0} tarif
+                  </div>
+                </div>
+              ` : '<div style="color: #666; font-size: 12px;">PDF henüz yok</div>'}
+            </div>
+            
+            <!-- Tarif Kartları Bölümü -->
+            <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+              <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
+              <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
+                     onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
+              <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
+            </div>
+            
+            <!-- Açıklama Bölümü -->
+            <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;">
+              <h4 style="margin: 0 0 10px 0; color: #0c5460; font-size: 14px;">📝 Açıklama</h4>
+              <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
+                     placeholder="Bu hafta hakkında not..." 
+                     style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
+                     onchange="aciklamaKaydet(${i})">
+            </div>
           </div>
           
-          <div style="margin-bottom: 15px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Hafta Açıklaması:</label>
-            <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
-                   placeholder="Bu hafta hakkında not ekleyin..." 
-                   style="width: 300px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
-            <button onclick="aciklamaKaydet(${i})" style="margin-left: 10px; padding: 8px 15px;">💾 Kaydet</button>
-          </div>
-          
-          <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px;">📄 PDF Yükle:</label>
-            <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
-                   style="margin-bottom: 10px;">
-            ${hafta.pdf ? `
-              <div style="color: green; font-weight: bold; margin-top: 10px;">
-                ✅ PDF yüklü: ${hafta.pdfName || 'hafta.pdf'}
-                <span style="margin-left: 15px; color: #666; font-weight: normal;">
-                  (${hafta.tarifler ? hafta.tarifler.length : 0} tarif çıkarıldı)
-                </span>
-              </div>
-            ` : '<div style="color: #666;">PDF henüz yüklenmedi</div>'}
-          </div>
-          
-          <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px;">🖼️ Tarif Kartları (Manuel):</label>
-            <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
-                   onchange="tarifKartYukleHafta(${i}, this)" style="margin-bottom: 10px;">
-            <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
-          </div>
-          
+          <!-- Eşleşen Kartlar - Full Width -->
           <div style="margin-bottom: 20px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px;">🔗 Eşleşen Kartlar:</label>
-            <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 100px;"></div>
+            <h4 style="margin: 0 0 10px 0; color: #6f42c1; font-size: 16px;">🔗 Eşleşen Kartlar</h4>
+            <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
           </div>
           
-          <div style="margin-bottom: 15px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px;">💬 GPT Mesajı:</label>
+          <!-- GPT Mesajı - Full Width -->
+          <div style="margin-bottom: 20px;">
+            <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 GPT Mesajı</h4>
             <textarea id="gptMesaj_${i}" rows="3" 
                       style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
                       placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
             <div style="margin-top: 10px;">
-              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px;">📋 Kopyala</button>
+              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
+              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
             </div>
           </div>
         `;
@@ -2041,27 +2070,61 @@
     // Tab değiştirme fonksiyonunu global yap
     window.switchTab = switchTab;
 
-// Hafta açıklama kaydet
+// Hafta açıklama kaydet (otomatik)
 function aciklamaKaydet(i) {
   const haftalar = getHaftaListesi();
-  haftalar[i].aciklama = document.getElementById('aciklama_' + i).value;
+  const aciklamaInput = document.getElementById('aciklama_' + i);
+  haftalar[i].aciklama = aciklamaInput.value;
   saveToStorage();
-  alert('Açıklama kaydedildi.');
+  
+  // Visual feedback
+  aciklamaInput.style.backgroundColor = '#d4edda';
+  aciklamaInput.style.borderColor = '#28a745';
+  setTimeout(() => {
+    aciklamaInput.style.backgroundColor = '';
+    aciklamaInput.style.borderColor = '';
+  }, 800);
+  
+  console.log('Açıklama otomatik kaydedildi:', aciklamaInput.value);
 }
 
-// Hafta numarası kaydet
-function haftaNoKaydet(i) {
-  const haftalar = getHaftaListesi();
-  const yeniHaftaNo = parseInt(document.getElementById('haftaNo_' + i).value);
+// Hafta numarası düzenleme (inline editing)
+function editHaftaNo(i) {
+  const displaySpan = document.getElementById(`haftaNoDisplay_${i}`);
+  const inputField = document.getElementById(`haftaNo_${i}`);
   
-  if (yeniHaftaNo < 1 || yeniHaftaNo > 52) {
+  // Display'i gizle, input'u göster
+  displaySpan.style.display = 'none';
+  inputField.style.display = 'inline-block';
+  inputField.focus();
+  inputField.select();
+  
+  // Visual feedback
+  inputField.style.backgroundColor = '#e3f2fd';
+}
+
+function saveHaftaNo(i) {
+  const displaySpan = document.getElementById(`haftaNoDisplay_${i}`);
+  const inputField = document.getElementById(`haftaNo_${i}`);
+  const yeniHaftaNo = parseInt(inputField.value);
+  
+  if (yeniHaftaNo < 1 || yeniHaftaNo > 52 || isNaN(yeniHaftaNo)) {
     alert('Hafta numarası 1-52 arasında olmalıdır!');
-    document.getElementById('haftaNo_' + i).value = haftalar[i].haftaNo || (i + 1);
+    const haftalar = getHaftaListesi();
+    inputField.value = haftalar[i].haftaNo || (i + 1);
     return;
   }
   
+  // Veriyi kaydet
+  const haftalar = getHaftaListesi();
   haftalar[i].haftaNo = yeniHaftaNo;
   saveToStorage();
+  
+  // UI'ı güncelle
+  displaySpan.textContent = yeniHaftaNo;
+  displaySpan.style.display = 'inline-block';
+  inputField.style.display = 'none';
+  inputField.style.backgroundColor = '';
   
   // Tab başlığını güncelle
   const tablar = document.querySelectorAll('.hafta-tab');
@@ -2072,7 +2135,24 @@ function haftaNoKaydet(i) {
     }
   }
   
+  // Success feedback
+  displaySpan.style.backgroundColor = '#d4edda';
+  displaySpan.style.color = '#155724';
+  setTimeout(() => {
+    displaySpan.style.backgroundColor = '';
+    displaySpan.style.color = '';
+  }, 1000);
+  
   console.log(`Hafta numarası güncellendi: ${yeniHaftaNo}. hafta`);
+}
+
+// Global fonksiyonlar
+window.editHaftaNo = editHaftaNo;
+window.saveHaftaNo = saveHaftaNo;
+
+// Hafta numarası kaydet (eski fonksiyon - backward compatibility)
+function haftaNoKaydet(i) {
+  saveHaftaNo(i);
 }
 
 // PDF dosya adından hafta numarasını çıkar
