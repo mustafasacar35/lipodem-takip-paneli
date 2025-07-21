@@ -1602,7 +1602,10 @@
       
       try {
         const token = document.getElementById('githubToken').value.trim();
-        const response = await fetch('https://api.github.com/repos/drnightmare/yemek/contents/tarifler/list.json', {
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
           headers: { 'Authorization': `token ${token}` }
         });
         
@@ -1638,7 +1641,7 @@
         
         // Kart önizlemesi
         const img = document.createElement('img');
-        img.src = `https://drnightmare.github.io/yemek/tarifler/${kartAdi}`;
+        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`;
         img.style.cssText = 'width:40px; height:40px; object-fit:cover; border-radius:4px;';
         img.onerror = () => img.style.display = 'none';
         
@@ -1700,7 +1703,7 @@
       const onizlemeDiv = document.getElementById('mevcutKartOnizleme');
       onizlemeDiv.innerHTML = `
         <div style="display:flex; align-items:center; gap:15px;">
-          <img src="https://drnightmare.github.io/yemek/tarifler/${kartAdi}" 
+          <img src="https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}" 
                style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #ddd;" 
                onerror="this.style.display='none'">
           <div>
@@ -1749,9 +1752,12 @@
       try {
         duzenlemeStatusGoster('Kart düzenleniyor...', 'info');
         
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        
         // 1. Eski kartı sil
         if (normalizeEdilmisAd !== seciliDuzenleKart) {
-          await kartSilGitHub(seciliDuzenleKart, token, false); // sessiz silme
+          await kartSilGitHub(seciliDuzenleKart, token, owner, repo, false); // sessiz silme
         }
         
         // 2. Yeni kart ekle
@@ -1761,7 +1767,7 @@
           gorselBase64 = await dosyayiBase64Cevir(yeniDosya);
         } else {
           // Dosya seçilmemişse mevcut dosyayı indir ve tekrar yükle
-          const mevcutResponse = await fetch(`https://drnightmare.github.io/yemek/tarifler/${seciliDuzenleKart}`);
+          const mevcutResponse = await fetch(`https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${seciliDuzenleKart}`);
           const mevcutBlob = await mevcutResponse.blob();
           gorselBase64 = await new Promise(resolve => {
             const reader = new FileReader();
@@ -1771,7 +1777,7 @@
         }
         
         // GitHub'a yeni kartı yükle
-        const uploadResponse = await fetch(`https://api.github.com/repos/drnightmare/yemek/contents/tarifler/${normalizeEdilmisAd}`, {
+        const uploadResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/${normalizeEdilmisAd}`, {
           method: 'PUT',
           headers: {
             'Authorization': `token ${token}`,
@@ -1788,7 +1794,7 @@
         }
         
         // 3. list.json'u güncelle
-        await listJsonGuncelle(token);
+        await listJsonGuncelle(token, owner, repo);
         
         duzenlemeStatusGoster(`✅ Kart başarıyla düzenlendi: ${normalizeEdilmisAd}`, 'success');
         
@@ -1836,9 +1842,9 @@
       });
     }
 
-    async function kartSilGitHub(kartAdi, token, showAlert = true) {
+    async function kartSilGitHub(kartAdi, token, owner, repo, showAlert = true) {
       // Önce dosyanın SHA'sını al
-      const getResponse = await fetch(`https://api.github.com/repos/drnightmare/yemek/contents/tarifler/${kartAdi}`, {
+      const getResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/${kartAdi}`, {
         headers: { 'Authorization': `token ${token}` }
       });
       
@@ -1849,7 +1855,7 @@
       const fileData = await getResponse.json();
       
       // Dosyayı sil
-      const deleteResponse = await fetch(`https://api.github.com/repos/drnightmare/yemek/contents/tarifler/${kartAdi}`, {
+      const deleteResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/${kartAdi}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `token ${token}`,
@@ -1870,9 +1876,9 @@
       }
     }
 
-    async function listJsonGuncelle(token) {
+    async function listJsonGuncelle(token, owner, repo) {
       // Tarifler klasöründeki tüm dosyaları listele
-      const response = await fetch('https://api.github.com/repos/drnightmare/yemek/contents/tarifler', {
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler`, {
         headers: { 'Authorization': `token ${token}` }
       });
       
@@ -1885,7 +1891,7 @@
         .sort();
       
       // list.json'un mevcut SHA'sını al
-      const listResponse = await fetch('https://api.github.com/repos/drnightmare/yemek/contents/tarifler/list.json', {
+      const listResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
         headers: { 'Authorization': `token ${token}` }
       });
       
@@ -1896,7 +1902,7 @@
       }
       
       // list.json'u güncelle
-      const updateResponse = await fetch('https://api.github.com/repos/drnightmare/yemek/contents/tarifler/list.json', {
+      const updateResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
         method: 'PUT',
         headers: {
           'Authorization': `token ${token}`,
