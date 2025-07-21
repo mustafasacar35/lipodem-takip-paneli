@@ -994,19 +994,41 @@
     function manuelKartListesiniGoster(aramaMetni = '') {
       const div = document.getElementById('manuelKartListesi');
       div.innerHTML = '';
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
       // Filtreleme
       const filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => {
         if (!aramaMetni) return true;
-        return kart.name.toLowerCase().includes(aramaMetni.toLowerCase());
+        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        const duzeltilmisArama = karakterDuzelt(aramaMetni);
+        return duzeltilmisKartAdi.toLowerCase().includes(duzeltilmisArama.toLowerCase());
       });
       
       filtrelenmisKartlar.forEach(kart => {
         const label = document.createElement('label');
         label.style.cssText = 'display:block; margin:4px 0; cursor:pointer; padding:2px;';
+        
+        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        
         label.innerHTML = `
           <input type="checkbox" data-kart="${kart.name}" style="margin-right:8px;" />
-          ${kart.name}
+          ${duzeltilmisKartAdi}
         `;
         div.appendChild(label);
       });
@@ -1078,8 +1100,26 @@
       
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
-      manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart`, 'success');
+      const duzeltilmisMetin = karakterDuzelt(tarifAdi);
+      manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${duzeltilmisMetin}" → ${secilenKartlar.length} kart`, 'success');
       
       // Formu temizle
       document.getElementById('manuelTarifAdi').value = '';
@@ -1104,14 +1144,36 @@
         div.innerHTML = '<em>Henüz manuel eşleştirme yok</em>';
         return;
       }
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
       anahtarlar.forEach(anahtar => {
         const eslestirme = manuelEslestirmeler[anahtar];
         const eslestirmeDiv = document.createElement('div');
         eslestirmeDiv.style.cssText = 'border:1px solid #ddd; margin:8px 0; padding:8px; background:#fff; border-radius:4px;';
+        
+        // Orijinal metni ve kartları düzelt
+        const duzeltilmisMetin = karakterDuzelt(eslestirme.orijinalMetin);
+        const duzeltilmisKartlar = eslestirme.kartlar.map(kart => karakterDuzelt(kart));
+        
         eslestirmeDiv.innerHTML = `
-          <div style="font-weight:bold; color:#28a745;">${eslestirme.orijinalMetin}</div>
-          <div style="margin:5px 0; font-size:0.9em;">→ ${eslestirme.kartlar.join(', ')}</div>
+          <div style="font-weight:bold; color:#28a745;">${duzeltilmisMetin}</div>
+          <div style="margin:5px 0; font-size:0.9em;">→ ${duzeltilmisKartlar.join(', ')}</div>
           <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">Sil</button>
         `;
         div.appendChild(eslestirmeDiv);
