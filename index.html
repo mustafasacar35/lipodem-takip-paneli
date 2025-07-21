@@ -1663,19 +1663,36 @@
         
         // Kart adı
         const span = document.createElement('span');
-        span.textContent = kartAdi;
+        // Encoding sorunlarını temizleyip daha okunaklı göster
+        let gosterimAdi = kartAdi
+          .replace(/Ä±/g, 'ı').replace(/Ä/g, 'a')
+          .replace(/Å/g, 'ş').replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü').replace(/Ã¶/g, 'ö')
+          .replace(/â/g, 'a').replace(/î/g, 'i')
+          .replace(/û/g, 'u').replace(/ô/g, 'o')
+          .replace(/_/g, ' ')
+          .replace('.jpg', '');
+        span.textContent = gosterimAdi;
+        span.setAttribute('data-original', kartAdi); // Orijinal adı sakla
         span.style.flex = '1';
         
         kartDiv.appendChild(img);
         kartDiv.appendChild(span);
         
-        kartDiv.onclick = () => kartSecForDuzenleme(kartAdi);
+        kartDiv.onclick = () => {
+          const originalName = span.getAttribute('data-original');
+          kartSecForDuzenleme(originalName);
+        };
         
         // Hover efekti
         kartDiv.onmouseenter = () => kartDiv.style.background = '#e3f2fd';
-        kartDiv.onmouseleave = () => kartDiv.style.background = seciliDuzenleKart === kartAdi ? '#bbdefb' : 'white';
+        kartDiv.onmouseleave = () => {
+          const originalName = span.getAttribute('data-original');
+          kartDiv.style.background = seciliDuzenleKart === originalName ? '#bbdefb' : 'white';
+        };
         
-        if (seciliDuzenleKart === kartAdi) {
+        const originalName = span.getAttribute('data-original');
+        if (seciliDuzenleKart === originalName) {
           kartDiv.style.background = '#bbdefb';
         }
         
@@ -1684,6 +1701,23 @@
     }
 
     function kartListesiniFiltreleForDuzenleme(aramaMetni) {
+      // Türkçe karakter normalizasyonu
+      const normalizeText = (text) => {
+        return text.toLowerCase()
+          .replace(/ç/g, 'c').replace(/Ç/g, 'c')
+          .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+          .replace(/ı/g, 'i').replace(/I/g, 'i').replace(/İ/g, 'i')
+          .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+          .replace(/ş/g, 's').replace(/Ş/g, 's')
+          .replace(/ü/g, 'u').replace(/Ü/g, 'u')
+          // Encoding sorunları için
+          .replace(/Ä±/g, 'i').replace(/Ä/g, 'a')
+          .replace(/Å/g, 's').replace(/Ğ/g, 'g')
+          .replace(/Ã¼/g, 'u').replace(/Ã¶/g, 'o')
+          .replace(/â/g, 'a').replace(/î/g, 'i')
+          .replace(/û/g, 'u').replace(/ô/g, 'o');
+      };
+      
       // Son yüklenen kart listesini tekrar filtrele
       kartListesiniYenileForDuzenleme().then(() => {
         // Liste yenilendikten sonra filtreyi uygula
@@ -1691,11 +1725,28 @@
           const listeDiv = document.getElementById('duzenleKartListesi');
           const kartDivleri = Array.from(listeDiv.children);
           
+          const normalizedArama = normalizeText(aramaMetni);
+          
           kartDivleri.forEach(kartDiv => {
-            const kartAdi = kartDiv.querySelector('span')?.textContent || '';
-            const goster = kartAdi.toLowerCase().includes(aramaMetni.toLowerCase());
+            const span = kartDiv.querySelector('span');
+            const kartAdi = span?.getAttribute('data-original') || '';
+            const gosterimAdi = span?.textContent || '';
+            
+            // Hem orijinal hem gösterim adında ara
+            const normalizedKart = normalizeText(kartAdi);
+            const normalizedGosterim = normalizeText(gosterimAdi);
+            const goster = normalizedKart.includes(normalizedArama) || normalizedGosterim.includes(normalizedArama);
             kartDiv.style.display = goster ? 'flex' : 'none';
           });
+          
+          // Debug: Arama sonuçlarını göster
+          if (aramaMetni.length > 2) {
+            const goruntulenenKartlar = kartDivleri.filter(div => div.style.display !== 'none').length;
+            console.log(`🔍 "${aramaMetni}" araması: ${goruntulenenKartlar} kart bulundu`);
+            if (aramaMetni.includes('Ä') || aramaMetni.includes('ı')) {
+              console.log(`💡 Normalizasyon: "${aramaMetni}" → "${normalizedArama}"`);
+            }
+          }
         }, 100);
       });
     }
@@ -1708,7 +1759,8 @@
       Array.from(listeDiv.children).forEach(div => {
         const span = div.querySelector('span');
         if (span) {
-          div.style.background = span.textContent === kartAdi ? '#bbdefb' : 'white';
+          const originalName = span.getAttribute('data-original');
+          div.style.background = originalName === kartAdi ? '#bbdefb' : 'white';
         }
       });
       
@@ -1717,20 +1769,40 @@
       
       // Mevcut kart önizlemesi
       const onizlemeDiv = document.getElementById('mevcutKartOnizleme');
+      const temizAd = kartAdi
+        .replace(/Ä±/g, 'ı').replace(/Ä/g, 'a')
+        .replace(/Å/g, 'ş').replace(/Ğ/g, 'ğ')
+        .replace(/Ã¼/g, 'ü').replace(/Ã¶/g, 'ö')
+        .replace(/_/g, ' ')
+        .replace('.jpg', '');
+      
       onizlemeDiv.innerHTML = `
         <div style="display:flex; align-items:center; gap:15px;">
           <img src="https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}" 
                style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #ddd;" 
-               onerror="this.style.display='none'">
+               onerror="this.style.display='none'; this.nextElementSibling.querySelector('.error-msg').style.display='block'">
           <div>
-            <div style="font-weight:bold; font-size:16px;">${kartAdi}</div>
-            <div style="color:#666; font-size:12px;">Mevcut kart</div>
+            <div style="font-weight:bold; font-size:16px;">${temizAd}</div>
+            <div style="color:#666; font-size:12px;">Mevcut kart (${kartAdi})</div>
+            <div class="error-msg" style="color:#dc3545; font-size:11px; display:none;">❌ Görsel bulunamadı</div>
           </div>
         </div>
       `;
       
-      // Yeni adı önceden doldur (kullanıcı isterse değiştirebilir)
-      document.getElementById('duzenleKartYeniAdi').value = kartAdi.replace('.jpg', '').replace('.png', '');
+      // Yeni adı önceden doldur (kullanıcı isterse değiştirebilir) - encoding temizleyerek
+      const yeniAdiInput = document.getElementById('duzenleKartYeniAdi');
+      if (yeniAdiInput) {
+        // Dosya uzantısını kaldır ve encoding sorunlarını temizle
+        let temizAd = kartAdi.replace('.jpg', '').replace('.jpeg', '').replace('.png', '');
+        temizAd = temizAd
+          .replace(/Ä±/g, 'i').replace(/Ä/g, 'a')
+          .replace(/Å/g, 's').replace(/Ğ/g, 'g')
+          .replace(/Ã¼/g, 'u').replace(/Ã¶/g, 'o')
+          .replace(/â/g, 'a').replace(/î/g, 'i')
+          .replace(/û/g, 'u').replace(/ô/g, 'o');
+        yeniAdiInput.value = temizAd;
+        console.log(`💡 Kart seçildi: "${kartAdi}" → Temizlenmiş ad: "${temizAd}"`);
+      }
     }
 
     // List.json'dan mevcut olmayan dosyaları temizle
