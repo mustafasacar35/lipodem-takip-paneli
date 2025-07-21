@@ -1642,7 +1642,6 @@
       }
       
       // Mevcut olmayan dosyaları takip et
-      let mevcutOlmayanlar = [];
       
       filtrelenmisKartlar.forEach(kartAdi => {
         const kartDiv = document.createElement('div');
@@ -1654,7 +1653,7 @@
         img.style.cssText = 'width:40px; height:40px; object-fit:cover; border-radius:4px;';
         img.onerror = () => {
           img.style.display = 'none';
-          mevcutOlmayanlar.push(kartAdi);
+          dosyaBulunamadi(kartAdi);
           // Kart div'ini farklı stil yap
           kartDiv.style.background = '#fff3cd';
           kartDiv.style.borderColor = '#ffc107';
@@ -1682,13 +1681,6 @@
         
         listeDiv.appendChild(kartDiv);
       });
-      
-      // Mevcut olmayan dosyalar için uyarı
-      if (mevcutOlmayanlar.length > 0) {
-        setTimeout(() => {
-          console.log(`⚠️ ${mevcutOlmayanlar.length} dosya bulunamadı:`, mevcutOlmayanlar);
-        }, 2000);
-      }
     }
 
     function kartListesiniFiltreleForDuzenleme(aramaMetni) {
@@ -1802,7 +1794,7 @@
           },
           body: JSON.stringify({
             message: `List.json temizlendi: ${removedCount} dosya kaldırıldı`,
-            content: btoa(JSON.stringify(validFiles, null, 2)),
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(validFiles, null, 2)))),
             sha: fileData.sha
           })
         });
@@ -1821,6 +1813,24 @@
         console.error('List.json temizleme hatası:', error);
         alert(`❌ Hata: ${error.message}`);
       }
+    }
+
+    // Mevcut olmayan dosyaları toplu raporla
+    let mevcutOlmayanDosyalar = new Set();
+    
+    function dosyaBulunamadi(dosyaAdi) {
+      mevcutOlmayanDosyalar.add(dosyaAdi);
+      
+      // 2 saniye sonra toplu rapor ver
+      setTimeout(() => {
+        if (mevcutOlmayanDosyalar.size > 0) {
+          const eksikler = Array.from(mevcutOlmayanDosyalar);
+          console.log(`🚨 TOPLU RAPOR: ${eksikler.length} dosya bulunamadı:`);
+          eksikler.forEach(dosya => console.log(`  ❌ ${dosya}`));
+          console.log('💡 Bu dosyaları temizlemek için "🧹 Temizle" butonunu kullanın');
+          mevcutOlmayanDosyalar.clear();
+        }
+      }, 2000);
     }
 
     async function kartDuzenlemeKaydet() {
@@ -2040,7 +2050,7 @@
         },
         body: JSON.stringify({
           message: 'list.json güncellendi (kart düzenleme)',
-          content: btoa(JSON.stringify(imageFiles, null, 2)),
+          content: btoa(unescape(encodeURIComponent(JSON.stringify(imageFiles, null, 2)))),
           ...(listSha && { sha: listSha })
         })
       });
