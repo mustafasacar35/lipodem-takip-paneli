@@ -1521,7 +1521,7 @@
         const guncelListe = mevcutListe.filter(kart => kart !== silinecekKart);
 
         // Güncellenmiş listeyi yükle
-        const yeniListeContent = btoa(JSON.stringify(guncelListe, null, 2));
+        const yeniListeContent = btoa(unescape(encodeURIComponent(JSON.stringify(guncelListe, null, 2))));
         const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
           method: 'PUT',
           headers: {
@@ -2175,7 +2175,7 @@
         }
 
         // Güncellenmiş listeyi yükle
-        const yeniListeContent = btoa(JSON.stringify(mevcutListe, null, 2));
+        const yeniListeContent = btoa(unescape(encodeURIComponent(JSON.stringify(mevcutListe, null, 2))));
         const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
           method: 'PUT',
           headers: {
