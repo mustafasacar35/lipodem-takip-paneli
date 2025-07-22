@@ -2521,6 +2521,15 @@
       const ara = document.getElementById('hastaAra').value.toLowerCase();
       const filtre = document.getElementById('arsivFiltre').value;
       ul.innerHTML = '';
+      
+      // Hasta verilerini normalize et
+      hastalar.forEach(hasta => {
+        if (!hasta.haftalar) {
+          hasta.haftalar = [];
+          console.log('🔄 Hasta için haftalar alanı eklendi:', hasta.isim);
+        }
+      });
+      
       hastalar.filter(h =>
         (filtre === 'tum' || (filtre === 'arsiv' ? h.arsiv : !h.arsiv)) &&
         h.isim.toLowerCase().includes(ara)
@@ -2577,6 +2586,9 @@
       document.getElementById('arsivBtn').textContent = seciliHasta.arsiv ? 'Arşivden Çıkar' : 'Arşivle';
       document.getElementById('hastaDetay').style.display = 'block';
       document.getElementById('hastaFormu').style.display = 'none';
+      
+      // Hafta listesini göster
+      gosterHaftalar();
     }
 
     function duzenleHasta() {
@@ -2634,7 +2646,25 @@
       if (seciliHasta.haftalar.length > 0) {
         // Son haftanın pazarından bir gün sonrası
         const last = seciliHasta.haftalar[seciliHasta.haftalar.length-1];
-        startDate = new Date(new Date(last.baslangic).getTime() + 7*24*60*60*1000);
+        try {
+          if (last.baslangic) {
+            startDate = new Date(new Date(last.baslangic).getTime() + 7*24*60*60*1000);
+          } else {
+            throw new Error('Başlangıç tarihi yok');
+          }
+          
+          // Tarih geçerli mi kontrol et
+          if (isNaN(startDate.getTime())) {
+            throw new Error('Geçersiz tarih');
+          }
+        } catch (e) {
+          console.warn('Son hafta tarih hatası:', e);
+          // Bugünden başla
+          const now = new Date();
+          const day = now.getDay();
+          const diff = (day === 0 ? 1 : 8 - day); // Gelecek pazartesi
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+        }
       } else {
         // İlk hafta için bugünün pazartesisi
         const now = new Date();
@@ -2642,6 +2672,12 @@
         const diff = (day === 0 ? -6 : 1) - day; // Pazartesiye çek
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
       }
+      
+      // Final güvenlik kontrolü
+      if (!startDate || isNaN(startDate.getTime())) {
+        startDate = new Date(); // En son çare olarak bugün
+      }
+      
       const endDate = new Date(startDate.getTime() + 6*24*60*60*1000);
       seciliHasta.haftalar.push({
         haftaNo: sonrakiHaftaNo, // YENİ: Hafta numarası
@@ -2661,6 +2697,71 @@
       setTimeout(() => switchTab(yeniTabIndex), 100);
     }
 
+    // Hafta verilerini normalize et (eski data format uyumluluğu için)
+    function normalizeHaftaData() {
+      if (!seciliHasta || !seciliHasta.haftalar) return;
+      
+      let dataUpdated = false;
+      
+      seciliHasta.haftalar.forEach((hafta, index) => {
+        // Hafta numarası yoksa ekle
+        if (!hafta.haftaNo) {
+          hafta.haftaNo = index + 1;
+          dataUpdated = true;
+        }
+        
+        // Tarif kartları alanı yoksa ekle
+        if (!hafta.tarifKartlar) {
+          hafta.tarifKartlar = [];
+          dataUpdated = true;
+        }
+        
+        // Tarifler alanı yoksa ekle
+        if (!hafta.tarifler) {
+          hafta.tarifler = [];
+          dataUpdated = true;
+        }
+        
+        // GPT mesaj alanı yoksa ekle
+        if (hafta.gptMesaj === undefined) {
+          hafta.gptMesaj = '';
+          dataUpdated = true;
+        }
+        
+        // Açıklama alanı yoksa ekle
+        if (hafta.aciklama === undefined) {
+          hafta.aciklama = '';
+          dataUpdated = true;
+        }
+        
+        // PDF alanı yoksa ekle
+        if (hafta.pdf === undefined) {
+          hafta.pdf = null;
+          dataUpdated = true;
+        }
+        
+        // Başlangıç ve bitiş tarihleri yoksa oluştur
+        if (!hafta.baslangic || !hafta.bitis) {
+          try {
+            const now = new Date();
+            const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1 + (index * 7));
+            const weekEnd = new Date(weekStart.getTime() + 6*24*60*60*1000);
+            
+            hafta.baslangic = weekStart.toISOString().slice(0,10);
+            hafta.bitis = weekEnd.toISOString().slice(0,10);
+            dataUpdated = true;
+          } catch (e) {
+            console.warn('Tarih oluşturma hatası hafta', index + 1, ':', e);
+          }
+        }
+      });
+      
+      if (dataUpdated) {
+        console.log('🔄 Hafta verileri normalize edildi');
+        saveToStorage();
+      }
+    }
+
     function gosterHaftalar() {
       const tabsDiv = document.getElementById('haftaTabs');
       const contentDiv = document.getElementById('haftaTabContent');
@@ -2669,6 +2770,9 @@
       
       tabsDiv.innerHTML = '';
       contentDiv.innerHTML = '';
+      
+      // Hafta verilerini normalize et
+      normalizeHaftaData();
       
       const haftalar = getHaftaListesi();
       
@@ -2699,10 +2803,30 @@
         const hasKartlar = (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) ? 'status-kartlar' : 'status-empty';
         const hasEslesen = (hafta.tarifler && hafta.tarifler.length > 0) ? 'status-eslesen' : 'status-empty';
         
+        // Tarih bilgilerini güvenli şekilde kontrol et
+        const baslangicTarih = hafta.baslangic || '';
+        const bitisTarih = hafta.bitis || '';
+        let tarihGosterim = '';
+        
+        if (baslangicTarih && bitisTarih) {
+          try {
+            const basParts = baslangicTarih.split('-');
+            const bitParts = bitisTarih.split('-');
+            if (basParts.length === 3 && bitParts.length === 3) {
+              tarihGosterim = `${basParts[1]}/${basParts[2]} - ${bitParts[1]}/${bitParts[2]}`;
+            }
+          } catch (e) {
+            console.warn('Tarih parse hatası:', e);
+            tarihGosterim = 'Tarih belirtilmemiş';
+          }
+        } else {
+          tarihGosterim = 'Tarih belirtilmemiş';
+        }
+        
         tabDiv.innerHTML = `
           <div style="font-weight: bold; font-size: 14px;">${haftaNo}. Hafta</div>
           <div style="font-size: 10px; color: #666; margin-top: 2px;">
-            ${hafta.baslangic.split('-')[1]}/${hafta.baslangic.split('-')[2]} - ${hafta.bitis.split('-')[1]}/${hafta.bitis.split('-')[2]}
+            ${tarihGosterim}
           </div>
           <div class="tab-status-indicators">
             <span class="status-indicator ${hasPdf}" title="PDF durumu"></span>
