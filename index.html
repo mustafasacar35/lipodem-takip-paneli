@@ -568,7 +568,8 @@
             return {
               haftaNo: idx + 1,
               kayitTarihi: now,
-              kartlar: kartIsimleri
+              kartlar: kartIsimleri,
+              gptMesaj: hafta.gptMesaj || '' // GPT mesajını da kaydet
             };
           })
         };
@@ -973,6 +974,7 @@
                 return {
                   pdfDosya: null, // PDF dosyaları localStorage'da kalacak
                   pdfMetin: '', // PDF metni de localStorage'da kalacak
+                  gptMesaj: githubHafta.gptMesaj || '', // GPT mesajını geri yükle
                   tarifKartlar: (githubHafta.kartlar || []).map(kartAdi => ({
                     name: kartAdi,
                     url: `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`
@@ -984,6 +986,9 @@
           
           // LocalStorage'a da kaydet
           localStorage.setItem('lipedem_hastalar', JSON.stringify(hastalar));
+          
+          // ID'leri normalize et
+          normalizeHastaIdleri();
           
           // Cache timestamp'ini güncelle
           localStorage.setItem('lastGithubUpdate', Date.now().toString());
@@ -2476,32 +2481,44 @@
     
     // Mevcut hasta ID'lerini normalize et (büyük sayıları düzelt)
     function normalizeHastaIdleri() {
+      if (!hastalar || hastalar.length === 0) return;
+      
       let normalizeEdildi = false;
-      const buyukIdlerVarMi = hastalar.some(h => h.id > 1000000);
+      const buyukIdlerVarMi = hastalar.some(h => h.id > 10000); // 10,000'den büyük
       
       if (buyukIdlerVarMi) {
         console.log('🔧 Büyük ID\'ler tespit edildi, normalize ediliyor...');
-        hastalar.forEach((hasta, index) => {
-          if (hasta.id > 1000000) {
-            hasta.id = index + 1;
-            normalizeEdildi = true;
-          }
+        
+        // Önce arsiv olmayan hastaları, sonra arsiv olanları sırala
+        const aktifHastalar = hastalar.filter(h => !h.arsiv);
+        const arsivHastalar = hastalar.filter(h => h.arsiv);
+        
+        // Yeni ID'ler ata
+        let yeniId = 1;
+        aktifHastalar.forEach(hasta => {
+          hasta.id = yeniId++;
+          normalizeEdildi = true;
+        });
+        arsivHastalar.forEach(hasta => {
+          hasta.id = yeniId++;
+          normalizeEdildi = true;
         });
         
+        // Diziyi yeniden birleştir
+        hastalar = [...aktifHastalar, ...arsivHastalar];
+        
         if (normalizeEdildi) {
-          // ID'leri tekrar sırala ve benzersiz yap
-          hastalar.forEach((hasta, index) => {
-            hasta.id = index + 1;
-          });
-          
           saveToStorage();
-          console.log(`✅ ${hastalar.length} hasta ID'si normalize edildi`);
+          console.log(`✅ ${hastalar.length} hasta ID'si normalize edildi (1'den başlayarak)`);
         }
       }
     }
     
     // Sayfa yüklendiğinde ID'leri normalize et
-    normalizeHastaIdleri();
+    setTimeout(() => {
+      normalizeHastaIdleri();
+      gosterHastalar();
+    }, 100);
     
     let seciliHasta = null;
     let duzenlemeModu = false;
@@ -2742,7 +2759,7 @@
           </div>
           
           <!-- Ana İçerik - Horizontal Layout -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
             
             <!-- PDF Bölümü -->
             <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
@@ -2774,6 +2791,14 @@
                      placeholder="Bu hafta hakkında not..." 
                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
                      onchange="aciklamaKaydet(${i})">
+            </div>
+            
+            <!-- GPT Mesaj Bölümü -->
+            <div style="padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
+              <h4 style="margin: 0 0 10px 0; color: #004085; font-size: 14px;">🤖 GPT Notları</h4>
+              <textarea id="gptMesaj_${i}" placeholder="GPT analizleri, öneriler, notlar..." 
+                        style="width: 100%; height: 80px; padding: 8px; border-radius: 4px; border: 1px solid #b3d7ff; font-size: 12px; resize: vertical;"
+                        onchange="gptMesajKaydet(${i})">${hafta.gptMesaj||''}</textarea>
             </div>
           </div>
           
@@ -2848,10 +2873,26 @@ function aciklamaKaydet(i) {
   aciklamaInput.style.borderColor = '#28a745';
   setTimeout(() => {
     aciklamaInput.style.backgroundColor = '';
-    aciklamaInput.style.borderColor = '';
-  }, 800);
+    aciklamaInput.style.borderColor = '#bee5eb';
+  }, 1000);
+}
+
+function gptMesajKaydet(i) {
+  const haftalar = getHaftaListesi();
+  const gptMesajInput = document.getElementById('gptMesaj_' + i);
+  if (!haftalar[i]) haftalar[i] = {};
+  haftalar[i].gptMesaj = gptMesajInput.value;
+  saveToStorage();
   
-  console.log('Açıklama otomatik kaydedildi:', aciklamaInput.value);
+  // Visual feedback
+  gptMesajInput.style.backgroundColor = '#d4edda';
+  gptMesajInput.style.borderColor = '#28a745';
+  setTimeout(() => {
+    gptMesajInput.style.backgroundColor = '';
+    gptMesajInput.style.borderColor = '#b3d7ff';
+  }, 1000);
+  
+  console.log(`💾 GPT mesajı kaydedildi: Hafta ${i+1}`);
 }
 
 // Hafta numarası düzenleme (inline editing)
