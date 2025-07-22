@@ -5131,23 +5131,39 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (!currentDiv) return;
       
       const eskiDiv = document.getElementById(`eslesenKartlar_${haftaIndex}`);
-      if (eskiDiv && eskiDiv.innerHTML.trim()) {
-        // İçeriği kopyala (butonlar dahil)
-        currentDiv.innerHTML = eskiDiv.innerHTML;
+      if (eskiDiv && eskiDiv.children.length > 0) {
+        console.log('🔍 Sidebar kartlar güncellendi, elementler klonlanıyor...');
         
-        // Butonların fonksiyonlarını yeniden ata
-        const zipBtn = currentDiv.querySelector('button[onclick*="zipEslesenGorseller"]');
-        if (zipBtn) {
-          zipBtn.onclick = function() { 
-            console.log('🔍 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
-            zipEslesenGorseller(haftaIndex); 
-          };
-        }
+        // Önce temizle
+        currentDiv.innerHTML = '';
         
-        const pdfBtn = currentDiv.querySelector('button[onclick*="generatePatientPDF"]');
-        if (pdfBtn) {
-          pdfBtn.onclick = function() { generatePatientPDF(); };
-        }
+        // Her child elementi klonla (onclick eventleri korunur)
+        Array.from(eskiDiv.children).forEach(child => {
+          const clonedChild = child.cloneNode(true);
+          currentDiv.appendChild(clonedChild);
+        });
+        
+        console.log('🔍 Elementler klonlandı, butonlar kontrol ediliyor...');
+        
+        // Sadece güvenlik için onclick'leri yeniden ata
+        const tumButonlar = currentDiv.querySelectorAll('button');
+        console.log('🔍 Bulunan buton sayısı:', tumButonlar.length);
+        
+        tumButonlar.forEach((btn, index) => {
+          console.log(`🔍 Buton ${index + 1}:`, btn.textContent);
+          
+          if (btn.textContent.includes('ZIP İndir')) {
+            console.log('🔍 ZIP butonu bulundu, onclick kontrol ediliyor...');
+            if (!btn.onclick) {
+              console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
+              btn.onclick = function(e) { 
+                e.preventDefault();
+                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
+                zipEslesenGorseller(haftaIndex); 
+              };
+            }
+          }
+        });
         
       } else {
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
