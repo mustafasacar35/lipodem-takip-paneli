@@ -2785,7 +2785,14 @@
         const enSonPdfHafta = getEnSonPdfHafta(hasta);
         const haftaGosterim = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ' (PDF yok)';
         
-        li.textContent = `${index + 1}. ${hasta.isim}${haftaGosterim}${hasta.arsiv ? ' [Arşiv]' : ''}`;
+        // HTML içeriği oluştur (hafta bilgisini kırmızı yapmak için)
+        const haftaKismi = enSonPdfHafta > 0 
+          ? `<span style="color: red; font-weight: bold;"> (${enSonPdfHafta}. Hafta)</span>`
+          : `<span style="color: #999; font-style: italic;"> (PDF yok)</span>`;
+        
+        const arsivKismi = hasta.arsiv ? ' <span style="color: #666;">[Arşiv]</span>' : '';
+        
+        li.innerHTML = `${index + 1}. ${hasta.isim}${haftaKismi}${arsivKismi}`;
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
