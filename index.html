@@ -490,7 +490,6 @@
       console.log('🚀 Fresh veri yükleme başlıyor...');
       
       // Önce localStorage'dan yükle (temel veriler için)
-      hastalar = loadFromStorage() || hastalar; // Hasta verilerini de yükle
       manuelEslestirmeleriYukle();
       eslesmemeKurallariniYukle();
       
@@ -508,15 +507,13 @@
           if (!lastUpdate || (now - parseInt(lastUpdate)) > fiveMinutes) {
             console.log('⏰ Cache eski, GitHub\'tan yenileniyor...');
             
-            // Hasta verileri dahil tüm verileri GitHub'dan yükle
-            await hastaVerileriniGitHubYukle(true); // sessiz yükleme
             await manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
             await eslesmemeKurallariniGitHubYukle(true); // sessiz yükleme
             
             // Cache timestamp'ini güncelle
             localStorage.setItem('lastGithubUpdate', now.toString());
             
-            console.log('✅ GitHub veriler yüklendi:', hastalar.length, 'hasta,', Object.keys(manuelEslestirmeler).length, 'manuel eşleştirme,', Object.keys(eslesmemeKurallari).length, 'yasak');
+            console.log('✅ GitHub veriler yüklendi:', Object.keys(manuelEslestirmeler).length, 'manuel eşleştirme,', Object.keys(eslesmemeKurallari).length, 'yasak');
           } else {
             console.log('✅ GitHub cache taze, localStorage kullanılıyor');
           }
@@ -527,12 +524,8 @@
       }
       
       console.log('📊 Yüklenen veriler:');
-      console.log('- Hasta kayıtları:', hastalar.length, 'adet');
       console.log('- Manuel eşleştirmeler:', Object.keys(manuelEslestirmeler).length, 'adet');
       console.log('- Eşleşme yasakları:', Object.keys(eslesmemeKurallari).length, 'adet');
-      
-      // Hasta listesini güncelle
-      gosterHastalar();
     }
 
     async function uploadToGitHub() {
@@ -568,8 +561,7 @@
             return {
               haftaNo: idx + 1,
               kayitTarihi: now,
-              kartlar: kartIsimleri,
-              gptMesaj: hafta.gptMesaj || '' // GPT mesajını da kaydet
+              kartlar: kartIsimleri
             };
           })
         };
@@ -934,91 +926,6 @@
       }
     }
 
-    // GitHub'tan hasta verilerini yükle
-    async function hastaVerileriniGitHubYukle(sessizYukleme = false) {
-      const token = document.getElementById('githubToken').value.trim();
-      if (!token) {
-        if (!sessizYukleme) {
-          alert('GitHub API token gerekli!');
-        }
-        return;
-      }
-
-      const owner = 'mustafasacar35';
-      const repo = 'lipodem-takip-paneli';
-      const path = 'data/hasta_kayitlari.json';
-      const branch = 'main';
-
-      try {
-        if (!sessizYukleme) {
-          console.log('🔄 GitHub\'tan hasta verileri yükleniyor...');
-        }
-
-        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-          headers: { Authorization: `token ${token}` }
-        });
-
-        if (resp.ok) {
-          const data = await resp.json();
-          const jsonContent = atob(data.content);
-          const githubData = JSON.parse(jsonContent);
-          
-          // GitHub'tan gelen verileri hasta formatına çevir
-          hastalar = githubData.map(githubHasta => {
-            return {
-              id: githubHasta.id || yeniHastaIdOlustur(),
-              isim: githubHasta.isim,
-              arsiv: githubHasta.arsiv || false,
-              not: '', // GitHub'da not saklanmıyor şu an
-              haftalar: (githubHasta.haftalar || []).map(githubHafta => {
-                return {
-                  pdfDosya: null, // PDF dosyaları localStorage'da kalacak
-                  pdfMetin: '', // PDF metni de localStorage'da kalacak
-                  gptMesaj: githubHafta.gptMesaj || '', // GPT mesajını geri yükle
-                  tarifKartlar: (githubHafta.kartlar || []).map(kartAdi => ({
-                    name: kartAdi,
-                    url: `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`
-                  }))
-                };
-              })
-            };
-          });
-          
-          // LocalStorage'a da kaydet
-          localStorage.setItem('lipedem_hastalar', JSON.stringify(hastalar));
-          
-          // ID'leri normalize et
-          normalizeHastaIdleri();
-          
-          // Cache timestamp'ini güncelle
-          localStorage.setItem('lastGithubUpdate', Date.now().toString());
-          
-          // Hasta listesini güncelle
-          gosterHastalar();
-
-          if (!sessizYukleme) {
-            console.log(`✅ GitHub'tan ${hastalar.length} hasta verisi yüklendi!`);
-          } else {
-            console.log(`Hasta verileri GitHub'dan güncellendi: ${hastalar.length} adet`);
-          }
-
-        } else if (resp.status === 404) {
-          // Dosya henüz yok, normal
-          if (!sessizYukleme) {
-            console.log('ℹ️ GitHub\'da henüz hasta dosyası yok');
-          }
-        } else {
-          throw new Error('GitHub\'dan okuma başarısız: ' + resp.status);
-        }
-
-      } catch (error) {
-        console.error('GitHub hasta verisi yükleme hatası:', error);
-        if (!sessizYukleme) {
-          alert(`❌ GitHub hasta verisi yükleme hatası: ${error.message}`);
-        }
-      }
-    }
-
     // --- Manuel Eşleştirme Paneli Fonksiyonları ---
     const MANUEL_ESLESTIRME_KEY = 'lipedem_manuel_eslestirmeler';
     let manuelEslestirmeler = {};
@@ -1087,19 +994,41 @@
     function manuelKartListesiniGoster(aramaMetni = '') {
       const div = document.getElementById('manuelKartListesi');
       div.innerHTML = '';
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
       // Filtreleme
       const filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => {
         if (!aramaMetni) return true;
-        return kart.name.toLowerCase().includes(aramaMetni.toLowerCase());
+        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        const duzeltilmisArama = karakterDuzelt(aramaMetni);
+        return duzeltilmisKartAdi.toLowerCase().includes(duzeltilmisArama.toLowerCase());
       });
       
       filtrelenmisKartlar.forEach(kart => {
         const label = document.createElement('label');
         label.style.cssText = 'display:block; margin:4px 0; cursor:pointer; padding:2px;';
+        
+        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        
         label.innerHTML = `
           <input type="checkbox" data-kart="${kart.name}" style="margin-right:8px;" />
-          ${kart.name}
+          ${duzeltilmisKartAdi}
         `;
         div.appendChild(label);
       });
@@ -1171,8 +1100,26 @@
       
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
-      manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart`, 'success');
+      const duzeltilmisMetin = karakterDuzelt(tarifAdi);
+      manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${duzeltilmisMetin}" → ${secilenKartlar.length} kart`, 'success');
       
       // Formu temizle
       document.getElementById('manuelTarifAdi').value = '';
@@ -1197,14 +1144,36 @@
         div.innerHTML = '<em>Henüz manuel eşleştirme yok</em>';
         return;
       }
+
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
       anahtarlar.forEach(anahtar => {
         const eslestirme = manuelEslestirmeler[anahtar];
         const eslestirmeDiv = document.createElement('div');
         eslestirmeDiv.style.cssText = 'border:1px solid #ddd; margin:8px 0; padding:8px; background:#fff; border-radius:4px;';
+        
+        // Orijinal metni ve kartları düzelt
+        const duzeltilmisMetin = karakterDuzelt(eslestirme.orijinalMetin);
+        const duzeltilmisKartlar = eslestirme.kartlar.map(kart => karakterDuzelt(kart));
+        
         eslestirmeDiv.innerHTML = `
-          <div style="font-weight:bold; color:#28a745;">${eslestirme.orijinalMetin}</div>
-          <div style="margin:5px 0; font-size:0.9em;">→ ${eslestirme.kartlar.join(', ')}</div>
+          <div style="font-weight:bold; color:#28a745;">${duzeltilmisMetin}</div>
+          <div style="margin:5px 0; font-size:0.9em;">→ ${duzeltilmisKartlar.join(', ')}</div>
           <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">Sil</button>
         `;
         div.appendChild(eslestirmeDiv);
@@ -2478,48 +2447,6 @@
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
-    
-    // Mevcut hasta ID'lerini normalize et (büyük sayıları düzelt)
-    function normalizeHastaIdleri() {
-      if (!hastalar || hastalar.length === 0) return;
-      
-      let normalizeEdildi = false;
-      const buyukIdlerVarMi = hastalar.some(h => h.id > 10000); // 10,000'den büyük
-      
-      if (buyukIdlerVarMi) {
-        console.log('🔧 Büyük ID\'ler tespit edildi, normalize ediliyor...');
-        
-        // Önce arsiv olmayan hastaları, sonra arsiv olanları sırala
-        const aktifHastalar = hastalar.filter(h => !h.arsiv);
-        const arsivHastalar = hastalar.filter(h => h.arsiv);
-        
-        // Yeni ID'ler ata
-        let yeniId = 1;
-        aktifHastalar.forEach(hasta => {
-          hasta.id = yeniId++;
-          normalizeEdildi = true;
-        });
-        arsivHastalar.forEach(hasta => {
-          hasta.id = yeniId++;
-          normalizeEdildi = true;
-        });
-        
-        // Diziyi yeniden birleştir
-        hastalar = [...aktifHastalar, ...arsivHastalar];
-        
-        if (normalizeEdildi) {
-          saveToStorage();
-          console.log(`✅ ${hastalar.length} hasta ID'si normalize edildi (1'den başlayarak)`);
-        }
-      }
-    }
-    
-    // Sayfa yüklendiğinde ID'leri normalize et
-    setTimeout(() => {
-      normalizeHastaIdleri();
-      gosterHastalar();
-    }, 100);
-    
     let seciliHasta = null;
     let duzenlemeModu = false;
     let duzenlenenId = null;
@@ -2553,18 +2480,6 @@
       document.getElementById('hastaDetay').style.display = 'none';
     }
 
-    // Yeni hasta ID'si oluştur (sıralı ve benzersiz)
-    function yeniHastaIdOlustur() {
-      if (hastalar.length === 0) return 1;
-      
-      // En büyük ID'yi bul ve 1 ekle
-      const mevcutIdler = hastalar.map(h => h.id).filter(id => typeof id === 'number');
-      if (mevcutIdler.length === 0) return 1;
-      
-      const enBuyukId = Math.max(...mevcutIdler);
-      return enBuyukId + 1;
-    }
-
     function kaydetHasta() {
       const isim = document.getElementById('hastaIsim').value.trim();
       const not = document.getElementById('hastaNot').value.trim();
@@ -2573,14 +2488,8 @@
         const h = hastalar.find(h => h.id === duzenlenenId);
         h.isim = isim; h.not = not;
       } else {
-        const yeni = { 
-          id: yeniHastaIdOlustur(), 
-          isim, 
-          not, 
-          arsiv: false 
-        };
+        const yeni = { id: Date.now(), isim, not, arsiv: false };
         hastalar.push(yeni);
-        console.log(`✅ Yeni hasta eklendi: ID ${yeni.id} - ${yeni.isim}`);
       }
       document.getElementById('hastaFormu').style.display = 'none';
       saveToStorage();
@@ -2759,7 +2668,7 @@
           </div>
           
           <!-- Ana İçerik - Horizontal Layout -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
             
             <!-- PDF Bölümü -->
             <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
@@ -2791,14 +2700,6 @@
                      placeholder="Bu hafta hakkında not..." 
                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
                      onchange="aciklamaKaydet(${i})">
-            </div>
-            
-            <!-- GPT Mesaj Bölümü -->
-            <div style="padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
-              <h4 style="margin: 0 0 10px 0; color: #004085; font-size: 14px;">🤖 GPT Notları</h4>
-              <textarea id="gptMesaj_${i}" placeholder="GPT analizleri, öneriler, notlar..." 
-                        style="width: 100%; height: 80px; padding: 8px; border-radius: 4px; border: 1px solid #b3d7ff; font-size: 12px; resize: vertical;"
-                        onchange="gptMesajKaydet(${i})">${hafta.gptMesaj||''}</textarea>
             </div>
           </div>
           
@@ -2873,26 +2774,10 @@ function aciklamaKaydet(i) {
   aciklamaInput.style.borderColor = '#28a745';
   setTimeout(() => {
     aciklamaInput.style.backgroundColor = '';
-    aciklamaInput.style.borderColor = '#bee5eb';
-  }, 1000);
-}
-
-function gptMesajKaydet(i) {
-  const haftalar = getHaftaListesi();
-  const gptMesajInput = document.getElementById('gptMesaj_' + i);
-  if (!haftalar[i]) haftalar[i] = {};
-  haftalar[i].gptMesaj = gptMesajInput.value;
-  saveToStorage();
+    aciklamaInput.style.borderColor = '';
+  }, 800);
   
-  // Visual feedback
-  gptMesajInput.style.backgroundColor = '#d4edda';
-  gptMesajInput.style.borderColor = '#28a745';
-  setTimeout(() => {
-    gptMesajInput.style.backgroundColor = '';
-    gptMesajInput.style.borderColor = '#b3d7ff';
-  }, 1000);
-  
-  console.log(`💾 GPT mesajı kaydedildi: Hafta ${i+1}`);
+  console.log('Açıklama otomatik kaydedildi:', aciklamaInput.value);
 }
 
 // Hafta numarası düzenleme (inline editing)
@@ -4120,7 +4005,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     
     // Tüm cache'i temizle (localStorage + tarifler klasörü cache)
     function tumCacheyiTemizle() {
-      if (!confirm('⚠️ TÜM VERİLER SİLİNECEK!\n\nBu işlem şunları silecek:\n• Tüm hasta kayıtları\n• PDF dosyaları ve metinleri\n• Manuel eşleştirmeler\n• Eşleşme yasakları\n• Tarifler klasörü cache\n• GitHub token\n\n❗ UYARI: Bu veriler GitHub\'a kaydedilmişse "GitHub\'tan Fresh Yükle" butonuyla geri yüklenebilir.\n\nDevam etmek istiyor musunuz?')) {
+      if (!confirm('⚠️ TÜM VERİLER SİLİNECEK!\n\nBu işlem şunları silecek:\n• Tüm hasta kayıtları\n• Manuel eşleştirmeler\n• Eşleşme yasakları\n• Tarifler klasörü cache\n• GitHub token\n\nDevam etmek istiyor musunuz?')) {
         return;
       }
       
@@ -4129,9 +4014,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // localStorage'ı tamamen temizle
       localStorage.clear();
       
-      // Memory'deki verileri temizle
-      hastalar = [];
+      // Tarifler klasörü cache'ini temizle
       tariflerKlasoruGorselleri = [];
+      
+      // Manuel eşleştirme ve yasak listelerini temizle
       manuelEslestirmeler = {};
       eslesmemeKurallari = {};
       
@@ -4139,12 +4025,11 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const tokenInput = document.getElementById('githubToken');
       if (tokenInput) tokenInput.value = '';
       
-      // UI'yi temizle
-      gosterHastalar();
+      // Durumu güncelle
       durumGuncelle();
       
       // Başarı mesajı
-      alert('✅ Tüm cache temizlendi!\n\n💡 GitHub\'ta kayıtlı verileriniz varsa "GitHub\'tan Fresh Yükle" butonuyla geri yükleyebilirsiniz.\n\nSayfa yeniden yüklenecek...');
+      alert('✅ Tüm cache temizlendi!\n\nSayfa yeniden yüklenecek...');
       
       // Sayfayı yenile
       window.location.reload();
@@ -4159,20 +4044,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      if (!confirm('🔄 FRESH YÜKLEME\n\nBu işlem:\n• Yerel cache\'i temizleyecek\n• GitHub\'tan en güncel verileri yükleyecek\n• Hasta kayıtları, manuel eşleştirmeler ve yasaklar güncellenecek\n• Tarifler klasörünü yeniden tarayacak\n\n💡 PDF dosyaları ve metinleri localStorage\'da kalacak\n\nDevam etmek istiyor musunuz?')) {
+      if (!confirm('🔄 FRESH YÜKLEME\n\nBu işlem:\n• Yerel cache\'i temizleyecek\n• GitHub\'tan en güncel verileri yükleyecek\n• Tarifler klasörünü yeniden tarayacak\n\nDevam etmek istiyor musunuz?')) {
         return;
       }
       
       try {
         console.log('🔄 GitHub\'tan fresh yükleme başlıyor...');
         
-        // Sadece veri cache'lerini temizle (PDF'ler ve metinler kalsın)
+        // Sadece veri cache'lerini temizle (hasta kayıtlarını tutmak için)
         manuelEslestirmeler = {};
         eslesmemeKurallari = {};
         tariflerKlasoruGorselleri = [];
         
-        // GitHub'tan tüm verileri yükle
-        await hastaVerileriniGitHubYukle(false); // sessiz değil
+        // GitHub'tan yükle
         await manuelEslestirmeleriGitHubYukle(false); // sessiz değil
         await eslesmemeKurallariniGitHubYukle(false); // sessiz değil
         
@@ -4183,11 +4067,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         durumGuncelle();
         
         alert('✅ GitHub\'tan fresh yükleme tamamlandı!\n\n' +
-              `• Hasta kayıtları: ${hastalar.length} adet\n` +
               `• Manuel eşleştirmeler: ${Object.keys(manuelEslestirmeler).length} adet\n` +
               `• Eşleşme yasakları: ${Object.keys(eslesmemeKurallari).length} adet\n` +
-              `• Tarifler klasörü: ${tariflerKlasoruGorselleri.length} görsel\n\n` +
-              `🗂️ PDF dosyaları ve metinler korundu`);
+              `• Tarifler klasörü: ${tariflerKlasoruGorselleri.length} görsel`);
               
       } catch (error) {
         console.error('GitHub fresh yükleme hatası:', error);
