@@ -3337,6 +3337,9 @@ function duzenleHafta(i) {
         // Hasta listesini güncelle (PDF hafta numarası değişmiş olabilir)
         renderHastalar();
         
+        // Haftalar görünümünü de güncelle (PDF adını göstermek için)
+        gosterHaftalar();
+        
         // PDF yüklenir yüklenmez otomatik tara ve eşleştir
         pdfOkuVeEsleHafta(i);
       };
@@ -4283,7 +4286,10 @@ function duzenleHafta(i) {
         hasPdf,
         hasGptMessage,
         hasImages,
-        pdfName: hafta.pdfName
+        pdfName: hafta.pdfName,
+        zipName: zipName,
+        pdfFileName: pdfFileName,
+        txtFileName: txtFileName
       });
       
       // 1. Eşleşen tarif kartlarını ana dizine ekle
@@ -4304,20 +4310,27 @@ function duzenleHafta(i) {
       // 2. Manuel yüklenen kartları da ana dizine ekle (sadece eşleşenler)
       // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
       
-      // 3. ZIP dosyası adını belirle (PDF adına göre)
-      let zipName = 'hafta_' + (hafta.haftaNo || (i + 1)) + '_dosyalar.zip';
-      let baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
+      // 3. Dosya isimlerini belirle (yüklenen PDF adına göre)
+      let baseName, zipName, pdfFileName, txtFileName;
       
       if (hafta.pdfName) {
+        // Yüklenen PDF dosyasının adını kullan (uzantısız)
         baseName = hafta.pdfName.replace(/\.[^.]+$/, '');
         zipName = baseName + '.zip';
+        pdfFileName = hafta.pdfName;  // Orijinal PDF adını koru
+        txtFileName = baseName + '.txt';
+      } else {
+        // PDF yoksa varsayılan isimlendirme
+        baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
+        zipName = baseName + '.zip';
+        pdfFileName = baseName + '.pdf';
+        txtFileName = baseName + '.txt';
       }
       
       // 4. PDF dosyasını ekle
       if (hasPdf) {
         try {
           const base64 = hafta.pdf.split(',')[1];
-          const pdfFileName = hafta.pdfName || `${baseName}.pdf`;
           zip.file(pdfFileName, base64, {base64: true});
           fileCount++;
           console.log('✅ PDF eklendi:', pdfFileName);
@@ -4329,12 +4342,11 @@ function duzenleHafta(i) {
       // 5. GPT mesajını txt dosyası olarak ekle (sadece içerik)
       if (hasGptMessage) {
         try {
-          const txtName = baseName + '.txt';
           const mesajIcerigi = hafta.gptMesaj.trim();  // Sadece GPT mesajı içeriği
           
-          zip.file(txtName, mesajIcerigi);
+          zip.file(txtFileName, mesajIcerigi);
           fileCount++;
-          console.log('✅ GPT mesajı eklendi:', txtName);
+          console.log('✅ GPT mesajı eklendi:', txtFileName);
         } catch (e) {
           console.warn('⚠️ GPT mesajı eklenemedi:', e);
         }
