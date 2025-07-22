@@ -4282,6 +4282,23 @@ function duzenleHafta(i) {
       const zip = new JSZip();
       let fileCount = 0;
       
+      // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
+      let baseName, zipName, pdfFileName, txtFileName;
+      
+      if (hafta.pdfName) {
+        // Yüklenen PDF dosyasının adını kullan (uzantısız)
+        baseName = hafta.pdfName.replace(/\.[^.]+$/, '');
+        zipName = baseName + '.zip';
+        pdfFileName = hafta.pdfName;  // Orijinal PDF adını koru
+        txtFileName = baseName + '.txt';
+      } else {
+        // PDF yoksa varsayılan isimlendirme
+        baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
+        zipName = baseName + '.zip';
+        pdfFileName = baseName + '.pdf';
+        txtFileName = baseName + '.txt';
+      }
+      
       console.log('📦 ZIP oluşturuluyor:', {
         hasPdf,
         hasGptMessage,
@@ -4292,7 +4309,7 @@ function duzenleHafta(i) {
         txtFileName: txtFileName
       });
       
-      // 1. Eşleşen tarif kartlarını ana dizine ekle
+      // 2. Eşleşen tarif kartlarını ana dizine ekle
       for (let img of imgs) {
         try {
           const url = img.src;
@@ -4310,24 +4327,7 @@ function duzenleHafta(i) {
       // 2. Manuel yüklenen kartları da ana dizine ekle (sadece eşleşenler)
       // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
       
-      // 3. Dosya isimlerini belirle (yüklenen PDF adına göre)
-      let baseName, zipName, pdfFileName, txtFileName;
-      
-      if (hafta.pdfName) {
-        // Yüklenen PDF dosyasının adını kullan (uzantısız)
-        baseName = hafta.pdfName.replace(/\.[^.]+$/, '');
-        zipName = baseName + '.zip';
-        pdfFileName = hafta.pdfName;  // Orijinal PDF adını koru
-        txtFileName = baseName + '.txt';
-      } else {
-        // PDF yoksa varsayılan isimlendirme
-        baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
-        zipName = baseName + '.zip';
-        pdfFileName = baseName + '.pdf';
-        txtFileName = baseName + '.txt';
-      }
-      
-      // 4. PDF dosyasını ekle
+      // 3. PDF dosyasını ekle
       if (hasPdf) {
         try {
           const base64 = hafta.pdf.split(',')[1];
