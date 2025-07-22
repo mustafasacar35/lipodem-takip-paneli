@@ -4469,8 +4469,10 @@ function duzenleHafta(i) {
     zipBtn.style.cursor = 'pointer';
     zipBtn.style.marginBottom = '10px';
     zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
-    zipBtn.onclick = function() { zipEslesenGorseller(i); };
-    zipBtn.onclick = function() { zipEslesenGorseller(i); };
+    zipBtn.onclick = function() { 
+      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
+      zipEslesenGorseller(i); 
+    };
     
     // PDF Takip Tablosu oluştur butonu
     const pdfBtn = document.createElement('button');
@@ -4691,10 +4693,26 @@ function duzenleHafta(i) {
     renderHastalar();
 
     async function zipEslesenGorseller(i) {
-      console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
-      
-      const haftalar = getHaftaListesi();
-      const hafta = haftalar[i];
+      try {
+        console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
+        
+        // Kütüphane kontrolü
+        if (typeof JSZip === 'undefined') {
+          console.error('❌ JSZip kütüphanesi yüklenmemiş!');
+          alert('JSZip kütüphanesi yüklenmemiş! Sayfayı yenileyin.');
+          return;
+        }
+        
+        if (typeof saveAs === 'undefined') {
+          console.error('❌ FileSaver kütüphanesi yüklenmemiş!');
+          alert('FileSaver kütüphanesi yüklenmemiş! Sayfayı yenileyin.');
+          return;
+        }
+        
+        console.log('✅ Kütüphaneler yüklü: JSZip:', typeof JSZip, 'saveAs:', typeof saveAs);
+        
+        const haftalar = getHaftaListesi();
+        const hafta = haftalar[i];
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
       
@@ -4826,6 +4844,11 @@ function duzenleHafta(i) {
         console.error('❌ ZIP oluşturma hatası:', error);
         alert('ZIP dosyası oluşturulurken hata oluştu: ' + error.message);
       });
+      
+      } catch (error) {
+        console.error('❌ ZIP fonksiyonu genel hatası:', error);
+        alert('ZIP oluşturma hatası: ' + error.message);
+      }
     }
     window.zipEslesenGorseller = zipEslesenGorseller;
     window.generatePatientPDF = generatePatientPDF;
