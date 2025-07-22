@@ -4039,7 +4039,7 @@ function duzenleHafta(i) {
     zipBtn.style.borderRadius = '5px';
     zipBtn.style.cursor = 'pointer';
     zipBtn.style.marginBottom = '10px';
-    zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları, manuel kartlar ve GPT mesajını tek ZIP dosyasında indirir';
+    zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
     zipBtn.onclick = function() { zipEslesenGorseller(i); };
     zipBtn.onclick = function() { zipEslesenGorseller(i); };
     
@@ -4270,10 +4270,9 @@ function duzenleHafta(i) {
       const hasPdf = hafta.pdf;
       const hasGptMessage = hafta.gptMesaj && hafta.gptMesaj.trim();
       const hasImages = imgs.length > 0;
-      const hasManuelKartlar = hafta.tarifKartlar && hafta.tarifKartlar.length > 0;
       
-      if (!hasImages && !hasPdf && !hasGptMessage && !hasManuelKartlar) {
-        alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• Manuel yüklenen kartlar\n• GPT mesajı');
+      if (!hasImages && !hasPdf && !hasGptMessage) {
+        alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• GPT mesajı');
         return;
       }
       
@@ -4284,18 +4283,17 @@ function duzenleHafta(i) {
         hasPdf,
         hasGptMessage,
         hasImages,
-        hasManuelKartlar,
         pdfName: hafta.pdfName
       });
       
-      // 1. Eşleşen tarif kartlarını ekle
+      // 1. Eşleşen tarif kartlarını ana dizine ekle
       for (let img of imgs) {
         try {
           const url = img.src;
           const name = img.title || img.alt || `eslesen_kart_${fileCount + 1}.jpg`;
           const response = await fetch(url);
           const blob = await response.blob();
-          zip.file(`eslesen_kartlar/${name}`, blob);
+          zip.file(name, blob);  // Ana dizine ekle
           fileCount++;
           console.log('✅ Eşleşen kart eklendi:', name);
         } catch (e) {
@@ -4303,20 +4301,8 @@ function duzenleHafta(i) {
         }
       }
       
-      // 2. Manuel yüklenen tarif kartlarını ekle
-      if (hasManuelKartlar) {
-        hafta.tarifKartlar.forEach((kart, index) => {
-          try {
-            const kartName = kart.name || `manuel_kart_${index + 1}.jpg`;
-            const base64Data = kart.data.split(',')[1];
-            zip.file(`manuel_kartlar/${kartName}`, base64Data, {base64: true});
-            fileCount++;
-            console.log('✅ Manuel kart eklendi:', kartName);
-          } catch (e) {
-            console.warn('⚠️ Manuel kart eklenemedi:', kart.name, e);
-          }
-        });
-      }
+      // 2. Manuel yüklenen kartları da ana dizine ekle (sadece eşleşenler)
+      // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
       
       // 3. ZIP dosyası adını belirle (PDF adına göre)
       let zipName = 'hafta_' + (hafta.haftaNo || (i + 1)) + '_dosyalar.zip';
@@ -4340,16 +4326,11 @@ function duzenleHafta(i) {
         }
       }
       
-      // 5. GPT mesajını txt dosyası olarak ekle
+      // 5. GPT mesajını txt dosyası olarak ekle (sadece içerik)
       if (hasGptMessage) {
         try {
           const txtName = baseName + '.txt';
-          const mesajIcerigi = `HAFTA ${hafta.haftaNo || (i + 1)} - GPT MESAJI\n` +
-                              `========================================\n\n` +
-                              hafta.gptMesaj + '\n\n' +
-                              `========================================\n` +
-                              `Oluşturulma Tarihi: ${new Date().toLocaleString('tr-TR')}\n` +
-                              `Hasta: ${seciliHasta ? seciliHasta.isim : 'Bilinmiyor'}`;
+          const mesajIcerigi = hafta.gptMesaj.trim();  // Sadece GPT mesajı içeriği
           
           zip.file(txtName, mesajIcerigi);
           fileCount++;
