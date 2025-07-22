@@ -14,7 +14,137 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f7f7f7; }
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      background: #f7f7f7; 
+      overflow-x: hidden;
+    }
+    
+    /* Main Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+    
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: #343a40;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+    
+    /* Sol Sidebar */
+    .left-sidebar {
+      background: white;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .sidebar-section {
+      border-bottom: 1px solid #eee;
+      padding: 15px;
+    }
+    
+    .sidebar-section h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #495057;
+      text-transform: uppercase;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 5px;
+    }
+    
+    /* Hasta Listesi */
+    #hastaListesi {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    #hastaListesi li {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    
+    #hastaListesi li:hover {
+      background: #f8f9fa;
+    }
+    
+    /* Orta Panel */
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      overflow-y: auto;
+    }
+    
+    /* Sağ Sidebar */
+    .right-sidebar {
+      background: white;
+      border-left: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    /* Sistem Durumu Kompakt */
+    .sistem-durumu-kompakt {
+      background: #e9ecef;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    
+    .sistem-durumu-kompakt .durum-item {
+      display: block;
+      margin-bottom: 3px;
+    }
+    
+    /* Kompakt Grid */
+    .kompakt-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .kompakt-box {
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 3px solid;
+    }
+    
+    .pdf-box {
+      background: #f8f9fa;
+      border-left-color: #28a745;
+    }
+    
+    .aciklama-box {
+      background: #d1ecf1;
+      border-left-color: #17a2b8;
+    }
+    
     textarea, input[type="file"] { width: 100%; margin-bottom: 10px; }
     button { padding: 10px 20px; }
     .matched img { width: 150px; margin: 5px; border: 1px solid #ccc; }
@@ -153,54 +283,107 @@
 </head>
 <body>
 
-  <h2>Lipedem Hasta Takip Sistemi</h2>
-  
-  <!-- Sistem Durumu -->
-  <div id="sistemDurumu" style="background:#e9ecef; padding:10px; margin-bottom:15px; border-radius:5px; border-left:4px solid #6c757d;">
-    <span style="font-weight:bold;">📊 Sistem Durumu:</span>
-    <span id="tariflerKlasoruDurumu">🔄 Tarifler klasörü kontrol ediliyor...</span><br>
-    <span id="dataKlasoruDurumu">🔄 Data klasörü kontrol ediliyor...</span><br>
-    <span id="githubDurumu">⏳ GitHub bağlantısı kontrol ediliyor...</span>
-  </div>
-  
-  <div style="margin-bottom:10px;">
-    <button onclick="exportData()">Verileri Dışa Aktar (JSON)</button>
-    <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
-    <button onclick="document.getElementById('importFile').click()">Veri Yükle (JSON)</button>
-    <input type="password" id="githubToken" placeholder="GitHub API Token" style="width:220px;" oninput="saveTokenToStorage()">
-    <button onclick="uploadToGitHub()" id="githubSaveBtn">GitHub'a Kaydet</button>
-    <button onclick="loadHastaDataFromGitHub(false)" style="background:#6f42c1; color:white; padding:10px 20px; border:none; border-radius:4px; cursor:pointer;">GitHub'dan Yükle</button>
-    <button onclick="yeniKartFormGoster()">Yeni Tarif Kartı Ekle</button>
-    <button onclick="kartDuzenleFormGoster()">Tarif Kartı Düzenle</button>
-    <button onclick="kartSilFormGoster()">Tarif Kartı Sil</button>
-    <button onclick="manuelEslestirmePaneliGoster()">Manuel Eşleştirme Paneli</button>
-    <button onclick="eslesmemeRegeleriPaneliGoster()">Eşleşme Yasakları Paneli</button>
-    <button onclick="debugTariflerKlasoru()" style="background:#17a2b8; color:white;">🔍 Debug: Tarifler Klasörü</button>
-    
-    <!-- PDF Analiz Test -->
-    <div style="display:inline-block; margin-left:10px;">
-      <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-      <button onclick="document.getElementById('testPdfInput').click()" style="background:#fd7e14; color:white;">📄 PDF Analiz Et</button>
-      <button onclick="generatePatientPDF()" style="background:#dc3545; color:white; margin-left:5px;">📋 Takip Tablosu PDF Oluştur</button>
-      <button onclick="testPDFGenerator()" style="background:#28a745; color:white; margin-left:5px;">🧪 PDF Test</button>
+  <div class="main-container">
+    <!-- Header -->
+    <div class="header">
+      <h2>Lipedem Hasta Takip Sistemi</h2>
     </div>
-  </div>
 
-  <!-- Cache Yönetim Paneli -->
-  <div style="margin-bottom:15px; padding:10px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:5px;">
-    <strong>🗄️ Cache Yönetimi:</strong>
-    <button onclick="tumCacheyiTemizle()" style="background:#dc3545; color:white; padding:8px 15px; border:none; border-radius:4px; cursor:pointer; margin-left:10px;">
-      🗑️ Tüm Cache'i Temizle
-    </button>
-    <button onclick="githubdanYenileVeYukle()" style="background:#28a745; color:white; padding:8px 15px; border:none; border-radius:4px; cursor:pointer; margin-left:5px;">
-      🔄 GitHub'tan Fresh Yükle
-    </button>
-    <button onclick="sadeceTariflerKlasoruYenile()" style="background:#6f42c1; color:white; padding:8px 15px; border:none; border-radius:4px; cursor:pointer; margin-left:5px;">
-      📁 Tarifler Klasörünü Yenile
-    </button>
-    <small style="display:block; color:#856404; margin-top:5px;">
-      Cache temizleme tüm yerel verileri siler. GitHub'tan fresh yükleme en güncel verileri getirir.
-    </small>
+    <!-- Sol Sidebar -->
+    <div class="left-sidebar">
+      <!-- Hasta Listesi -->
+      <div class="sidebar-section">
+        <h3>👥 Hastalar</h3>
+        <input type="text" id="hastaAra" placeholder="Hasta ara..." style="width:100%; padding:6px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; font-size:12px;" oninput="filtreleHastalar()">
+        <select id="arsivFiltre" style="width:100%; padding:6px; margin-bottom:10px; border:1px solid #ddd; border-radius:4px; font-size:12px;" onchange="filtreleHastalar()">
+          <option value="aktif">Aktif Hastalar</option>
+          <option value="arsiv">Arşiv</option>
+          <option value="tum">Tümü</option>
+        </select>
+        <ul id="hastaListesi"></ul>
+        <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
+      </div>
+
+      <!-- Sistem Durumu -->
+      <div class="sidebar-section">
+        <h3>📊 Sistem</h3>
+        <div class="sistem-durumu-kompakt">
+          <span class="durum-item" id="tariflerKlasoruDurumu">🔄 Tarifler kontrol ediliyor...</span>
+          <span class="durum-item" id="dataKlasoruDurumu">🔄 Data kontrol ediliyor...</span>
+          <span class="durum-item" id="githubDurumu">⏳ GitHub kontrol ediliyor...</span>
+        </div>
+      </div>
+
+      <!-- Hızlı İşlemler -->
+      <div class="sidebar-section">
+        <h3>⚡ İşlemler</h3>
+        <button onclick="exportData()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📤 Verileri Dışa Aktar</button>
+        <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
+        <button onclick="document.getElementById('importFile').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Veri Yükle</button>
+        <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
+        <button onclick="uploadToGitHub()" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 GitHub'a Kaydet</button>
+        <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
+        <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
+        <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
+      </div>
+    </div>
+
+    <!-- Orta Panel -->
+    <div class="center-panel">
+      <!-- Hafta Tab'ları -->
+      <div id="haftaTabs"></div>
+      
+      <!-- Hafta İçeriği -->
+      <div id="haftaTabContent"></div>
+      
+      <!-- Eşleşen Kartlar (Alt Panel) -->
+      <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
+        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
+        <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+          <div style="text-align: center; color: #666; padding: 40px;">
+            Önce bir hasta seçin...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sağ Sidebar -->
+    <div class="right-sidebar">
+      <!-- GPT Mesajı -->
+      <div class="sidebar-section">
+        <h3>💬 GPT Mesajı</h3>
+        <div id="currentGptMesaj">
+          <div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">
+            Bir hafta seçin...
+          </div>
+        </div>
+      </div>
+
+      <!-- İstatistikler -->
+      <div class="sidebar-section">
+        <h3>📈 İstatistikler</h3>
+        <div id="istatistikler" style="font-size: 12px; line-height: 1.4;">
+          <div>📄 PDF Sayısı: <span id="statPdfCount">-</span></div>
+          <div>🍽️ Tarif Sayısı: <span id="statTarifCount">-</span></div>
+          <div>🖼️ Kart Sayısı: <span id="statKartCount">-</span></div>
+          <div>🔗 Eşleşme Sayısı: <span id="statEslesmeCount">-</span></div>
+        </div>
+      </div>
+
+      <!-- Araçlar -->
+      <div class="sidebar-section">
+        <h3>🛠️ Araçlar</h3>
+        <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
+        <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
+        <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
+        <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
+        <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
+      </div>
+    </div>
   </div>
 
   <!-- Eşleşme Yasakları Paneli -->
@@ -411,16 +594,16 @@
     <div id="duzenlemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
   </div>
 
-  <div id="hastaPaneli">
+  <div id="hastaPaneli" style="display:none;">
     <h3>Hasta Listesi</h3>
-    <input type="text" id="hastaAra" placeholder="İsme göre ara..." oninput="filtreleHastalar()" style="width:200px;">
-    <select id="arsivFiltre" onchange="filtreleHastalar()">
+    <input type="text" id="hastaAra_old" placeholder="İsme göre ara..." oninput="filtreleHastalar()" style="width:200px;">
+    <select id="arsivFiltre_old" onchange="filtreleHastalar()">
       <option value="aktif">Aktif Hastalar</option>
       <option value="arsiv">Arşivdekiler</option>
       <option value="tum">Tümü</option>
     </select>
     <button onclick="yeniHastaFormu()">Yeni Hasta Ekle</button>
-    <ul id="hastaListesi"></ul>
+    <ul id="hastaListesi_old"></ul>
   </div>
 
   <div id="hastaFormu" style="display:none; background:#fff; border:1px solid #ccc; padding:16px; margin:16px 0;">
@@ -2825,6 +3008,22 @@
       document.getElementById('hastaNot').value = '';
       document.getElementById('hastaFormu').style.display = 'block';
       document.getElementById('hastaDetay').style.display = 'none';
+      
+      // Yeni layout'da formu daha görünür yap
+      const formDiv = document.getElementById('hastaFormu');
+      if (formDiv) {
+        formDiv.style.position = 'fixed';
+        formDiv.style.top = '50%';
+        formDiv.style.left = '50%';
+        formDiv.style.transform = 'translate(-50%, -50%)';
+        formDiv.style.zIndex = '1000';
+        formDiv.style.border = '2px solid #007bff';
+        formDiv.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+        formDiv.style.background = 'white';
+        formDiv.style.borderRadius = '8px';
+        formDiv.style.padding = '20px';
+        formDiv.style.minWidth = '300px';
+      }
     }
 
     function kaydetHasta() {
@@ -2855,20 +3054,35 @@
     }
 
     function iptalHastaFormu() {
-      document.getElementById('hastaFormu').style.display = 'none';
+      const formDiv = document.getElementById('hastaFormu');
+      formDiv.style.display = 'none';
+      // Modal stillerini temizle
+      formDiv.style.position = '';
+      formDiv.style.top = '';
+      formDiv.style.left = '';
+      formDiv.style.transform = '';
+      formDiv.style.zIndex = '';
+      formDiv.style.border = '';
+      formDiv.style.boxShadow = '';
+      formDiv.style.background = '';
+      formDiv.style.borderRadius = '';
+      formDiv.style.padding = '';
+      formDiv.style.minWidth = '';
     }
 
     function hastaDetayGoster(id) {
       seciliHasta = hastalar.find(h => h.id === id);
       if (!seciliHasta) return;
-      document.getElementById('detayIsim').textContent = seciliHasta.isim;
-      document.getElementById('detayNot').textContent = seciliHasta.not;
-      document.getElementById('arsivBtn').textContent = seciliHasta.arsiv ? 'Arşivden Çıkar' : 'Arşivle';
-      document.getElementById('hastaDetay').style.display = 'block';
+      
+      // Eski detay panelini gizle (artık sidebar layout kullanıyoruz)
+      document.getElementById('hastaDetay').style.display = 'none';
       document.getElementById('hastaFormu').style.display = 'none';
       
-      // Hafta listesini göster
+      // Hafta listesini göster (center panel'de)
       gosterHaftalar();
+      
+      // Sidebar'ları güncelle
+      hastaSecildiginde(hastalar.findIndex(h => h.id === id));
     }
 
     function duzenleHasta() {
@@ -2992,7 +3206,11 @@
       // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
       const yeniTabIndex = seciliHasta.haftalar.length - 1;
-      setTimeout(() => switchTab(yeniTabIndex), 100);
+      setTimeout(() => {
+        switchTab(yeniTabIndex);
+        // Sidebar'ları güncelle
+        hastaSecildiginde(hastalar.findIndex(h => h.id === seciliHasta.id));
+      }, 100);
     }
 
     // Hafta verilerini normalize et (eski data format uyumluluğu için)
@@ -3117,6 +3335,7 @@
         // Tab başlığı oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const tabDiv = document.createElement('div');
         tabDiv.className = `hafta-tab ${i === enBuyukHaftaIndex ? 'active' : ''}`;
+        tabDiv.dataset.haftaIndex = i; // Dataset ekle
         tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
@@ -3220,14 +3439,14 @@
             </div>
           </div>
           
-          <!-- Eşleşen Kartlar - Full Width -->
-          <div style="margin-bottom: 20px;">
+          <!-- Eşleşen Kartlar - Full Width (Eski, Gizli) -->
+          <div style="margin-bottom: 20px; display: none;">
             <h4 style="margin: 0 0 10px 0; color: #6f42c1; font-size: 16px;">🔗 Eşleşen Kartlar</h4>
             <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
           </div>
           
-          <!-- GPT Mesajı - Full Width -->
-          <div style="margin-bottom: 20px;">
+          <!-- GPT Mesajı - Full Width (Eski, Gizli) -->
+          <div style="margin-bottom: 20px; display: none;">
             <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 GPT Mesajı</h4>
             <textarea id="gptMesaj_${i}" rows="3" 
                       style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
@@ -3285,6 +3504,9 @@
       document.querySelectorAll('.hafta-tab-content').forEach((content, index) => {
         content.classList.toggle('active', index === activeIndex);
       });
+      
+      // Sidebar'ları güncelle
+      haftaTabSecildiginde(activeIndex);
       
       console.log(`🏷️ ${activeIndex + 1}. hafta tab'ına geçildi`);
     }
@@ -4818,6 +5040,141 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     }
     window.sadeceTariflerKlasoruYenile = sadeceTariflerKlasoruYenile;
+
+    // ========================
+    // YENİ SIDEBAR LAYOUT FONKSİYONLARI
+    // ========================
+
+    // Aktif hastayı seçtiğimizde eşleşen kartları göster
+    function hastaSecildiginde(hastaIndex) {
+      // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
+      const actTab = document.querySelector('.hafta-tab.active');
+      if (actTab) {
+        const haftaIndex = parseInt(actTab.dataset.haftaIndex);
+        if (!isNaN(haftaIndex)) {
+          gosterEslesenKartlarSidebar(haftaIndex);
+          gosterGptMesajSidebar(haftaIndex);
+          guncelleIstatistikler(hastaIndex);
+        }
+      }
+    }
+    window.hastaSecildiginde = hastaSecildiginde;
+
+    // Hafta tab'ı seçildiğinde sidebar'ları güncelle
+    function haftaTabSecildiginde(haftaIndex) {
+      gosterEslesenKartlarSidebar(haftaIndex);
+      gosterGptMesajSidebar(haftaIndex);
+    }
+    window.haftaTabSecildiginde = haftaTabSecildiginde;
+
+    // Eşleşen kartları sağ sidebar'da göster
+    function gosterEslesenKartlarSidebar(haftaIndex) {
+      const currentDiv = document.getElementById('currentEslesenKartlar');
+      if (!currentDiv) return;
+      
+      const eskiDiv = document.getElementById(`eslesenKartlar_${haftaIndex}`);
+      if (eskiDiv && eskiDiv.innerHTML.trim()) {
+        currentDiv.innerHTML = eskiDiv.innerHTML;
+      } else {
+        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
+      }
+    }
+    window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
+
+    // GPT mesajını sağ sidebar'da göster
+    function gosterGptMesajSidebar(haftaIndex) {
+      const currentDiv = document.getElementById('currentGptMesaj');
+      if (!currentDiv) return;
+      
+      const eskiTextarea = document.getElementById(`gptMesaj_${haftaIndex}`);
+      if (eskiTextarea) {
+        const mesaj = eskiTextarea.value || '';
+        if (mesaj.trim()) {
+          currentDiv.innerHTML = `
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px; line-height: 1.4; max-height: 150px; overflow-y: auto;">
+              ${mesaj.replace(/\n/g, '<br>')}
+            </div>
+            <div style="margin-top: 8px;">
+              <button onclick="kopyalaGptMesaj(${haftaIndex})" style="padding: 4px 8px; font-size: 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📋 Kopyala</button>
+            </div>
+          `;
+        } else {
+          currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">Bu hafta için mesaj yok.</div>';
+        }
+      } else {
+        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">Veri bulunamadı.</div>';
+      }
+    }
+    window.gosterGptMesajSidebar = gosterGptMesajSidebar;
+
+    // İstatistikleri güncelle
+    function guncelleIstatistikler(hastaIndex) {
+      if (hastaIndex === undefined || !hastalar[hastaIndex]) return;
+      
+      const hasta = hastalar[hastaIndex];
+      const haftalar = hasta.haftalar || [];
+      
+      let pdfCount = 0;
+      let tarifCount = 0;
+      let kartCount = 0;
+      let eslesmeCount = 0;
+      
+      haftalar.forEach(hafta => {
+        if (hafta.pdf && hafta.pdf.name) pdfCount++;
+        if (hafta.tarifler) tarifCount += hafta.tarifler.length;
+        if (hafta.eslesenKartlar) eslesmeCount += hafta.eslesenKartlar.length;
+      });
+      
+      // Tarif kartları sayısı (global)
+      if (window.tarifKartlari) {
+        kartCount = tarifKartlari.length;
+      }
+      
+      // Güncelle
+      const statPdf = document.getElementById('statPdfCount');
+      const statTarif = document.getElementById('statTarifCount');
+      const statKart = document.getElementById('statKartCount');
+      const statEslesme = document.getElementById('statEslesmeCount');
+      
+      if (statPdf) statPdf.textContent = pdfCount;
+      if (statTarif) statTarif.textContent = tarifCount;
+      if (statKart) statKart.textContent = kartCount;
+      if (statEslesme) statEslesme.textContent = eslesmeCount;
+    }
+    window.guncelleIstatistikler = guncelleIstatistikler;
+
+    // ========================
+    // SAYFA BAŞLATMA
+    // ========================
+    
+    // Sayfa yüklendiğinde çalışacak başlatma fonksiyonu
+    function sayfaBaslat() {
+      console.log('🚀 Sidebar layout başlatılıyor...');
+      
+      // İstatistikleri başlat
+      const statPdf = document.getElementById('statPdfCount');
+      const statTarif = document.getElementById('statTarifCount');
+      const statKart = document.getElementById('statKartCount');
+      const statEslesme = document.getElementById('statEslesmeCount');
+      
+      if (statPdf) statPdf.textContent = '0';
+      if (statTarif) statTarif.textContent = '0';
+      if (statKart) statKart.textContent = '0';
+      if (statEslesme) statEslesme.textContent = '0';
+      
+      // Eğer tarif kartları varsa sayıyı güncelle
+      if (window.tarifKartlari && statKart) {
+        statKart.textContent = tarifKartlari.length;
+      }
+    }
+    
+    // Sayfa yüklendiğinde başlat
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', sayfaBaslat);
+    } else {
+      sayfaBaslat();
+    }
+
   </script>
 </body>
 </html>
