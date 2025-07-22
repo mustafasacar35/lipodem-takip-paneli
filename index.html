@@ -3311,11 +3311,21 @@ function duzenleHafta(i) {
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
       if (!file) return;
+      
+      console.log('🔍 PDF yükleniyor:', file.name);
+      
       const reader = new FileReader();
       reader.onload = function(e) {
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
+        
+        console.log('✅ PDF kaydedildi:', {
+          index: i,
+          fileName: file.name,
+          savedPdfName: haftalar[i].pdfName,
+          haftaObject: haftalar[i]
+        });
         
         // PDF dosya adından hafta numarasını otomatik tespit et
         const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
@@ -4273,7 +4283,11 @@ function duzenleHafta(i) {
     renderHastalar();
 
     async function zipEslesenGorseller(i) {
+      console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
+      
       const hafta = getHaftaListesi()[i];
+      console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
+      
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       const imgs = eslesenDiv.querySelectorAll('img');
       
@@ -4295,6 +4309,8 @@ function duzenleHafta(i) {
       
       console.log('🔍 Debug - hafta objesi:', hafta);
       console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
+      console.log('🔍 Debug - hafta indeksi:', i);
+      console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
       
       if (hafta.pdfName && hafta.pdfName.trim()) {
         // Yüklenen PDF dosyasının adını kullan
