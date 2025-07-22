@@ -735,7 +735,7 @@
               tarifKartlar: hafta.tarifKartlar || [],
               // tarifler alanını GitHub'a kaydetme (çok uzun olduğu için)
               gptMesaj: hafta.gptMesaj || '',
-              kayitTarihi: hafta.kayitTarihi || now
+              kayitTarihi: hafta.kayitTarihi || now  // PDF yükleme tarihini kaydet
             };
           })
         };
@@ -2847,6 +2847,7 @@
         aciklama: '',
         pdf: null,
         pdfName: null,  // PDF dosya adı
+        kayitTarihi: null, // PDF yükleme tarihi
         tarifKartlar: [],
         tarifler: [],
         gptMesaj: ''
@@ -2915,6 +2916,12 @@
         // PDF dosya adı yoksa ekle
         if (hafta.pdfName === undefined) {
           hafta.pdfName = null;
+          dataUpdated = true;
+        }
+        
+        // Kayıt tarihi yoksa ekle
+        if (hafta.kayitTarihi === undefined) {
+          hafta.kayitTarihi = null;
           dataUpdated = true;
         }
         
@@ -3059,12 +3066,12 @@
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
               ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
-                  ✅ <strong>${hafta.pdfName || 'hafta.pdf'}</strong>
+                  ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfName || 'hafta.pdf'}</strong>
                   <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
                     📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
                   </div>
                   <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
-                    📅 Yükleme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleDateString('tr-TR') : 'Bilinmiyor'}
+                    📅 Yüklenme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}
                   </div>
                 </div>
               ` : '<div style="color: #666; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px;">📄 PDF henüz yüklenmedi</div>'}
@@ -3341,18 +3348,27 @@ function duzenleHafta(i) {
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
         haftalar[i].pdfName = file.name || 'hafta.pdf';
+        haftalar[i].kayitTarihi = new Date().toISOString(); // PDF yükleme tarihini kaydet
         
         console.log('✅ PDF kaydedildi:', {
           index: i,
           fileName: file.name,
           savedPdfName: haftalar[i].pdfName,
-          haftaObject: haftalar[i]
+          kayitTarihi: haftalar[i].kayitTarihi
         });
         
         // Seçili hasta objesini de güncelle (referans sorunu olabilir)
-        if (seciliHasta && seciliHasta.haftalar && seciliHasta.haftalar[i]) {
-          seciliHasta.haftalar[i].pdfName = file.name || 'hafta.pdf';
-          console.log('🔄 seciliHasta objesi de güncellendi');
+        if (seciliHasta && seciliHasta.haftalar) {
+          // Hafta sıralaması sonrası index karışıklığı olabilir, hafta numarasına göre bul
+          const haftaNo = haftalar[i].haftaNo || (i + 1);
+          const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
+          
+          if (seciliHaftaIndex !== -1) {
+            seciliHasta.haftalar[seciliHaftaIndex].pdf = e.target.result;
+            seciliHasta.haftalar[seciliHaftaIndex].pdfName = file.name || 'hafta.pdf';
+            seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = new Date().toISOString();
+            console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
+          }
         }
         
         // PDF dosya adından hafta numarasını otomatik tespit et
