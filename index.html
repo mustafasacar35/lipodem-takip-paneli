@@ -4503,6 +4503,24 @@ function duzenleHafta(i) {
     indirDiv.appendChild(pdfBtn);
     indirDiv.appendChild(comboBtn);
     eslesenDiv.appendChild(indirDiv);
+    
+    // Yeni sidebar layout için butonları da sidebar'a ekle
+    const currentEslesenDiv = document.getElementById('currentEslesenKartlar');
+    if (currentEslesenDiv) {
+      // Eski butonları kaldır
+      const eskiIndirDiv = currentEslesenDiv.querySelector('.indir-butonlari');
+      if (eskiIndirDiv) {
+        eskiIndirDiv.remove();
+      }
+      
+      // Yeni butonları ekle
+      const sidebarIndirDiv = indirDiv.cloneNode(true);
+      sidebarIndirDiv.className = 'indir-butonlari';
+      sidebarIndirDiv.style.marginTop = '15px';
+      sidebarIndirDiv.style.borderTop = '1px solid #ddd';
+      sidebarIndirDiv.style.paddingTop = '15px';
+      currentEslesenDiv.appendChild(sidebarIndirDiv);
+    }
   }
 
   // Eşleşmeyen tarifleri akordiyon başlık altında göster
@@ -5114,7 +5132,23 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       const eskiDiv = document.getElementById(`eslesenKartlar_${haftaIndex}`);
       if (eskiDiv && eskiDiv.innerHTML.trim()) {
+        // İçeriği kopyala (butonlar dahil)
         currentDiv.innerHTML = eskiDiv.innerHTML;
+        
+        // Butonların fonksiyonlarını yeniden ata
+        const zipBtn = currentDiv.querySelector('button[onclick*="zipEslesenGorseller"]');
+        if (zipBtn) {
+          zipBtn.onclick = function() { 
+            console.log('🔍 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
+            zipEslesenGorseller(haftaIndex); 
+          };
+        }
+        
+        const pdfBtn = currentDiv.querySelector('button[onclick*="generatePatientPDF"]');
+        if (pdfBtn) {
+          pdfBtn.onclick = function() { generatePatientPDF(); };
+        }
+        
       } else {
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
       }
