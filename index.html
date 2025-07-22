@@ -3709,12 +3709,13 @@ function duzenleHafta(i) {
       reader.onload = function(e) {
         const haftalar = getHaftaListesi();
         haftalar[i].pdf = e.target.result;
-        haftalar[i].pdfName = file.name || 'hafta.pdf';
+        // PDF dosya adını Türkçe karakter düzeltme ile kaydet
+        haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
         haftalar[i].kayitTarihi = new Date().toISOString(); // PDF yükleme tarihini kaydet
         
         console.log('✅ PDF kaydedildi:', {
           index: i,
-          fileName: file.name,
+          originalFileName: file.name,
           savedPdfName: haftalar[i].pdfName,
           kayitTarihi: haftalar[i].kayitTarihi
         });
@@ -3727,7 +3728,7 @@ function duzenleHafta(i) {
           
           if (seciliHaftaIndex !== -1) {
             seciliHasta.haftalar[seciliHaftaIndex].pdf = e.target.result;
-            seciliHasta.haftalar[seciliHaftaIndex].pdfName = file.name || 'hafta.pdf';
+            seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
             seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = new Date().toISOString();
             console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
           }
@@ -4771,12 +4772,13 @@ function duzenleHafta(i) {
       console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
       
       if (hafta.pdfName && hafta.pdfName.trim()) {
-        // Yüklenen PDF dosyasının adını kullan
-        baseName = hafta.pdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
-        zipName = hafta.pdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
-        pdfFileName = hafta.pdfName;  // Orijinal PDF adını koru
+        // Yüklenen PDF dosyasının adını kullan - Türkçe karakterleri düzelt
+        const duzeltilmisPdfName = turkceKarakterDuzelt(hafta.pdfName);
+        baseName = duzeltilmisPdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
+        zipName = duzeltilmisPdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
+        pdfFileName = duzeltilmisPdfName;  // Düzeltilmiş PDF adını kullan
         txtFileName = baseName + '.txt';
-        console.log('✅ PDF adı kullanılıyor:', hafta.pdfName);
+        console.log('✅ PDF adı kullanılıyor (düzeltilmiş):', duzeltilmisPdfName);
       } else {
         // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
         console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
