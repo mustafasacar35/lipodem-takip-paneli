@@ -2768,11 +2768,28 @@
       // Hafta listesini göster
       gosterHaftalar();
       
-      // En son hafta tab'ına geç (eğer hafta varsa)
-      if (seciliHasta.haftalar && seciliHasta.haftalar.length > 0) {
-        const enSonHaftaIndex = seciliHasta.haftalar.length - 1;
-        setTimeout(() => switchTab(enSonHaftaIndex), 200);
-      }
+      // En büyük hafta numaralı tabı aktif et
+      setTimeout(() => {
+        const haftaListesi = getHaftaListesi();
+        if (haftaListesi && haftaListesi.length > 0) {
+          let enBuyukHaftaNo = 0;
+          let enBuyukHaftaIndex = 0;
+          
+          haftaListesi.forEach((hafta, index) => {
+            const haftaNo = parseFloat(hafta.hafta) || 0;
+            if (haftaNo > enBuyukHaftaNo) {
+              enBuyukHaftaNo = haftaNo;
+              enBuyukHaftaIndex = index;
+            }
+          });
+          
+          // Tab'ı aktif et
+          const haftaTab = document.getElementById(`hafta-tab-${enBuyukHaftaIndex}`);
+          if (haftaTab) {
+            haftaTab.click();
+          }
+        }
+      }, 200);
     }
 
     function duzenleHasta() {
@@ -2968,7 +2985,7 @@
       // Hafta verilerini normalize et
       normalizeHaftaData();
       
-      const haftalar = getHaftaListesi();
+      let haftalar = getHaftaListesi();
       
       // Backward compatibility: Mevcut haftalara hafta numarası ekle
       let haftaNumarasiDegisti = false;
@@ -2983,14 +3000,27 @@
         console.log('🔄 Mevcut haftalara hafta numaraları eklendi');
       }
       
-      // Tabları oluştur
-      haftalar.forEach((hafta, i) => {
-        const haftaNo = hafta.haftaNo || (i + 1);
+      // Hafta tablarını numaraya göre sırala (küçükten büyüğe)
+      const siraliHaftalar = haftalar.map((hafta, originalIndex) => ({
+        hafta,
+        originalIndex,
+        haftaNo: hafta.haftaNo || (originalIndex + 1)
+      })).sort((a, b) => a.haftaNo - b.haftaNo);
+      
+      console.log('📊 Hafta sıralaması:', siraliHaftalar.map(h => `Hafta ${h.haftaNo}`));
+      
+      // En büyük hafta numarasını bul (varsayılan aktif tab için)
+      const enBuyukHaftaIndex = siraliHaftalar.length > 0 ? siraliHaftalar.length - 1 : 0;
+      
+      // Tabları oluştur (sıralı şekilde)
+      siraliHaftalar.forEach((item, sortedIndex) => {
+        const { hafta, originalIndex } = item;
+        const haftaNo = hafta.haftaNo || (originalIndex + 1);
         
         // Tab başlığı oluştur
         const tabDiv = document.createElement('div');
-        tabDiv.className = `hafta-tab ${i === 0 ? 'active' : ''}`;
-        tabDiv.onclick = () => switchTab(i);
+        tabDiv.className = `hafta-tab ${sortedIndex === enBuyukHaftaIndex ? 'active' : ''}`;
+        tabDiv.onclick = () => switchTab(originalIndex); // Orijinal index'i kullan
         
         // Status göstergeleri
         const hasPdf = hafta.pdf ? 'status-pdf' : 'status-empty';
@@ -3032,25 +3062,25 @@
         
         // Tab içeriği oluştur
         const contentTab = document.createElement('div');
-        contentTab.className = `hafta-tab-content ${i === 0 ? 'active' : ''}`;
-        contentTab.id = `haftaContent_${i}`;
+        contentTab.className = `hafta-tab-content ${sortedIndex === enBuyukHaftaIndex ? 'active' : ''}`;
+        contentTab.id = `haftaContent_${originalIndex}`; // Orijinal index kullan
         
         contentTab.innerHTML = `
           <div class="hafta-tab-header">
             <div style="display: flex; align-items: center; gap: 15px;">
               <div style="display: flex; align-items: center; gap: 5px;">
-                <span id="haftaNoDisplay_${i}" style="font-weight: bold; font-size: 18px; cursor: text; padding: 4px 8px; border-radius: 4px; min-width: 20px; text-align: center;" 
-                      onclick="editHaftaNo(${i})" title="Hafta numarasını düzenlemek için tıklayın">${haftaNo}</span>
+                <span id="haftaNoDisplay_${originalIndex}" style="font-weight: bold; font-size: 18px; cursor: text; padding: 4px 8px; border-radius: 4px; min-width: 20px; text-align: center;" 
+                      onclick="editHaftaNo(${originalIndex})" title="Hafta numarasını düzenlemek için tıklayın">${haftaNo}</span>
                 <span style="font-weight: bold; font-size: 18px;">. Hafta</span>
-                <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" 
+                <input type="number" id="haftaNo_${originalIndex}" value="${haftaNo}" min="1" max="52" 
                        style="display: none; width: 50px; font-weight: bold; text-align: center; border: 2px solid #007bff; border-radius: 4px; padding: 4px;"
-                       onblur="saveHaftaNo(${i})" onkeypress="if(event.key==='Enter') saveHaftaNo(${i})">
+                       onblur="saveHaftaNo(${originalIndex})" onkeypress="if(event.key==='Enter') saveHaftaNo(${originalIndex})">
               </div>
               <span style="color: #666; font-size: 14px;">📅 ${hafta.baslangic} - ${hafta.bitis}</span>
             </div>
             <div style="display: flex; gap: 5px;">
-              <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
-              <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+              <button onclick="duzenleHafta(${originalIndex})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
+              <button onclick="silHafta(${originalIndex})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
             </div>
           </div>
           
@@ -3060,7 +3090,7 @@
             <!-- PDF Bölümü -->
             <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
               <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
-              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
+              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${originalIndex}, this)" 
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
               ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px;">
@@ -3076,35 +3106,35 @@
             <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
               <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
               <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
-                     onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
-              <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
+                     onchange="tarifKartYukleHafta(${originalIndex}, this)" style="width: 100%; font-size: 12px;">
+              <div id="haftaKartGorsel_${originalIndex}" style="margin-top: 10px;"></div>
             </div>
             
             <!-- Açıklama Bölümü -->
             <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;">
               <h4 style="margin: 0 0 10px 0; color: #0c5460; font-size: 14px;">📝 Açıklama</h4>
-              <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
+              <input type="text" id="aciklama_${originalIndex}" value="${hafta.aciklama||''}" 
                      placeholder="Bu hafta hakkında not..." 
                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
-                     onchange="aciklamaKaydet(${i})">
+                     onchange="aciklamaKaydet(${originalIndex})">
             </div>
           </div>
           
           <!-- Eşleşen Kartlar - Full Width -->
           <div style="margin-bottom: 20px;">
             <h4 style="margin: 0 0 10px 0; color: #6f42c1; font-size: 16px;">🔗 Eşleşen Kartlar</h4>
-            <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
+            <div id="eslesenKartlar_${originalIndex}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
           </div>
           
           <!-- GPT Mesajı - Full Width -->
           <div style="margin-bottom: 20px;">
             <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 GPT Mesajı</h4>
-            <textarea id="gptMesaj_${i}" rows="3" 
+            <textarea id="gptMesaj_${originalIndex}" rows="3" 
                       style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
                       placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
             <div style="margin-top: 10px;">
-              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+              <button onclick="gptMesajKaydet(${originalIndex})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
+              <button onclick="kopyalaGptMesaj(${originalIndex})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
             </div>
           </div>
         `;
@@ -4268,6 +4298,29 @@ function duzenleHafta(i) {
       document.getElementById('hastaFormu').style.display = 'none';
       document.getElementById('hastaGenelNot').textContent = seciliHasta.not;
       gosterHaftalar();
+      
+      // En büyük hafta numaralı tabı aktif et
+      setTimeout(() => {
+        const haftaListesi = getHaftaListesi();
+        if (haftaListesi && haftaListesi.length > 0) {
+          let enBuyukHaftaNo = 0;
+          let enBuyukHaftaIndex = 0;
+          
+          haftaListesi.forEach((hafta, index) => {
+            const haftaNo = parseFloat(hafta.hafta) || 0;
+            if (haftaNo > enBuyukHaftaNo) {
+              enBuyukHaftaNo = haftaNo;
+              enBuyukHaftaIndex = index;
+            }
+          });
+          
+          // Tab'ı aktif et
+          const haftaTab = document.getElementById(`hafta-tab-${enBuyukHaftaIndex}`);
+          if (haftaTab) {
+            haftaTab.click();
+          }
+        }
+      }, 100);
     }
 
     // Sayfa açılışında storage'dan yükle ve listele
