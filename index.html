@@ -3327,6 +3327,12 @@ function duzenleHafta(i) {
           haftaObject: haftalar[i]
         });
         
+        // Seçili hasta objesini de güncelle (referans sorunu olabilir)
+        if (seciliHasta && seciliHasta.haftalar && seciliHasta.haftalar[i]) {
+          seciliHasta.haftalar[i].pdfName = file.name || 'hafta.pdf';
+          console.log('🔄 seciliHasta objesi de güncellendi');
+        }
+        
         // PDF dosya adından hafta numarasını otomatik tespit et
         const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
         if (dosyaAdindenHaftaNo) {
@@ -4285,8 +4291,22 @@ function duzenleHafta(i) {
     async function zipEslesenGorseller(i) {
       console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
       
-      const hafta = getHaftaListesi()[i];
+      const haftalar = getHaftaListesi();
+      const hafta = haftalar[i];
+      
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
+      
+      // Eğer PDF varsa ama pdfName yoksa, bunu düzelt
+      if (hafta.pdf && !hafta.pdfName) {
+        console.log('🔧 PDF var ama pdfName yok, düzeltiliyor...');
+        // Hasta adından PDF adı oluştur
+        const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim.replace(/\s+/g, '_') : 'Hasta';
+        const tarih = new Date().toISOString().slice(0,10);
+        const haftaNo = hafta.haftaNo || (i + 1);
+        hafta.pdfName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}.pdf`;
+        saveToStorage(); // Değişikliği kaydet
+        console.log('✅ PDF adı oluşturuldu:', hafta.pdfName);
+      }
       
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       const imgs = eslesenDiv.querySelectorAll('img');
@@ -4320,12 +4340,19 @@ function duzenleHafta(i) {
         txtFileName = baseName + '.txt';
         console.log('✅ PDF adı kullanılıyor:', hafta.pdfName);
       } else {
-        // PDF yoksa varsayılan isimlendirme
-        baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
+        // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
+        console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
+        
+        // Hasta adından ve hafta numarasından dosya adı oluştur
+        const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim.replace(/\s+/g, '_') : 'Hasta';
+        const tarih = new Date().toISOString().slice(0,10);
+        const haftaNo = hafta.haftaNo || (i + 1);
+        
+        baseName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}`;
         zipName = baseName + '.zip';
         pdfFileName = baseName + '.pdf';
         txtFileName = baseName + '.txt';
-        console.log('⚠️ PDF adı yok, varsayılan kullanılıyor');
+        console.log('📝 Oluşturulan dosya adı:', baseName);
       }
       
       console.log('📦 ZIP oluşturuluyor:', {
