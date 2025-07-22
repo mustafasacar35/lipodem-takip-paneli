@@ -965,7 +965,7 @@
           // GitHub'tan gelen verileri hasta formatına çevir
           hastalar = githubData.map(githubHasta => {
             return {
-              id: githubHasta.id || Date.now() + Math.random(),
+              id: githubHasta.id || yeniHastaIdOlustur(),
               isim: githubHasta.isim,
               arsiv: githubHasta.arsiv || false,
               not: '', // GitHub'da not saklanmıyor şu an
@@ -2473,6 +2473,36 @@
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
+    
+    // Mevcut hasta ID'lerini normalize et (büyük sayıları düzelt)
+    function normalizeHastaIdleri() {
+      let normalizeEdildi = false;
+      const buyukIdlerVarMi = hastalar.some(h => h.id > 1000000);
+      
+      if (buyukIdlerVarMi) {
+        console.log('🔧 Büyük ID\'ler tespit edildi, normalize ediliyor...');
+        hastalar.forEach((hasta, index) => {
+          if (hasta.id > 1000000) {
+            hasta.id = index + 1;
+            normalizeEdildi = true;
+          }
+        });
+        
+        if (normalizeEdildi) {
+          // ID'leri tekrar sırala ve benzersiz yap
+          hastalar.forEach((hasta, index) => {
+            hasta.id = index + 1;
+          });
+          
+          saveToStorage();
+          console.log(`✅ ${hastalar.length} hasta ID'si normalize edildi`);
+        }
+      }
+    }
+    
+    // Sayfa yüklendiğinde ID'leri normalize et
+    normalizeHastaIdleri();
+    
     let seciliHasta = null;
     let duzenlemeModu = false;
     let duzenlenenId = null;
@@ -2506,6 +2536,18 @@
       document.getElementById('hastaDetay').style.display = 'none';
     }
 
+    // Yeni hasta ID'si oluştur (sıralı ve benzersiz)
+    function yeniHastaIdOlustur() {
+      if (hastalar.length === 0) return 1;
+      
+      // En büyük ID'yi bul ve 1 ekle
+      const mevcutIdler = hastalar.map(h => h.id).filter(id => typeof id === 'number');
+      if (mevcutIdler.length === 0) return 1;
+      
+      const enBuyukId = Math.max(...mevcutIdler);
+      return enBuyukId + 1;
+    }
+
     function kaydetHasta() {
       const isim = document.getElementById('hastaIsim').value.trim();
       const not = document.getElementById('hastaNot').value.trim();
@@ -2514,8 +2556,14 @@
         const h = hastalar.find(h => h.id === duzenlenenId);
         h.isim = isim; h.not = not;
       } else {
-        const yeni = { id: Date.now(), isim, not, arsiv: false };
+        const yeni = { 
+          id: yeniHastaIdOlustur(), 
+          isim, 
+          not, 
+          arsiv: false 
+        };
         hastalar.push(yeni);
+        console.log(`✅ Yeni hasta eklendi: ID ${yeni.id} - ${yeni.isim}`);
       }
       document.getElementById('hastaFormu').style.display = 'none';
       saveToStorage();
