@@ -2968,14 +2968,23 @@
       }
       
       // Tabları oluştur
-      const enSonHaftaIndex = haftalar.length - 1; // En son hafta index'i
+      // En büyük hafta numarasını bul
+      let enBuyukHaftaNo = 0;
+      let enBuyukHaftaIndex = 0;
+      haftalar.forEach((hafta, index) => {
+        const haftaNo = hafta.haftaNo || (index + 1);
+        if (haftaNo > enBuyukHaftaNo) {
+          enBuyukHaftaNo = haftaNo;
+          enBuyukHaftaIndex = index;
+        }
+      });
       
       haftalar.forEach((hafta, i) => {
         const haftaNo = hafta.haftaNo || (i + 1);
         
-        // Tab başlığı oluştur - EN SON HAFTA AKTİF OLSUN
+        // Tab başlığı oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const tabDiv = document.createElement('div');
-        tabDiv.className = `hafta-tab ${i === enSonHaftaIndex ? 'active' : ''}`;
+        tabDiv.className = `hafta-tab ${i === enBuyukHaftaIndex ? 'active' : ''}`;
         tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
@@ -3016,9 +3025,9 @@
         `;
         tabsDiv.appendChild(tabDiv);
         
-        // Tab içeriği oluştur - EN SON HAFTA AKTİF OLSUN
+        // Tab içeriği oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const contentTab = document.createElement('div');
-        contentTab.className = `hafta-tab-content ${i === enSonHaftaIndex ? 'active' : ''}`;
+        contentTab.className = `hafta-tab-content ${i === enBuyukHaftaIndex ? 'active' : ''}`;
         contentTab.id = `haftaContent_${i}`;
         
         contentTab.innerHTML = `
@@ -3114,9 +3123,22 @@
         }, 100 * i); // Sıralı yükleme
       });
       
-      // İlk tab'ı aktif yap
+      // En yüksek hafta numaralı tab'ı aktif yap
       if (haftalar.length > 0) {
-        switchTab(0);
+        // En büyük hafta numarasını bul
+        let enBuyukHaftaIndex = 0;
+        let enBuyukHaftaNo = haftalar[0].haftaNo || 1;
+        
+        haftalar.forEach((hafta, index) => {
+          const haftaNo = hafta.haftaNo || (index + 1);
+          if (haftaNo > enBuyukHaftaNo) {
+            enBuyukHaftaNo = haftaNo;
+            enBuyukHaftaIndex = index;
+          }
+        });
+        
+        console.log(`🎯 En büyük hafta numarası: ${enBuyukHaftaNo}, index: ${enBuyukHaftaIndex}`);
+        switchTab(enBuyukHaftaIndex);
       }
     }
     
