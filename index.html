@@ -331,7 +331,7 @@
     <!-- Orta Panel -->
     <div class="center-panel">
       <!-- Hafta Tab'ları -->
-      <div id="haftaTabs"></div>
+      <div id="haftaTabs" class="hafta-tabs"></div>
       
       <!-- Hafta İçeriği -->
       <div id="haftaTabContent"></div>
@@ -2975,7 +2975,10 @@
         
         const arsivKismi = hasta.arsiv ? ' <span style="color: #666;">[Arşiv]</span>' : '';
         
-        li.innerHTML = `${index + 1}. ${hasta.isim}${haftaKismi}${arsivKismi}`;
+        // Türkçe karakter düzeltme uygula
+        const duzeltilenIsim = turkceKarakterDuzelt(hasta.isim);
+        
+        li.innerHTML = `${index + 1}. ${duzeltilenIsim}${haftaKismi}${arsivKismi}`;
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
@@ -3875,7 +3878,9 @@ function duzenleHafta(i) {
       const haftaSayisi = parseInt(prompt('Kaç hafta PDF\'e dahil edilsin?', '12')) || 12;
       console.log('✅ PDF için hafta sayısı:', haftaSayisi);
       
-      generatePDFTable(seciliHasta.isim, haftalar, haftaSayisi);
+      // Türkçe karakter düzeltme uygula
+      const duzeltilenHastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
+      generatePDFTable(duzeltilenHastaAdi, haftalar, haftaSayisi);
     }
     
     function generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi) {
@@ -4684,8 +4689,8 @@ function duzenleHafta(i) {
       // Eğer PDF varsa ama pdfName yoksa, bunu düzelt
       if (hafta.pdf && !hafta.pdfName) {
         console.log('🔧 PDF var ama pdfName yok, düzeltiliyor...');
-        // Hasta adından PDF adı oluştur
-        const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim.replace(/\s+/g, '_') : 'Hasta';
+        // Hasta adından PDF adı oluştur (Türkçe karakter düzeltme ile)
+        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
         const tarih = new Date().toISOString().slice(0,10);
         const haftaNo = hafta.haftaNo || (i + 1);
         hafta.pdfName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}.pdf`;
@@ -4728,8 +4733,8 @@ function duzenleHafta(i) {
         // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
         console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
         
-        // Hasta adından ve hafta numarasından dosya adı oluştur
-        const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim.replace(/\s+/g, '_') : 'Hasta';
+        // Hasta adından ve hafta numarasından dosya adı oluştur (Türkçe karakter düzeltme ile)
+        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
         const tarih = new Date().toISOString().slice(0,10);
         const haftaNo = hafta.haftaNo || (i + 1);
         
