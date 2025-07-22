@@ -513,8 +513,8 @@
             // Hasta verilerini güncelle
             hastalar = jsonData;
             
-            // Hasta listesini PDF hafta sırasına göre sırala
-            sortHastalar();
+            // Hasta listesini otomatik sırala (isim sırası)
+            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
             
             // LocalStorage'a kaydet
             saveToStorage();
@@ -657,8 +657,8 @@
               }
             });
             
-            // Hasta listesini PDF hafta sırasına göre sırala
-            sortHastalar();
+            // Hasta listesini otomatik sırala (isim sırası)
+            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
             
             // LocalStorage'a kaydet
             saveToStorage();
@@ -2627,37 +2627,8 @@
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
     
-    // Hasta listesini PDF hafta numarasına göre sırala (sonra alfabetik)
-    function sortHastalar() {
-      hastalar.sort((a, b) => {
-        // En son PDF yüklenen hafta numarasını hesapla
-        let aEnSonPdf = 0, bEnSonPdf = 0;
-        
-        if (a.haftalar) {
-          a.haftalar.forEach(hafta => {
-            if (hafta.pdf && hafta.haftaNo > aEnSonPdf) {
-              aEnSonPdf = hafta.haftaNo;
-            }
-          });
-        }
-        
-        if (b.haftalar) {
-          b.haftalar.forEach(hafta => {
-            if (hafta.pdf && hafta.haftaNo > bEnSonPdf) {
-              bEnSonPdf = hafta.haftaNo;
-            }
-          });
-        }
-        
-        // Önce hafta numarasına göre sırala, sonra alfabetik
-        if (aEnSonPdf !== bEnSonPdf) {
-          return aEnSonPdf - bEnSonPdf;
-        }
-        return a.isim.localeCompare(b.isim, 'tr');
-      });
-    }
-    
-    sortHastalar();
+    // Hasta listesini otomatik sırala (isim sırası)
+    hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
     let seciliHasta = null;
     let duzenlemeModu = false;
     let duzenlenenId = null;
@@ -2676,48 +2647,53 @@
         }
       });
       
-      // Filtrelenmiş hastaları al
-      let filtrelenmisHastalar = hastalar.filter(h =>
+      // Filtrelenen hasta listesini al
+      const filtrelenenHastalar = hastalar.filter(h =>
         (filtre === 'tum' || (filtre === 'arsiv' ? h.arsiv : !h.arsiv)) &&
         h.isim.toLowerCase().includes(ara)
       );
       
-      // En son PDF yüklenen hafta numarasını hesapla ve sıralama yap
-      filtrelenmisHastalar = filtrelenmisHastalar.map(hasta => {
-        let enSonPdfHafta = 0;
-        if (hasta.haftalar && hasta.haftalar.length > 0) {
-          // PDF'i olan en büyük hafta numarasını bul
-          hasta.haftalar.forEach(hafta => {
-            if (hafta.pdf && hafta.haftaNo > enSonPdfHafta) {
-              enSonPdfHafta = hafta.haftaNo;
-            }
-          });
+      // Hasta listesini en son PDF haftasına göre sırala, sonra alfabetik
+      filtrelenenHastalar.sort((a, b) => {
+        const aEnSonPdfHafta = getEnSonPdfHafta(a);
+        const bEnSonPdfHafta = getEnSonPdfHafta(b);
+        
+        // Önce PDF haftasına göre sırala (küçükten büyüğe)
+        if (aEnSonPdfHafta !== bEnSonPdfHafta) {
+          return aEnSonPdfHafta - bEnSonPdfHafta;
         }
-        return { ...hasta, enSonPdfHafta };
-      });
-      
-      // Sıralama: önce hafta numarası (küçükten büyüğe), sonra alfabetik
-      filtrelenmisHastalar.sort((a, b) => {
-        if (a.enSonPdfHafta !== b.enSonPdfHafta) {
-          return a.enSonPdfHafta - b.enSonPdfHafta;
-        }
+        
+        // Aynı hafta ise alfabetik sırala
         return a.isim.localeCompare(b.isim, 'tr');
       });
       
-      // Listeyi oluştur
-      filtrelenmisHastalar.forEach((hasta, index) => {
+      // Numaralı liste oluştur
+      filtrelenenHastalar.forEach((hasta, index) => {
         const li = document.createElement('li');
-        const siraNo = index + 1;
-        const haftaBilgisi = hasta.enSonPdfHafta > 0 ? ` (${hasta.enSonPdfHafta}. Hafta)` : ' (PDF yok)';
-        const arsivBilgisi = hasta.arsiv ? ' [Arşiv]' : '';
+        const enSonPdfHafta = getEnSonPdfHafta(hasta);
+        const haftaGosterim = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ' (PDF yok)';
         
-        li.textContent = `${siraNo}. ${hasta.isim}${haftaBilgisi}${arsivBilgisi}`;
+        li.textContent = `${index + 1}. ${hasta.isim}${haftaGosterim}${hasta.arsiv ? ' [Arşiv]' : ''}`;
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
         li.onclick = () => hastaDetayGoster(hasta.id);
         ul.appendChild(li);
       });
+    }
+    
+    // Hastanın en son PDF yüklenen haftasını bul
+    function getEnSonPdfHafta(hasta) {
+      if (!hasta.haftalar || hasta.haftalar.length === 0) return 0;
+      
+      let enSonPdfHafta = 0;
+      hasta.haftalar.forEach(hafta => {
+        if (hafta.pdf && hafta.haftaNo > enSonPdfHafta) {
+          enSonPdfHafta = hafta.haftaNo;
+        }
+      });
+      
+      return enSonPdfHafta;
     }
 
     function filtreleHastalar() { renderHastalar(); }
@@ -2744,8 +2720,8 @@
         hastalar.push(yeni);
       }
       
-      // Hasta listesini PDF hafta sırasına göre sırala
-      sortHastalar();
+      // Hasta listesini otomatik sırala (isim sırası)
+      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
       
       document.getElementById('hastaFormu').style.display = 'none';
       saveToStorage();
@@ -2767,29 +2743,6 @@
       
       // Hafta listesini göster
       gosterHaftalar();
-      
-      // En büyük hafta numaralı tabı aktif et
-      setTimeout(() => {
-        const haftaListesi = getHaftaListesi();
-        if (haftaListesi && haftaListesi.length > 0) {
-          let enBuyukHaftaNo = 0;
-          let enBuyukHaftaIndex = 0;
-          
-          haftaListesi.forEach((hafta, index) => {
-            const haftaNo = parseFloat(hafta.hafta) || 0;
-            if (haftaNo > enBuyukHaftaNo) {
-              enBuyukHaftaNo = haftaNo;
-              enBuyukHaftaIndex = index;
-            }
-          });
-          
-          // Tab'ı aktif et
-          const haftaTab = document.getElementById(`hafta-tab-${enBuyukHaftaIndex}`);
-          if (haftaTab) {
-            haftaTab.click();
-          }
-        }
-      }, 200);
     }
 
     function duzenleHasta() {
@@ -2829,7 +2782,13 @@
     function getHaftaListesi() {
       if (!seciliHasta) return [];
       if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
-      return seciliHasta.haftalar;
+      
+      // Hafta listesini hafta numarasına göre sırala (küçükten büyüğe)
+      return seciliHasta.haftalar.sort((a, b) => {
+        const aHaftaNo = a.haftaNo || 1;
+        const bHaftaNo = b.haftaNo || 1;
+        return aHaftaNo - bHaftaNo;
+      });
     }
 
     function haftaEkle() {
@@ -2985,7 +2944,7 @@
       // Hafta verilerini normalize et
       normalizeHaftaData();
       
-      let haftalar = getHaftaListesi();
+      const haftalar = getHaftaListesi();
       
       // Backward compatibility: Mevcut haftalara hafta numarası ekle
       let haftaNumarasiDegisti = false;
@@ -3000,27 +2959,16 @@
         console.log('🔄 Mevcut haftalara hafta numaraları eklendi');
       }
       
-      // Hafta tablarını numaraya göre sırala (küçükten büyüğe)
-      const siraliHaftalar = haftalar.map((hafta, originalIndex) => ({
-        hafta,
-        originalIndex,
-        haftaNo: hafta.haftaNo || (originalIndex + 1)
-      })).sort((a, b) => a.haftaNo - b.haftaNo);
+      // Tabları oluştur
+      const enSonHaftaIndex = haftalar.length - 1; // En son hafta index'i
       
-      console.log('📊 Hafta sıralaması:', siraliHaftalar.map(h => `Hafta ${h.haftaNo}`));
-      
-      // En büyük hafta numarasını bul (varsayılan aktif tab için)
-      const enBuyukHaftaIndex = siraliHaftalar.length > 0 ? siraliHaftalar.length - 1 : 0;
-      
-      // Tabları oluştur (sıralı şekilde)
-      siraliHaftalar.forEach((item, sortedIndex) => {
-        const { hafta, originalIndex } = item;
-        const haftaNo = hafta.haftaNo || (originalIndex + 1);
+      haftalar.forEach((hafta, i) => {
+        const haftaNo = hafta.haftaNo || (i + 1);
         
-        // Tab başlığı oluştur
+        // Tab başlığı oluştur - EN SON HAFTA AKTİF OLSUN
         const tabDiv = document.createElement('div');
-        tabDiv.className = `hafta-tab ${sortedIndex === enBuyukHaftaIndex ? 'active' : ''}`;
-        tabDiv.onclick = () => switchTab(originalIndex); // Orijinal index'i kullan
+        tabDiv.className = `hafta-tab ${i === enSonHaftaIndex ? 'active' : ''}`;
+        tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
         const hasPdf = hafta.pdf ? 'status-pdf' : 'status-empty';
@@ -3060,27 +3008,27 @@
         `;
         tabsDiv.appendChild(tabDiv);
         
-        // Tab içeriği oluştur
+        // Tab içeriği oluştur - EN SON HAFTA AKTİF OLSUN
         const contentTab = document.createElement('div');
-        contentTab.className = `hafta-tab-content ${sortedIndex === enBuyukHaftaIndex ? 'active' : ''}`;
-        contentTab.id = `haftaContent_${originalIndex}`; // Orijinal index kullan
+        contentTab.className = `hafta-tab-content ${i === enSonHaftaIndex ? 'active' : ''}`;
+        contentTab.id = `haftaContent_${i}`;
         
         contentTab.innerHTML = `
           <div class="hafta-tab-header">
             <div style="display: flex; align-items: center; gap: 15px;">
               <div style="display: flex; align-items: center; gap: 5px;">
-                <span id="haftaNoDisplay_${originalIndex}" style="font-weight: bold; font-size: 18px; cursor: text; padding: 4px 8px; border-radius: 4px; min-width: 20px; text-align: center;" 
-                      onclick="editHaftaNo(${originalIndex})" title="Hafta numarasını düzenlemek için tıklayın">${haftaNo}</span>
+                <span id="haftaNoDisplay_${i}" style="font-weight: bold; font-size: 18px; cursor: text; padding: 4px 8px; border-radius: 4px; min-width: 20px; text-align: center;" 
+                      onclick="editHaftaNo(${i})" title="Hafta numarasını düzenlemek için tıklayın">${haftaNo}</span>
                 <span style="font-weight: bold; font-size: 18px;">. Hafta</span>
-                <input type="number" id="haftaNo_${originalIndex}" value="${haftaNo}" min="1" max="52" 
+                <input type="number" id="haftaNo_${i}" value="${haftaNo}" min="1" max="52" 
                        style="display: none; width: 50px; font-weight: bold; text-align: center; border: 2px solid #007bff; border-radius: 4px; padding: 4px;"
-                       onblur="saveHaftaNo(${originalIndex})" onkeypress="if(event.key==='Enter') saveHaftaNo(${originalIndex})">
+                       onblur="saveHaftaNo(${i})" onkeypress="if(event.key==='Enter') saveHaftaNo(${i})">
               </div>
               <span style="color: #666; font-size: 14px;">📅 ${hafta.baslangic} - ${hafta.bitis}</span>
             </div>
             <div style="display: flex; gap: 5px;">
-              <button onclick="duzenleHafta(${originalIndex})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
-              <button onclick="silHafta(${originalIndex})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+              <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
+              <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
             </div>
           </div>
           
@@ -3090,7 +3038,7 @@
             <!-- PDF Bölümü -->
             <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
               <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
-              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${originalIndex}, this)" 
+              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
               ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px;">
@@ -3106,35 +3054,35 @@
             <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
               <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
               <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
-                     onchange="tarifKartYukleHafta(${originalIndex}, this)" style="width: 100%; font-size: 12px;">
-              <div id="haftaKartGorsel_${originalIndex}" style="margin-top: 10px;"></div>
+                     onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
+              <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
             </div>
             
             <!-- Açıklama Bölümü -->
             <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;">
               <h4 style="margin: 0 0 10px 0; color: #0c5460; font-size: 14px;">📝 Açıklama</h4>
-              <input type="text" id="aciklama_${originalIndex}" value="${hafta.aciklama||''}" 
+              <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
                      placeholder="Bu hafta hakkında not..." 
                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
-                     onchange="aciklamaKaydet(${originalIndex})">
+                     onchange="aciklamaKaydet(${i})">
             </div>
           </div>
           
           <!-- Eşleşen Kartlar - Full Width -->
           <div style="margin-bottom: 20px;">
             <h4 style="margin: 0 0 10px 0; color: #6f42c1; font-size: 16px;">🔗 Eşleşen Kartlar</h4>
-            <div id="eslesenKartlar_${originalIndex}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
+            <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
           </div>
           
           <!-- GPT Mesajı - Full Width -->
           <div style="margin-bottom: 20px;">
             <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 GPT Mesajı</h4>
-            <textarea id="gptMesaj_${originalIndex}" rows="3" 
+            <textarea id="gptMesaj_${i}" rows="3" 
                       style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
                       placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
             <div style="margin-top: 10px;">
-              <button onclick="gptMesajKaydet(${originalIndex})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${originalIndex})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
+              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
             </div>
           </div>
         `;
@@ -3382,6 +3330,10 @@ function duzenleHafta(i) {
         }
         
         saveToStorage();
+        
+        // Hasta listesini güncelle (PDF hafta numarası değişmiş olabilir)
+        renderHastalar();
+        
         // PDF yüklenir yüklenmez otomatik tara ve eşleştir
         pdfOkuVeEsleHafta(i);
       };
@@ -4228,8 +4180,8 @@ function duzenleHafta(i) {
           if (Array.isArray(data)) {
             hastalar = data;
             
-            // Hasta listesini PDF hafta sırasına göre sırala
-            sortHastalar();
+            // Hasta listesini otomatik sırala (isim sırası)
+            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
             
             saveToStorage();
             renderHastalar();
@@ -4298,29 +4250,6 @@ function duzenleHafta(i) {
       document.getElementById('hastaFormu').style.display = 'none';
       document.getElementById('hastaGenelNot').textContent = seciliHasta.not;
       gosterHaftalar();
-      
-      // En büyük hafta numaralı tabı aktif et
-      setTimeout(() => {
-        const haftaListesi = getHaftaListesi();
-        if (haftaListesi && haftaListesi.length > 0) {
-          let enBuyukHaftaNo = 0;
-          let enBuyukHaftaIndex = 0;
-          
-          haftaListesi.forEach((hafta, index) => {
-            const haftaNo = parseFloat(hafta.hafta) || 0;
-            if (haftaNo > enBuyukHaftaNo) {
-              enBuyukHaftaNo = haftaNo;
-              enBuyukHaftaIndex = index;
-            }
-          });
-          
-          // Tab'ı aktif et
-          const haftaTab = document.getElementById(`hafta-tab-${enBuyukHaftaIndex}`);
-          if (haftaTab) {
-            haftaTab.click();
-          }
-        }
-      }, 100);
     }
 
     // Sayfa açılışında storage'dan yükle ve listele
