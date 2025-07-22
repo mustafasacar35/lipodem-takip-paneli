@@ -492,6 +492,59 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
+    // Türkçe karakter düzeltme fonksiyonu
+    function turkceKarakterDuzelt(text) {
+      if (!text || typeof text !== 'string') return text;
+      
+      // Yaygın encoding sorunlarını düzelt
+      const karakterTablosi = {
+        'Ã‡': 'Ç', 'Ã§': 'ç',
+        'ÃŸ': 'ş', 'Åž': 'Ş', 'Å\u009f': 'ş',
+        'Ä±': 'ı', 'Ä°': 'İ',
+        'Ã¼': 'ü', 'Ãœ': 'Ü',
+        'Ã¶': 'ö', 'Ã–': 'Ö',
+        'ÄŸ': 'ğ', 'Ä\u009e': 'Ğ',
+        'ÃÂENAY': 'ÇENAY',
+        'ÃÂZLEM': 'ÖZLEM', 
+        'BÃÂ°RÃÂ°NCÃÂ°': 'BİRİNCİ',
+        'ÃÂAHÃÂ°N': 'ŞAHİN',
+        'ULUDAÃÂ': 'ULUDAĞ',
+        'ÃÂÃÂ°M': 'ŞİM',
+        'KARADAÃÂ': 'KARADAĞ',
+        'GENÃÂ': 'GENÇ',
+        'DEÃÂERLÃÂ°': 'DEĞERLİ',
+        'SERÃÂ°NKEN': 'SERİNKEN',
+        'EMÃÂ°NE': 'EMİNE',
+        'KARAKUÃÂ': 'KARAKUŞ',
+        'FÃÂ°SUN': 'FİSUN',
+        'FADÃÂ°ME': 'FADİME',
+        'AKÃÂAY': 'AKŞAY',
+        'GÃÂ°ZEM': 'GİZEM',
+        'BÃÂ°RDAL': 'BİRDAL',
+        'HÃÂLYA': 'HÜLYA',
+        'ÃÂANTA': 'ŞANTA',
+        'HAFÃÂ°ZE': 'HAFİZE',
+        'HATÃÂ°CE': 'HATİCE',
+        'OKTAÃÂ': 'OKTAŞ',
+        'ÃÂNNÃÂ': 'ŞINNI',
+        'ÅENGÃN': 'ŞENGÜN',
+        'SEVÃÂ°LAY': 'SEVİLAY',
+        'COÃÂKUN': 'COŞKUN',
+        'SEVGÃÂ°': 'SEVGİ',
+        'DOÃÂAN': 'DOĞAN',
+        'ATAÃÂ': 'ATAŞ',
+        'VÃÂ°LDAN': 'VİLDAN',
+        'ÃÂEFÃÂ°KE': 'ŞEFİKE'
+      };
+      
+      let duzeltilmisText = text;
+      for (const [yanlis, dogru] of Object.entries(karakterTablosi)) {
+        duzeltilmisText = duzeltilmisText.replace(new RegExp(yanlis, 'g'), dogru);
+      }
+      
+      return duzeltilmisText;
+    }
+
     async function loadDataFromFolder() {
       const durumElement = document.getElementById('dataKlasoruDurumu');
       
@@ -509,6 +562,35 @@
           
           if (Array.isArray(jsonData) && jsonData.length > 0) {
             console.log('🔄 Data dosyasından veriler yükleniyor...');
+            
+            // Türkçe karakter düzeltmesi uygula
+            console.log('🔧 Türkçe karakter düzeltmesi uygulanıyor...');
+            jsonData.forEach(hasta => {
+              if (hasta.isim) {
+                const eskiIsim = hasta.isim;
+                hasta.isim = turkceKarakterDuzelt(hasta.isim);
+                if (eskiIsim !== hasta.isim) {
+                  console.log(`✅ İsim düzeltildi: "${eskiIsim}" → "${hasta.isim}"`);
+                }
+              }
+              if (hasta.not) {
+                hasta.not = turkceKarakterDuzelt(hasta.not);
+              }
+              // Hafta açıklamalarında da düzeltme yap
+              if (hasta.haftalar) {
+                hasta.haftalar.forEach(hafta => {
+                  if (hafta.aciklama) {
+                    hafta.aciklama = turkceKarakterDuzelt(hafta.aciklama);
+                  }
+                  if (hafta.pdfName) {
+                    hafta.pdfName = turkceKarakterDuzelt(hafta.pdfName);
+                  }
+                  if (hafta.gptMesaj) {
+                    hafta.gptMesaj = turkceKarakterDuzelt(hafta.gptMesaj);
+                  }
+                });
+              }
+            });
             
             // Hasta verilerini güncelle
             hastalar = jsonData;
@@ -2628,6 +2710,35 @@
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
     
+    // Türkçe karakter düzeltmesi uygula (mevcut veriler için)
+    console.log('🔧 Mevcut veriler için Türkçe karakter düzeltmesi uygulanıyor...');
+    hastalar.forEach(hasta => {
+      if (hasta.isim) {
+        const eskiIsim = hasta.isim;
+        hasta.isim = turkceKarakterDuzelt(hasta.isim);
+        if (eskiIsim !== hasta.isim) {
+          console.log(`✅ Mevcut hasta ismi düzeltildi: "${eskiIsim}" → "${hasta.isim}"`);
+        }
+      }
+      if (hasta.not) {
+        hasta.not = turkceKarakterDuzelt(hasta.not);
+      }
+      // Hafta verilerinde de düzeltme
+      if (hasta.haftalar) {
+        hasta.haftalar.forEach(hafta => {
+          if (hafta.aciklama) hafta.aciklama = turkceKarakterDuzelt(hafta.aciklama);
+          if (hafta.pdfName) hafta.pdfName = turkceKarakterDuzelt(hafta.pdfName);
+          if (hafta.gptMesaj) hafta.gptMesaj = turkceKarakterDuzelt(hafta.gptMesaj);
+        });
+      }
+    });
+    
+    // Düzeltilmiş verileri kaydet
+    if (hastalar.length > 0) {
+      saveToStorage();
+      console.log('💾 Düzeltilmiş veriler localStorage\'a kaydedildi');
+    }
+    
     // Hasta listesini otomatik sırala (isim sırası)
     hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
     let seciliHasta = null;
@@ -2710,15 +2821,22 @@
     }
 
     function kaydetHasta() {
-      const isim = document.getElementById('hastaIsim').value.trim();
-      const not = document.getElementById('hastaNot').value.trim();
+      let isim = document.getElementById('hastaIsim').value.trim();
+      let not = document.getElementById('hastaNot').value.trim();
+      
+      // Türkçe karakter düzeltmesi uygula
+      isim = turkceKarakterDuzelt(isim);
+      not = turkceKarakterDuzelt(not);
+      
       if (!isim) { alert('İsim zorunlu!'); return; }
       if (duzenlemeModu && duzenlenenId != null) {
         const h = hastalar.find(h => h.id === duzenlenenId);
         h.isim = isim; h.not = not;
+        console.log('✅ Hasta güncellendi (karakter düzeltmeli):', isim);
       } else {
         const yeni = { id: Date.now(), isim, not, arsiv: false };
         hastalar.push(yeni);
+        console.log('✅ Yeni hasta eklendi (karakter düzeltmeli):', isim);
       }
       
       // Hasta listesini otomatik sırala (isim sırası)
