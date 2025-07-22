@@ -513,8 +513,8 @@
             // Hasta verilerini güncelle
             hastalar = jsonData;
             
-            // Hasta listesini otomatik sırala (isim sırası)
-            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            // Hasta listesini PDF hafta sırasına göre sırala
+            sortHastalar();
             
             // LocalStorage'a kaydet
             saveToStorage();
@@ -626,11 +626,39 @@
           if (Array.isArray(hastaData) && hastaData.length > 0) {
             console.log('✅ GitHub\'dan hasta verileri yüklendi:', hastaData.length, 'hasta');
             
-            // Hasta verilerini güncelle
+            // Mevcut hasta verilerindeki tarifler alanını koru (GitHub'da olmayabilir)
+            const mevcutTarifler = {};
+            hastalar.forEach(hasta => {
+              if (hasta.haftalar) {
+                hasta.haftalar.forEach((hafta, haftaIndex) => {
+                  const key = `${hasta.id}_${haftaIndex}`;
+                  if (hafta.tarifler && hafta.tarifler.length > 0) {
+                    mevcutTarifler[key] = hafta.tarifler;
+                  }
+                });
+              }
+            });
+            
+            // GitHub'dan gelen hasta verilerini güncelle
             hastalar = hastaData;
             
-            // Hasta listesini otomatik sırala (isim sırası)
-            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            // Tarifler alanını geri ekle (eğer GitHub'da yoksa)
+            hastalar.forEach(hasta => {
+              if (hasta.haftalar) {
+                hasta.haftalar.forEach((hafta, haftaIndex) => {
+                  const key = `${hasta.id}_${haftaIndex}`;
+                  if (!hafta.tarifler && mevcutTarifler[key]) {
+                    hafta.tarifler = mevcutTarifler[key];
+                    console.log('🔄 Tarifler alanı korundu:', hasta.isim, 'hafta:', haftaIndex + 1);
+                  }
+                  // Eksik alanları tamamla
+                  if (!hafta.tarifler) hafta.tarifler = [];
+                });
+              }
+            });
+            
+            // Hasta listesini PDF hafta sırasına göre sırala
+            sortHastalar();
             
             // LocalStorage'a kaydet
             saveToStorage();
@@ -688,7 +716,7 @@
         }
       } catch (e) {}
 
-      // TÜM hasta verilerini kaydet (hafta detayları dahil)
+      // TÜM hasta verilerini kaydet (hafta detayları dahil, tarifler hariç)
       const now = new Date().toISOString();
       const exportData = hastalar.map(hasta => {
         return {
@@ -704,7 +732,7 @@
               aciklama: hafta.aciklama || '',
               pdf: hafta.pdf || null,
               tarifKartlar: hafta.tarifKartlar || [],
-              tarifler: hafta.tarifler || [],
+              // tarifler alanını GitHub'a kaydetme (çok uzun olduğu için)
               gptMesaj: hafta.gptMesaj || '',
               kayitTarihi: hafta.kayitTarihi || now
             };
@@ -712,7 +740,7 @@
         };
       });
       
-      console.log('📤 GitHub\'a kaydedilecek veriler:', {
+      console.log('📤 GitHub\'a kaydedilecek veriler (tarifler hariç):', {
         hastaSayisi: exportData.length,
         toplamHafta: exportData.reduce((sum, h) => sum + (h.haftalar?.length || 0), 0),
         toplamKart: exportData.reduce((sum, h) => sum + h.haftalar.reduce((hSum, hf) => hSum + (hf.tarifKartlar?.length || 0), 0), 0)
@@ -2599,8 +2627,37 @@
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
     
-    // Hasta listesini otomatik sırala (isim sırası)
-    hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+    // Hasta listesini PDF hafta numarasına göre sırala (sonra alfabetik)
+    function sortHastalar() {
+      hastalar.sort((a, b) => {
+        // En son PDF yüklenen hafta numarasını hesapla
+        let aEnSonPdf = 0, bEnSonPdf = 0;
+        
+        if (a.haftalar) {
+          a.haftalar.forEach(hafta => {
+            if (hafta.pdf && hafta.haftaNo > aEnSonPdf) {
+              aEnSonPdf = hafta.haftaNo;
+            }
+          });
+        }
+        
+        if (b.haftalar) {
+          b.haftalar.forEach(hafta => {
+            if (hafta.pdf && hafta.haftaNo > bEnSonPdf) {
+              bEnSonPdf = hafta.haftaNo;
+            }
+          });
+        }
+        
+        // Önce hafta numarasına göre sırala, sonra alfabetik
+        if (aEnSonPdf !== bEnSonPdf) {
+          return aEnSonPdf - bEnSonPdf;
+        }
+        return a.isim.localeCompare(b.isim, 'tr');
+      });
+    }
+    
+    sortHastalar();
     let seciliHasta = null;
     let duzenlemeModu = false;
     let duzenlenenId = null;
@@ -2619,13 +2676,45 @@
         }
       });
       
-      hastalar.filter(h =>
+      // Filtrelenmiş hastaları al
+      let filtrelenmisHastalar = hastalar.filter(h =>
         (filtre === 'tum' || (filtre === 'arsiv' ? h.arsiv : !h.arsiv)) &&
         h.isim.toLowerCase().includes(ara)
-      ).forEach(hasta => {
+      );
+      
+      // En son PDF yüklenen hafta numarasını hesapla ve sıralama yap
+      filtrelenmisHastalar = filtrelenmisHastalar.map(hasta => {
+        let enSonPdfHafta = 0;
+        if (hasta.haftalar && hasta.haftalar.length > 0) {
+          // PDF'i olan en büyük hafta numarasını bul
+          hasta.haftalar.forEach(hafta => {
+            if (hafta.pdf && hafta.haftaNo > enSonPdfHafta) {
+              enSonPdfHafta = hafta.haftaNo;
+            }
+          });
+        }
+        return { ...hasta, enSonPdfHafta };
+      });
+      
+      // Sıralama: önce hafta numarası (küçükten büyüğe), sonra alfabetik
+      filtrelenmisHastalar.sort((a, b) => {
+        if (a.enSonPdfHafta !== b.enSonPdfHafta) {
+          return a.enSonPdfHafta - b.enSonPdfHafta;
+        }
+        return a.isim.localeCompare(b.isim, 'tr');
+      });
+      
+      // Listeyi oluştur
+      filtrelenmisHastalar.forEach((hasta, index) => {
         const li = document.createElement('li');
-        li.textContent = hasta.isim + (hasta.arsiv ? ' (Arşiv)' : '');
+        const siraNo = index + 1;
+        const haftaBilgisi = hasta.enSonPdfHafta > 0 ? ` (${hasta.enSonPdfHafta}. Hafta)` : ' (PDF yok)';
+        const arsivBilgisi = hasta.arsiv ? ' [Arşiv]' : '';
+        
+        li.textContent = `${siraNo}. ${hasta.isim}${haftaBilgisi}${arsivBilgisi}`;
         li.style.cursor = 'pointer';
+        li.style.padding = '8px';
+        li.style.borderBottom = '1px solid #eee';
         li.onclick = () => hastaDetayGoster(hasta.id);
         ul.appendChild(li);
       });
@@ -2655,8 +2744,8 @@
         hastalar.push(yeni);
       }
       
-      // Hasta listesini otomatik sırala (isim sırası)
-      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+      // Hasta listesini PDF hafta sırasına göre sırala
+      sortHastalar();
       
       document.getElementById('hastaFormu').style.display = 'none';
       saveToStorage();
@@ -2678,6 +2767,12 @@
       
       // Hafta listesini göster
       gosterHaftalar();
+      
+      // En son hafta tab'ına geç (eğer hafta varsa)
+      if (seciliHasta.haftalar && seciliHasta.haftalar.length > 0) {
+        const enSonHaftaIndex = seciliHasta.haftalar.length - 1;
+        setTimeout(() => switchTab(enSonHaftaIndex), 200);
+      }
     }
 
     function duzenleHasta() {
@@ -4056,17 +4151,40 @@ function duzenleHafta(i) {
     }
     // --- JSON dışa aktar/yükle fonksiyonları ---
     function exportData() {
-      const dataStr = JSON.stringify(hastalar, null, 2);
+      // Kullanıcıya seçenek sun
+      const tariflerDahil = confirm('Tarif verilerini de dahil etmek istiyor musunuz?\n\n✅ EVET: Tam veri (daha büyük dosya)\n❌ HAYIR: Sadece önemli veriler (küçük dosya, GitHub ile uyumlu)');
+      
+      let dataToExport;
+      
+      if (tariflerDahil) {
+        // Tüm veriler dahil
+        dataToExport = hastalar;
+        console.log('📤 Tam veriler (tarifler dahil) JSON olarak hazırlanıyor...');
+      } else {
+        // Tarifler olmadan
+        dataToExport = hastalar.map(hasta => {
+          return {
+            ...hasta,
+            haftalar: (hasta.haftalar || []).map(hafta => {
+              const { tarifler, ...haftaWithoutTarifler } = hafta;
+              return haftaWithoutTarifler;
+            })
+          };
+        });
+        console.log('📤 Kompakt veriler (tarifler hariç) JSON olarak hazırlanıyor...');
+      }
+      
+      const dataStr = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([dataStr], {type: 'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'hasta_kayitlari.json';
+      a.download = tariflerDahil ? 'hasta_kayitlari_tam.json' : 'hasta_kayitlari.json';
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
       
-      console.log('📤 Hasta verileri JSON olarak indirildi');
+      console.log('📤 Hasta verileri JSON olarak indirildi:', tariflerDahil ? '(tam veri)' : '(kompakt veri)');
       console.log('💾 Data klasörüne kaydetmek için indirilen dosyayı ./data/hasta_kayitlari.json olarak kaydedin');
     }
 
@@ -4080,8 +4198,8 @@ function duzenleHafta(i) {
           if (Array.isArray(data)) {
             hastalar = data;
             
-            // Hasta listesini otomatik sırala (isim sırası)
-            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            // Hasta listesini PDF hafta sırasına göre sırala
+            sortHastalar();
             
             saveToStorage();
             renderHastalar();
