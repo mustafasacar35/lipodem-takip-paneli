@@ -731,6 +731,7 @@
               bitis: hafta.bitis || '',
               aciklama: hafta.aciklama || '',
               pdf: hafta.pdf || null,
+              pdfName: hafta.pdfName || null,  // PDF dosya adını da kaydet
               tarifKartlar: hafta.tarifKartlar || [],
               // tarifler alanını GitHub'a kaydetme (çok uzun olduğu için)
               gptMesaj: hafta.gptMesaj || '',
@@ -2845,6 +2846,7 @@
         bitis: endDate.toISOString().slice(0,10),
         aciklama: '',
         pdf: null,
+        pdfName: null,  // PDF dosya adı
         tarifKartlar: [],
         tarifler: [],
         gptMesaj: ''
@@ -2907,6 +2909,12 @@
         // PDF alanı yoksa ekle
         if (hafta.pdf === undefined) {
           hafta.pdf = null;
+          dataUpdated = true;
+        }
+        
+        // PDF dosya adı yoksa ekle
+        if (hafta.pdfName === undefined) {
+          hafta.pdfName = null;
           dataUpdated = true;
         }
         
@@ -4285,18 +4293,23 @@ function duzenleHafta(i) {
       // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
       let baseName, zipName, pdfFileName, txtFileName;
       
-      if (hafta.pdfName) {
+      console.log('🔍 Debug - hafta objesi:', hafta);
+      console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
+      
+      if (hafta.pdfName && hafta.pdfName.trim()) {
         // Yüklenen PDF dosyasının adını kullan
         baseName = hafta.pdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
         zipName = hafta.pdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
         pdfFileName = hafta.pdfName;  // Orijinal PDF adını koru
         txtFileName = baseName + '.txt';
+        console.log('✅ PDF adı kullanılıyor:', hafta.pdfName);
       } else {
         // PDF yoksa varsayılan isimlendirme
         baseName = 'hafta_' + (hafta.haftaNo || (i + 1));
         zipName = baseName + '.zip';
         pdfFileName = baseName + '.pdf';
         txtFileName = baseName + '.txt';
+        console.log('⚠️ PDF adı yok, varsayılan kullanılıyor');
       }
       
       console.log('📦 ZIP oluşturuluyor:', {
