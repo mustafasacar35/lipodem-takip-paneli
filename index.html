@@ -151,13 +151,14 @@
     
     /* Tab Sistemi CSS */
     .hafta-tabs {
-      display: flex;
-      flex-wrap: wrap;
+      display: flex !important;
+      flex-wrap: wrap !important;
       border-bottom: 2px solid #ddd;
       margin-bottom: 20px;
       background: #f8f9fa;
       padding: 5px;
       border-radius: 8px 8px 0 0;
+      gap: 5px;
     }
     
     .hafta-tab {
@@ -171,8 +172,10 @@
       border-radius: 8px 8px 0 0;
       transition: all 0.3s ease;
       min-width: 120px;
+      max-width: 160px;
       text-align: center;
       position: relative;
+      flex: 0 0 auto;
     }
     
     .hafta-tab:hover {
@@ -3299,6 +3302,14 @@
       
       if (!tabsDiv || !contentDiv) return;
       
+      // CSS class'ını garanti et
+      tabsDiv.className = 'hafta-tabs';
+      tabsDiv.style.display = 'flex';
+      tabsDiv.style.flexWrap = 'wrap';
+      tabsDiv.style.gap = '5px';
+      console.log('🏷️ Hafta tabs CSS class atandı:', tabsDiv.className);
+      console.log('🏷️ Hafta tabs computed style:', window.getComputedStyle(tabsDiv).display);
+      
       tabsDiv.innerHTML = '';
       contentDiv.innerHTML = '';
       
@@ -3378,6 +3389,7 @@
           </div>
         `;
         tabsDiv.appendChild(tabDiv);
+        console.log(`🏷️ ${haftaNo}. hafta tab'ı eklendi, CSS class:`, tabDiv.className);
         
         // Tab içeriği oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const contentTab = document.createElement('div');
