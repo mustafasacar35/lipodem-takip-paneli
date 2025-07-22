@@ -298,11 +298,20 @@
       <div class="sidebar-section">
         <h3>👥 Hastalar</h3>
         <input type="text" id="hastaAra" placeholder="Hasta ara..." style="width:100%; padding:6px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; font-size:12px;" oninput="filtreleHastalar()">
-        <select id="arsivFiltre" style="width:100%; padding:6px; margin-bottom:10px; border:1px solid #ddd; border-radius:4px; font-size:12px;" onchange="filtreleHastalar()">
-          <option value="aktif">Aktif Hastalar</option>
-          <option value="arsiv">Arşiv</option>
-          <option value="tum">Tümü</option>
-        </select>
+        
+        <!-- Hasta Filtre Sekmeleri -->
+        <div class="hasta-filtre-tabs" style="display:flex; margin-bottom:10px; border-bottom:2px solid #e9ecef;">
+          <button class="hasta-filtre-tab active" onclick="hasteFiltreTabSecim('aktif')" data-filter="aktif" style="flex:1; padding:8px 4px; background:none; border:none; border-bottom:2px solid #007bff; color:#007bff; font-size:11px; cursor:pointer; font-weight:bold;">
+            Aktif <span id="aktifCount">(0)</span>
+          </button>
+          <button class="hasta-filtre-tab" onclick="hasteFiltreTabSecim('arsiv')" data-filter="arsiv" style="flex:1; padding:8px 4px; background:none; border:none; border-bottom:2px solid transparent; color:#6c757d; font-size:11px; cursor:pointer;">
+            Arşiv <span id="arsivCount">(0)</span>
+          </button>
+          <button class="hasta-filtre-tab" onclick="hasteFiltreTabSecim('tum')" data-filter="tum" style="flex:1; padding:8px 4px; background:none; border:none; border-bottom:2px solid transparent; color:#6c757d; font-size:11px; cursor:pointer;">
+            Tümü <span id="tumCount">(0)</span>
+          </button>
+        </div>
+        
         <ul id="hastaListesi"></ul>
         <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
       </div>
@@ -2879,6 +2888,10 @@
     function saveToStorage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+        // Hasta sayılarını güncelle
+        if (typeof guncelleHastaSayilari === 'function') {
+          guncelleHastaSayilari();
+        }
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
     }
     function loadFromStorage() {
@@ -2934,7 +2947,6 @@
     function renderHastalar() {
       const ul = document.getElementById('hastaListesi');
       const ara = document.getElementById('hastaAra').value.toLowerCase();
-      const filtre = document.getElementById('arsivFiltre').value;
       ul.innerHTML = '';
       
       // Hasta verilerini normalize et
@@ -2945,11 +2957,21 @@
         }
       });
       
-      // Filtrelenen hasta listesini al
-      const filtrelenenHastalar = hastalar.filter(h =>
-        (filtre === 'tum' || (filtre === 'arsiv' ? h.arsiv : !h.arsiv)) &&
-        h.isim.toLowerCase().includes(ara)
-      );
+      // Filtrelenen hasta listesini al - yeni tab sistemi
+      const filtrelenenHastalar = hastalar.filter(h => {
+        const aramaUygun = h.isim.toLowerCase().includes(ara);
+        
+        if (aktifHastaFiltresi === 'tum') {
+          return aramaUygun;
+        } else if (aktifHastaFiltresi === 'arsiv') {
+          return aramaUygun && h.arsivlendi;
+        } else { // aktif
+          return aramaUygun && !h.arsivlendi;
+        }
+      });
+      
+      // Hasta sayılarını güncelle
+      guncelleHastaSayilari();
       
       // Hasta listesini en son PDF haftasına göre sırala, sonra alfabetik
       filtrelenenHastalar.sort((a, b) => {
@@ -3004,7 +3026,58 @@
       return enSonPdfHafta;
     }
 
+    let aktifHastaFiltresi = 'aktif'; // Global değişken
+
     function filtreleHastalar() { renderHastalar(); }
+
+    function hasteFiltreTabSecim(filter) {
+      aktifHastaFiltresi = filter;
+      
+      // Tab görünümünü güncelle
+      document.querySelectorAll('.hasta-filtre-tab').forEach(tab => {
+        if (tab.dataset.filter === filter) {
+          tab.style.borderBottomColor = '#007bff';
+          tab.style.color = '#007bff';
+          tab.style.fontWeight = 'bold';
+          tab.classList.add('active');
+        } else {
+          tab.style.borderBottomColor = 'transparent';
+          tab.style.color = '#6c757d';
+          tab.style.fontWeight = 'normal';
+          tab.classList.remove('active');
+        }
+      });
+      
+      // Hasta listesini filtrele
+      renderHastalar();
+    }
+
+    function guncelleHastaSayilari() {
+      try {
+        const hastalar = localStorage.getItem('hastalar') ? JSON.parse(localStorage.getItem('hastalar')) : [];
+        
+        let aktifSayisi = 0;
+        let arsivSayisi = 0;
+        
+        hastalar.forEach(hasta => {
+          if (hasta.arsivlendi) {
+            arsivSayisi++;
+          } else {
+            aktifSayisi++;
+          }
+        });
+        
+        const tumSayisi = hastalar.length;
+        
+        // Sayıları güncelle
+        document.getElementById('aktifCount').textContent = `(${aktifSayisi})`;
+        document.getElementById('arsivCount').textContent = `(${arsivSayisi})`;
+        document.getElementById('tumCount').textContent = `(${tumSayisi})`;
+        
+      } catch (error) {
+        console.error('Hasta sayıları güncellenirken hata:', error);
+      }
+    }
 
     function yeniHastaFormu() {
       duzenlemeModu = false;
@@ -5258,6 +5331,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (window.tarifKartlari && statKart) {
         statKart.textContent = tarifKartlari.length;
       }
+      
+      // Hasta sayılarını başlat
+      guncelleHastaSayilari();
     }
     
     // Sayfa yüklendiğinde başlat
