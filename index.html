@@ -2950,10 +2950,18 @@
       });
       
       // Filtrelenen hasta listesini al
-      const filtrelenenHastalar = hastalar.filter(h =>
-        (filtre === 'tum' || (filtre === 'arsiv' ? h.arsivlendi : !h.arsivlendi)) &&
-        h.isim.toLowerCase().includes(ara)
-      );
+      const filtrelenenHastalar = hastalar.filter(h => {
+        const aramaUygun = h.isim.toLowerCase().includes(ara);
+        const arsivDurumu = h.arsiv || h.arsivlendi; // Her iki property'yi de kontrol et
+        
+        if (filtre === 'tum') {
+          return aramaUygun;
+        } else if (filtre === 'arsiv') {
+          return aramaUygun && arsivDurumu;
+        } else { // aktif
+          return aramaUygun && !arsivDurumu;
+        }
+      });
       
       // Hasta sayılarını güncelle
       guncelleHastaSayilari();
@@ -3015,13 +3023,15 @@
 
     function guncelleHastaSayilari() {
       try {
-        const hastaData = localStorage.getItem('hastalar') ? JSON.parse(localStorage.getItem('hastalar')) : [];
+        // Global hastalar değişkenini kullan
+        const hastaData = hastalar || [];
         
         let aktifSayisi = 0;
         let arsivSayisi = 0;
         
         hastaData.forEach(hasta => {
-          if (hasta.arsivlendi) {
+          // arsiv veya arsivlendi property'lerini kontrol et
+          if (hasta.arsiv || hasta.arsivlendi) {
             arsivSayisi++;
           } else {
             aktifSayisi++;
@@ -3029,6 +3039,8 @@
         });
         
         const tumSayisi = hastaData.length;
+        
+        console.log(`📊 Hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${tumSayisi}`);
         
         // Select option'larını güncelle
         const arsivFiltre = document.getElementById('arsivFiltre');
@@ -5287,6 +5299,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function sayfaBaslat() {
       console.log('🚀 Sidebar layout başlatılıyor...');
       
+      // Hasta verilerini kontrol et
+      console.log('👥 Hasta verileri:', hastalar);
+      console.log('📊 Hasta sayısı:', hastalar ? hastalar.length : 0);
+      
       // İstatistikleri başlat
       const statPdf = document.getElementById('statPdfCount');
       const statTarif = document.getElementById('statTarifCount');
@@ -5304,7 +5320,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
       
       // Hasta sayılarını başlat
-      guncelleHastaSayilari();
+      setTimeout(() => {
+        guncelleHastaSayilari();
+        renderHastalar();
+      }, 100);
     }
     
     // Sayfa yüklendiğinde başlat
