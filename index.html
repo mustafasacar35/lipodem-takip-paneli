@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -159,7 +158,8 @@
   <!-- Sistem Durumu -->
   <div id="sistemDurumu" style="background:#e9ecef; padding:10px; margin-bottom:15px; border-radius:5px; border-left:4px solid #6c757d;">
     <span style="font-weight:bold;">📊 Sistem Durumu:</span>
-    <span id="tariflerKlasoruDurumu">🔄 Tarifler klasörü kontrol ediliyor...</span>
+    <span id="tariflerKlasoruDurumu">🔄 Tarifler klasörü kontrol ediliyor...</span><br>
+    <span id="dataKlasoruDurumu">🔄 Data klasörü kontrol ediliyor...</span>
   </div>
   
   <div style="margin-bottom:10px;">
@@ -482,9 +482,70 @@
       if (input) input.value = token;
       updateGithubSaveBtn();
       
-      // Agresif fresh yükleme - cache bypass
-      initFreshDataLoad();
+      // İlk olarak data klasöründen hasta verilerini yükle (en güncel veriler)
+      loadDataFromFolder().then(() => {
+        // Data yüklendikten sonra GitHub verilerini kontrol et
+        initFreshDataLoad();
+      });
     });
+
+    // Data klasöründen hasta verilerini otomatik yükle
+    async function loadDataFromFolder() {
+      const durumElement = document.getElementById('dataKlasoruDurumu');
+      
+      try {
+        console.log('📂 Data klasöründen hasta verileri yükleniyor...');
+        durumElement.innerHTML = '🔄 Data/hasta_kayitlari.json yükleniyor...';
+        
+        // data/hasta_kayitlari.json dosyasını yüklemeye çalış
+        const dataUrl = './data/hasta_kayitlari.json';
+        
+        const response = await fetch(dataUrl + '?t=' + Date.now()); // Cache bypass
+        if (response.ok) {
+          const jsonData = await response.json();
+          console.log('✅ Data klasöründen veriler yüklendi:', jsonData.length, 'hasta');
+          
+          if (Array.isArray(jsonData) && jsonData.length > 0) {
+            console.log('🔄 Data dosyasından veriler yükleniyor...');
+            
+            // Hasta verilerini güncelle
+            hastalar = jsonData;
+            
+            // Hasta listesini otomatik sırala (isim sırası)
+            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            
+            // LocalStorage'a kaydet
+            saveToStorage();
+            
+            // UI'ı güncelle
+            renderHastalar();
+            
+            console.log('✅ Hasta listesi güncellendi ve sıralandı - Toplam:', hastalar.length, 'hasta');
+            
+            // Eğer kayıtlı hafta verileri varsa onları da logla
+            const hastaHaftaBilgi = hastalar.map(h => ({
+              isim: h.isim,
+              haftaSayisi: h.haftalar ? h.haftalar.length : 0,
+              kartSayisi: h.haftalar ? h.haftalar.reduce((total, hafta) => total + (hafta.tarifKartlar ? hafta.tarifKartlar.length : 0), 0) : 0
+            }));
+            
+            console.log('📊 Hasta hafta bilgileri:', hastaHaftaBilgi);
+            
+            // Durum mesajını güncelle
+            const toplamKart = hastaHaftaBilgi.reduce((sum, h) => sum + h.kartSayisi, 0);
+            durumElement.innerHTML = `✅ Data/hasta_kayitlari.json yüklendi (${hastalar.length} hasta, ${toplamKart} eşleştirilmiş kart)`;
+            
+          }
+        } else {
+          console.log('ℹ️ Data klasöründe hasta_kayitlari.json bulunamadı (', response.status, '), varsayılan veriler kullanılıyor');
+          durumElement.innerHTML = '⚠️ Data/hasta_kayitlari.json bulunamadı - Varsayılan veriler kullanılıyor';
+        }
+      } catch (error) {
+        console.warn('⚠️ Data klasöründen veri yüklenemedi:', error.message);
+        console.log('ℹ️ Varsayılan veriler veya localStorage verileri kullanılıyor');
+        durumElement.innerHTML = '❌ Data/hasta_kayitlari.json yüklenemedi - LocalStorage verileri kullanılıyor';
+      }
+    }
 
     // Fresh veri yükleme (cache'i bypass ederek)
     async function initFreshDataLoad() {
@@ -2448,6 +2509,9 @@
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
+    
+    // Hasta listesini otomatik sırala (isim sırası)
+    hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
     let seciliHasta = null;
     let duzenlemeModu = false;
     let duzenlenenId = null;
@@ -2492,6 +2556,10 @@
         const yeni = { id: Date.now(), isim, not, arsiv: false };
         hastalar.push(yeni);
       }
+      
+      // Hasta listesini otomatik sırala (isim sırası)
+      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+      
       document.getElementById('hastaFormu').style.display = 'none';
       saveToStorage();
       renderHastalar();
@@ -3753,6 +3821,9 @@ function duzenleHafta(i) {
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+      
+      console.log('📤 Hasta verileri JSON olarak indirildi');
+      console.log('💾 Data klasörüne kaydetmek için indirilen dosyayı ./data/hasta_kayitlari.json olarak kaydedin');
     }
 
     function importData(event) {
@@ -3764,10 +3835,14 @@ function duzenleHafta(i) {
           const data = JSON.parse(e.target.result);
           if (Array.isArray(data)) {
             hastalar = data;
+            
+            // Hasta listesini otomatik sırala (isim sırası)
+            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            
             saveToStorage();
             renderHastalar();
             document.getElementById('hastaDetay').style.display = 'none';
-            alert('Veriler başarıyla yüklendi!');
+            alert('Veriler başarıyla yüklendi ve sıralandı!');
           } else {
             alert('Geçersiz JSON formatı!');
           }
