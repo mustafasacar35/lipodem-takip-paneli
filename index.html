@@ -375,6 +375,7 @@
         <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
+        <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
       </div>
     </div>
   </div>
@@ -710,7 +711,26 @@
         'DOÃÂAN': 'DOĞAN',
         'ATAÃÂ': 'ATAŞ',
         'VÃÂ°LDAN': 'VİLDAN',
-        'ÃÂEFÃÂ°KE': 'ŞEFİKE'
+        'ÃÂEFÃÂ°KE': 'ŞEFİKE',
+        // Yeni karakterler eklendi
+        'HAFÄZE': 'HAFİZE',
+        'HÃLYA': 'HÜLYA',
+        'ÃANTA': 'ŞANTA',
+        'HATÄCE': 'HATİCE',
+        'OKTAÅ': 'OKTAŞ',
+        'ÅENGÃN': 'ŞENGÜN',
+        'SEVÄLYA': 'SEVİLAY',
+        'COÅKUN': 'COŞKUN',
+        'ATAÅ': 'ATAŞ',
+        'VÄLDAN': 'VİLDAN',
+        'ÅEFÄKE': 'ŞEFİKE',
+        'Ã': 'Ü',
+        'Å': 'Ş',
+        'Ä': 'İ',
+        // HTML entity'ler
+        '&Atilde;': 'Ş',
+        '&Auml;': 'İ',
+        '&Aring;': 'Ş'
       };
       
       let duzeltilmisText = text;
@@ -720,6 +740,36 @@
       
       return duzeltilmisText;
     }
+
+    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
+    function manuelHastaIsimleriniDuzelt() {
+      console.log('🔧 Manuel hasta isim düzeltmesi başlatılıyor...');
+      let degisiklikSayisi = 0;
+      
+      hastalar.forEach((hasta, index) => {
+        if (hasta.isim) {
+          const eskiIsim = hasta.isim;
+          const yeniIsim = turkceKarakterDuzelt(eskiIsim);
+          
+          if (eskiIsim !== yeniIsim) {
+            hasta.isim = yeniIsim;
+            degisiklikSayisi++;
+            console.log(`✅ ${index + 1}. "${eskiIsim}" → "${yeniIsim}"`);
+          }
+        }
+      });
+      
+      if (degisiklikSayisi > 0) {
+        saveToStorage();
+        renderHastalar();
+        console.log(`🎉 ${degisiklikSayisi} hasta ismi düzeltildi ve kaydedildi!`);
+        alert(`${degisiklikSayisi} hasta ismi düzeltildi!`);
+      } else {
+        console.log('✅ Tüm hasta isimleri zaten doğru!');
+        alert('Tüm hasta isimleri zaten doğru!');
+      }
+    }
+    window.manuelHastaIsimleriniDuzelt = manuelHastaIsimleriniDuzelt;
 
     async function loadDataFromFolder() {
       const durumElement = document.getElementById('dataKlasoruDurumu');
