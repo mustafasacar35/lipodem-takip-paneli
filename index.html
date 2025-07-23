@@ -681,47 +681,73 @@
       
       // Basit karakter eşleştirme tablosu
       const karakterTablosu = {
-        // Şefike için özel çözüm
+        // Şefike için özel çözümler
         '^EF0KE': 'ŞEFİKE',
         'ŞEF0KE': 'ŞEFİKE', 
         'SEF0KE': 'ŞEFİKE',
         '^EFIKE': 'ŞEFİKE',
+        '^EF\u0130KE': 'ŞEFİKE',
+        'ÅEFÄ°KE': 'ŞEFİKE',
+        
+        // Yaygın bozuk kodlamalar
+        'Ã§': 'ç',
+        'Ã¼': 'ü', 
+        'Ã¶': 'ö',
+        'ÄŸ': 'ğ',
+        'Ä±': 'ı',
+        'Ä°': 'İ',
+        'Åž': 'Ş',
+        'ÅŸ': 'ş',
+        'Ã‡': 'Ç',
+        'Ãœ': 'Ü',
+        'Ã–': 'Ö',
+        'ÄžÄ': 'Ğ',
         
         // Ş harfleri
-        'Ş': ['Ş', 'ÅŸ', 'Åž', 'Å ', 'Ã…Â', 'ÃÂ', 'ÅŠÂŞ', 'Åž', '^'],
-        'ş': ['ş', 'ÅŸ', 'Å '],
+        'Ş': ['Ş', 'ÅŸ', 'Åž', 'Å ', 'Ã…Â', 'ÃÂ', 'ÅŠÂŞ', 'Åž', '^', 'Å', '\u015E'],
+        'ş': ['ş', 'ÅŸ', 'Å ', '\u015F'],
         
         // İ harfleri  
-        'İ': ['İ', 'Ä°', 'Ä ', 'ÄÂ°', 'ÃÄÂ°', '0'],
+        'İ': ['İ', 'Ä°', 'Ä ', 'ÄÂ°', 'ÃÄÂ°', '0', '\u0130'],
         'i': ['i', 'Ä±', 'Ä '],
         
         // I harfi (büyük ı)
         'I': ['I'],
-        'ı': ['ı', 'Ä±', 'Ä '],
+        'ı': ['ı', 'Ä±', 'Ä ', '\u0131'],
         
         // Ü harfleri
-        'Ü': ['Ü', 'Ãœ', 'Ã '],
-        'ü': ['ü', 'Ã¼', 'Ã '],
+        'Ü': ['Ü', 'Ãœ', 'Ã ', '\u00DC'],
+        'ü': ['ü', 'Ã¼', 'Ã ', '\u00FC'],
         
         // Ö harfleri
-        'Ö': ['Ö', 'Ã–', 'Ã '],
-        'ö': ['ö', 'Ã¶', 'Ã '],
+        'Ö': ['Ö', 'Ã–', 'Ã ', '\u00D6'],
+        'ö': ['ö', 'Ã¶', 'Ã ', '\u00F6'],
         
         // Ç harfleri
-        'Ç': ['Ç', 'Ã‡', 'Ã '],
-        'ç': ['ç', 'Ã§', 'Ã '],
+        'Ç': ['Ç', 'Ã‡', 'Ã ', '\u00C7'],
+        'ç': ['ç', 'Ã§', 'Ã ', '\u00E7'],
         
         // Ğ harfleri
-        'Ğ': ['Ğ', 'ÄŸ', 'Ä '],
-        'ğ': ['ğ', 'ÄŸ', 'Ä ']
+        'Ğ': ['Ğ', 'ÄŸ', 'Ä ', '\u011E'],
+        'ğ': ['ğ', 'ÄŸ', 'Ä ', '\u011F']
       };
       
       let duzeltilmisText = text;
       
       // Özel isim düzeltmeleri önce
-      if (duzeltilmisText.includes('^EF0KE') || duzeltilmisText.includes('ŞEF0KE')) {
+      if (duzeltilmisText.includes('^EF0KE') || duzeltilmisText.includes('ŞEF0KE') || duzeltilmisText.includes('ÅEFÄ°KE')) {
         duzeltilmisText = 'ŞEFİKE';
       }
+      
+      // Yaygın bozuk kodlamaları önce düzelt
+      const bozukKodlamalar = {
+        'Ã§': 'ç', 'Ã¼': 'ü', 'Ã¶': 'ö', 'ÄŸ': 'ğ', 'Ä±': 'ı', 'Ä°': 'İ',
+        'Åž': 'Ş', 'ÅŸ': 'ş', 'Ã‡': 'Ç', 'Ãœ': 'Ü', 'Ã–': 'Ö', 'ÄžÄ': 'Ğ'
+      };
+      
+      Object.keys(bozukKodlamalar).forEach(bozuk => {
+        duzeltilmisText = duzeltilmisText.replace(new RegExp(bozuk, 'g'), bozukKodlamalar[bozuk]);
+      });
       
       // Her Türkçe karakter için eşleşmeleri kontrol et
       Object.keys(karakterTablosu).forEach(dogruKarakter => {
@@ -735,7 +761,7 @@
       
       // Garip semboller ve karakterleri temizle
       duzeltilmisText = duzeltilmisText
-        .replace(/[ÂÃ°º†‡^]/g, '') // Gereksiz semboller
+        .replace(/[ÂÃ°º†‡^Å]+/g, '') // Gereksiz semboller
         .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
         .trim();                    // Baştaki ve sondaki boşlukları kaldır
       
@@ -4699,12 +4725,24 @@ function duzenleHafta(i) {
             
             // Sabah sütunu
             doc.rect(zipTableStartX, currentY, colWidths[2], 5);
-            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) check simgesi ekle
+            if (egzersizDahilMi && gercekHaftaNo <= 8 && sabahUygulama !== '-') {
+              doc.text(sabahUygulama + ' ✓', zipTableStartX + 2, currentY + 3.5);
+            } else {
+              doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            }
             zipTableStartX += colWidths[2];
             
             // Akşam sütunu
             doc.rect(zipTableStartX, currentY, colWidths[3], 5);
-            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) check simgesi ekle
+            if (egzersizDahilMi && gercekHaftaNo <= 8 && aksamUygulama !== '-') {
+              doc.text(aksamUygulama + ' ✓', zipTableStartX + 2, currentY + 3.5);
+            } else {
+              doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            }
             
             currentY += 5;
           }
