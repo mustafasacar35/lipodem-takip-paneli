@@ -4580,7 +4580,7 @@ function duzenleHafta(i) {
         doc.rect(15, 32, 170, 10);
         doc.text(programBasligi, 20, 36);
         if (egzersizDahilMi) {
-          doc.text('(5. Haftadan itibaren) - Yesil v tamamlanan gunler', 20, 40);
+          doc.text('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler', 20, 40);
         } else {
           doc.text('(5. Haftadan itibaren)', 20, 40);
         }
@@ -4722,15 +4722,23 @@ function duzenleHafta(i) {
             
             // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
             if (egzersizDahilMi && gercekHaftaNo <= 8) {
-              // Yeşil check simgesi (ASCII uyumlu)
-              doc.setTextColor(0, 128, 0); // Yeşil renk
-              doc.text('v', zipTableStartX + 1, currentY + 3.5);
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
               
               // Tarihi soluk renkte yaz
               doc.setTextColor(150, 150, 150);
-              doc.text(tarihStr, zipTableStartX + 8, currentY + 3.5);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
             } else {
               // Normal tarih
+              doc.setTextColor(0, 0, 0);
               doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
             }
             zipTableStartX += colWidths[0];
