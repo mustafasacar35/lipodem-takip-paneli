@@ -3121,54 +3121,62 @@
     }
 
     function yeniHastaFormu() {
-      duzenlemeModu = false;
-      duzenlenenId = null;
-      // Eski form elementleri kaldırıldı, yeni sistem kullanılıyor
-      console.log('Yeni hasta formu açılması istendi');
-      alert('Yeni hasta ekleme özelliği yakında güncellenecek!');
+      console.log('Yeni hasta ekleme başlatıldı');
       
-      // Yeni layout'da formu daha görünür yap
-      const formDiv = document.getElementById('hastaFormu');
-      if (formDiv) {
-        formDiv.style.position = 'fixed';
-        formDiv.style.top = '50%';
-        formDiv.style.left = '50%';
-        formDiv.style.transform = 'translate(-50%, -50%)';
-        formDiv.style.zIndex = '1000';
-        formDiv.style.border = '2px solid #007bff';
-        formDiv.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
-        formDiv.style.background = 'white';
-        formDiv.style.borderRadius = '8px';
-        formDiv.style.padding = '20px';
-        formDiv.style.minWidth = '300px';
+      // Yeni hasta ismini iste
+      const yeniIsim = prompt('Yeni hasta ismini girin:');
+      if (yeniIsim === null) return; // İptal edildi
+      
+      const temizIsim = yeniIsim.trim();
+      if (!temizIsim) {
+        alert('İsim boş olamaz!');
+        return;
       }
-    }
-
-    function kaydetHasta() {
-      let isim = document.getElementById('hastaIsim').value.trim();
-      let not = document.getElementById('hastaNot').value.trim();
+      
+      // Yeni hasta notunu iste
+      const yeniNot = prompt('Hasta notu (opsiyonel):');
+      if (yeniNot === null) return; // İptal edildi
       
       // Türkçe karakter düzeltmesi uygula
-      isim = turkceKarakterDuzelt(isim);
-      not = turkceKarakterDuzelt(not);
+      const duzeltilmisIsim = turkceKarakterDuzelt(temizIsim);
       
-      if (!isim) { alert('İsim zorunlu!'); return; }
-      if (duzenlemeModu && duzenlenenId != null) {
-        const h = hastalar.find(h => h.id === duzenlenenId);
-        h.isim = isim; h.not = not;
-        console.log('✅ Hasta güncellendi (karakter düzeltmeli):', isim);
-      } else {
-        const yeni = { id: Date.now(), isim, not, arsiv: false };
-        hastalar.push(yeni);
-        console.log('✅ Yeni hasta eklendi (karakter düzeltmeli):', isim);
+      // Aynı isimde hasta var mı kontrol et
+      const mevcutHasta = hastalar.find(h => h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
+      if (mevcutHasta) {
+        alert('Bu isimde bir hasta zaten mevcut!');
+        return;
       }
+      
+      // Yeni hasta oluştur
+      const yeniHasta = {
+        id: Date.now(),
+        isim: duzeltilmisIsim,
+        not: yeniNot ? yeniNot.trim() : '',
+        arsiv: false,
+        haftalar: []
+      };
+      
+      // Hasta listesine ekle
+      hastalar.push(yeniHasta);
       
       // Hasta listesini otomatik sırala (isim sırası)
       hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
       
-      // Eski form sistemi kaldırıldı
+      // Verileri kaydet
       saveToStorage();
+      
+      // Hasta listesini yenile
       renderHastalar();
+      
+      console.log('✅ Yeni hasta eklendi:', duzeltilmisIsim);
+      
+      // Yeni eklenen hastayı otomatik seç
+      hastaDetayGoster(yeniHasta.id);
+      
+      // GitHub'a kaydetmeyi öner (opsiyonel)
+      if (confirm('Yeni hasta eklendi. GitHub\'a da kaydetmek ister misiniz?')) {
+        uploadToGitHub();
+      }
     }
 
     function iptalHastaFormu() {
@@ -3222,9 +3230,58 @@
 
     function duzenleHasta() {
       if (!seciliHasta) return;
-      // Eski form sistemi kaldırıldı
+      
       console.log('Hasta düzenleme için:', seciliHasta.isim);
-      alert('Hasta düzenleme özelliği yakında güncellenecek!');
+      
+      // Mevcut bilgileri al
+      const mevcutIsim = seciliHasta.isim;
+      const mevcutNot = seciliHasta.not || '';
+      
+      // Yeni isim iste
+      const yeniIsim = prompt('Hasta ismini düzenleyin:', mevcutIsim);
+      if (yeniIsim === null) return; // İptal edildi
+      
+      const temizIsim = yeniIsim.trim();
+      if (!temizIsim) {
+        alert('İsim boş olamaz!');
+        return;
+      }
+      
+      // Yeni not iste
+      const yeniNot = prompt('Hasta notunu düzenleyin:', mevcutNot);
+      if (yeniNot === null) return; // İptal edildi
+      
+      // Türkçe karakter düzeltmesi uygula
+      const duzeltilmisIsim = turkceKarakterDuzelt(temizIsim);
+      
+      // Değişiklikleri kaydet
+      seciliHasta.isim = duzeltilmisIsim;
+      seciliHasta.not = yeniNot.trim();
+      
+      // Verileri kaydet
+      saveToStorage();
+      
+      // Ekranı güncelle
+      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
+      const secilenHastaNot = document.getElementById('secilenHastaNot');
+      
+      if (secilenHastaIsim) {
+        secilenHastaIsim.textContent = duzeltilmisIsim;
+      }
+      if (secilenHastaNot) {
+        secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
+      }
+      
+      // Hasta listesini yenile ve sırala
+      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+      renderHastalar();
+      
+      console.log(`✅ Hasta bilgileri güncellendi: ${mevcutIsim} → ${duzeltilmisIsim}`);
+      
+      // GitHub'a kaydetmeyi öner (opsiyonel)
+      if (confirm('Değişiklikler kaydedildi. GitHub\'a da kaydetmek ister misiniz?')) {
+        uploadToGitHub();
+      }
     }
 
     function arsivleHasta() {
