@@ -3136,6 +3136,8 @@
       seciliHasta = hastalar.find(h => h.id === id);
       if (!seciliHasta) return;
       
+      console.log(`👤 Hasta seçildi: ${seciliHasta.isim}`);
+      
       // Eski detay panelini gizle (artık sidebar layout kullanıyoruz)
       document.getElementById('hastaDetay').style.display = 'none';
       document.getElementById('hastaFormu').style.display = 'none';
@@ -3145,6 +3147,8 @@
       
       // Sidebar'ları güncelle
       hastaSecildiginde(hastalar.findIndex(h => h.id === id));
+      
+      console.log(`✅ ${seciliHasta.isim} için hafta tabları yüklendi ve aktif hafta otomatik seçilecek`);
     }
 
     function duzenleHasta() {
@@ -3560,7 +3564,12 @@
         });
         
         console.log(`🎯 En büyük hafta numarası: ${enBuyukHaftaNo}, index: ${enBuyukHaftaIndex}`);
-        switchTab(enBuyukHaftaIndex);
+        
+        // Hafta tabının içerikleri yüklendikten sonra aktif tab'ı seç
+        setTimeout(() => {
+          switchTab(enBuyukHaftaIndex);
+          console.log(`✅ Aktif hafta tab'ı (${enBuyukHaftaNo}. hafta) otomatik seçildi ve eşleşen kartlar gösterildi`);
+        }, 300); // Biraz daha fazla gecikme ekleyelim
       }
     }
     
