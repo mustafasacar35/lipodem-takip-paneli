@@ -3123,11 +3123,9 @@
     function yeniHastaFormu() {
       duzenlemeModu = false;
       duzenlenenId = null;
-      document.getElementById('hastaFormBaslik').textContent = 'Yeni Hasta';
-      document.getElementById('hastaIsim').value = '';
-      document.getElementById('hastaNot').value = '';
-      document.getElementById('hastaFormu').style.display = 'block';
-      document.getElementById('hastaDetay').style.display = 'none';
+      // Eski form elementleri kaldırıldı, yeni sistem kullanılıyor
+      console.log('Yeni hasta formu açılması istendi');
+      alert('Yeni hasta ekleme özelliği yakında güncellenecek!');
       
       // Yeni layout'da formu daha görünür yap
       const formDiv = document.getElementById('hastaFormu');
@@ -3168,26 +3166,14 @@
       // Hasta listesini otomatik sırala (isim sırası)
       hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
       
-      document.getElementById('hastaFormu').style.display = 'none';
+      // Eski form sistemi kaldırıldı
       saveToStorage();
       renderHastalar();
     }
 
     function iptalHastaFormu() {
-      const formDiv = document.getElementById('hastaFormu');
-      formDiv.style.display = 'none';
-      // Modal stillerini temizle
-      formDiv.style.position = '';
-      formDiv.style.top = '';
-      formDiv.style.left = '';
-      formDiv.style.transform = '';
-      formDiv.style.zIndex = '';
-      formDiv.style.border = '';
-      formDiv.style.boxShadow = '';
-      formDiv.style.background = '';
-      formDiv.style.borderRadius = '';
-      formDiv.style.padding = '';
-      formDiv.style.minWidth = '';
+      // Eski form elementleri kaldırıldı
+      console.log('Form iptal edildi');
     }
 
     function hastaDetayGoster(id) {
@@ -3225,10 +3211,6 @@
       // Sol sidebar'da aktif hastayı vurgula
       renderHastalar();
       
-      // Eski detay panelini gizle (artık sidebar layout kullanıyoruz)
-      document.getElementById('hastaDetay').style.display = 'none';
-      document.getElementById('hastaFormu').style.display = 'none';
-      
       // Hafta listesini göster (center panel'de)
       gosterHaftalar();
       
@@ -3240,21 +3222,22 @@
 
     function duzenleHasta() {
       if (!seciliHasta) return;
-      duzenlemeModu = true;
-      duzenlenenId = seciliHasta.id;
-      document.getElementById('hastaFormBaslik').textContent = 'Hasta Düzenle';
-      document.getElementById('hastaIsim').value = seciliHasta.isim;
-      document.getElementById('hastaNot').value = seciliHasta.not;
-      document.getElementById('hastaFormu').style.display = 'block';
-      document.getElementById('hastaDetay').style.display = 'none';
+      // Eski form sistemi kaldırıldı
+      console.log('Hasta düzenleme için:', seciliHasta.isim);
+      alert('Hasta düzenleme özelliği yakında güncellenecek!');
     }
 
     function arsivleHasta() {
       if (!seciliHasta) return;
       seciliHasta.arsiv = !seciliHasta.arsiv;
-      document.getElementById('hastaDetay').style.display = 'none';
       saveToStorage();
       renderHastalar();
+      
+      // Hasta bilgi panelini güncelle
+      const secilenHastaNot = document.getElementById('secilenHastaNot');
+      if (secilenHastaNot) {
+        secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
+      }
     }
 
     function silHasta() {
@@ -3262,7 +3245,7 @@
       if (!confirm('Silmek istediğinize emin misiniz?')) return;
       hastalar = hastalar.filter(h => h.id !== seciliHasta.id);
       saveToStorage();
-      document.getElementById('hastaDetay').style.display = 'none';
+      kapatDetay(); // Hasta bilgi panelini temizle
       renderHastalar();
     }
 
@@ -3293,9 +3276,6 @@
       
       // Sol sidebar'da vurgulamayı kaldır
       renderHastalar();
-      
-      // Eski panel'i de gizle
-      document.getElementById('hastaDetay').style.display = 'none';
     }
 
 
@@ -4868,7 +4848,6 @@ function duzenleHafta(i) {
             
             saveToStorage();
             renderHastalar();
-            document.getElementById('hastaDetay').style.display = 'none';
             alert('Veriler başarıyla yüklendi ve sıralandı!');
           } else {
             alert('Geçersiz JSON formatı!');
