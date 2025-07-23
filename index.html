@@ -690,6 +690,12 @@
         '^EF\u0130KE': 'ŞEFİKE',
         'ÅEFÄ°KE': 'ŞEFİKE',
         
+        // Ayşe için özel çözümler
+        'AY^E': 'AYŞE',
+        'AY^E Ç': 'AYŞE Ç',
+        'AY^E C': 'AYŞE Ç',
+        'AY^': 'AYŞ',
+        
         // Yaygın bozuk kodlamalar
         'Ã§': 'ç',
         'Ã¼': 'ü', 
@@ -740,6 +746,13 @@
         duzeltilmisText = 'ŞEFİKE';
       }
       
+      // Ayşe için özel düzeltmeler
+      if (duzeltilmisText.includes('AY^E')) {
+        duzeltilmisText = duzeltilmisText.replace(/AY\^E\s*Ç/g, 'AYŞE Ç');
+        duzeltilmisText = duzeltilmisText.replace(/AY\^E\s*C/g, 'AYŞE Ç');
+        duzeltilmisText = duzeltilmisText.replace(/AY\^E/g, 'AYŞE');
+      }
+      
       // Yaygın bozuk kodlamaları önce düzelt
       const bozukKodlamalar = {
         'Ã§': 'ç', 'Ã¼': 'ü', 'Ã¶': 'ö', 'ÄŸ': 'ğ', 'Ä±': 'ı', 'Ä°': 'İ',
@@ -762,9 +775,15 @@
       
       // Garip semboller ve karakterleri temizle
       duzeltilmisText = duzeltilmisText
-        .replace(/[ÂÃ°º†‡^Å]+/g, '') // Gereksiz semboller
+        .replace(/[ÂÃ°º†‡Å]+/g, '') // Gereksiz semboller (^ karakterini burada kaldırdım)
         .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
         .trim();                    // Baştaki ve sondaki boşlukları kaldır
+      
+      // Son kontrolde ^ karakteri için özel düzeltme
+      duzeltilmisText = duzeltilmisText
+        .replace(/\^/g, 'Ş')        // ^ karakterini Ş yap
+        .replace(/0/g, 'İ')         // 0 karakterini İ yap (sadece isimler için)
+        .replace(/Ç$/, 'ÇİMEN')     // Sonda sadece Ç varsa ÇİMEN yap
       
       return duzeltilmisText;
     }
@@ -5840,7 +5859,9 @@ function duzenleHafta(i) {
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
         
-        const title = `${temizHastaAdi.toUpperCase()}`;
+        // PDF'e yazarken de bir kez daha düzelt
+        const pdfHastaAdi = turkceKarakterDuzelt(temizHastaAdi).toUpperCase();
+        const title = `${pdfHastaAdi}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
@@ -6079,7 +6100,9 @@ function duzenleHafta(i) {
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
         
-        const title = `${temizHastaAdi.toUpperCase()}`;
+        // PDF'e yazarken de bir kez daha düzelt
+        const pdfHastaAdi = turkceKarakterDuzelt(temizHastaAdi).toUpperCase();
+        const title = `${pdfHastaAdi}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
