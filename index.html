@@ -310,18 +310,18 @@
 
     <!-- Orta Panel -->
     <div class="center-panel">
-      <!-- Hasta Bilgi Paneli (Sabit Üst Alan) -->
-      <div id="hastaBilgiPanel" style="display: none; background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 15px; position: sticky; top: 0; z-index: 100;">
+      <!-- Hasta Bilgi Paneli (Sabit) -->
+      <div id="hastaBilgiPanel" style="display: none; background: #fff; border-bottom: 2px solid #007bff; padding: 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h3 id="hastaPanelAdi" style="margin: 0; color: #495057; font-size: 18px;">👤 Hasta Adı</h3>
-            <p id="hastaPanelNot" style="margin: 5px 0 0 0; color: #6c757d; font-size: 14px;">Hasta notu...</p>
+            <h3 id="secilenHastaIsim" style="margin: 0; color: #007bff;">Hasta Seçilmedi</h3>
+            <p id="secilenHastaNot" style="margin: 5px 0 0 0; color: #666; font-size: 14px;">-</p>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <button onclick="duzenleHasta()" style="padding: 6px 12px; font-size: 12px; background: #ffc107; color: #212529; border: none; border-radius: 4px; cursor: pointer;">✏️ Düzenle</button>
-            <button onclick="arsivleHasta()" style="padding: 6px 12px; font-size: 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">📁 Arşivle</button>
-            <button onclick="silHasta()" style="padding: 6px 12px; font-size: 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Sil</button>
-            <button onclick="kapatDetay()" style="padding: 6px 12px; font-size: 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">❌ Kapat</button>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="duzenleHasta()" style="padding: 8px 12px; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ Düzenle</button>
+            <button onclick="arsivleHasta()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">📦 Arşivle</button>
+            <button onclick="silHasta()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Sil</button>
+            <button onclick="kapatDetay()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✖️ Kapat</button>
           </div>
         </div>
       </div>
@@ -622,6 +622,34 @@
     <textarea id="hastaNot" placeholder="Özel Notlar" style="width:200px;"></textarea><br>
     <button onclick="kaydetHasta()">Kaydet</button>
     <button onclick="iptalHastaFormu()">İptal</button>
+  </div>
+
+  <div id="hastaDetay" style="display:none; background:#f9f9f9; border:1px solid #ccc; padding:16px; margin:16px 0;">
+    <h3 id="detayIsim"></h3>
+    <div id="detayNot"></div>
+    <button onclick="duzenleHasta()">Düzenle</button>
+    <button onclick="arsivleHasta()" id="arsivBtn"></button>
+    <button onclick="silHasta()">Sil</button>
+    <button onclick="kapatDetay()">Kapat</button>
+    <hr>
+    <div style="margin:10px 0; background:#eef; padding:8px;">
+      <b>Genel Bilgiler / Notlar:</b>
+      <div id="hastaGenelNot"></div>
+    </div>
+    <div style="margin:10px 0;">
+      <h4>Haftalar</h4>
+      <button onclick="haftaEkle()">Hafta Ekle</button>
+      
+      <!-- Tab Sistemi -->
+      <div id="haftaTabContainer">
+        <div id="haftaTabs" class="hafta-tabs">
+          <!-- Tablar buraya dinamik eklenecek -->
+        </div>
+        <div id="haftaTabContent">
+          <!-- Tab içerikleri buraya dinamik eklenecek -->
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -3025,25 +3053,22 @@
         const duzeltilenIsim = turkceKarakterDuzelt(hasta.isim);
         
         li.innerHTML = `${index + 1}. ${duzeltilenIsim}${haftaKismi}${arsivKismi}`;
-        // Aktif hasta vurgusu için class ve stil ekle
-        li.className = 'hasta-item';
-        li.dataset.hastaId = hasta.id;
-        
-        // Aktif hasta ise vurgula
-        if (seciliHasta && seciliHasta.id === hasta.id) {
-          li.classList.add('aktif-hasta');
-          li.style.backgroundColor = '#007bff';
-          li.style.color = 'white';
-        } else {
-          li.style.backgroundColor = 'transparent';
-          li.style.color = '#333';
-        }
-        
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
-        li.style.borderRadius = '4px';
-        li.style.margin = '2px 0';
+        li.dataset.hastaId = hasta.id; // ID'yi data attribute olarak ekle
+        
+        // Aktif hasta ise vurgula
+        if (seciliHasta && seciliHasta.id === hasta.id) {
+          li.style.backgroundColor = '#007bff';
+          li.style.color = 'white';
+          li.style.fontWeight = 'bold';
+        } else {
+          li.style.backgroundColor = '';
+          li.style.color = '';
+          li.style.fontWeight = '';
+        }
+        
         li.onclick = () => hastaDetayGoster(hasta.id);
         ul.appendChild(li);
       });
@@ -3182,23 +3207,23 @@
       
       console.log(`👤 Hasta seçildi: ${seciliHasta.isim}`);
       
-      // Hasta bilgi panelini göster ve doldur
+      // Hasta bilgi panelini güncelle ve göster
       const hastaBilgiPanel = document.getElementById('hastaBilgiPanel');
-      const hastaPanelAdi = document.getElementById('hastaPanelAdi');
-      const hastaPanelNot = document.getElementById('hastaPanelNot');
+      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
+      const secilenHastaNot = document.getElementById('secilenHastaNot');
       
-      if (hastaBilgiPanel && hastaPanelAdi && hastaPanelNot) {
+      if (hastaBilgiPanel && secilenHastaIsim && secilenHastaNot) {
         hastaBilgiPanel.style.display = 'block';
-        hastaPanelAdi.textContent = `👤 ${turkceKarakterDuzelt(seciliHasta.isim)}`;
-        hastaPanelNot.textContent = seciliHasta.not || 'Not bulunmuyor...';
+        secilenHastaIsim.textContent = turkceKarakterDuzelt(seciliHasta.isim);
+        secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
       }
+      
+      // Sol sidebar'da aktif hastayı vurgula
+      renderHastalar();
       
       // Eski detay panelini gizle (artık sidebar layout kullanıyoruz)
       document.getElementById('hastaDetay').style.display = 'none';
       document.getElementById('hastaFormu').style.display = 'none';
-      
-      // Sol sidebar'da aktif hasta vurgusu için listeyi yenile
-      renderHastalar();
       
       // Hafta listesini göster (center panel'de)
       gosterHaftalar();
@@ -3244,19 +3269,19 @@
         hastaBilgiPanel.style.display = 'none';
       }
       
-      // Hafta tablarını temizle
-      document.getElementById('haftaTabs').innerHTML = '';
-      document.getElementById('haftaTabContent').innerHTML = '';
-      
-      // Eşleşen kartları temizle
-      document.getElementById('currentEslesenKartlar').innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">Önce bir hasta seçin...</div>';
-      
       // Seçili hastayı temizle
       seciliHasta = null;
       
-      // Sol sidebar'da aktif vurguyu kaldır
+      // Hafta tablarını temizle
+      const haftaTabs = document.getElementById('haftaTabs');
+      const haftaTabContent = document.getElementById('haftaTabContent');
+      if (haftaTabs) haftaTabs.innerHTML = '';
+      if (haftaTabContent) haftaTabContent.innerHTML = '';
+      
+      // Sol sidebar'da vurgulamayı kaldır
       renderHastalar();
       
+      // Eski panel'i de gizle
       document.getElementById('hastaDetay').style.display = 'none';
     }
 
@@ -3638,20 +3663,19 @@
         }, 100 * i); // Sıralı yükleme
       });
       
-      // Hafta Ekle butonunu tabs'ın sonuna ekle
-      const haftaEkleBtn = document.createElement('div');
-      haftaEkleBtn.className = 'hafta-tab hafta-ekle-btn';
-      haftaEkleBtn.onclick = () => yeniHaftaEkle();
-      haftaEkleBtn.style.backgroundColor = '#28a745';
-      haftaEkleBtn.style.color = 'white';
-      haftaEkleBtn.style.cursor = 'pointer';
-      haftaEkleBtn.innerHTML = `
+      // "Hafta Ekle" tab'ını ekle
+      const haftaEkleTab = document.createElement('div');
+      haftaEkleTab.className = 'hafta-tab hafta-ekle-tab';
+      haftaEkleTab.style.background = '#28a745';
+      haftaEkleTab.style.color = 'white';
+      haftaEkleTab.style.border = '2px solid #28a745';
+      haftaEkleTab.onclick = () => yeniHaftaFormu();
+      
+      haftaEkleTab.innerHTML = `
         <div style="font-weight: bold; font-size: 14px;">+ Hafta Ekle</div>
-        <div style="font-size: 10px; color: #d4edda; margin-top: 2px;">
-          Yeni hafta oluştur
-        </div>
+        <div style="font-size: 10px; margin-top: 2px;">Yeni hafta oluştur</div>
       `;
-      tabsDiv.appendChild(haftaEkleBtn);
+      tabsDiv.appendChild(haftaEkleTab);
       
       // En yüksek hafta numaralı tab'ı aktif yap
       if (haftalar.length > 0) {
@@ -5441,4 +5465,3 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
   </script>
 </body>
 </html>
-
