@@ -3212,10 +3212,19 @@
       const secilenHastaIsim = document.getElementById('secilenHastaIsim');
       const secilenHastaNot = document.getElementById('secilenHastaNot');
       
+      console.log('🔍 Hasta bilgi paneli elementleri:', {
+        hastaBilgiPanel: !!hastaBilgiPanel,
+        secilenHastaIsim: !!secilenHastaIsim,
+        secilenHastaNot: !!secilenHastaNot
+      });
+      
       if (hastaBilgiPanel && secilenHastaIsim && secilenHastaNot) {
         hastaBilgiPanel.style.display = 'block';
         secilenHastaIsim.textContent = turkceKarakterDuzelt(seciliHasta.isim);
         secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
+        console.log('✅ Hasta bilgi paneli gösterildi:', seciliHasta.isim);
+      } else {
+        console.log('❌ Hasta bilgi paneli elementleri bulunamadı!');
       }
       
       // Sol sidebar'da aktif hastayı vurgula
@@ -3669,7 +3678,7 @@
       haftaEkleTab.style.background = '#28a745';
       haftaEkleTab.style.color = 'white';
       haftaEkleTab.style.border = '2px solid #28a745';
-      haftaEkleTab.onclick = () => yeniHaftaFormu();
+      haftaEkleTab.onclick = () => haftaEkle();
       
       haftaEkleTab.innerHTML = `
         <div style="font-weight: bold; font-size: 14px;">+ Hafta Ekle</div>
