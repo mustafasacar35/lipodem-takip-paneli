@@ -352,16 +352,6 @@
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
       </div>
 
-      <!-- GPT Mesajı -->
-      <div class="sidebar-section">
-        <h3>💬 GPT Mesajı</h3>
-        <div id="currentGptMesaj">
-          <div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">
-            Bir hafta seçin...
-          </div>
-        </div>
-      </div>
-
       <!-- İstatistikler -->
       <div class="sidebar-section">
         <h3>📈 İstatistikler</h3>
@@ -5203,7 +5193,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const haftaIndex = parseInt(actTab.dataset.haftaIndex);
         if (!isNaN(haftaIndex)) {
           gosterEslesenKartlarSidebar(haftaIndex);
-          gosterGptMesajSidebar(haftaIndex);
           guncelleIstatistikler(hastaIndex);
         }
       }
@@ -5213,7 +5202,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // Hafta tab'ı seçildiğinde sidebar'ları güncelle
     function haftaTabSecildiginde(haftaIndex) {
       gosterEslesenKartlarSidebar(haftaIndex);
-      gosterGptMesajSidebar(haftaIndex);
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
 
@@ -5269,32 +5257,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
-
-    // GPT mesajını sağ sidebar'da göster
-    function gosterGptMesajSidebar(haftaIndex) {
-      const currentDiv = document.getElementById('currentGptMesaj');
-      if (!currentDiv) return;
-      
-      const eskiTextarea = document.getElementById(`gptMesaj_${haftaIndex}`);
-      if (eskiTextarea) {
-        const mesaj = eskiTextarea.value || '';
-        if (mesaj.trim()) {
-          currentDiv.innerHTML = `
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px; line-height: 1.4; max-height: 150px; overflow-y: auto;">
-              ${mesaj.replace(/\n/g, '<br>')}
-            </div>
-            <div style="margin-top: 8px;">
-              <button onclick="kopyalaGptMesaj(${haftaIndex})" style="padding: 4px 8px; font-size: 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📋 Kopyala</button>
-            </div>
-          `;
-        } else {
-          currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">Bu hafta için mesaj yok.</div>';
-        }
-      } else {
-        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">Veri bulunamadı.</div>';
-      }
-    }
-    window.gosterGptMesajSidebar = gosterGptMesajSidebar;
 
     // İstatistikleri güncelle
     function guncelleIstatistikler(hastaIndex) {
