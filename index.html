@@ -4620,6 +4620,8 @@ function duzenleHafta(i) {
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
           
           const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
           let zipTableStartX = 15;
@@ -4717,6 +4719,10 @@ function duzenleHafta(i) {
               doc.setTextColor(0, 0, 0); // Normal siyah renk
             }
             
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
             // Tarih sütunu
             doc.rect(zipTableStartX, currentY, colWidths[0], 5);
             
@@ -4732,6 +4738,10 @@ function duzenleHafta(i) {
               // Check işareti çizgisi (V şekli)
               doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
               doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
               
               // Tarihi soluk renkte yaz
               doc.setTextColor(150, 150, 150);
@@ -4846,10 +4856,10 @@ function duzenleHafta(i) {
         
         // Tablo çerçevesi
         doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.3);
         doc.rect(startX, startY, tableWidth, rowHeight);
         
-        // Sütun ayırıcıları
+        // Sütun ayırıcıları (başlık satırı için)
         let currentX = startX;
         for (let i = 0; i < colWidths.length - 1; i++) {
           currentX += colWidths[i];
@@ -4905,6 +4915,7 @@ function duzenleHafta(i) {
           
           // Satır çerçevesi
           doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
           doc.rect(startX, currentY, tableWidth, rowHeight);
           
           // Sütun ayırıcıları
