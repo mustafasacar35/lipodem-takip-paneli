@@ -317,6 +317,163 @@
         gap: 4px !important;
       }
     }
+    
+    /* Takvim Modal Stilleri */
+    .calendar-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    
+    .calendar-container {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      max-width: 450px;
+      width: 90%;
+    }
+    
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 0 10px;
+    }
+    
+    .calendar-nav {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .calendar-nav:hover {
+      background: #0056b3;
+    }
+    
+    .calendar-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 20px;
+    }
+    
+    .calendar-day-header {
+      background: #f8f9fa;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #666;
+      border-radius: 3px;
+    }
+    
+    .calendar-day {
+      background: white;
+      border: 1px solid #e9ecef;
+      padding: 8px 4px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: all 0.2s;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .calendar-day:hover {
+      background: #e3f2fd;
+      border-color: #2196f3;
+    }
+    
+    .calendar-day.other-month {
+      color: #ccc;
+      background: #fafafa;
+    }
+    
+    .calendar-day.selected {
+      background: #2196f3;
+      color: white;
+      border-color: #1976d2;
+    }
+    
+    .calendar-day.highlighted {
+      background: #ffeb3b;
+      border-color: #fbc02d;
+      font-weight: bold;
+    }
+    
+    .calendar-day.week-start {
+      background: #4caf50;
+      color: white;
+      border-color: #388e3c;
+      font-weight: bold;
+    }
+    
+    .calendar-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    
+    .calendar-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.2s;
+      flex: 1;
+    }
+    
+    .calendar-btn.confirm {
+      background: #28a745;
+      color: white;
+    }
+    
+    .calendar-btn.confirm:hover {
+      background: #218838;
+    }
+    
+    .calendar-btn.cancel {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .calendar-btn.cancel:hover {
+      background: #545b62;
+    }
+    
+    .calendar-info {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      color: #495057;
+    }
   </style>
 </head>
 <body>
@@ -642,6 +799,40 @@
     
     <div id="duzenlemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
   </div>
+  
+  <!-- Takvim Modal -->
+  <div id="calendarModal" class="calendar-modal">
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <button id="prevMonth" class="calendar-nav">‹</button>
+        <div id="calendarTitle" class="calendar-title">Temmuz 2025</div>
+        <button id="nextMonth" class="calendar-nav">›</button>
+      </div>
+      
+      <div id="calendarInfo" class="calendar-info">
+        Başlangıç tarihi seçin. Program otomatik olarak en yakın Pazartesi'den başlayacak ve 8 hafta sürecek.
+        <br><strong>Yeşil:</strong> Program başlangıcı (Pazartesi), <strong>Sarı:</strong> Program haftaları
+      </div>
+      
+      <div class="calendar-grid">
+        <div class="calendar-day-header">Pzt</div>
+        <div class="calendar-day-header">Sal</div>
+        <div class="calendar-day-header">Çar</div>
+        <div class="calendar-day-header">Per</div>
+        <div class="calendar-day-header">Cum</div>
+        <div class="calendar-day-header">Cmt</div>
+        <div class="calendar-day-header">Paz</div>
+        
+        <!-- Günler buraya dinamik olarak eklenecek -->
+        <div id="calendarDays"></div>
+      </div>
+      
+      <div class="calendar-actions">
+        <button id="cancelCalendar" class="calendar-btn cancel">İptal</button>
+        <button id="confirmCalendar" class="calendar-btn confirm">Onayla</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
@@ -845,6 +1036,147 @@
       }
     }
     window.manuelHastaIsimleriniDuzelt = manuelHastaIsimleriniDuzelt;
+
+    // --- Takvim Sistemi ---
+    let currentCalendarDate = new Date();
+    let selectedDate = null;
+    let calendarCallback = null;
+    
+    // Takvim modal'ını aç
+    function openCalendar(callback) {
+      calendarCallback = callback;
+      currentCalendarDate = new Date();
+      selectedDate = null;
+      document.getElementById('calendarModal').style.display = 'flex';
+      updateCalendar();
+    }
+    
+    // Takvim modal'ını kapat
+    function closeCalendar() {
+      document.getElementById('calendarModal').style.display = 'none';
+      calendarCallback = null;
+      selectedDate = null;
+    }
+    
+    // En yakın pazartesiyi bul
+    function getNextMonday(date) {
+      const result = new Date(date);
+      const dayOfWeek = result.getDay();
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek); // Pazar = 0, diğer günler için hesapla
+      result.setDate(result.getDate() + daysUntilMonday);
+      return result;
+    }
+    
+    // Takvimi güncelle
+    function updateCalendar() {
+      const year = currentCalendarDate.getFullYear();
+      const month = currentCalendarDate.getMonth();
+      
+      // Başlığı güncelle
+      const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                         'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+      document.getElementById('calendarTitle').textContent = `${monthNames[month]} ${year}`;
+      
+      // Ayın ilk ve son günü
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      
+      // İlk gün hangi gün (Pazartesi = 1, Pazar = 0)
+      const startDay = firstDay.getDay();
+      const adjustedStartDay = startDay === 0 ? 7 : startDay; // Pazartesi başlangıçlı
+      
+      // Takvim günlerini oluştur
+      const daysContainer = document.getElementById('calendarDays');
+      daysContainer.innerHTML = '';
+      
+      // Önceki ayın günleri
+      for (let i = 1; i < adjustedStartDay; i++) {
+        const prevDate = new Date(year, month, 1 - adjustedStartDay + i);
+        const dayDiv = createCalendarDay(prevDate, true);
+        daysContainer.appendChild(dayDiv);
+      }
+      
+      // Bu ayın günleri
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const currentDate = new Date(year, month, day);
+        const dayDiv = createCalendarDay(currentDate, false);
+        daysContainer.appendChild(dayDiv);
+      }
+      
+      // Sonraki ayın günleri (42 gün tamamla)
+      const totalCells = daysContainer.children.length;
+      const remainingCells = 42 - totalCells;
+      for (let day = 1; day <= remainingCells; day++) {
+        const nextDate = new Date(year, month + 1, day);
+        const dayDiv = createCalendarDay(nextDate, true);
+        daysContainer.appendChild(dayDiv);
+      }
+    }
+    
+    // Takvim günü oluştur
+    function createCalendarDay(date, isOtherMonth) {
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'calendar-day';
+      dayDiv.textContent = date.getDate();
+      
+      if (isOtherMonth) {
+        dayDiv.classList.add('other-month');
+      }
+      
+      // Seçili tarih kontrolü
+      if (selectedDate && date.toDateString() === selectedDate.toDateString()) {
+        dayDiv.classList.add('selected');
+      }
+      
+      // 8 haftalık program aralığı göster
+      if (selectedDate) {
+        const programStart = getNextMonday(selectedDate);
+        const programEnd = new Date(programStart);
+        programEnd.setDate(programStart.getDate() + (8 * 7) - 1); // 8 hafta
+        
+        if (date >= programStart && date <= programEnd) {
+          // Pazartesi günleri yeşil
+          if (date.getDay() === 1) {
+            dayDiv.classList.add('week-start');
+          } else {
+            dayDiv.classList.add('highlighted');
+          }
+        }
+      }
+      
+      // Tıklama eventi
+      dayDiv.addEventListener('click', () => {
+        if (!isOtherMonth) {
+          selectedDate = new Date(date);
+          updateCalendar(); // Takvimi yenile
+        }
+      });
+      
+      return dayDiv;
+    }
+    
+    // Event listener'ları ekle
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+      updateCalendar();
+    });
+    
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+      updateCalendar();
+    });
+    
+    document.getElementById('cancelCalendar').addEventListener('click', closeCalendar);
+    
+    document.getElementById('confirmCalendar').addEventListener('click', () => {
+      if (selectedDate && calendarCallback) {
+        const programStart = getNextMonday(selectedDate);
+        calendarCallback(programStart);
+        closeCalendar();
+      } else {
+        alert('Lütfen bir tarih seçin!');
+      }
+    });
 
     async function loadDataFromFolder() {
       const durumElement = document.getElementById('dataKlasoruDurumu');
@@ -5032,74 +5364,24 @@ function duzenleHafta(i) {
       try {
         // Default değerleri hazırla
         let defaultHastaAdi = '';
-        let defaultBaslangicTarihi = '';
         
         // Mevcut seçili hasta varsa al
         if (seciliHasta) {
           defaultHastaAdi = seciliHasta.isim || '';
         }
         
-        // 5. hafta başlangıç tarihini bulmaya çalış
-        try {
-          const haftalar = getHaftaListesi();
-          if (haftalar.length >= 5 && haftalar[4].baslangic) {
-            const besinciHaftaTarihi = new Date(haftalar[4].baslangic);
-            // Pazartesi kontrolü
-            const gunNo = besinciHaftaTarihi.getDay();
-            if (gunNo !== 1) {
-              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
-              besinciHaftaTarihi.setDate(besinciHaftaTarihi.getDate() + gunFarki);
-            }
-            defaultBaslangicTarihi = besinciHaftaTarihi.toISOString().slice(0, 10);
-          } else {
-            // Bugünden itibaren bir sonraki pazartesi
-            const bugun = new Date();
-            const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
-            defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
-          }
-        } catch (e) {
-          // Hata durumunda bir sonraki pazartesi
-          const bugun = new Date();
-          const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
-          defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
-        }
-        
-        // Kullanıcıdan bilgileri al
-        const hastaAdi = prompt('Hasta Adı:', defaultHastaAdi);
-        if (!hastaAdi) {
-          alert('Hasta adı girilmedi, işlem iptal edildi.');
+        // Hasta adını sor
+        const hastaAdi = prompt('Lenf Masaj Takvimi için hasta adını girin:', defaultHastaAdi);
+        if (!hastaAdi || hastaAdi.trim() === '') {
+          console.log('❌ Hasta adı girilmedi, işlem iptal edildi');
           return;
         }
         
-        const baslangicTarihi = prompt('Başlangıç Tarihi (YYYY-MM-DD):', defaultBaslangicTarihi);
-        if (!baslangicTarihi) {
-          alert('Başlangıç tarihi girilmedi, işlem iptal edildi.');
-          return;
-        }
-        
-        // Tarih kontrolü
-        const tarihObj = new Date(baslangicTarihi);
-        if (isNaN(tarihObj.getTime())) {
-          alert('Geçersiz tarih formatı! YYYY-MM-DD formatında giriniz.');
-          return;
-        }
-        
-        // Pazartesi kontrolü
-        const gunNo = tarihObj.getDay();
-        if (gunNo !== 1) {
-          const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-          const mevcutGun = gunIsimleri[gunNo];
-          if (!confirm(`Seçilen tarih ${mevcutGun} günü. Lenf masaj programı pazartesi günleri başlar.\n\nEn yakın pazartesi gününe otomatik ayarlansın mı?`)) {
-            return;
-          }
-          
-          // En yakın pazartesiye ayarla
-          const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
-          tarihObj.setDate(tarihObj.getDate() + gunFarki);
-        }
-        
-        // Özel lenf masaj PDF'i oluştur (5. hafta benzeri)
-        await generateCustomLenfMasajPDF(hastaAdi, tarihObj);
+        // Takvim modal'ını aç ve tarih seçimini bekle
+        openCalendar((secilenTarih) => {
+          console.log('📅 Seçilen başlangıç tarihi:', secilenTarih);
+          generateCustomLenfMasajPDF(hastaAdi.trim(), secilenTarih);
+        });
         
       } catch (error) {
         console.error('❌ Özel Lenf Masaj Takvimi hatası:', error);
@@ -5112,76 +5394,24 @@ function duzenleHafta(i) {
       try {
         // Default değerleri hazırla
         let defaultHastaAdi = '';
-        let defaultBaslangicTarihi = '';
         
         // Mevcut seçili hasta varsa al
         if (seciliHasta) {
           defaultHastaAdi = seciliHasta.isim || '';
         }
         
-        // 9. hafta başlangıç tarihini bulmaya çalış (5. haftadan 4 hafta sonra)
-        try {
-          const haftalar = getHaftaListesi();
-          if (haftalar.length >= 5 && haftalar[4].baslangic) {
-            const besinciHaftaTarihi = new Date(haftalar[4].baslangic);
-            // Pazartesi kontrolü
-            const gunNo = besinciHaftaTarihi.getDay();
-            if (gunNo !== 1) {
-              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
-              besinciHaftaTarihi.setDate(besinciHaftaTarihi.getDate() + gunFarki);
-            }
-            // 9. hafta = 5. haftadan 4 hafta (28 gün) sonra
-            const dokuzuncuHaftaTarihi = new Date(besinciHaftaTarihi.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
-            defaultBaslangicTarihi = dokuzuncuHaftaTarihi.toISOString().slice(0, 10);
-          } else {
-            // Bugünden itibaren bir sonraki pazartesi
-            const bugun = new Date();
-            const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
-            defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
-          }
-        } catch (e) {
-          // Hata durumunda bir sonraki pazartesi
-          const bugun = new Date();
-          const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
-          defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
-        }
-        
-        // Kullanıcıdan bilgileri al
-        const hastaAdi = prompt('Hasta Adı:', defaultHastaAdi);
-        if (!hastaAdi) {
-          alert('Hasta adı girilmedi, işlem iptal edildi.');
+        // Hasta adını sor
+        const hastaAdi = prompt('Egzersiz Takvimi için hasta adını girin:', defaultHastaAdi);
+        if (!hastaAdi || hastaAdi.trim() === '') {
+          console.log('❌ Hasta adı girilmedi, işlem iptal edildi');
           return;
         }
         
-        const baslangicTarihi = prompt('Başlangıç Tarihi (YYYY-MM-DD):', defaultBaslangicTarihi);
-        if (!baslangicTarihi) {
-          alert('Başlangıç tarihi girilmedi, işlem iptal edildi.');
-          return;
-        }
-        
-        // Tarih kontrolü
-        const tarihObj = new Date(baslangicTarihi);
-        if (isNaN(tarihObj.getTime())) {
-          alert('Geçersiz tarih formatı! YYYY-MM-DD formatında giriniz.');
-          return;
-        }
-        
-        // Pazartesi kontrolü
-        const gunNo = tarihObj.getDay();
-        if (gunNo !== 1) {
-          const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-          const mevcutGun = gunIsimleri[gunNo];
-          if (!confirm(`Seçilen tarih ${mevcutGun} günü. Egzersiz programı pazartesi günleri başlar.\n\nEn yakın pazartesi gününe otomatik ayarlansın mı?`)) {
-            return;
-          }
-          
-          // En yakın pazartesiye ayarla
-          const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
-          tarihObj.setDate(tarihObj.getDate() + gunFarki);
-        }
-        
-        // Özel egzersiz + lenf masaj PDF'i oluştur (9. hafta benzeri)
-        await generateCustomEgzersizPDF(hastaAdi, tarihObj);
+        // Takvim modal'ını aç ve tarih seçimini bekle
+        openCalendar((secilenTarih) => {
+          console.log('📅 Seçilen başlangıç tarihi:', secilenTarih);
+          generateCustomEgzersizPDF(hastaAdi.trim(), secilenTarih);
+        });
         
       } catch (error) {
         console.error('❌ Özel Egzersiz Takvimi hatası:', error);
