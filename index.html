@@ -4288,7 +4288,7 @@ function duzenleHafta(i) {
         // Başlık
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(0, 0, 0);
         
         // Hasta adını Türkçe karakter düzeltme ile hazırla
         const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
@@ -4298,7 +4298,7 @@ function duzenleHafta(i) {
         
         // Alt başlık
         doc.setFontSize(12);
-        doc.setTextColor(51, 102, 153);
+        doc.setTextColor(0, 0, 0);
         const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
@@ -4307,9 +4307,7 @@ function duzenleHafta(i) {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(100, 149, 237);
-        doc.setFillColor(240, 248, 255);
-        doc.roundedRect(15, 32, 180, 10, 2, 2, 'FD');
+        doc.rect(15, 32, 170, 10);
         doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi (5. Haftadan Itibaren)', 20, 38);
         
         // 5. haftanın pazartesi tarihini hesapla
@@ -4330,11 +4328,10 @@ function duzenleHafta(i) {
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
-          doc.setFillColor(0, 51, 102);
-          doc.setTextColor(255, 255, 255);
+          doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
-          doc.rect(15, currentY, 180, 6, 'F');
+          doc.rect(15, currentY, 170, 6);
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
@@ -4342,28 +4339,27 @@ function duzenleHafta(i) {
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
-          doc.setFillColor(220, 220, 220);
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           
-          const colWidths = [35, 45, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
           let tableStartX = 15;
           
           // Başlık satırı
-          doc.rect(tableStartX, currentY, colWidths[0], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[0], 6);
           doc.text('TARIH', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[0];
           
-          doc.rect(tableStartX, currentY, colWidths[1], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[1], 6);
           doc.text('GUN', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[1];
           
-          doc.rect(tableStartX, currentY, colWidths[2], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[2], 6);
           doc.text('SABAH', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[2];
           
-          doc.rect(tableStartX, currentY, colWidths[3], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[3], 6);
           doc.text('AKSAM', tableStartX + 2, currentY + 4);
           currentY += 6;
           
@@ -4406,50 +4402,27 @@ function duzenleHafta(i) {
               aksamUygulama = '-';
             }
             
-            // Satır arkaplanı (hafta sonları farklı)
-            if (gunIndex >= 5) { // Cumartesi, Pazar
-              doc.setFillColor(248, 248, 248);
-            } else {
-              doc.setFillColor(255, 255, 255);
-            }
-            
             tableStartX = 15;
             
             // Tarih sütunu
-            doc.rect(tableStartX, currentY, colWidths[0], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[0], 5);
             doc.setTextColor(0, 0, 0);
             doc.text(tarihStr, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[0];
             
             // Gün sütunu
-            doc.rect(tableStartX, currentY, colWidths[1], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[1], 5);
             doc.text(gun, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[1];
             
             // Sabah sütunu
-            doc.rect(tableStartX, currentY, colWidths[2], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[2], 5);
-            if (sabahUygulama !== '-') {
-              doc.setTextColor(0, 128, 0); // Yeşil
-              doc.text(sabahUygulama, tableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', tableStartX + 20, currentY + 3.5);
-            }
+            doc.text(sabahUygulama, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[2];
             
             // Akşam sütunu
-            doc.rect(tableStartX, currentY, colWidths[3], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[3], 5);
-            if (aksamUygulama !== '-') {
-              doc.setTextColor(128, 0, 0); // Kırmızı
-              doc.text(aksamUygulama, tableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', tableStartX + 20, currentY + 3.5);
-            }
+            doc.text(aksamUygulama, tableStartX + 2, currentY + 3.5);
             
             currentY += 5;
           }
@@ -4472,38 +4445,8 @@ function duzenleHafta(i) {
           }
         }
         
-        // Açıklama ve ipuçları
-        currentY += 5;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
         
-        // Sembol açıklamaları
-        doc.setDrawColor(200, 200, 200);
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(15, currentY, 180, 20, 2, 2, 'FD');
-        
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SEMBOL ACIKLAMALARI:', 20, currentY + 4);
-        
-        doc.setFont('helvetica', 'normal');
-        doc.text('✅ LENF MASAJ = Lenf drenaj masajini uygulayin', 20, currentY + 7);
-        doc.text('➖ = Dinlenme gunu (uygulama yok)', 20, currentY + 10);
-        doc.text('🔥 Yogun Donem: Gunde 2 kez    🌿 Hafif Donem: Gunasiri', 20, currentY + 13);
-        doc.text('⚡ Orta Donem: Gunde 1 kez     💎 Bakim: Haftada 2 gun', 20, currentY + 16);
-        
-        // Alt bilgiler
-        currentY += 25;
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(120, 120, 120);
-        doc.text('� Bu tablo mobil cihazlarda kolay okunabilmek icin tasarlanmistir.', 15, currentY);
-        doc.text('📋 Hasta takip sistemi tarafindan otomatik olusturulmustur.', 15, currentY + 4);
-        doc.text(`📅 Olusturulma: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}`, 15, currentY + 8);
-        doc.text('💡 Uygulama sonrasi gunluk notlarinizi tutabilirsiniz.', 15, currentY + 12);
-        
-        console.log('✅ Mobil dostu lenf drenaj tablosu tamamlandı, PDF indiriliyor...');
+        console.log('✅ Basit lenf drenaj tablosu tamamlandı, PDF indiriliyor...');
         
         // PDF'yi indir
         const tarih = new Date().toISOString().slice(0, 10);
@@ -4596,14 +4539,14 @@ function duzenleHafta(i) {
         // Başlık - Merkezi
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(0, 0, 0);
         const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
         const title = `${temizHastaAdi.toUpperCase()}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
         doc.setFontSize(12);
-        doc.setTextColor(51, 102, 153);
+        doc.setTextColor(0, 0, 0);
         const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
@@ -4612,18 +4555,16 @@ function duzenleHafta(i) {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(100, 149, 237);
-        doc.setFillColor(240, 248, 255);
-        doc.roundedRect(15, 32, 180, 10, 2, 2, 'FD');
+        doc.rect(15, 32, 170, 10);
         doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi', 20, 36);
-        doc.text('5. Haftadan Itibaren - Mobil Dostu Takip Takvimi', 20, 40);
+        doc.text('5. Haftadan Itibaren - Basit Takip Takvimi', 20, 40);
         
         // 5. haftanın başlangıcı
         const besinciHafta = haftalar[4];
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
         
         let currentY = 50;
-        const gunler = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
@@ -4631,11 +4572,10 @@ function duzenleHafta(i) {
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
-          doc.setFillColor(0, 51, 102);
-          doc.setTextColor(255, 255, 255);
+          doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
-          doc.roundedRect(15, currentY, 180, 6, 1, 1, 'F');
+          doc.rect(15, currentY, 170, 6);
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
@@ -4643,28 +4583,27 @@ function duzenleHafta(i) {
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
-          doc.setFillColor(220, 220, 220);
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           
-          const colWidths = [35, 45, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
           let zipTableStartX = 15;
           
           // Başlık satırı
-          doc.rect(zipTableStartX, currentY, colWidths[0], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
           doc.text('TARIH', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[0];
           
-          doc.rect(zipTableStartX, currentY, colWidths[1], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
           doc.text('GUN', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[1];
           
-          doc.rect(zipTableStartX, currentY, colWidths[2], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
           doc.text('SABAH', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[2];
           
-          doc.rect(zipTableStartX, currentY, colWidths[3], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
           doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
           currentY += 6;
           
@@ -4707,50 +4646,27 @@ function duzenleHafta(i) {
               aksamUygulama = '-';
             }
             
-            // Satır arkaplanı (hafta sonları farklı)
-            if (gunIndex >= 5) { // Cumartesi, Pazar
-              doc.setFillColor(248, 248, 248);
-            } else {
-              doc.setFillColor(255, 255, 255);
-            }
-            
             zipTableStartX = 15;
             
             // Tarih sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[0], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[0], 5);
             doc.setTextColor(0, 0, 0);
             doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[0];
             
             // Gün sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[1], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[1], 5);
             doc.text(gun, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[1];
             
             // Sabah sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[2], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[2], 5);
-            if (sabahUygulama !== '-') {
-              doc.setTextColor(0, 128, 0); // Yeşil
-              doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', zipTableStartX + 20, currentY + 3.5);
-            }
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[2];
             
             // Akşam sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[3], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[3], 5);
-            if (aksamUygulama !== '-') {
-              doc.setTextColor(128, 0, 0); // Kırmızı
-              doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', zipTableStartX + 20, currentY + 3.5);
-            }
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
             
             currentY += 5;
           }
@@ -4764,17 +4680,9 @@ function duzenleHafta(i) {
           }
         }
         
-        // Alt bilgiler
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(120, 120, 120);
-        doc.text('📱 Mobil dostu tasarim', 15, currentY + 3);
-        doc.text('📋 Otomatik olusturulmustur', 15, currentY + 6);
-        doc.text(`📅 ${new Date().toLocaleDateString('tr-TR')}`, 15, currentY + 9);
-        
         // Blob olarak döndür (indirmeden)
         const pdfBlob = doc.output('blob');
-        console.log('✅ Mobil dostu Lenf Drenaj PDF Blob oluşturuldu');
+        console.log('✅ Basit Lenf Drenaj PDF Blob oluşturuldu');
         return pdfBlob;
         
       } catch (error) {
