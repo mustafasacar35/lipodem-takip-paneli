@@ -3706,15 +3706,23 @@
         setTimeout(() => {
           console.log(`🔄 ${enBuyukHaftaIndex}. hafta tab'ı için eşleşen kartlar kontrol ediliyor...`);
           
-          // Eşleşen kartların yüklenip yüklenmediğini kontrol et
+          // Eşleşen kartların yüklenip yüklenmediğini kontrol et (maksimum 10 deneme)
+          let denemeSayisi = 0;
+          const maxDeneme = 10;
+          
           const checkAndActivate = () => {
+            denemeSayisi++;
             const eslesenDiv = document.getElementById(`eslesenKartlar_${enBuyukHaftaIndex}`);
+            
             if (eslesenDiv && (eslesenDiv.children.length > 0 || eslesenDiv.innerHTML.includes('henüz eşleşme yok'))) {
               console.log(`✅ ${enBuyukHaftaIndex}. hafta için eşleşen kartlar hazır, tab aktif hale getiriliyor`);
               switchTab(enBuyukHaftaIndex);
-            } else {
-              console.log(`⏳ ${enBuyukHaftaIndex}. hafta için eşleşen kartlar henüz hazır değil, 200ms daha bekleniyor...`);
+            } else if (denemeSayisi < maxDeneme) {
+              console.log(`⏳ ${enBuyukHaftaIndex}. hafta için eşleşen kartlar henüz hazır değil, 200ms daha bekleniyor... (${denemeSayisi}/${maxDeneme})`);
               setTimeout(checkAndActivate, 200);
+            } else {
+              console.log(`⚠️ ${enBuyukHaftaIndex}. hafta için eşleşen kartlar ${maxDeneme} denemede hazır olamadı, tab zorla aktif hale getiriliyor`);
+              switchTab(enBuyukHaftaIndex);
             }
           };
           
