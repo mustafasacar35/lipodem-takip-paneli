@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -281,6 +282,40 @@
       .hafta-tab-content > div:first-of-type {
         grid-template-columns: 1fr !important;
       }
+      
+      /* Hasta bilgi paneli responsive */
+      #hastaBilgiPanel {
+        padding: 8px 10px !important;
+      }
+      
+      #hastaBilgiPanel h3 {
+        font-size: 14px !important;
+      }
+      
+      #hastaBilgiPanel p {
+        font-size: 11px !important;
+      }
+      
+      #hastaBilgiButonlar button {
+        padding: 5px 8px !important;
+        font-size: 10px !important;
+      }
+      
+      #hastaBilgiPanel > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+      }
+      
+      #hastaBilgiButonlar {
+        margin-left: 0 !important;
+        width: 100%;
+      }
+      
+      #hastaBilgiButonlar > div {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+      }
     }
   </style>
 </head>
@@ -311,17 +346,19 @@
     <!-- Orta Panel -->
     <div class="center-panel">
       <!-- Hasta Bilgi Paneli (Sabit) -->
-      <div id="hastaBilgiPanel" style="display: none; background: #fff; border-bottom: 2px solid #007bff; padding: 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h3 id="secilenHastaIsim" style="margin: 0; color: #007bff;">Hasta Seçilmedi</h3>
-            <p id="secilenHastaNot" style="margin: 5px 0 0 0; color: #666; font-size: 14px;">-</p>
+      <div id="hastaBilgiPanel" style="background: #fff; border-bottom: 2px solid #007bff; padding: 10px 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px;">
+          <div style="flex: 1; min-width: 0;">
+            <h3 id="secilenHastaIsim" style="margin: 0; color: #007bff; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hasta Seçilmedi</h3>
+            <p id="secilenHastaNot" style="margin: 2px 0 0 0; color: #666; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Lütfen sol menüden bir hasta seçin</p>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <button onclick="duzenleHasta()" style="padding: 8px 12px; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ Düzenle</button>
-            <button onclick="arsivleHasta()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">📦 Arşivle</button>
-            <button onclick="silHasta()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Sil</button>
-            <button onclick="kapatDetay()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✖️ Kapat</button>
+          <div id="hastaBilgiButonlar" style="display: none; flex-shrink: 0; margin-left: 15px;">
+            <div style="display: flex; gap: 6px;">
+              <button onclick="duzenleHasta()" style="padding: 6px 10px; background: #ffc107; color: #000; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✏️ Düzenle</button>
+              <button onclick="arsivleHasta()" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">📦 Arşivle</button>
+              <button onclick="silHasta()" style="padding: 6px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">🗑️ Sil</button>
+              <button onclick="kapatDetay()" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✖️ Kapat</button>
+            </div>
           </div>
         </div>
       </div>
@@ -602,54 +639,6 @@
     </div>
     
     <div id="duzenlemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
-  </div>
-
-  <div id="hastaPaneli" style="display:none;">
-    <h3>Hasta Listesi</h3>
-    <input type="text" id="hastaAra_old" placeholder="İsme göre ara..." oninput="filtreleHastalar()" style="width:200px;">
-    <select id="arsivFiltre_old" onchange="filtreleHastalar()">
-      <option value="aktif">Aktif Hastalar</option>
-      <option value="arsiv">Arşivdekiler</option>
-      <option value="tum">Tümü</option>
-    </select>
-    <button onclick="yeniHastaFormu()">Yeni Hasta Ekle</button>
-    <ul id="hastaListesi_old"></ul>
-  </div>
-
-  <div id="hastaFormu" style="display:none; background:#fff; border:1px solid #ccc; padding:16px; margin:16px 0;">
-    <h3 id="hastaFormBaslik">Yeni Hasta</h3>
-    <input id="hastaIsim" placeholder="İsim" style="width:200px;"/><br>
-    <textarea id="hastaNot" placeholder="Özel Notlar" style="width:200px;"></textarea><br>
-    <button onclick="kaydetHasta()">Kaydet</button>
-    <button onclick="iptalHastaFormu()">İptal</button>
-  </div>
-
-  <div id="hastaDetay" style="display:none; background:#f9f9f9; border:1px solid #ccc; padding:16px; margin:16px 0;">
-    <h3 id="detayIsim"></h3>
-    <div id="detayNot"></div>
-    <button onclick="duzenleHasta()">Düzenle</button>
-    <button onclick="arsivleHasta()" id="arsivBtn"></button>
-    <button onclick="silHasta()">Sil</button>
-    <button onclick="kapatDetay()">Kapat</button>
-    <hr>
-    <div style="margin:10px 0; background:#eef; padding:8px;">
-      <b>Genel Bilgiler / Notlar:</b>
-      <div id="hastaGenelNot"></div>
-    </div>
-    <div style="margin:10px 0;">
-      <h4>Haftalar</h4>
-      <button onclick="haftaEkle()">Hafta Ekle</button>
-      
-      <!-- Tab Sistemi -->
-      <div id="haftaTabContainer">
-        <div id="haftaTabs" class="hafta-tabs">
-          <!-- Tablar buraya dinamik eklenecek -->
-        </div>
-        <div id="haftaTabContent">
-          <!-- Tab içerikleri buraya dinamik eklenecek -->
-        </div>
-      </div>
-    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -3219,10 +3208,16 @@
       });
       
       if (hastaBilgiPanel && secilenHastaIsim && secilenHastaNot) {
-        hastaBilgiPanel.style.display = 'block';
         secilenHastaIsim.textContent = turkceKarakterDuzelt(seciliHasta.isim);
         secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
-        console.log('✅ Hasta bilgi paneli gösterildi:', seciliHasta.isim);
+        
+        // Butonları göster
+        const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
+        if (hastaBilgiButonlar) {
+          hastaBilgiButonlar.style.display = 'block';
+        }
+        
+        console.log('✅ Hasta bilgi paneli güncellendi:', seciliHasta.isim);
       } else {
         console.log('❌ Hasta bilgi paneli elementleri bulunamadı!');
       }
@@ -3272,10 +3267,19 @@
     }
 
     function kapatDetay() {
-      // Hasta bilgi panelini gizle
-      const hastaBilgiPanel = document.getElementById('hastaBilgiPanel');
-      if (hastaBilgiPanel) {
-        hastaBilgiPanel.style.display = 'none';
+      // Hasta bilgi panelindeki bilgileri sıfırla
+      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
+      const secilenHastaNot = document.getElementById('secilenHastaNot');
+      const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
+      
+      if (secilenHastaIsim) {
+        secilenHastaIsim.textContent = 'Hasta Seçilmedi';
+      }
+      if (secilenHastaNot) {
+        secilenHastaNot.textContent = 'Lütfen sol menüden bir hasta seçin';
+      }
+      if (hastaBilgiButonlar) {
+        hastaBilgiButonlar.style.display = 'none';
       }
       
       // Seçili hastayı temizle
