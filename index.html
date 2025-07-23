@@ -3554,7 +3554,10 @@
         if (!hafta.baslangic || !hafta.bitis) {
           try {
             const now = new Date();
-            const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1 + (index * 7));
+            // Bu haftanın pazartesini bul
+            const thisWeekMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+            // İstenen hafta için pazartesi (index * 7 gün ekle)
+            const weekStart = new Date(thisWeekMonday.getTime() + (index * 7 * 24 * 60 * 60 * 1000));
             const weekEnd = new Date(weekStart.getTime() + 6*24*60*60*1000);
             
             hafta.baslangic = weekStart.toISOString().slice(0,10);
@@ -3562,6 +3565,28 @@
             dataUpdated = true;
           } catch (e) {
             console.warn('Tarih oluşturma hatası hafta', index + 1, ':', e);
+          }
+        } else {
+          // Mevcut başlangıç tarihinin pazartesi olmasını garanti altına al
+          try {
+            const baslangicTarihi = new Date(hafta.baslangic);
+            const gunNo = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi
+            
+            if (gunNo !== 1) { // Pazartesi değilse düzelt
+              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo); // Pazartesiye kadar olan gün farkı
+              baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
+              
+              // Bitiş tarihini de güncelle (6 gün sonra pazar)
+              const bitisTarihi = new Date(baslangicTarihi.getTime() + 6*24*60*60*1000);
+              
+              hafta.baslangic = baslangicTarihi.toISOString().slice(0,10);
+              hafta.bitis = bitisTarihi.toISOString().slice(0,10);
+              dataUpdated = true;
+              
+              console.log(`📅 ${index + 1}. hafta başlangıcı pazartesi olarak düzeltildi:`, hafta.baslangic);
+            }
+          } catch (e) {
+            console.warn('Tarih düzeltme hatası hafta', index + 1, ':', e);
           }
         }
       });
@@ -4309,7 +4334,15 @@ function duzenleHafta(i) {
         }
         
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
-        console.log('✅ 5. hafta başlangıcı:', besinciHaftaBaslangic);
+        
+        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        if (haftaGunu !== 1) { // Eğer pazartesi değilse
+          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
+        }
+        
+        console.log('✅ 5. hafta başlangıcı (Pazartesi):', besinciHaftaBaslangic);
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -4589,6 +4622,13 @@ function duzenleHafta(i) {
         const besinciHafta = haftalar[4];
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
         
+        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        if (haftaGunu !== 1) { // Eğer pazartesi değilse
+          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
+        }
+        
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
@@ -4813,6 +4853,13 @@ function duzenleHafta(i) {
       }
       
       const baslangicTarihi = new Date(besinciHafta.baslangic);
+      
+      // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+      const haftaGunu = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+      if (haftaGunu !== 1) { // Eğer pazartesi değilse
+        const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+        baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
+      }
       
       try {
         const doc = new jsPDFLib('p', 'mm', 'a4'); // Portrait format
@@ -6162,6 +6209,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       setTimeout(() => {
         guncelleHastaSayilari();
         renderHastalar();
+        
+        // Tüm hafta verilerinde pazartesi kontrolü yap
+        normalizeHaftaData();
       }, 100);
     }
     
