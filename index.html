@@ -5804,7 +5804,33 @@ function duzenleHafta(i) {
       try {
         console.log('💆 Özel Lenf Masaj PDF oluşturuluyor...', { hastaAdi, baslangicTarihi });
         
-        const doc = new jsPDF();
+        // jsPDF kütüphane kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+          console.log('✅ jsPDF window.jspdf.jsPDF üzerinden yüklendi');
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+          console.log('✅ jsPDF global jsPDF üzerinden yüklendi');
+        } else {
+          console.log('❌ jsPDF bulunamadı, dinamik yükleme yapılıyor...');
+          
+          // Dinamik jsPDF yükleme
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.onload = () => {
+            console.log('✅ jsPDF dinamik olarak yüklendi');
+            setTimeout(() => generateCustomLenfMasajPDF(hastaAdi, baslangicTarihi), 100);
+          };
+          script.onerror = () => {
+            console.log('❌ jsPDF yüklenemedi');
+            alert('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+          };
+          document.head.appendChild(script);
+          return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
+        }
+        
+        const doc = new jsPDFLib();
         
         // Başlık
         doc.setFont('helvetica', 'bold');
@@ -5952,7 +5978,33 @@ function duzenleHafta(i) {
       try {
         console.log('🏃 Özel Egzersiz + Lenf Masaj PDF oluşturuluyor...', { hastaAdi, baslangicTarihi });
         
-        const doc = new jsPDF();
+        // jsPDF kütüphane kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+          console.log('✅ jsPDF window.jspdf.jsPDF üzerinden yüklendi');
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+          console.log('✅ jsPDF global jsPDF üzerinden yüklendi');
+        } else {
+          console.log('❌ jsPDF bulunamadı, dinamik yükleme yapılıyor...');
+          
+          // Dinamik jsPDF yükleme
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.onload = () => {
+            console.log('✅ jsPDF dinamik olarak yüklendi');
+            setTimeout(() => generateCustomEgzersizPDF(hastaAdi, baslangicTarihi), 100);
+          };
+          script.onerror = () => {
+            console.log('❌ jsPDF yüklenemedi');
+            alert('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+          };
+          document.head.appendChild(script);
+          return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
+        }
+        
+        const doc = new jsPDFLib();
         
         // Başlık
         doc.setFont('helvetica', 'bold');
