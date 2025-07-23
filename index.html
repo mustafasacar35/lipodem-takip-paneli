@@ -5871,6 +5871,12 @@ function duzenleHafta(i) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
           const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+          }
+          
           // Hafta başlığı
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
@@ -5915,6 +5921,41 @@ function duzenleHafta(i) {
           doc.setFontSize(8);
           
           for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
             const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
@@ -6069,6 +6110,12 @@ function duzenleHafta(i) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
           const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
           
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+          }
+          
           // Hafta başlığı
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
@@ -6120,6 +6167,41 @@ function duzenleHafta(i) {
           doc.setFontSize(8);
           
           for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
             const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
