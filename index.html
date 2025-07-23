@@ -4347,24 +4347,24 @@ function duzenleHafta(i) {
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = '-';
             } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + boş yerlerde egzersiz
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + sürekli akşam egzersiz
               if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı
+                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
                 sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = '-';
+                aksamUygulama = 'Egzersiz-2';
               } else {
-                // Salı, Perşembe, Cumartesi: Egzersiz
+                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
                 sabahUygulama = 'Egzersiz-1';
                 aksamUygulama = 'Egzersiz-2';
               }
             } else {
-              // Son 2 hafta (11-12): Salı, Cuma lenf masajı + boş yerlerde egzersiz
+              // Son 2 hafta (11-12): Salı, Cuma lenf masajı + sürekli akşam egzersiz
               if (gunIndex === 1 || gunIndex === 4) {
-                // Salı, Cuma: Lenf masajı
+                // Salı, Cuma: Lenf masajı + akşam egzersiz
                 sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = '-';
+                aksamUygulama = 'Egzersiz-2';
               } else {
-                // Diğer günler: Egzersiz
+                // Diğer günler: Sabah ve akşam egzersiz
                 sabahUygulama = 'Egzersiz-1';
                 aksamUygulama = 'Egzersiz-2';
               }
@@ -4477,6 +4477,10 @@ function duzenleHafta(i) {
         const haftalar = getHaftaListesi();
         if (haftalar.length < 5) return null;
         
+        // Seçili haftayı al - egzersiz dahil olup olmayacağını belirlemek için
+        const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
+        const egzersizDahilMi = seciliHaftaIndex >= 8; // 9. hafta ve sonrası için egzersiz dahil
+        
         // jsPDF kontrolü
         let jsPDFLib;
         if (typeof window.jspdf !== 'undefined') {
@@ -4575,7 +4579,7 @@ function duzenleHafta(i) {
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
             
-            // Uygulama kontrolü
+            // Uygulama kontrolü - seçili haftaya göre egzersiz dahil edilir
             let sabahUygulama = '-';
             let aksamUygulama = '-';
             
@@ -4588,26 +4592,48 @@ function duzenleHafta(i) {
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = '-';
             } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + boş yerlerde egzersiz
-              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı
-                sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = '-';
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı
+              if (egzersizDahilMi) {
+                // Egzersiz dahil versiyonu (9. hafta seçiliyse)
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
+                  sabahUygulama = 'Lenf Masaji';
+                  aksamUygulama = 'Egzersiz-2';
+                } else {
+                  // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                  sabahUygulama = 'Egzersiz-1';
+                  aksamUygulama = 'Egzersiz-2';
+                }
               } else {
-                // Salı, Perşembe, Cumartesi: Egzersiz
-                sabahUygulama = 'Egzersiz-1';
-                aksamUygulama = 'Egzersiz-2';
+                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  sabahUygulama = 'Lenf Masaji';
+                } else {
+                  sabahUygulama = '-';
+                }
+                aksamUygulama = '-';
               }
             } else {
-              // Son 2 hafta (11-12): Salı, Cuma lenf masajı + boş yerlerde egzersiz
-              if (gunIndex === 1 || gunIndex === 4) {
-                // Salı, Cuma: Lenf masajı
-                sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = '-';
+              // Son 2 hafta (11-12): Salı, Cuma lenf masajı
+              if (egzersizDahilMi) {
+                // Egzersiz dahil versiyonu (9+ hafta seçiliyse)
+                if (gunIndex === 1 || gunIndex === 4) {
+                  // Salı, Cuma: Lenf masajı + akşam egzersiz
+                  sabahUygulama = 'Lenf Masaji';
+                  aksamUygulama = 'Egzersiz-2';
+                } else {
+                  // Diğer günler: Sabah ve akşam egzersiz
+                  sabahUygulama = 'Egzersiz-1';
+                  aksamUygulama = 'Egzersiz-2';
+                }
               } else {
-                // Diğer günler: Egzersiz
-                sabahUygulama = 'Egzersiz-1';
-                aksamUygulama = 'Egzersiz-2';
+                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
+                if (gunIndex === 1 || gunIndex === 4) {
+                  sabahUygulama = 'Lenf Masaji';
+                } else {
+                  sabahUygulama = '-';
+                }
+                aksamUygulama = '-';
               }
             }
             
