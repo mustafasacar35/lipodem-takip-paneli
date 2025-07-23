@@ -675,114 +675,76 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
-    // Türkçe karakter düzeltme fonksiyonu - RADIKAL ÇÖZÜM
+    // Türkçe karakter düzeltme fonksiyonu - BASİT VE ETKİLİ ÇÖZÜM
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // İlk olarak tüm problemli karakterleri normalize et
-      let duzeltilmisText = text;
-      
-      // RADIKAL ÇÖZÜM 1: Tüm encoding bozukluklarını temizle
-      const problemliKarakterler = [
-        // Â karakterlerini temizle
-        { yanlis: /[ÂÃ]/g, dogru: '' },
+      // Basit karakter eşleştirme tablosu
+      const karakterTablosu = {
+        // Şefike için özel çözüm
+        '^EF0KE': 'ŞEFİKE',
+        'ŞEF0KE': 'ŞEFİKE', 
+        'SEF0KE': 'ŞEFİKE',
+        '^EFIKE': 'ŞEFİKE',
         
-        // Ş harfi için tüm varyasyonlar
-        { yanlis: /[ÅŠŞŚΣΣ]/g, dogru: 'Ş' },
-        { yanlis: /[åšşśσ]/g, dogru: 'ş' },
+        // Ş harfleri
+        'Ş': ['Ş', 'ÅŸ', 'Åž', 'Å ', 'Ã…Â', 'ÃÂ', 'ÅŠÂŞ', 'Åž', '^'],
+        'ş': ['ş', 'ÅŸ', 'Å '],
         
-        // İ harfi için tüm varyasyonlar  
-        { yanlis: /[ÄİĮÍÌÎÏ]/g, dogru: 'İ' },
-        { yanlis: /[äiįíìîï]/g, dogru: 'i' },
+        // İ harfleri  
+        'İ': ['İ', 'Ä°', 'Ä ', 'ÄÂ°', 'ÃÄÂ°', '0'],
+        'i': ['i', 'Ä±', 'Ä '],
         
         // I harfi (büyük ı)
-        { yanlis: /[ÄI]/g, dogru: 'I' },
-        { yanlis: /[ı]/g, dogru: 'ı' },
+        'I': ['I'],
+        'ı': ['ı', 'Ä±', 'Ä '],
         
-        // Ü harfi için tüm varyasyonlar
-        { yanlis: /[ÃœÜÚÙÛ]/g, dogru: 'Ü' },
-        { yanlis: /[ãüúùû]/g, dogru: 'ü' },
+        // Ü harfleri
+        'Ü': ['Ü', 'Ãœ', 'Ã '],
+        'ü': ['ü', 'Ã¼', 'Ã '],
         
-        // Ö harfi için tüm varyasyonlar
-        { yanlis: /[Ã–ÖÓÒÔÕº]/g, dogru: 'Ö' },
-        { yanlis: /[öóòôõ]/g, dogru: 'ö' },
+        // Ö harfleri
+        'Ö': ['Ö', 'Ã–', 'Ã '],
+        'ö': ['ö', 'Ã¶', 'Ã '],
         
-        // Ç harfi için tüm varyasyonlar
-        { yanlis: /[Ã‡ÇĆĈĊČ]/g, dogru: 'Ç' },
-        { yanlis: /[çćĉċč]/g, dogru: 'ç' },
+        // Ç harfleri
+        'Ç': ['Ç', 'Ã‡', 'Ã '],
+        'ç': ['ç', 'Ã§', 'Ã '],
         
-        // Ğ harfi için tüm varyasyonlar
-        { yanlis: /[ÄŸĞĜĞĠĢǦǤǴǵḠ]/g, dogru: 'Ğ' },
-        { yanlis: /[ğĝğġģǧǥḡ]/g, dogru: 'ğ' },
-        
-        // Diğer garip karakterler
-        { yanlis: /[°º]/g, dogru: '' },
-        { yanlis: /[‡]/g, dogru: '' },
-        { yanlis: /[†]/g, dogru: '' }
-      ];
-      
-      // RADIKAL ÇÖZÜM 2: Regex temizlik
-      problemliKarakterler.forEach(({yanlis, dogru}) => {
-        duzeltilmisText = duzeltilmisText.replace(yanlis, dogru);
-      });
-      
-      // RADIKAL ÇÖZÜM 3: Özel isim düzeltmeleri (tam eşleşme)
-      const ozelIsimler = {
-        'AYŞE': ['AYŞÂE', 'AYÅÂE', 'AYÅ E', 'AYÅE', 'AYÅâE'],
-        'ŞENAY': ['ŞÂENAY', 'ÅÂENAY', 'Å ENAY', 'ÅENAY', 'ÅâENAY'],
-        'ÖZLEM': ['ÜÂZLEM', 'ÃÂZLEM', 'Ã ZLEM', 'ÃZLEM', 'ÜâZLEM'],
-        'BİRİNCİ': ['BİRİNCÂİ', 'BÄ°RÄ°NCÄ°', 'BÄ RÄ NCÄ ', 'BÄRÄNCÄ'],
-        'ŞAHİN': ['ŞÂAHİN', 'ÅÂAHÄ°N', 'Å AHÄ N', 'ÅAHÄN'],
-        'ULUDAĞ': ['ULUDAÂĞ', 'ULUDAÄ', 'ULUDA Ä', 'ULUDAÄ'],
-        'YEŞİM': ['YEŞÂİM', 'YEÅÂÄ°M', 'YEÅ Ä M', 'YEÅÄM'],
-        'KARADAĞ': ['KARADAÂĞ', 'KARADAÄ', 'KARADA Ä', 'KARADAÄ'],
-        'GENÇ': ['GENÂÇ', 'GENÃÂ', 'GEN Ã', 'GENÃ'],
-        'DEĞERLİ': ['DEĞERLÂİ', 'DEÄERLÄ°', 'DE ÄERL Ä ', 'DEÄERLÄ'],
-        'SERİNKEN': ['SERİNKEN', 'SERÄ°NKEN', 'SER Ä NKEN', 'SERÄNKEN'],
-        'KARAKUŞ': ['KARAKUŞÂ', 'KARAKUÅÂ', 'KARAKU Å', 'KARAKUÅ'],
-        'FİSUN': ['FİSUN', 'FÄ°SUN', 'F Ä SUN', 'FÄSUN'],
-        'FADİME': ['FADİME', 'FADÄ°ME', 'FAD Ä ME', 'FADÄME'],
-        'AKŞAY': ['AKŞÂAY', 'AKÃÂY', 'AK Ã Y', 'AKÃY'],
-        'GİZEM': ['GİZEM', 'GÄ°ZEM', 'G Ä ZEM', 'GÄZEM'],
-        'BİRDAL': ['BİRDAL', 'BÄ°RDAL', 'B Ä RDAL', 'BÄRDAL'],
-        'HÜLYA': ['HÜÂLYA', 'HÃÂLYA', 'H Ã LYA', 'HÃLYA'],
-        'ŞANTA': ['ŞÂANTA', 'ÃÂANTA', 'Ã ANTA', 'ÃANTA'],
-        'HAFİZE': ['HAFİZE', 'HAFÄ°ZE', 'HAF Ä ZE', 'HAFÄZE'],
-        'AĞCA': ['AĞCA', 'AÄCA', 'A ÄCA', 'AÄCA'],
-        'HATİCE': ['HATİCE', 'HATÄ°CE', 'HAT Ä CE', 'HATÄCE'],
-        'OKTAŞ': ['OKTAŞÂ', 'OKTAÅÂ', 'OKTA Å', 'OKTAÅ'],
-        'ŞENGÜN': ['ŞÂENGÜÂN', 'ÅÂENGÃÂN', 'Å ENG Ã N', 'ÅENGÃN'],
-        'SEVİLAY': ['SEVİLAY', 'SEVÄ°LAY', 'SEV Ä LAY', 'SEVÄLAY'],
-        'COŞKUN': ['COŞÂKUN', 'COÅÂKUN', 'CO Å KUN', 'COÅKUN'],
-        'SEVGİ': ['SEVGİ', 'SEVGÄ°', 'SEVG Ä', 'SEVGÄ'],
-        'DOĞAN': ['DOĞAN', 'DOÄAN', 'DO ÄAN', 'DOÄAN'],
-        'ATAŞ': ['ATAŞÂ', 'ATAÅÂ', 'ATA Å', 'ATAÅ'],
-        'VİLDAN': ['VİLDAN', 'VÄ°LDAN', 'V Ä LDAN', 'VÄLDAN'],
-        'ŞEFİKE': ['ŞEFİKE', 'ÅÂEFÄ°KE', 'Å EF Ä KE', 'ÅEFÄKE'],
-        'UZAKGİDER': ['UZAKGİDER', 'UZAKGÄ°DER', 'UZAKG Ä DER', 'UZAKGÄDER'],
-        'KALFA': ['KALFA', 'KALFA', 'KALFA', 'KALFA']
+        // Ğ harfleri
+        'Ğ': ['Ğ', 'ÄŸ', 'Ä '],
+        'ğ': ['ğ', 'ÄŸ', 'Ä ']
       };
       
-      // RADIKAL ÇÖZÜM 4: İsim bazlı düzeltme
-      for (const [dogruIsim, yanlislar] of Object.entries(ozelIsimler)) {
-        yanlislar.forEach(yanlis => {
-          const regex = new RegExp(yanlis.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-          duzeltilmisText = duzeltilmisText.replace(regex, dogruIsim);
-        });
+      let duzeltilmisText = text;
+      
+      // Özel isim düzeltmeleri önce
+      if (duzeltilmisText.includes('^EF0KE') || duzeltilmisText.includes('ŞEF0KE')) {
+        duzeltilmisText = 'ŞEFİKE';
       }
       
-      // RADIKAL ÇÖZÜM 5: Son temizlik
+      // Her Türkçe karakter için eşleşmeleri kontrol et
+      Object.keys(karakterTablosu).forEach(dogruKarakter => {
+        if (Array.isArray(karakterTablosu[dogruKarakter])) {
+          karakterTablosu[dogruKarakter].forEach(yanlisKarakter => {
+            const regex = new RegExp(yanlisKarakter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            duzeltilmisText = duzeltilmisText.replace(regex, dogruKarakter);
+          });
+        }
+      });
+      
+      // Garip semboller ve karakterleri temizle
       duzeltilmisText = duzeltilmisText
-        .replace(/\s+/g, ' ')  // Çoklu boşlukları tek boşluk yap
-        .trim()                // Baş/son boşlukları temizle
-        .toUpperCase();        // Büyük harfe çevir
+        .replace(/[ÂÃ°º†‡^]/g, '') // Gereksiz semboller
+        .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
+        .trim();                    // Baştaki ve sondaki boşlukları kaldır
       
       return duzeltilmisText;
     }
 
-    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu - RADIKAL ÇÖZÜM
+    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
     function manuelHastaIsimleriniDuzelt() {
-      console.log('🔧 RADIKAL KARAKTER DÜZELTMESİ başlatılıyor...');
+      console.log('🔧 Hasta isimlerini düzeltiliyor...');
       let degisiklikSayisi = 0;
       
       hastalar.forEach((hasta, index) => {
@@ -4433,15 +4395,6 @@ function duzenleHafta(i) {
           if (currentY > 240 && lenfHaftaIndex < 7) {
             doc.addPage('p');
             currentY = 20;
-            
-            // Yeni sayfa başlığı
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 51, 102);
-            const devamBaslik = `${temizHastaAdi.toUpperCase()} - LENF DRENAJ PROGRAMI (devam)`;
-            const devamGenislik = doc.getTextWidth(devamBaslik);
-            doc.text(devamBaslik, (210 - devamGenislik) / 2, 15);
-            currentY = 25;
           }
         }
         
