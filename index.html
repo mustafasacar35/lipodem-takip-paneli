@@ -4261,7 +4261,7 @@ function duzenleHafta(i) {
         // Alt başlık
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        const subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
         
@@ -4270,7 +4270,11 @@ function duzenleHafta(i) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         doc.rect(15, 32, 170, 10);
-        doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi (5. Haftadan Itibaren)', 20, 38);
+        doc.text('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi (5. Haftadan itibaren)', 20, 38);
+        
+        // Seçili haftayı al - geçmiş haftalarda soluk renk için
+        const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
+        const seciliHaftaNo = seciliHaftaIndex + 1;
         
         // 5. haftanın pazartesi tarihini hesapla
         const besinciHafta = mevcutHaftalar[4];
@@ -4290,7 +4294,12 @@ function duzenleHafta(i) {
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
-          doc.setTextColor(0, 0, 0);
+          // Seçili haftadan önceki haftalar soluk renkte olsun
+          if (gercekHaftaNo < seciliHaftaNo) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.rect(15, currentY, 170, 6);
@@ -4372,9 +4381,15 @@ function duzenleHafta(i) {
             
             tableStartX = 15;
             
+            // Seçili haftadan önceki haftalar soluk renkte olsun
+            if (gercekHaftaNo < seciliHaftaNo) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
             // Tarih sütunu
             doc.rect(tableStartX, currentY, colWidths[0], 5);
-            doc.setTextColor(0, 0, 0);
             doc.text(tarihStr, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[0];
             
@@ -4518,7 +4533,17 @@ function duzenleHafta(i) {
         
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        
+        // Hangi hafta için PDF oluşturulduğuna göre farklı başlık
+        let subtitle, programBasligi;
+        if (egzersizDahilMi) {
+          subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
+          programBasligi = '8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi';
+        } else {
+          subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+          programBasligi = '8 Haftalik Lenf Drenaj Masaji Uygulama Programi';
+        }
+        
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
         
@@ -4527,8 +4552,8 @@ function duzenleHafta(i) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         doc.rect(15, 32, 170, 10);
-        doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi', 20, 36);
-        doc.text('5. Haftadan Itibaren - Basit Takip Takvimi', 20, 40);
+        doc.text(programBasligi, 20, 36);
+        doc.text('(5. Haftadan itibaren)', 20, 40);
         
         // 5. haftanın başlangıcı
         const besinciHafta = haftalar[4];
@@ -4550,6 +4575,14 @@ function duzenleHafta(i) {
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+          if (egzersizDahilMi && gercekHaftaNo <= 8) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
           doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
           currentY += 8;
           
@@ -4647,9 +4680,15 @@ function duzenleHafta(i) {
             
             zipTableStartX = 15;
             
+            // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+            if (egzersizDahilMi && gercekHaftaNo <= 8) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
             // Tarih sütunu
             doc.rect(zipTableStartX, currentY, colWidths[0], 5);
-            doc.setTextColor(0, 0, 0);
             doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[0];
             
