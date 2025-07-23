@@ -4227,17 +4227,30 @@ function duzenleHafta(i) {
       
       console.log('✅ Hafta sayısı:', haftalar.length);
       
-      // Kaç hafta PDF'e dahil edilecek
-      const haftaSayisi = parseInt(prompt('Kaç hafta PDF\'e dahil edilsin?', '12')) || 12;
+      // Sadece 5. haftada lenf drenaj programı oluşturulacak
+      const mevcutHaftaNo = haftalar.length;
+      if (mevcutHaftaNo === 5) {
+        console.log('✅ 5. hafta tespit edildi, Lenf Drenaj Masajı programı hazırlanıyor');
+      } else {
+        console.log(`📋 ${mevcutHaftaNo}. hafta - Genel takip PDF\'i oluşturuluyor`);
+      }
+      
+      // Sabit 12 haftalık program 
+      const haftaSayisi = 12;
       console.log('✅ PDF için hafta sayısı:', haftaSayisi);
       
       // Türkçe karakter düzeltme uygula
       const duzeltilenHastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
-      generatePDFTable(duzeltilenHastaAdi, haftalar, haftaSayisi);
+      
+      if (mevcutHaftaNo === 5) {
+        generateLenfDrenajPDF(duzeltilenHastaAdi, haftalar, haftaSayisi);
+      } else {
+        generateGenelTakipPDF(duzeltilenHastaAdi, haftalar, haftaSayisi);
+      }
     }
     
-    function generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi) {
-      console.log('📄 PDF Tablo oluşturuluyor...', { hastaAdi, toplamHaftaSayisi });
+    function generateLenfDrenajPDF(hastaAdi, mevcutHaftalar, toplamHaftaSayisi) {
+      console.log('📄 Lenf Drenaj Masajı PDF oluşturuluyor...', { hastaAdi, toplamHaftaSayisi });
       
       // jsPDF kütüphanesini kontrol et
       console.log('jsPDF kontrol:', typeof window.jspdf, typeof jsPDF);
@@ -4255,7 +4268,7 @@ function duzenleHafta(i) {
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
         script.onload = () => {
           console.log('✅ jsPDF dinamik olarak yüklendi');
-          setTimeout(() => generatePDFTable(hastaAdi, mevcutHaftalar, toplamHaftaSayisi), 100);
+          setTimeout(() => generateLenfDrenajPDF(hastaAdi, mevcutHaftalar, toplamHaftaSayisi), 100);
         };
         script.onerror = () => {
           console.log('❌ jsPDF yüklenemedi');
@@ -4266,135 +4279,318 @@ function duzenleHafta(i) {
       }
       
       try {
-        console.log('📝 PDF dökümanı oluşturuluyor...');
+        console.log('📝 Lenf Drenaj Masajı PDF dökümanı oluşturuluyor...');
         const doc = new jsPDFLib('l', 'mm', 'a4'); // Landscape format
         
         // Türkçe font support için
         doc.setFont('helvetica');
         
         // Başlık
-        doc.setFontSize(16);
+        doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.text(hastaAdi.toUpperCase(), 20, 20);
+        doc.text(`${hastaAdi.toUpperCase()} - LENF DRENAJ MASAJI PROGRAMI`, 20, 20);
         console.log('✅ Başlık eklendi:', hastaAdi);
+        
+        // Program açıklaması
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('8 Haftalık Lenf Drenaj Masajı Uygulama Programı (5. Haftadan İtibaren)', 20, 30);
+        
+        // 5. haftanın pazartesi tarihini hesapla
+        const besinciHafta = mevcutHaftalar[4]; // 0-indexed, 5. hafta = index 4
+        if (!besinciHafta || !besinciHafta.baslangic) {
+          throw new Error('5. hafta bilgisi bulunamadı!');
+        }
+        
+        const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
+        console.log('✅ 5. hafta başlangıcı:', besinciHaftaBaslangic);
         
         // Tablo parametreleri
         const startX = 20;
-        const startY = 35;
-        const rowHeight = 6;
-        const colWidths = [15, 25, 20, 35, 35, 35, 35, 35, 35, 35]; // Sütun genişlikleri
+        const startY = 45;
+        const rowHeight = 8;
+        const colWidths = [15, 30, 25, 60, 60]; // Hafta, Tarih Aralığı, Günler, Sabah, Akşam
         
         // Tablo başlıkları
-        const headers = ['Hafta', 'Gün', 'Tarih', 'Lenf drenaj masajı', 'Lenf drenaj masajı', '', '', '', '', ''];
-        
-        // Başlık satırını çiz
-        doc.setFontSize(8);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         let currentX = startX;
+        const headers = ['Hafta', 'Tarih Aralığı', 'Günler', 'SABAH', 'AKŞAM'];
+        
         headers.forEach((header, index) => {
           doc.rect(currentX, startY, colWidths[index], rowHeight);
-          if (header) {
-            doc.text(header, currentX + 2, startY + 4);
-          }
+          doc.text(header, currentX + 2, startY + 5.5);
           currentX += colWidths[index];
         });
         console.log('✅ Tablo başlıkları eklendi');
         
-        // Her hafta için satırları oluştur
+        // 8 haftalık lenf drenaj programı
         let currentY = startY + rowHeight;
-        console.log('📋 Satırlar oluşturuluyor, toplam hafta:', toplamHaftaSayisi);
         
-        for (let haftaIndex = 0; haftaIndex < toplamHaftaSayisi; haftaIndex++) {
-          const hafta = mevcutHaftalar[haftaIndex];
-          const haftaNo = haftaIndex + 1;
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlıyor
+          const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const haftaBitis = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000));
           
-          // Hafta başlangıç tarihini hesapla
-          let haftaBaslangic;
-          if (hafta && hafta.baslangic) {
-            haftaBaslangic = new Date(hafta.baslangic);
+          // Tarih formatı
+          const baslangicStr = `${haftaBaslangic.getDate().toString().padStart(2, '0')}.${(haftaBaslangic.getMonth() + 1).toString().padStart(2, '0')}.${haftaBaslangic.getFullYear()}`;
+          const bitisStr = `${haftaBitis.getDate().toString().padStart(2, '0')}.${(haftaBitis.getMonth() + 1).toString().padStart(2, '0')}.${haftaBitis.getFullYear()}`;
+          
+          // Program mantığı
+          let gunler = '';
+          let sabahProgram = '';
+          let aksamProgram = '';
+          
+          if (lenfHaftaIndex < 2) {
+            // İlk 2 hafta: Günde 2 kez (sabah-akşam)
+            gunler = 'Her Gün';
+            sabahProgram = 'Lenf Drenaj Masajı';
+            aksamProgram = 'Lenf Drenaj Masajı';
+          } else if (lenfHaftaIndex < 4) {
+            // Sonraki 2 hafta: Günde 1 kez (sabah)
+            gunler = 'Her Gün';
+            sabahProgram = 'Lenf Drenaj Masajı';
+            aksamProgram = '';
+          } else if (lenfHaftaIndex < 6) {
+            // Sonraki 2 hafta: Günaşırı sabah
+            gunler = 'Günaşırı\n(Pzt, Çar, Cum, Paz)';
+            sabahProgram = 'Lenf Drenaj Masajı';
+            aksamProgram = '';
           } else {
-            // İlk hafta için bugünün pazartesini al, sonraki haftalar için ekle
-            const bugün = new Date();
-            const pazartesi = new Date(bugün);
-            pazartesi.setDate(bugün.getDate() - bugün.getDay() + 1);
-            haftaBaslangic = new Date(pazartesi.getTime() + (haftaIndex * 7 * 24 * 60 * 60 * 1000));
+            // Son 2 hafta: Haftada 2 gün (salı-cuma) sabah
+            gunler = 'Salı, Cuma';
+            sabahProgram = 'Lenf Drenaj Masajı';
+            aksamProgram = '';
           }
           
-          // Günler
-          const gunler = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
           
-          gunler.forEach((gun, gunIndex) => {
-            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
-            const tarihStr = `${gunTarihi.getDate().toString().padStart(2, '0')}.${(gunTarihi.getMonth() + 1).toString().padStart(2, '0')}.${gunTarihi.getFullYear()}`;
-            
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7);
-            
-            let currentX = startX;
-            
-            // Hafta numarası (sadece ilk satırda)
-            if (gunIndex === 0) {
-              doc.rect(currentX, currentY, colWidths[0], rowHeight * 7); // 7 gün için birleşik hücre
-              doc.setFont('helvetica', 'bold');
-              doc.text(`${haftaNo}. hafta`, currentX + 2, currentY + 20);
-              doc.setFont('helvetica', 'normal');
-            }
-            currentX += colWidths[0];
-            
-            // Gün
-            doc.rect(currentX, currentY, colWidths[1], rowHeight);
-            doc.text(gun, currentX + 2, currentY + 4);
-            currentX += colWidths[1];
-            
-            // Tarih
-            doc.rect(currentX, currentY, colWidths[2], rowHeight);
-            doc.text(tarihStr, currentX + 2, currentY + 4);
-            currentX += colWidths[2];
-            
-            // Aktivite sütunları (boş bırak - manuel doldurma için)
-            for (let i = 3; i < colWidths.length; i++) {
-              doc.rect(currentX, currentY, colWidths[i], rowHeight);
-              
-              // İlk aktivite sütununa önceden yazılmış metin ekle
-              if (i === 3 && (gunIndex < 5)) { // Sadece hafta içi günlerde
-                doc.setFontSize(6);
-                doc.text('Lenf drenaj masajı', currentX + 2, currentY + 4);
-                doc.setFontSize(7);
-              }
-              
-              currentX += colWidths[i];
-            }
-            
-            currentY += rowHeight;
-            
-            // Sayfa sonu kontrolü
-            if (currentY > 180) {
-              doc.addPage('l');
-              currentY = 20;
-              
-              // Yeni sayfa başlığı
-              doc.setFontSize(16);
-              doc.setFont('helvetica', 'bold');
-              doc.text(`${hastaAdi.toUpperCase()} (devam)`, 20, 15);
-              doc.setFontSize(7);
-              doc.setFont('helvetica', 'normal');
-            }
+          currentX = startX;
+          
+          // Hafta numarası
+          doc.rect(currentX, currentY, colWidths[0], rowHeight);
+          doc.text(`${gercekHaftaNo}.`, currentX + 5, currentY + 5.5);
+          currentX += colWidths[0];
+          
+          // Tarih aralığı
+          doc.rect(currentX, currentY, colWidths[1], rowHeight);
+          doc.text(`${baslangicStr} - ${bitisStr}`, currentX + 2, currentY + 5.5);
+          currentX += colWidths[1];
+          
+          // Günler
+          doc.rect(currentX, currentY, colWidths[2], rowHeight);
+          const gunlerLines = gunler.split('\n');
+          gunlerLines.forEach((line, lineIndex) => {
+            doc.text(line, currentX + 2, currentY + 4 + (lineIndex * 3));
           });
+          currentX += colWidths[2];
+          
+          // Sabah
+          doc.rect(currentX, currentY, colWidths[3], rowHeight);
+          if (sabahProgram) {
+            doc.text(sabahProgram, currentX + 2, currentY + 5.5);
+          }
+          currentX += colWidths[3];
+          
+          // Akşam
+          doc.rect(currentX, currentY, colWidths[4], rowHeight);
+          if (aksamProgram) {
+            doc.text(aksamProgram, currentX + 2, currentY + 5.5);
+          }
+          
+          currentY += rowHeight;
         }
         
-        console.log('✅ Tablo tamamlandı, PDF indiriliyor...');
+        // Alt not
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Not: Bu program hasta takip sistemi tarafından otomatik oluşturulmuştur.', 20, currentY + 15);
+        doc.text(`Oluşturulma Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 20, currentY + 20);
+        
+        console.log('✅ Lenf drenaj tablosu tamamlandı, PDF indiriliyor...');
         
         // PDF'yi indir
         const tarih = new Date().toISOString().slice(0, 10);
-        const dosyaAdi = `${hastaAdi}_Takip_Tablosu_${tarih}.pdf`;
+        const dosyaAdi = `${hastaAdi}_Lenf_Drenaj_Programi_${tarih}.pdf`;
         doc.save(dosyaAdi);
         
-        console.log('✅ PDF başarıyla oluşturuldu:', dosyaAdi);
-        alert(`PDF başarıyla oluşturuldu: ${dosyaAdi}`);
+        console.log('✅ Lenf Drenaj PDF başarıyla oluşturuldu:', dosyaAdi);
+        alert(`Lenf Drenaj Masajı Programı PDF'i başarıyla oluşturuldu!\n\nDosya: ${dosyaAdi}\n\n8 haftalık program 5. haftanızın pazartesi günü (${besinciHaftaBaslangic.toLocaleDateString('tr-TR')}) başlayacak şekilde hazırlandı.`);
         
       } catch (error) {
-        console.error('❌ PDF oluşturma hatası:', error);
+        console.error('❌ Lenf Drenaj PDF oluşturma hatası:', error);
+        alert('Lenf Drenaj PDF oluştururken hata oluştu: ' + error.message);
+      }
+    }
+
+    function generateGenelTakipPDF(hastaAdi, mevcutHaftalar, toplamHaftaSayisi) {
+      console.log('📄 Genel Takip PDF oluşturuluyor...', { hastaAdi, toplamHaftaSayisi });
+      alert('Henüz 5. hafta kaydınız yok. Genel takip PDF\'i oluşturuluyor.\n5. hafta sonrası Lenf Drenaj Masajı programı otomatik eklenecektir.');
+      
+      // Basit takip PDF oluştur (eski sistem)
+      try {
+        const doc = new jsPDF('l', 'mm', 'a4');
+        doc.setFont('helvetica');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${hastaAdi.toUpperCase()} - GENEL TAKİP`, 20, 20);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Hasta takip tablosu (Lenf drenaj programı 5. hafta sonrası eklenecektir)', 20, 30);
+        
+        // Basit tablo
+        const startY = 45;
+        let currentY = startY;
+        
+        doc.setFontSize(9);
+        doc.text('Hafta', 20, currentY);
+        doc.text('Durum', 60, currentY);
+        doc.text('Notlar', 120, currentY);
+        currentY += 10;
+        
+        for (let i = 0; i < Math.min(mevcutHaftalar.length, toplamHaftaSayisi); i++) {
+          const hafta = mevcutHaftalar[i];
+          doc.text(`${i + 1}. Hafta`, 20, currentY);
+          doc.text(hafta ? 'Tamamlandı' : 'Beklemede', 60, currentY);
+          doc.text(hafta && hafta.aciklama ? hafta.aciklama.substring(0, 30) : '', 120, currentY);
+          currentY += 8;
+        }
+        
+        const tarih = new Date().toISOString().slice(0, 10);
+        const dosyaAdi = `${hastaAdi}_Genel_Takip_${tarih}.pdf`;
+        doc.save(dosyaAdi);
+        
+        console.log('✅ Genel Takip PDF başarıyla oluşturuldu:', dosyaAdi);
+        
+      } catch (error) {
+        console.error('❌ Genel Takip PDF hatası:', error);
         alert('PDF oluştururken hata oluştu: ' + error.message);
+      }
+    }
+
+    // ZIP için Lenf Drenaj PDF Blob oluşturucu (indirmeden, sadece memory'de)
+    async function generateLenfDrenajPDFBlob() {
+      try {
+        console.log('📄 Lenf Drenaj PDF Blob oluşturuluyor...');
+        
+        if (!seciliHasta) return null;
+        
+        const haftalar = getHaftaListesi();
+        if (haftalar.length < 5) return null;
+        
+        // jsPDF kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+        } else {
+          console.warn('❌ jsPDF bulunamadı');
+          return null;
+        }
+        
+        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
+        const doc = new jsPDFLib('l', 'mm', 'a4');
+        
+        // PDF içeriğini oluştur (generateLenfDrenajPDF'den kopyala)
+        doc.setFont('helvetica');
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${hastaAdi.toUpperCase()} - LENF DRENAJ MASAJI PROGRAMI`, 20, 20);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('8 Haftalık Lenf Drenaj Masajı Uygulama Programı (5. Haftadan İtibaren)', 20, 30);
+        
+        // 5. haftanın başlangıcı
+        const besinciHafta = haftalar[4];
+        const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
+        
+        // Tablo
+        const startX = 20, startY = 45, rowHeight = 8;
+        const colWidths = [15, 30, 25, 60, 60];
+        
+        // Başlıklar
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        let currentX = startX;
+        const headers = ['Hafta', 'Tarih Aralığı', 'Günler', 'SABAH', 'AKŞAM'];
+        
+        headers.forEach((header, index) => {
+          doc.rect(currentX, startY, colWidths[index], rowHeight);
+          doc.text(header, currentX + 2, startY + 5.5);
+          currentX += colWidths[index];
+        });
+        
+        // 8 hafta program
+        let currentY = startY + rowHeight;
+        
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5;
+          const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const haftaBitis = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000));
+          
+          const baslangicStr = `${haftaBaslangic.getDate().toString().padStart(2, '0')}.${(haftaBaslangic.getMonth() + 1).toString().padStart(2, '0')}.${haftaBaslangic.getFullYear()}`;
+          const bitisStr = `${haftaBitis.getDate().toString().padStart(2, '0')}.${(haftaBitis.getMonth() + 1).toString().padStart(2, '0')}.${haftaBitis.getFullYear()}`;
+          
+          let gunler = '', sabahProgram = '', aksamProgram = '';
+          
+          if (lenfHaftaIndex < 2) {
+            gunler = 'Her Gün'; sabahProgram = 'Lenf Drenaj Masajı'; aksamProgram = 'Lenf Drenaj Masajı';
+          } else if (lenfHaftaIndex < 4) {
+            gunler = 'Her Gün'; sabahProgram = 'Lenf Drenaj Masajı'; aksamProgram = '';
+          } else if (lenfHaftaIndex < 6) {
+            gunler = 'Günaşırı\n(Pzt, Çar, Cum, Paz)'; sabahProgram = 'Lenf Drenaj Masajı'; aksamProgram = '';
+          } else {
+            gunler = 'Salı, Cuma'; sabahProgram = 'Lenf Drenaj Masajı'; aksamProgram = '';
+          }
+          
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          
+          currentX = startX;
+          
+          doc.rect(currentX, currentY, colWidths[0], rowHeight);
+          doc.text(`${gercekHaftaNo}.`, currentX + 5, currentY + 5.5);
+          currentX += colWidths[0];
+          
+          doc.rect(currentX, currentY, colWidths[1], rowHeight);
+          doc.text(`${baslangicStr} - ${bitisStr}`, currentX + 2, currentY + 5.5);
+          currentX += colWidths[1];
+          
+          doc.rect(currentX, currentY, colWidths[2], rowHeight);
+          const gunlerLines = gunler.split('\n');
+          gunlerLines.forEach((line, lineIndex) => {
+            doc.text(line, currentX + 2, currentY + 4 + (lineIndex * 3));
+          });
+          currentX += colWidths[2];
+          
+          doc.rect(currentX, currentY, colWidths[3], rowHeight);
+          if (sabahProgram) doc.text(sabahProgram, currentX + 2, currentY + 5.5);
+          currentX += colWidths[3];
+          
+          doc.rect(currentX, currentY, colWidths[4], rowHeight);
+          if (aksamProgram) doc.text(aksamProgram, currentX + 2, currentY + 5.5);
+          
+          currentY += rowHeight;
+        }
+        
+        // Alt notlar
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Not: Bu program hasta takip sistemi tarafından otomatik oluşturulmuştur.', 20, currentY + 15);
+        doc.text(`Oluşturulma Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 20, currentY + 20);
+        
+        // Blob olarak döndür (indirmeden)
+        const pdfBlob = doc.output('blob');
+        console.log('✅ Lenf Drenaj PDF Blob oluşturuldu');
+        return pdfBlob;
+        
+      } catch (error) {
+        console.error('❌ Lenf Drenaj PDF Blob hatası:', error);
+        return null;
       }
     }
 
@@ -5333,7 +5529,46 @@ function duzenleHafta(i) {
         }
       }
       
-      // 6. ZIP dosyasını oluştur ve indir
+      // 6. Sadece 5. haftada Lenf Drenaj Masajı PDF'ini ekle
+      const haftaNo = hafta.haftaNo || (i + 1);
+      if (haftaNo === 5) {
+        try {
+          console.log('🏥 5. hafta tespit edildi, Lenf Drenaj PDF\'i oluşturuluyor...');
+          
+          // Lenf drenaj PDF'ini oluştur (memory'de, indirmeden)
+          const lenfPdfBlob = await generateLenfDrenajPDFBlob();
+          if (lenfPdfBlob) {
+            const lenfFileName = `${zipBaseName}_Lenf_Drenaj_Programi.pdf`;
+            zip.file(lenfFileName, lenfPdfBlob);
+            fileCount++;
+            console.log('✅ Lenf Drenaj PDF\'i ZIP\'e eklendi:', lenfFileName);
+          }
+        } catch (e) {
+          console.warn('⚠️ Lenf Drenaj PDF\'i eklenemedi:', e);
+        }
+      }
+      
+      // 7. Sadece 9. haftada Egzersiz Tablosu PDF'ini ekle (gelecekte)
+      if (haftaNo === 9) {
+        try {
+          console.log('💪 9. hafta tespit edildi, Egzersiz Tablosu PDF\'i oluşturuluyor...');
+          
+          // TODO: Egzersiz tablosu PDF'ini oluştur
+          // const egzersizPdfBlob = await generateEgzersizTablosuPDFBlob();
+          // if (egzersizPdfBlob) {
+          //   const egzersizFileName = `${zipBaseName}_Egzersiz_Tablosu.pdf`;
+          //   zip.file(egzersizFileName, egzersizPdfBlob);
+          //   fileCount++;
+          //   console.log('✅ Egzersiz Tablosu PDF\'i ZIP\'e eklendi:', egzersizFileName);
+          // }
+          
+          console.log('⏳ Egzersiz Tablosu PDF\'i henüz hazır değil (gelecekte eklenecek)');
+        } catch (e) {
+          console.warn('⚠️ Egzersiz Tablosu PDF\'i eklenemedi:', e);
+        }
+      }
+      
+      // 8. ZIP dosyasını oluştur ve indir
       if (fileCount === 0) {
         alert('Hiçbir dosya eklenemedi!');
         return;
