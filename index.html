@@ -4580,7 +4580,7 @@ function duzenleHafta(i) {
         doc.rect(15, 32, 170, 10);
         doc.text(programBasligi, 20, 36);
         if (egzersizDahilMi) {
-          doc.text('(5. Haftadan itibaren) - * Tamamlanan uygulamalar', 20, 40);
+          doc.text('(5. Haftadan itibaren) - Yesil v tamamlanan gunler', 20, 40);
         } else {
           doc.text('(5. Haftadan itibaren)', 20, 40);
         }
@@ -4719,7 +4719,20 @@ function duzenleHafta(i) {
             
             // Tarih sütunu
             doc.rect(zipTableStartX, currentY, colWidths[0], 5);
-            doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
+            if (egzersizDahilMi && gercekHaftaNo <= 8) {
+              // Yeşil check simgesi (ASCII uyumlu)
+              doc.setTextColor(0, 128, 0); // Yeşil renk
+              doc.text('v', zipTableStartX + 1, currentY + 3.5);
+              
+              // Tarihi soluk renkte yaz
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 8, currentY + 3.5);
+            } else {
+              // Normal tarih
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
             zipTableStartX += colWidths[0];
             
             // Gün sütunu
@@ -4729,24 +4742,12 @@ function duzenleHafta(i) {
             
             // Sabah sütunu
             doc.rect(zipTableStartX, currentY, colWidths[2], 5);
-            
-            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) check simgesi ekle
-            if (egzersizDahilMi && gercekHaftaNo <= 8 && sabahUygulama !== '-') {
-              doc.text(sabahUygulama + ' *', zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
-            }
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[2];
             
             // Akşam sütunu
             doc.rect(zipTableStartX, currentY, colWidths[3], 5);
-            
-            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) check simgesi ekle
-            if (egzersizDahilMi && gercekHaftaNo <= 8 && aksamUygulama !== '-') {
-              doc.text(aksamUygulama + ' *', zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
-            }
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
             
             currentY += 5;
           }
