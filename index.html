@@ -317,41 +317,6 @@
         gap: 4px !important;
       }
     }
-    
-    /* Eşleşen Kartlar - Simetrik 2 Sütun Grid */
-    #currentEslesenKartlar > div:not([style*="grid-column"]) {
-      background: #ffffff;
-      border: 1px solid #e0e6ed;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      transition: box-shadow 0.2s ease;
-      min-height: 120px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    
-    #currentEslesenKartlar > div:not([style*="grid-column"]):hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
-    }
-    
-    /* Desktop - Sabit 2 sütun */
-    @media (min-width: 768px) {
-      #currentEslesenKartlar {
-        grid-template-columns: 1fr 1fr !important;
-        gap: 20px !important;
-      }
-    }
-    
-    /* Mobile - Tek sütun */
-    @media (max-width: 767px) {
-      #currentEslesenKartlar {
-        grid-template-columns: 1fr !important;
-        gap: 15px !important;
-      }
-    }
   </style>
 </head>
 <body>
@@ -431,17 +396,7 @@
         </button>
         
         <div id="eslesenKartlarContent" style="display: block;">
-          <div id="currentEslesenKartlar" style="
-            min-height: 200px; 
-            border: 1px solid #ddd; 
-            padding: 15px; 
-            border-radius: 8px; 
-            background: white;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            align-items: start;
-          ">
+          <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
             </div>
@@ -495,15 +450,10 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
-        <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
-        <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
-        <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
-        <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
       </div>
     </div>
   </div>
@@ -6942,7 +6892,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
       } else {
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
-        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px; grid-column: 1 / -1;">Bu hafta için henüz eşleşme yok.</div>';
+        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
       }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
@@ -7049,7 +6999,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const currentDiv = document.getElementById('currentEslesenKartlar');
       if (currentDiv) {
         currentDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px; grid-column: 1 / -1;">
+          <div style="text-align: center; color: #666; padding: 40px;">
             Seçili hafta için eşleştirme yapılmadı...
           </div>
         `;
