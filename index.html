@@ -396,16 +396,6 @@
         </button>
         
         <div id="eslesenKartlarContent" style="display: block;">
-          <!-- Sabit Butonlar - Üstte -->
-          <div id="sabitebutonlar" style="margin-bottom: 10px; display: flex; gap: 8px;">
-            <button id="zipButton" onclick="zipEslesenGorsellerSidebar()" style="flex: 1; padding: 10px; font-size: 12px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-              📦 ZIP Dosyası Oluştur
-            </button>
-            <button id="eslesmeyenButton" onclick="eslesmeyenTarifleriGoster()" style="flex: 1; padding: 10px; font-size: 12px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-              ⚠️ Eşleşmeyen Tarifler
-            </button>
-          </div>
-          
           <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
@@ -451,8 +441,9 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔧 Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
+        <!-- PDF Analiz, Takip PDF, Debug Tarifler, İsim Düzelt butonları kaldırıldı -->
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
       </div>
@@ -5582,45 +5573,117 @@ function duzenleHafta(i) {
         eslesenDiv.appendChild(img);
       });
     });
+    
+    // İndir butonları ekle
+    const indirDiv = document.createElement('div');
+    indirDiv.style.marginTop = '15px';
+    indirDiv.style.display = 'flex';
+    indirDiv.style.gap = '10px';
+    indirDiv.style.flexWrap = 'wrap';
+    
+    // ZIP olarak indir butonu
+    const zipBtn = document.createElement('button');
+    zipBtn.textContent = '📦 Tüm Dosyaları ZIP İndir';
+    zipBtn.style.background = '#28a745';
+    zipBtn.style.color = 'white';
+    zipBtn.style.border = 'none';
+    zipBtn.style.padding = '10px 15px';
+    zipBtn.style.borderRadius = '5px';
+    zipBtn.style.cursor = 'pointer';
+    zipBtn.style.marginBottom = '10px';
+    zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
+    zipBtn.onclick = function() { 
+      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
+      zipEslesenGorseller(i); 
+    };
+    
+    // PDF Takip Tablosu oluştur butonu
+    const pdfBtn = document.createElement('button');
+    pdfBtn.textContent = '📄 Takip Tablosu PDF';
+    pdfBtn.style.background = '#dc3545';
+    pdfBtn.style.color = 'white';
+    pdfBtn.style.border = 'none';
+    pdfBtn.style.padding = '10px 15px';
+    pdfBtn.style.borderRadius = '5px';
+    pdfBtn.style.cursor = 'pointer';
+    pdfBtn.onclick = function() { generatePatientPDF(); };
+    
+    // ZIP + PDF Combo butonu
+    const comboBtn = document.createElement('button');
+    comboBtn.textContent = '🎯 Kartlar + PDF Tablosu';
+    comboBtn.style.background = '#6f42c1';
+    comboBtn.style.color = 'white';
+    comboBtn.style.border = 'none';
+    comboBtn.style.padding = '10px 15px';
+    comboBtn.style.borderRadius = '5px';
+    comboBtn.style.cursor = 'pointer';
+    comboBtn.onclick = function() { 
+      zipEslesenGorseller(i); 
+      setTimeout(() => generatePatientPDF(), 1000); 
+    };
+    
+    indirDiv.appendChild(zipBtn);
+    indirDiv.appendChild(pdfBtn);
+    indirDiv.appendChild(comboBtn);
+    // Ana area'ya buton eklemeyi kaldırdık - sadece sidebar'da olacak
+    // eslesenDiv.appendChild(indirDiv);
+    
+    // Sidebar için butonları ekle
+    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv) {
+      // Eski butonları kaldır
+      sidebarButtonsDiv.innerHTML = '';
+      
+      // Sidebar için ZIP butonlarını ekle
+      const sidebarIndirDiv = indirDiv.cloneNode(true);
+      sidebarIndirDiv.className = 'indir-butonlari';
+      sidebarIndirDiv.style.marginTop = '0px';
+      sidebarIndirDiv.style.borderTop = 'none';
+      sidebarIndirDiv.style.paddingTop = '0px';
+      
+      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
+      const sidebarButtons = sidebarIndirDiv.children;
+      if (sidebarButtons[0]) { // ZIP butonu
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+      }
+      if (sidebarButtons[1]) { // PDF butonu  
+        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
+      }
+      if (sidebarButtons[2]) { // COMBO butonu
+        sidebarButtons[2].onclick = function() { 
+          zipEslesenGorseller(i); 
+          setTimeout(() => generatePatientPDF(), 1000); 
+        };
+      }
+      
+      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
+    }
   }
 
-  // Eşleşmeyen tarifleri akordiyon başlık altında göster - HER ZAMAN GÖSTER
-  // Akordiyon başlık
-  const akordiyonBaslik = document.createElement('button');
-  
-  // Eşleşmeyen tarif sayısına göre metin ve stil ayarla
+  // Eşleşmeyen tarifleri akordiyon başlık altında göster
   if (eslesmeyenTarifler.length > 0) {
-    akordiyonBaslik.textContent = `⚠️ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+    // Akordiyon başlık
+    const akordiyonBaslik = document.createElement('button');
+    akordiyonBaslik.textContent = `Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
     akordiyonBaslik.style.background = '#f8d7da';
     akordiyonBaslik.style.color = 'darkred';
     akordiyonBaslik.style.border = '1px solid #d9534f';
-  } else {
-    akordiyonBaslik.textContent = `✅ Tüm Tarifler Eşleşti`;
-    akordiyonBaslik.style.background = '#d4edda';
-    akordiyonBaslik.style.color = 'darkgreen';
-    akordiyonBaslik.style.border = '1px solid #28a745';
-  }
-  
-  akordiyonBaslik.style.padding = '8px 16px';
-  akordiyonBaslik.style.marginTop = '12px';
-  akordiyonBaslik.style.cursor = 'pointer';
-  akordiyonBaslik.style.fontWeight = 'bold';
-  akordiyonBaslik.style.borderRadius = '6px';
-  akordiyonBaslik.style.width = '100%';
-  akordiyonBaslik.setAttribute('aria-expanded', 'false');
-  
-  // Akordiyon içerik
-  const akordiyonIcerik = document.createElement('div');
-  akordiyonIcerik.style.display = 'none';
-  akordiyonIcerik.style.padding = '10px 16px';
-  akordiyonIcerik.style.marginTop = '4px';
-  akordiyonIcerik.style.borderRadius = '6px';
+    akordiyonBaslik.style.padding = '8px 16px';
+    akordiyonBaslik.style.marginTop = '12px';
+    akordiyonBaslik.style.cursor = 'pointer';
+    akordiyonBaslik.style.fontWeight = 'bold';
+    akordiyonBaslik.style.borderRadius = '6px';
+    akordiyonBaslik.setAttribute('aria-expanded', 'false');
 
-  // İçerik ve stil eşleşmeyen tarif sayısına göre ayarla
-  if (eslesmeyenTarifler.length > 0) {
+    // Akordiyon içerik
+    const akordiyonIcerik = document.createElement('div');
+    akordiyonIcerik.style.display = 'none';
     akordiyonIcerik.style.background = '#fff0f0';
     akordiyonIcerik.style.border = '1px solid #d9534f';
-    
+    akordiyonIcerik.style.padding = '10px 16px';
+    akordiyonIcerik.style.marginTop = '4px';
+    akordiyonIcerik.style.borderRadius = '6px';
+
     eslesmeyenTarifler.forEach(tarif => {
       const p = document.createElement('p');
       p.textContent = tarif;
@@ -5628,42 +5691,38 @@ function duzenleHafta(i) {
       p.style.margin = '6px 0';
       akordiyonIcerik.appendChild(p);
     });
-  } else {
-    akordiyonIcerik.style.background = '#f0fff0';
-    akordiyonIcerik.style.border = '1px solid #28a745';
-    
-    const p = document.createElement('p');
-    p.textContent = 'Bu hafta için tüm tarifler başarıyla eşleştirildi! 🎉';
-    p.style.color = 'darkgreen';
-    p.style.margin = '6px 0';
-    p.style.textAlign = 'center';
-    akordiyonIcerik.appendChild(p);
-  }
 
-  akordiyonBaslik.onclick = function() {
-    const acikMi = akordiyonIcerik.style.display === 'block';
-    akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
-    akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+    akordiyonBaslik.onclick = function() {
+      const acikMi = akordiyonIcerik.style.display === 'block';
+      akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+      akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
     };
 
     // Ana area'ya akordiyon eklemeyi kaldırdık - sadece sidebar'da olacak
     // eslesenDiv.appendChild(akordiyonBaslik);
     // eslesenDiv.appendChild(akordiyonIcerik);
     
-    // Sidebar alt kısmına sadece eşleşmeyen tarifler akordiyon butonunu ekle
+    // Sidebar'a akordiyon ekle
     const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
     if (sidebarButtonsDiv2) {
-      // Eski butonları temizle
-      sidebarButtonsDiv2.innerHTML = '';
+      // Eski eşleşmeyen tarifler butonunu kaldır
+      const eskiEslesmeyenBtn = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-btn');
+      if (eskiEslesmeyenBtn) {
+        eskiEslesmeyenBtn.remove();
+      }
+      const eskiEslesmeyenIcerik = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-icerik');
+      if (eskiEslesmeyenIcerik) {
+        eskiEslesmeyenIcerik.remove();
+      }
       
-      // Sadece Eşleşmeyen Tarifler Akordiyon Butonu ekle (dinamik)
+      // Sidebar için akordiyon butonunu klonla
       const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
       const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
       
       // Sidebar için class ekle (temizlik için)
       sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
       sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
-      sidebarAkordiyonBaslik.style.marginTop = '0px';
+      sidebarAkordiyonBaslik.style.marginTop = '10px';
       sidebarAkordiyonBaslik.style.width = '100%';
       
       // Sidebar akordiyon için tıklama event'i
@@ -5676,6 +5735,7 @@ function duzenleHafta(i) {
       sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
       sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
     }
+  }
 
   // Eşleşen kartları hafta verisine kaydet
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
@@ -6761,7 +6821,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const haftaIndex = parseInt(actTab.dataset.haftaIndex);
         if (!isNaN(haftaIndex)) {
           gosterEslesenKartlarSidebar(haftaIndex);
-          guncelleIstatistikler(hastaIndex);
         }
       }
     }
@@ -6804,6 +6863,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         console.log('✅ Eşleşen kartlar sidebar\'a başarıyla klonlandı');
         
+        // Sadece güvenlik için onclick'leri yeniden ata
+        const tumButonlar = currentDiv.querySelectorAll('button');
+        console.log('🔍 Sidebar\'da bulunan buton sayısı:', tumButonlar.length);
+        
+        tumButonlar.forEach((btn, index) => {
+          if (btn.textContent.includes('ZIP İndir')) {
+            console.log('🔍 ZIP butonu bulundu, onclick kontrol ediliyor...');
+            if (!btn.onclick) {
+              console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
+              btn.onclick = function(e) { 
+                e.preventDefault();
+                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
+                zipEslesenGorseller(haftaIndex); 
+              };
+            }
+          }
+        });
+        
       } else {
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
@@ -6811,41 +6888,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
 
-    // İstatistikleri güncelle
-    function guncelleIstatistikler(hastaIndex) {
-      if (hastaIndex === undefined || !hastalar[hastaIndex]) return;
-      
-      const hasta = hastalar[hastaIndex];
-      const haftalar = hasta.haftalar || [];
-      
-      let pdfCount = 0;
-      let tarifCount = 0;
-      let kartCount = 0;
-      let eslesmeCount = 0;
-      
-      haftalar.forEach(hafta => {
-        if (hafta.pdf && hafta.pdf.name) pdfCount++;
-        if (hafta.tarifler) tarifCount += hafta.tarifler.length;
-        if (hafta.eslesenKartlar) eslesmeCount += hafta.eslesenKartlar.length;
-      });
-      
-      // Tarif kartları sayısı (global)
-      if (window.tarifKartlari) {
-        kartCount = tarifKartlari.length;
-      }
-      
-      // Güncelle
-      const statPdf = document.getElementById('statPdfCount');
-      const statTarif = document.getElementById('statTarifCount');
-      const statKart = document.getElementById('statKartCount');
-      const statEslesme = document.getElementById('statEslesmeCount');
-      
-      if (statPdf) statPdf.textContent = pdfCount;
-      if (statTarif) statTarif.textContent = tarifCount;
-      if (statKart) statKart.textContent = kartCount;
-      if (statEslesme) statEslesme.textContent = eslesmeCount;
-    }
-    window.guncelleIstatistikler = guncelleIstatistikler;
+
 
     // ========================
     // SAYFA BAŞLATMA
@@ -6861,22 +6904,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Hasta verilerini kontrol et
       console.log('👥 Hasta verileri:', hastalar);
       console.log('📊 Hasta sayısı:', hastalar ? hastalar.length : 0);
-      
-      // İstatistikleri başlat
-      const statPdf = document.getElementById('statPdfCount');
-      const statTarif = document.getElementById('statTarifCount');
-      const statKart = document.getElementById('statKartCount');
-      const statEslesme = document.getElementById('statEslesmeCount');
-      
-      if (statPdf) statPdf.textContent = '0';
-      if (statTarif) statTarif.textContent = '0';
-      if (statKart) statKart.textContent = '0';
-      if (statEslesme) statEslesme.textContent = '0';
-      
-      // Eğer tarif kartları varsa sayıyı güncelle
-      if (window.tarifKartlari && statKart) {
-        statKart.textContent = tarifKartlari.length;
-      }
       
       // Hasta sayılarını başlat
       setTimeout(() => {
@@ -6919,73 +6946,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
       }
       
-      // Sadece alt butonlar alanını temizle - üstteki sabit butonlar korunacak
+      // Butonlar alanını temizle
       const sidebarButtonsDiv = document.getElementById('sidebarButtons');
       if (sidebarButtonsDiv) {
         sidebarButtonsDiv.innerHTML = '';
-      }
-      
-      // Sabit butonları göster (her zaman görünür olsun)
-      const sabitebutonlar = document.getElementById('sabitebutonlar');
-      if (sabitebutonlar) {
-        sabitebutonlar.style.display = 'flex';
       }
     }
     
     // Reset fonksiyonunu global yap
     window.resetSidebar = resetSidebar;
-    
-    // Sidebar butonları için wrapper fonksiyonlar
-    function zipEslesenGorsellerSidebar() {
-      // Aktif hafta indeksini bul
-      const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
-      if (aktiveTabs.length > 0) {
-        const activeTab = aktiveTabs[0];
-        const haftaIndex = parseInt(activeTab.getAttribute('data-hafta-index'));
-        if (!isNaN(haftaIndex)) {
-          zipEslesenGorseller(haftaIndex);
-        } else {
-          alert('❌ Aktif hafta indeksi bulunamadı!');
-        }
-      } else {
-        alert('❌ Aktif hafta seçili değil!');
-      }
-    }
-    
-    function eslesmeyenTarifleriGoster() {
-      // Önce alt kısımdaki dinamik butonu bul
-      const eslesmeyenBtn = document.querySelector('.eslesmeyenTarifler-btn');
-      if (eslesmeyenBtn) {
-        eslesmeyenBtn.click();
-      } else {
-        // Dinamik buton yoksa aktif hafta için eşleştirme başlat
-        const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
-        if (aktiveTabs.length > 0) {
-          const activeTab = aktiveTabs[0];
-          const haftaIndex = parseInt(activeTab.getAttribute('data-hafta-index'));
-          if (!isNaN(haftaIndex)) {
-            console.log('🔄 Eşleştirme bulunamadı, hafta için eşleştirme başlatılıyor:', haftaIndex);
-            // Eşleştirme fonksiyonunu çağır
-            eslestir(haftaIndex);
-            // Kısa bir süre sonra dinamik butonu tekrar dene
-            setTimeout(() => {
-              const yeniEslesmeyenBtn = document.querySelector('.eslesmeyenTarifler-btn');
-              if (yeniEslesmeyenBtn) {
-                yeniEslesmeyenBtn.click();
-              }
-            }, 500);
-          } else {
-            alert('❌ Aktif hafta indeksi bulunamadı!');
-          }
-        } else {
-          alert('⚠️ Önce bir hasta ve hafta seçin.');
-        }
-      }
-    }
-    
-    // Global erişim için
-    window.zipEslesenGorsellerSidebar = zipEslesenGorsellerSidebar;
-    window.eslesmeyenTarifleriGoster = eslesmeyenTarifleriGoster;
     
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
