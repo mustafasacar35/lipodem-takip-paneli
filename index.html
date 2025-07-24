@@ -372,10 +372,13 @@
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
         <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
-        <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
           <div style="text-align: center; color: #666; padding: 40px;">
             Önce bir hasta seçin...
           </div>
+        </div>
+        <!-- Butonlar için sabit alan -->
+        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
       </div>
     </div>
@@ -5614,21 +5617,34 @@ function duzenleHafta(i) {
     // eslesenDiv.appendChild(indirDiv);
     
     // Sidebar için butonları ekle
-    const currentEslesenDiv = document.getElementById('currentEslesenKartlar');
-    if (currentEslesenDiv) {
+    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv) {
       // Eski butonları kaldır
-      const eskiIndirDiv = currentEslesenDiv.querySelector('.indir-butonlari');
-      if (eskiIndirDiv) {
-        eskiIndirDiv.remove();
-      }
+      sidebarButtonsDiv.innerHTML = '';
       
       // Sidebar için ZIP butonlarını ekle
       const sidebarIndirDiv = indirDiv.cloneNode(true);
       sidebarIndirDiv.className = 'indir-butonlari';
-      sidebarIndirDiv.style.marginTop = '15px';
-      sidebarIndirDiv.style.borderTop = '1px solid #ddd';
-      sidebarIndirDiv.style.paddingTop = '15px';
-      currentEslesenDiv.appendChild(sidebarIndirDiv);
+      sidebarIndirDiv.style.marginTop = '0px';
+      sidebarIndirDiv.style.borderTop = 'none';
+      sidebarIndirDiv.style.paddingTop = '0px';
+      
+      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
+      const sidebarButtons = sidebarIndirDiv.children;
+      if (sidebarButtons[0]) { // ZIP butonu
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+      }
+      if (sidebarButtons[1]) { // PDF butonu  
+        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
+      }
+      if (sidebarButtons[2]) { // COMBO butonu
+        sidebarButtons[2].onclick = function() { 
+          zipEslesenGorseller(i); 
+          setTimeout(() => generatePatientPDF(), 1000); 
+        };
+      }
+      
+      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
     }
   }
 
@@ -5675,14 +5691,14 @@ function duzenleHafta(i) {
     // eslesenDiv.appendChild(akordiyonIcerik);
     
     // Sidebar'a akordiyon ekle
-    const currentEslesenDiv2 = document.getElementById('currentEslesenKartlar');
-    if (currentEslesenDiv2) {
+    const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv2) {
       // Eski eşleşmeyen tarifler butonunu kaldır
-      const eskiEslesmeyenBtn = currentEslesenDiv2.querySelector('.eslesmeyenTarifler-btn');
+      const eskiEslesmeyenBtn = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-btn');
       if (eskiEslesmeyenBtn) {
         eskiEslesmeyenBtn.remove();
       }
-      const eskiEslesmeyenIcerik = currentEslesenDiv2.querySelector('.eslesmeyenTarifler-icerik');
+      const eskiEslesmeyenIcerik = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-icerik');
       if (eskiEslesmeyenIcerik) {
         eskiEslesmeyenIcerik.remove();
       }
@@ -5704,8 +5720,8 @@ function duzenleHafta(i) {
         sidebarAkordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
       };
       
-      currentEslesenDiv2.appendChild(sidebarAkordiyonBaslik);
-      currentEslesenDiv2.appendChild(sidebarAkordiyonIcerik);
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
     }
   }
 
