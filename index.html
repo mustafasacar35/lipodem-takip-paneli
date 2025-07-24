@@ -5982,14 +5982,11 @@ function duzenleHafta(i) {
     // Ana div'e ekle
     eslesenDiv.appendChild(eslesmeyenContainer);
     
-    // SADECE addEventListener KULLAN - onclick kaldırıldı
+    // TEK addEventListener - onclick temizle
+    baslikDiv.onclick = null; // Eski onclick'i temizle
     baslikDiv.addEventListener('click', function(e) {
       console.log('ESLESMEYEN TARIFLER BUTONUNA TIKLANDI!');
-      console.log('Event object:', e);
-      console.log('Target element:', e.target);
-      console.log('Current display style:', icerikDiv.style.display);
       
-      // Basit toggle
       if (icerikDiv.style.display === 'none' || icerikDiv.style.display === '') {
         icerikDiv.style.display = 'block';
         baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
