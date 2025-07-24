@@ -396,6 +396,16 @@
         </button>
         
         <div id="eslesenKartlarContent" style="display: block;">
+          <!-- Sabit Butonlar - Üstte -->
+          <div id="sabitebutonlar" style="margin-bottom: 10px; display: flex; gap: 8px;">
+            <button id="zipButton" onclick="zipEslesenGorsellerSidebar()" style="flex: 1; padding: 10px; font-size: 12px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+              📦 ZIP Dosyası Oluştur
+            </button>
+            <button id="eslesmeyenButton" onclick="eslesmeyenTarifleriGoster()" style="flex: 1; padding: 10px; font-size: 12px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+              ⚠️ Eşleşmeyen Tarifler
+            </button>
+          </div>
+          
           <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
@@ -5640,41 +5650,20 @@ function duzenleHafta(i) {
     // eslesenDiv.appendChild(akordiyonBaslik);
     // eslesenDiv.appendChild(akordiyonIcerik);
     
-    // Sidebar'a butonları ekle
+    // Sidebar alt kısmına sadece eşleşmeyen tarifler akordiyon butonunu ekle
     const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
     if (sidebarButtonsDiv2) {
       // Eski butonları temizle
       sidebarButtonsDiv2.innerHTML = '';
       
-      // 1. ZIP Butonu ekle
-      const zipBtn = document.createElement('button');
-      zipBtn.textContent = '📦 ZIP Dosyası Oluştur';
-      zipBtn.style.cssText = 'width:100%; margin-bottom:8px; padding:10px; font-size:12px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;';
-      zipBtn.onclick = function() {
-        // Aktif hafta indeksini bul
-        const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
-        if (aktiveTabs.length > 0) {
-          const activeTab = aktiveTabs[0];
-          const haftaIndex = parseInt(activeTab.getAttribute('data-hafta-index'));
-          if (!isNaN(haftaIndex)) {
-            zipEslesenGorseller(haftaIndex);
-          } else {
-            alert('❌ Aktif hafta indeksi bulunamadı!');
-          }
-        } else {
-          alert('❌ Aktif hafta seçili değil!');
-        }
-      };
-      sidebarButtonsDiv2.appendChild(zipBtn);
-      
-      // 2. Eşleşmeyen Tarifler Butonu ekle (dinamik akordiyon)
+      // Sadece Eşleşmeyen Tarifler Akordiyon Butonu ekle (dinamik)
       const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
       const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
       
       // Sidebar için class ekle (temizlik için)
       sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
       sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
-      sidebarAkordiyonBaslik.style.marginTop = '10px';
+      sidebarAkordiyonBaslik.style.marginTop = '0px';
       sidebarAkordiyonBaslik.style.width = '100%';
       
       // Sidebar akordiyon için tıklama event'i
@@ -6930,10 +6919,16 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
       }
       
-      // Butonlar alanını tamamen temizle - dinamik sistem yükleyecek
+      // Sadece alt butonlar alanını temizle - üstteki sabit butonlar korunacak
       const sidebarButtonsDiv = document.getElementById('sidebarButtons');
       if (sidebarButtonsDiv) {
         sidebarButtonsDiv.innerHTML = '';
+      }
+      
+      // Sabit butonları göster (her zaman görünür olsun)
+      const sabitebutonlar = document.getElementById('sabitebutonlar');
+      if (sabitebutonlar) {
+        sabitebutonlar.style.display = 'flex';
       }
     }
     
@@ -6958,12 +6953,18 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
     
     function eslesmeyenTarifleriGoster() {
-      // Eşleşmeyen tarifler butonunu bul ve tıkla
+      // Önce alt kısımdaki dinamik butonu bul
       const eslesmeyenBtn = document.querySelector('.eslesmeyenTarifler-btn');
       if (eslesmeyenBtn) {
         eslesmeyenBtn.click();
       } else {
-        alert('⚠️ Bu hafta için eşleşmeyen tarif bulunamadı.');
+        // Dinamik buton yoksa kullanıcıya bilgi ver
+        const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
+        if (aktiveTabs.length > 0) {
+          alert('ℹ️ Bu hafta için henüz eşleştirme yapılmadı. Önce bir hafta seçip eşleştirme yapın.');
+        } else {
+          alert('⚠️ Önce bir hasta ve hafta seçin.');
+        }
       }
     }
     
