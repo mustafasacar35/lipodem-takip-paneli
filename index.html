@@ -5930,7 +5930,15 @@ function duzenleHafta(i) {
     
     // Başlık butonu - daha basit yaklaşım
     const baslikDiv = document.createElement('div');
-    baslikDiv.innerHTML = `<strong style="background: #f8d7da; color: darkred; padding: 8px 12px; border: 1px solid #d9534f; border-radius: 6px; display: block; cursor: pointer; user-select: none;">🔽 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Tıklayın</strong>`;
+    baslikDiv.innerHTML = `<strong>🔽 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Tıklayın</strong>`;
+    baslikDiv.style.background = '#f8d7da';
+    baslikDiv.style.color = 'darkred';
+    baslikDiv.style.padding = '8px 12px';
+    baslikDiv.style.border = '1px solid #d9534f';
+    baslikDiv.style.borderRadius = '6px';
+    baslikDiv.style.display = 'block';
+    baslikDiv.style.cursor = 'pointer';
+    baslikDiv.style.userSelect = 'none';
     baslikDiv.style.marginBottom = '5px';
     
     // İçerik div - başlangıçta gizli
@@ -5974,17 +5982,19 @@ function duzenleHafta(i) {
     // Ana div'e ekle
     eslesenDiv.appendChild(eslesmeyenContainer);
     
-    // TEST: Elementin tıklanabilir olup olmadığını kontrol et
+    // TIKLAMA OLAYINI YENIDEN ATAN FONKSİYON
     setTimeout(() => {
-      console.log('TEST: baslikDiv elementi:', baslikDiv);
-      console.log('TEST: baslikDiv parent:', baslikDiv.parentNode);
-      console.log('TEST: onclick atanmis mi?', typeof baslikDiv.onclick);
-      console.log('TEST: style cursor:', baslikDiv.style.cursor);
-      
-      // Manuel test
-      baslikDiv.style.border = '3px solid red';
-      console.log('TEST: Kirmizi sinir eklendi - gorunuyor mu?');
-    }, 500);
+      baslikDiv.onclick = function() {
+        console.log('TIKLANDI!');
+        if (icerikDiv.style.display === 'none') {
+          icerikDiv.style.display = 'block';
+          baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
+        } else {
+          icerikDiv.style.display = 'none';
+          baslikDiv.innerHTML = '<strong>🔽 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Tiklayin</strong>';
+        }
+      };
+    }, 100);
     
     console.log('✅ Eşleşmeyen tarifler DOM\'a eklendi');
   }
