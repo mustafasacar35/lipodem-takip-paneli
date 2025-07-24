@@ -5958,6 +5958,18 @@ function duzenleHafta(i) {
           icerikElement.style.display = 'none';
         } else {
           icerikElement.style.display = 'block';
+          
+          // Zorla CSS reset - parent'dan gelen stilleri ezsin
+          icerikElement.style.width = '100%';
+          icerikElement.style.minHeight = '100px';
+          icerikElement.style.height = 'auto';
+          icerikElement.style.overflow = 'visible';
+          icerikElement.style.position = 'static';
+          icerikElement.style.float = 'none';
+          icerikElement.style.clear = 'both';
+          
+          // Force reflow
+          icerikElement.offsetHeight;
         }
         
         baslikElement.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
@@ -5989,18 +6001,22 @@ function duzenleHafta(i) {
     const akordiyonIcerik = document.createElement('div');
     akordiyonIcerik.id = akordiyonId + '_icerik';
     
-    // Basit CSS - sadece gerekli olanlar
+    // Zorla CSS - parent'dan gelen stilleri ezsin
     akordiyonIcerik.style.cssText = `
-      display: none;
-      background: #fff0f0;
-      border: 1px solid #d9534f;
-      padding: 15px;
-      margin-top: 5px;
-      border-radius: 6px;
-      width: 100%;
-      box-sizing: border-box;
-      max-height: 300px;
-      overflow-y: auto;
+      display: none !important;
+      background: #fff0f0 !important;
+      border: 1px solid #d9534f !important;
+      padding: 15px !important;
+      margin: 5px 0 !important;
+      border-radius: 6px !important;
+      width: 100% !important;
+      min-height: 50px !important;
+      box-sizing: border-box !important;
+      max-height: 300px !important;
+      overflow-y: auto !important;
+      position: static !important;
+      float: none !important;
+      clear: both !important;
     `;
     
     console.log('🧪 Akordiyon oluşturuldu, ID:', akordiyonId, 'eşleşmeyen tarif sayısı:', eslesmeyenTarifler.length);
@@ -6008,13 +6024,17 @@ function duzenleHafta(i) {
     eslesmeyenTarifler.forEach(tarif => {
       const p = document.createElement('p');
       p.textContent = tarif;
-      p.style.color = 'red';
-      p.style.margin = '6px 0';
-      p.style.padding = '2px 0';
-      p.style.fontSize = '14px';
-      p.style.lineHeight = '1.4';
-      p.style.display = 'block';
-      p.style.width = '100%';
+      p.style.cssText = `
+        color: red !important;
+        margin: 8px 0 !important;
+        padding: 4px 0 !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 20px !important;
+        box-sizing: border-box !important;
+      `;
       akordiyonIcerik.appendChild(p);
     });
 
