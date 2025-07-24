@@ -6824,13 +6824,36 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
-      // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
-      const actTab = document.querySelector('.hafta-tab.active');
-      if (actTab) {
-        const haftaIndex = parseInt(actTab.dataset.haftaIndex);
-        if (!isNaN(haftaIndex)) {
-          gosterEslesenKartlarSidebar(haftaIndex);
-          guncelleIstatistikler(hastaIndex);
+      console.log(`👤 Hasta seçildi: ${hastaIndex}`);
+      
+      // Seçili hastanın aktif tab'ını yükle
+      const hasta = hastalar[hastaIndex];
+      if (hasta && hasta.activeTab !== undefined) {
+        console.log(`📍 Aktif tab yükleniyor: Hafta ${hasta.activeTab + 1}`);
+        
+        // Tab'ları güncelle
+        setTimeout(() => {
+          const tabs = document.querySelectorAll('.hafta-tab');
+          const targetTab = tabs[hasta.activeTab];
+          
+          if (targetTab) {
+            // Önce tüm tab'ları pasif yap
+            tabs.forEach(tab => tab.classList.remove('active'));
+            // Hedef tab'ı aktif yap
+            targetTab.classList.add('active');
+            // Tab içeriğini göster
+            targetTab.click();
+          }
+        }, 100);
+      } else {
+        // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
+        const actTab = document.querySelector('.hafta-tab.active');
+        if (actTab) {
+          const haftaIndex = parseInt(actTab.dataset.haftaIndex);
+          if (!isNaN(haftaIndex)) {
+            gosterEslesenKartlarSidebar(haftaIndex);
+            guncelleIstatistikler(hastaIndex);
+          }
         }
       }
     }
@@ -6838,6 +6861,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Hafta tab'ı seçildiğinde sidebar'ları güncelle
     function haftaTabSecildiginde(haftaIndex) {
+      console.log(`📍 Hafta tab seçildi: ${haftaIndex + 1}`);
+      
+      // Aktif tab'ı hasta verisine kaydet
+      if (seciliHasta) {
+        seciliHasta.activeTab = haftaIndex;
+        saveToStorage();
+        console.log(`✅ Aktif tab kaydedildi: Hafta ${haftaIndex + 1}`);
+      }
+      
       gosterEslesenKartlarSidebar(haftaIndex);
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
