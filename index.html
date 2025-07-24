@@ -371,14 +371,39 @@
       
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
-        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
-        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Önce bir hasta seçin...
+        <!-- Akordiyon başlık -->
+        <button id="eslesenKartlarToggle" style="
+          width: 100%;
+          background: #6f42c1;
+          color: white;
+          border: none;
+          padding: 12px 15px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          text-align: left;
+          margin-bottom: 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: background-color 0.3s ease;
+        " onclick="toggleEslesenKartlar()" 
+           onmouseover="this.style.backgroundColor='#5a2d91'" 
+           onmouseout="this.style.backgroundColor='#6f42c1'">
+          <span>🔗 Eşleşen Kartlar</span>
+          <span id="eslesenKartlarIcon">▼</span>
+        </button>
+        
+        <div id="eslesenKartlarContent" style="display: block;">
+          <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+            <div style="text-align: center; color: #666; padding: 40px;">
+              Önce bir hasta seçin...
+            </div>
           </div>
-        </div>
-        <!-- Butonlar için sabit alan -->
-        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
+          <!-- Butonlar için sabit alan - akordiyon içinde -->
+          <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
+          </div>
         </div>
       </div>
     </div>
@@ -6947,6 +6972,23 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         normalizeHaftaData();
       }, 100);
     }
+    
+    // Eşleşen kartlar akordiyon toggle fonksiyonu
+    function toggleEslesenKartlar() {
+      const content = document.getElementById('eslesenKartlarContent');
+      const icon = document.getElementById('eslesenKartlarIcon');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        icon.textContent = '▶';
+      }
+    }
+    
+    // Toggle fonksiyonunu global yap
+    window.toggleEslesenKartlar = toggleEslesenKartlar;
     
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
