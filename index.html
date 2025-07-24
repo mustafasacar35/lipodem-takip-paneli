@@ -5919,14 +5919,69 @@ function duzenleHafta(i) {
     // Bu şekilde duplike buton sorunu çözülür
   }
 
-  // Eşleşmeyen tarifleri akordiyon başlık altında göster
+  // Eşleşmeyen tarifleri basit liste olarak göster
   if (eslesmeyenTarifler.length > 0) {
-    // Unique ID oluştur
-    const akordiyonId = 'akordiyon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Başlık
+    const eslesmeyenBaslik = document.createElement('h4');
+    eslesmeyenBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+    eslesmeyenBaslik.style.cssText = `
+      background: #f8d7da;
+      color: darkred;
+      padding: 10px;
+      margin: 15px 0 10px 0;
+      border-radius: 6px;
+      border: 1px solid #d9534f;
+      font-size: 14px;
+      font-weight: bold;
+    `;
     
-    // Akordiyon başlık
-    const akordiyonBaslik = document.createElement('button');
-    akordiyonBaslik.id = akordiyonId + '_baslik';
+    // Liste container
+    const eslesmeyenListe = document.createElement('div');
+    eslesmeyenListe.style.cssText = `
+      background: #fff0f0;
+      border: 1px solid #d9534f;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    `;
+    
+    // Her tarifi listele
+    eslesmeyenTarifler.forEach((tarif, index) => {
+      const tarifItem = document.createElement('div');
+      tarifItem.textContent = `${index + 1}. ${tarif}`;
+      tarifItem.style.cssText = `
+        color: darkred;
+        padding: 3px 0;
+        font-size: 12px;
+        border-bottom: 1px dotted #ddd;
+      `;
+      eslesmeyenListe.appendChild(tarifItem);
+    });
+    
+    eslesenDiv.appendChild(eslesmeyenBaslik);
+    eslesenDiv.appendChild(eslesmeyenListe);
+    
+    console.log('✅ Eşleşmeyen tarifler basit liste olarak eklendi:', eslesmeyenTarifler.length, 'adet');
+  }
+
+  // Eşleşen kartları hafta verisine kaydet
+  hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
+  saveToStorage();
+}
+
+function gptMesajKaydet(i) {
+  const hafta = getHaftaListesi()[i];
+  hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+  saveToStorage();
+  alert('Mesaj kaydedildi.');
+  
+  console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
+  
+  // Otomatik GitHub kaydetme kaldırıldı (çakışmaları önlemek için)
+  // Manuel kaydetme için GitHub'a Kaydet butonunu kullanın
+}
     akordiyonBaslik.textContent = `▼ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
     akordiyonBaslik.style.background = '#f8d7da';
     akordiyonBaslik.style.color = 'darkred';
@@ -6116,19 +6171,20 @@ function duzenleHafta(i) {
   saveToStorage();
 }
 
-    function gptMesajKaydet(i) {
-      const hafta = getHaftaListesi()[i];
-      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
-      saveToStorage();
-      alert('Mesaj kaydedildi.');
-      
-      console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
-      
-      // Otomatik GitHub kaydetme kaldırıldı (çakışmaları önlemek için)
-      // Manuel kaydetme için GitHub'a Kaydet butonunu kullanın
-    }
-    // --- JSON dışa aktar/yükle fonksiyonları ---
-    function exportData() {
+function gptMesajKaydet(i) {
+  const hafta = getHaftaListesi()[i];
+  hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+  saveToStorage();
+  alert('Mesaj kaydedildi.');
+  
+  console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
+  
+  // Otomatik GitHub kaydetme kaldırıldı (çakışmaları önlemek için)
+  // Manuel kaydetme için GitHub'a Kaydet butonunu kullanın
+}
+
+// --- JSON dışa aktar/yükle fonksiyonları ---
+function exportData() {
       // Kullanıcıya seçenek sun
       const tariflerDahil = confirm('Tarif verilerini de dahil etmek istiyor musunuz?\n\n✅ EVET: Tam veri (daha büyük dosya)\n❌ HAYIR: Sadece önemli veriler (küçük dosya, GitHub ile uyumlu)');
       
