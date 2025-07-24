@@ -5952,13 +5952,35 @@ function duzenleHafta(i) {
       
       if (icerikElement && baslikElement) {
         const acikMi = icerikElement.style.display === 'block';
-        icerikElement.style.display = acikMi ? 'none' : 'block';
+        
+        // Display ve visibility birlikte ayarla
+        if (acikMi) {
+          icerikElement.style.display = 'none';
+          icerikElement.style.visibility = 'hidden';
+          icerikElement.style.opacity = '0';
+        } else {
+          icerikElement.style.display = 'block';
+          icerikElement.style.visibility = 'visible';
+          icerikElement.style.opacity = '1';
+        }
+        
         baslikElement.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
         
         const simge = acikMi ? '▼' : '▲';
         baslikElement.textContent = `${simge} Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
         
+        // Debug için element durumunu logla
+        console.log('🧪 Element durumu kontrol:', {
+          display: icerikElement.style.display,
+          visibility: icerikElement.style.visibility,
+          opacity: icerikElement.style.opacity,
+          height: icerikElement.offsetHeight,
+          width: icerikElement.offsetWidth
+        });
+        
         console.log('✅ GLOBAL akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
+      } else {
+        console.error('❌ Akordiyon elementleri bulunamadı:', akordiyonId);
       }
     };
     
@@ -5971,6 +5993,8 @@ function duzenleHafta(i) {
     const akordiyonIcerik = document.createElement('div');
     akordiyonIcerik.id = akordiyonId + '_icerik';
     akordiyonIcerik.style.display = 'none';
+    akordiyonIcerik.style.visibility = 'hidden';
+    akordiyonIcerik.style.opacity = '0';
     akordiyonIcerik.style.background = '#fff0f0';
     akordiyonIcerik.style.border = '1px solid #d9534f';
     akordiyonIcerik.style.padding = '10px 16px';
@@ -5978,6 +6002,8 @@ function duzenleHafta(i) {
     akordiyonIcerik.style.borderRadius = '6px';
     akordiyonIcerik.style.width = '100%';
     akordiyonIcerik.style.boxSizing = 'border-box';
+    akordiyonIcerik.style.position = 'relative';
+    akordiyonIcerik.style.zIndex = '999';
     
     console.log('🧪 Akordiyon oluşturuldu, ID:', akordiyonId, 'eşleşmeyen tarif sayısı:', eslesmeyenTarifler.length);
 
