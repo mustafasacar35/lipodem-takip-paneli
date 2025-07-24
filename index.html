@@ -6546,36 +6546,42 @@ function duzenleHafta(i) {
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
       if (gercekHaftaNo === 5) {
         try {
-          console.log('🏥 5. hafta tespit edildi, Sadece Masaj Takvim PDF\'i oluşturuluyor...');
+          console.log('🏥 5. hafta tespit edildi, Sadece Lenf Masajı Takvim PDF\'i oluşturuluyor...');
           
-          // Sadece masaj içeren takvim PDF'ini oluştur (5. hafta için, egzersiz dahil değil)
-          const masajTakvimBlob = await generateLenfDrenajPDFBlob(5);
+          // Hasta adını al
+          const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
+          
+          // Sadece masaj içeren takvim PDF'ini oluştur (egzersiz dahil değil)
+          const masajTakvimBlob = await generateLenfDrenajPDFBlob(hastaAdi, false);
           if (masajTakvimBlob) {
-            const masajTakvimFileName = `${baseName}_Masaj_Takvimi.pdf`;
+            const masajTakvimFileName = `${baseName}_Lenf_Masaji_Takvimi.pdf`;
             zip.file(masajTakvimFileName, masajTakvimBlob);
             fileCount++;
-            console.log('✅ Masaj Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
+            console.log('✅ Lenf Masajı Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
           }
         } catch (e) {
-          console.warn('⚠️ Masaj Takvim PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Lenf Masajı Takvim PDF\'i eklenemedi:', e);
         }
       }
       
       // 7. Sadece 9. haftada "Masaj + Egzersiz" Takvim PDF'ini ekle
       if (gercekHaftaNo === 9) {
         try {
-          console.log('🏋️ 9. hafta tespit edildi, Masaj + Egzersiz Takvim PDF\'i oluşturuluyor...');
+          console.log('🏋️ 9. hafta tespit edildi, Lenf Masajı + Egzersiz Takvim PDF\'i oluşturuluyor...');
           
-          // Masaj + egzersiz içeren takvim PDF'ini oluştur (9. hafta için, egzersiz dahil)
-          const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(9);
+          // Hasta adını al
+          const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
+          
+          // Masaj + egzersiz içeren takvim PDF'ini oluştur (egzersiz dahil)
+          const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(hastaAdi, true);
           if (masajEgzersizTakvimBlob) {
-            const masajEgzersizTakvimFileName = `${baseName}_Masaj_Egzersiz_Takvimi.pdf`;
+            const masajEgzersizTakvimFileName = `${baseName}_Lenf_Masaji_Egzersiz_Takvimi.pdf`;
             zip.file(masajEgzersizTakvimFileName, masajEgzersizTakvimBlob);
             fileCount++;
-            console.log('✅ Masaj + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
+            console.log('✅ Lenf Masajı + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
           }
         } catch (e) {
-          console.warn('⚠️ Masaj + Egzersiz Takvim PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Lenf Masajı + Egzersiz Takvim PDF\'i eklenemedi:', e);
         }
       }
       
