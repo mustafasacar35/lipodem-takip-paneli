@@ -7001,14 +7001,45 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (sidebarButtonsDiv) {
         // Sabit butonları tekrar ekle
         sidebarButtonsDiv.innerHTML = `
-          <button onclick="zipDosyasiOlustur()" style="width:100%; margin-bottom:8px; padding:10px; font-size:12px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">📦 ZIP Dosyası Oluştur</button>
-          <button onclick="eslesmeyenTariflerListele()" style="width:100%; margin-bottom:8px; padding:10px; font-size:12px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">⚠️ Eşleşmeyen Tarifler</button>
+          <button onclick="zipEslesenGorsellerSidebar()" style="width:100%; margin-bottom:8px; padding:10px; font-size:12px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">📦 ZIP Dosyası Oluştur</button>
+          <button onclick="eslesmeyenTarifleriGoster()" style="width:100%; margin-bottom:8px; padding:10px; font-size:12px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">⚠️ Eşleşmeyen Tarifler</button>
         `;
       }
     }
     
     // Reset fonksiyonunu global yap
     window.resetSidebar = resetSidebar;
+    
+    // Sidebar butonları için wrapper fonksiyonlar
+    function zipEslesenGorsellerSidebar() {
+      // Aktif hafta indeksini bul
+      const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
+      if (aktiveTabs.length > 0) {
+        const activeTab = aktiveTabs[0];
+        const haftaIndex = parseInt(activeTab.getAttribute('data-hafta-index'));
+        if (!isNaN(haftaIndex)) {
+          zipEslesenGorseller(haftaIndex);
+        } else {
+          alert('❌ Aktif hafta indeksi bulunamadı!');
+        }
+      } else {
+        alert('❌ Aktif hafta seçili değil!');
+      }
+    }
+    
+    function eslesmeyenTarifleriGoster() {
+      // Eşleşmeyen tarifler butonunu bul ve tıkla
+      const eslesmeyenBtn = document.querySelector('.eslesmeyenTarifler-btn');
+      if (eslesmeyenBtn) {
+        eslesmeyenBtn.click();
+      } else {
+        alert('⚠️ Bu hafta için eşleşmeyen tarif bulunamadı.');
+      }
+    }
+    
+    // Global erişim için
+    window.zipEslesenGorsellerSidebar = zipEslesenGorsellerSidebar;
+    window.eslesmeyenTarifleriGoster = eslesmeyenTarifleriGoster;
     
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
