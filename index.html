@@ -317,6 +317,36 @@
         gap: 4px !important;
       }
     }
+    
+    /* Eşleşen Kartlar Responsive Grid */
+    #currentEslesenKartlar > div:not([style*="grid-column"]) {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 8px;
+      margin: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+    }
+    
+    #currentEslesenKartlar > div:not([style*="grid-column"]):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    
+    /* Mobile responsive - tek sütun */
+    @media (max-width: 600px) {
+      #currentEslesenKartlar {
+        grid-template-columns: 1fr !important;
+      }
+    }
+    
+    /* Tablet responsive - 2 sütun minimum genişlik ayarı */
+    @media (max-width: 800px) and (min-width: 601px) {
+      #currentEslesenKartlar {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -396,7 +426,17 @@
         </button>
         
         <div id="eslesenKartlarContent" style="display: block;">
-          <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+          <div id="currentEslesenKartlar" style="
+            min-height: 200px; 
+            border: 1px solid #ddd; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: white;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            align-items: start;
+          ">
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
             </div>
@@ -6897,7 +6937,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
       } else {
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
-        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
+        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px; grid-column: 1 / -1;">Bu hafta için henüz eşleşme yok.</div>';
       }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
@@ -7004,7 +7044,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const currentDiv = document.getElementById('currentEslesenKartlar');
       if (currentDiv) {
         currentDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px;">
+          <div style="text-align: center; color: #666; padding: 40px; grid-column: 1 / -1;">
             Seçili hafta için eşleştirme yapılmadı...
           </div>
         `;
