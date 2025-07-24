@@ -401,6 +401,9 @@
               Önce bir hasta seçin...
             </div>
           </div>
+          <!-- Butonlar için sabit alan - akordiyon içinde -->
+          <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
+          </div>
         </div>
       </div>
     </div>
@@ -430,30 +433,21 @@
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
       </div>
 
-
-
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
-        <button onclick="eslesmeyenTariflerPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; border-radius:3px; cursor:pointer;">🔍 Eşleşmeyen Tarifler</button>
-        <!-- PDF Analiz, Takip PDF, Debug Tarifler, İsim Düzelt butonları kaldırıldı -->
+        <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
-      </div>
-
-      <!-- İndirme İşlemleri -->
-      <div class="sidebar-section">
-        <h3>📦 İndirme İşlemleri</h3>
-        <div id="sidebarIndirmeButtons">
-          <p style="text-align:center; color:#666; font-size:12px; margin:10px 0;">
-            Bir hafta seçin...
-          </p>
-        </div>
+        <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
+        <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
       </div>
     </div>
   </div>
@@ -501,20 +495,6 @@
       <div id="eslesmemeListesi" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:10px; background:#f8f9fa;">
         <em>Henüz yasak yok</em>
       </div>
-    </div>
-  </div>
-
-  <!-- Eşleşmeyen Tarifler Paneli -->
-  <div id="eslesmeyenTariflerPanel" style="display:none; background:#fff; border:2px solid #f8d7da; padding:20px; margin:16px 0; border-radius:8px; position:relative;">
-    <button onclick="eslesmeyenTariflerPaneliGizle()" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:20px; cursor:pointer; color:#721c24; font-weight:bold; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;" title="Kapat">×</button>
-    <h3 style="color:#721c24;">🔍 Eşleşmeyen Tarifler</h3>
-    <p style="color:#666; margin-bottom:15px;">
-      Seçili haftada eşleştirilemeyen tarifler burada gösterilir.
-    </p>
-    <div id="eslesmeyenTariflerIcerigi" style="max-height:400px; overflow-y:auto; border:1px solid #f5c6cb; background:#fefefe; padding:15px; border-radius:5px;">
-      <p style="text-align:center; color:#666; padding:40px;">
-        Henüz hafta seçilmedi veya tüm tarifler eşleştirildi.
-      </p>
     </div>
   </div>
 
@@ -1211,69 +1191,6 @@
       document.getElementById('yasakKartArama').value = '';
       document.getElementById('eslesmemeStatus').style.display = 'none';
       yasakKartListesiniGoster(''); // Listeyi sıfırla
-    }
-
-    // Eşleşmeyen Tarifler Panel Fonksiyonları
-    function eslesmeyenTariflerPaneliGoster() {
-      // Seçili hasta var mı kontrol et
-      if (secilenHastaIndex === undefined || secilenHastaIndex === null) {
-        alert('Önce bir hasta seçiniz!');
-        return;
-      }
-      
-      // Aktif hafta tab'ını bul
-      const aktivTab = document.querySelector('.hafta-tab.active');
-      if (!aktivTab) {
-        alert('Önce bir hafta seçiniz!');
-        return;
-      }
-      
-      const haftaIndex = parseInt(aktivTab.dataset.haftaIndex);
-      if (isNaN(haftaIndex)) {
-        alert('Hafta bilgisi bulunamadı!');
-        return;
-      }
-      
-      eslesmeyenTarifleriGoster(haftaIndex);
-      document.getElementById('eslesmeyenTariflerPanel').style.display = 'block';
-    }
-
-    function eslesmeyenTariflerPaneliGizle() {
-      document.getElementById('eslesmeyenTariflerPanel').style.display = 'none';
-    }
-
-    function eslesmeyenTarifleriGoster(haftaIndex) {
-      const div = document.getElementById('eslesmeyenTariflerIcerigi');
-      
-      if (!hastalar[secilenHastaIndex] || !hastalar[secilenHastaIndex].haftalar[haftaIndex]) {
-        div.innerHTML = '<p style="text-align:center; color:#666; padding:40px;">Hafta bulunamadı.</p>';
-        return;
-      }
-      
-      const hafta = hastalar[secilenHastaIndex].haftalar[haftaIndex];
-      const eslesmeyenTarifler = hafta.eslesmeyenTarifler || [];
-      
-      if (eslesmeyenTarifler.length === 0) {
-        div.innerHTML = '<p style="text-align:center; color:#28a745; padding:40px;">✅ Bu haftada tüm tarifler başarıyla eşleştirildi!</p>';
-        return;
-      }
-      
-      let html = `<h4 style="color:#721c24; margin-bottom:15px;">Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})</h4>`;
-      
-      eslesmeyenTarifler.forEach((tarif, index) => {
-        html += `
-          <div style="background:#fff3cd; border:1px solid #ffeaa7; padding:12px; margin-bottom:10px; border-radius:5px; border-left:4px solid #f39c12;">
-            <div style="font-weight:bold; color:#856404; margin-bottom:5px;">
-              ${index + 1}. ${tarif}
-            </div>
-            <div style="font-size:12px; color:#666;">
-              Bu tarif için uygun kart bulunamadı veya tüm kartlar kullanıldı
-            </div>
-          </div>
-        `;
-      });
-      
-      div.innerHTML = html;
     }
 
     function yasakKartListesiniGoster(aramaMetni = '') {
@@ -3104,9 +3021,6 @@
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
-    
-    // Seçili hasta indexi (global değişken)
-    let secilenHastaIndex = null;
     
     // Türkçe karakter düzeltmesi uygula (mevcut veriler için)
     console.log('🔧 Mevcut veriler için Türkçe karakter düzeltmesi uygulanıyor...');
@@ -5716,63 +5630,112 @@ function duzenleHafta(i) {
     // Ana area'ya buton eklemeyi kaldırdık - sadece sidebar'da olacak
     // eslesenDiv.appendChild(indirDiv);
     
-    // Sidebar İndirme butonlarını ekle
-    const sidebarIndirmeDiv = document.getElementById('sidebarIndirmeButtons');
-    if (sidebarIndirmeDiv) {
-      // Butonları sidebar'a uygun stil ile ekle
-      const sidebarIndirDiv = document.createElement('div');
-      sidebarIndirDiv.style.display = 'flex';
-      sidebarIndirDiv.style.flexDirection = 'column';
-      sidebarIndirDiv.style.gap = '5px';
+    // Sidebar için butonları ekle
+    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv) {
+      // Eski butonları kaldır
+      sidebarButtonsDiv.innerHTML = '';
       
-      // ZIP butonu - sidebar için
-      const sidebarZipBtn = document.createElement('button');
-      sidebarZipBtn.textContent = '📦 ZIP İndir';
-      sidebarZipBtn.style.width = '100%';
-      sidebarZipBtn.style.padding = '6px';
-      sidebarZipBtn.style.fontSize = '11px';
-      sidebarZipBtn.style.background = '#28a745';
-      sidebarZipBtn.style.color = 'white';
-      sidebarZipBtn.style.border = 'none';
-      sidebarZipBtn.style.borderRadius = '3px';
-      sidebarZipBtn.style.cursor = 'pointer';
-      sidebarZipBtn.onclick = function() { zipEslesenGorseller(i); };
+      // Sidebar için ZIP butonlarını ekle
+      const sidebarIndirDiv = indirDiv.cloneNode(true);
+      sidebarIndirDiv.className = 'indir-butonlari';
+      sidebarIndirDiv.style.marginTop = '0px';
+      sidebarIndirDiv.style.borderTop = 'none';
+      sidebarIndirDiv.style.paddingTop = '0px';
       
-      // PDF butonu - sidebar için
-      const sidebarPdfBtn = document.createElement('button');
-      sidebarPdfBtn.textContent = '📄 Takip PDF';
-      sidebarPdfBtn.style.width = '100%';
-      sidebarPdfBtn.style.padding = '6px';
-      sidebarPdfBtn.style.fontSize = '11px';
-      sidebarPdfBtn.style.background = '#dc3545';
-      sidebarPdfBtn.style.color = 'white';
-      sidebarPdfBtn.style.border = 'none';
-      sidebarPdfBtn.style.borderRadius = '3px';
-      sidebarPdfBtn.style.cursor = 'pointer';
-      sidebarPdfBtn.onclick = function() { generatePatientPDF(); };
+      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
+      const sidebarButtons = sidebarIndirDiv.children;
+      if (sidebarButtons[0]) { // ZIP butonu
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+      }
+      if (sidebarButtons[1]) { // PDF butonu  
+        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
+      }
+      if (sidebarButtons[2]) { // COMBO butonu
+        sidebarButtons[2].onclick = function() { 
+          zipEslesenGorseller(i); 
+          setTimeout(() => generatePatientPDF(), 1000); 
+        };
+      }
       
-      // Combo butonu - sidebar için
-      const sidebarComboBtn = document.createElement('button');
-      sidebarComboBtn.textContent = '🎯 Kartlar + PDF';
-      sidebarComboBtn.style.width = '100%';
-      sidebarComboBtn.style.padding = '6px';
-      sidebarComboBtn.style.fontSize = '11px';
-      sidebarComboBtn.style.background = '#6f42c1';
-      sidebarComboBtn.style.color = 'white';
-      sidebarComboBtn.style.border = 'none';
-      sidebarComboBtn.style.borderRadius = '3px';
-      sidebarComboBtn.style.cursor = 'pointer';
-      sidebarComboBtn.onclick = function() { 
-        zipEslesenGorseller(i); 
-        setTimeout(() => generatePatientPDF(), 1000); 
+      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
+    }
+  }
+
+  // Eşleşmeyen tarifleri akordiyon başlık altında göster
+  if (eslesmeyenTarifler.length > 0) {
+    // Akordiyon başlık
+    const akordiyonBaslik = document.createElement('button');
+    akordiyonBaslik.textContent = `Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+    akordiyonBaslik.style.background = '#f8d7da';
+    akordiyonBaslik.style.color = 'darkred';
+    akordiyonBaslik.style.border = '1px solid #d9534f';
+    akordiyonBaslik.style.padding = '8px 16px';
+    akordiyonBaslik.style.marginTop = '12px';
+    akordiyonBaslik.style.cursor = 'pointer';
+    akordiyonBaslik.style.fontWeight = 'bold';
+    akordiyonBaslik.style.borderRadius = '6px';
+    akordiyonBaslik.setAttribute('aria-expanded', 'false');
+
+    // Akordiyon içerik
+    const akordiyonIcerik = document.createElement('div');
+    akordiyonIcerik.style.display = 'none';
+    akordiyonIcerik.style.background = '#fff0f0';
+    akordiyonIcerik.style.border = '1px solid #d9534f';
+    akordiyonIcerik.style.padding = '10px 16px';
+    akordiyonIcerik.style.marginTop = '4px';
+    akordiyonIcerik.style.borderRadius = '6px';
+
+    eslesmeyenTarifler.forEach(tarif => {
+      const p = document.createElement('p');
+      p.textContent = tarif;
+      p.style.color = 'red';
+      p.style.margin = '6px 0';
+      akordiyonIcerik.appendChild(p);
+    });
+
+    akordiyonBaslik.onclick = function() {
+      const acikMi = akordiyonIcerik.style.display === 'block';
+      akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+      akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+    };
+
+    // Ana area'ya akordiyon eklemeyi kaldırdık - sadece sidebar'da olacak
+    // eslesenDiv.appendChild(akordiyonBaslik);
+    // eslesenDiv.appendChild(akordiyonIcerik);
+    
+    // Sidebar'a akordiyon ekle
+    const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv2) {
+      // Eski eşleşmeyen tarifler butonunu kaldır
+      const eskiEslesmeyenBtn = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-btn');
+      if (eskiEslesmeyenBtn) {
+        eskiEslesmeyenBtn.remove();
+      }
+      const eskiEslesmeyenIcerik = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-icerik');
+      if (eskiEslesmeyenIcerik) {
+        eskiEslesmeyenIcerik.remove();
+      }
+      
+      // Sidebar için akordiyon butonunu klonla
+      const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
+      const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
+      
+      // Sidebar için class ekle (temizlik için)
+      sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
+      sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
+      sidebarAkordiyonBaslik.style.marginTop = '10px';
+      sidebarAkordiyonBaslik.style.width = '100%';
+      
+      // Sidebar akordiyon için tıklama event'i
+      sidebarAkordiyonBaslik.onclick = function() {
+        const acikMi = sidebarAkordiyonIcerik.style.display === 'block';
+        sidebarAkordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+        sidebarAkordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
       };
       
-      sidebarIndirDiv.appendChild(sidebarZipBtn);
-      sidebarIndirDiv.appendChild(sidebarPdfBtn);
-      sidebarIndirDiv.appendChild(sidebarComboBtn);
-      
-      sidebarIndirmeDiv.innerHTML = '';
-      sidebarIndirmeDiv.appendChild(sidebarIndirDiv);
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
     }
   }
 
@@ -6854,9 +6817,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
-      // Global değişkeni güncelle
-      secilenHastaIndex = hastaIndex;
-      
       // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
       const actTab = document.querySelector('.hafta-tab.active');
       if (actTab) {
@@ -6930,8 +6890,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
 
-
-
     // ========================
     // SAYFA BAŞLATMA
     // ========================
@@ -6988,17 +6946,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
       }
       
-      // İndirme butonları alanını temizle
-      const sidebarIndirmeDiv = document.getElementById('sidebarIndirmeButtons');
-      if (sidebarIndirmeDiv) {
-        sidebarIndirmeDiv.innerHTML = `
-          <p style="text-align:center; color:#666; font-size:12px; margin:10px 0;">
-            Bir hafta seçin...
-          </p>
-        `;
-      }
-      
-      // Eski sidebar butonları alanını temizle (legacy)
+      // Butonlar alanını temizle
       const sidebarButtonsDiv = document.getElementById('sidebarButtons');
       if (sidebarButtonsDiv) {
         sidebarButtonsDiv.innerHTML = '';
