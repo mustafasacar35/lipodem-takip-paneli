@@ -5982,7 +5982,7 @@ function duzenleHafta(i) {
     // Ana div'e ekle
     eslesenDiv.appendChild(eslesmeyenContainer);
     
-    // DOĞRUDAN EVENT LISTENER EKLEYELİM
+    // SADECE addEventListener KULLAN - onclick kaldırıldı
     baslikDiv.addEventListener('click', function() {
       console.log('ESLESMEYEN TARIFLER BUTONUNA TIKLANDI!');
       if (icerikDiv.style.display === 'none') {
@@ -6006,33 +6006,7 @@ function duzenleHafta(i) {
   saveToStorage();
 }
 
-// Global event listener for accordion - MORE ROBUST
-document.addEventListener('DOMContentLoaded', () => {
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.addEventListener('click', function(event) {
-            const baslik = event.target.closest('.eslesmeyen-baslik');
-            if (baslik) {
-                const targetId = baslik.dataset.target;
-                const icerik = document.getElementById(targetId);
-                
-                if (icerik) {
-                    const isHidden = icerik.style.display === 'none';
-                    icerik.style.display = isHidden ? 'block' : 'none';
-                    
-                    const countMatch = baslik.textContent.match(/\((\d+)\)/);
-                    const count = countMatch ? countMatch[1] : '0';
-
-                    baslik.innerHTML = isHidden 
-                        ? `🔼 Eşleşmeyen Tarifler (${count})`
-                        : `🔽 Eşleşmeyen Tarifler (${count})`;
-                }
-            }
-        });
-    } else {
-        console.error("Hata: 'main-content' ID'li ana kapsayıcı bulunamadı.");
-    }
-});
+// NO GLOBAL EVENT LISTENER NEEDED - DIRECT ATTACHMENT WORKS
 
     function gptMesajKaydet(i) {
       const hafta = getHaftaListesi()[i];
