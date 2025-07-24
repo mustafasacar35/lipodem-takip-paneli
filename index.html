@@ -5951,16 +5951,23 @@ function duzenleHafta(i) {
     });
     
     eslesenDiv.appendChild(eslesmeyenListesi);
-    console.log('🔍 Eşleşmeyen tarifler bulundu:', eslesmeyenTarifler.length);
-    
-    // Ana container div
-    const eslesmeyenContainer = document.createElement('div');
-    eslesmeyenContainer.style.marginTop = '12px';
-    eslesmeyenContainer.style.marginBottom = '12px';
-    
-    // Başlık butonu - daha basit yaklaşım
-    const baslikDiv = document.createElement('div');
-    baslikDiv.innerHTML = `<strong>🔽 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Tıklayın</strong>`;
+    console.log('✅ Eşleşmeyen tarifler BASİT LİSTE olarak eklendi');
+  }
+
+  // Eşleşen kartları hafta verisine kaydet
+  hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
+  saveToStorage();
+}
+
+// NO GLOBAL EVENT LISTENER NEEDED - DIRECT ATTACHMENT WORKS
+
+    function gptMesajKaydet(i) {
+      const hafta = getHaftaListesi()[i];
+      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+      saveToStorage();
+      alert('Mesaj kaydedildi.');
+      
+      console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
     baslikDiv.style.background = '#f8d7da';
     baslikDiv.style.color = 'darkred';
     baslikDiv.style.padding = '8px 12px';
@@ -6005,31 +6012,6 @@ function duzenleHafta(i) {
       }
     };
     
-    // Container'a ekle
-    eslesmeyenContainer.appendChild(baslikDiv);
-    eslesmeyenContainer.appendChild(icerikDiv);
-    
-    // Ana div'e ekle
-    eslesenDiv.appendChild(eslesmeyenContainer);
-    
-    // TEK addEventListener - onclick temizle
-    baslikDiv.onclick = null; // Eski onclick'i temizle
-    baslikDiv.addEventListener('click', function(e) {
-      console.log('ESLESMEYEN TARIFLER BUTONUNA TIKLANDI!');
-      
-      if (icerikDiv.style.display === 'none' || icerikDiv.style.display === '') {
-        icerikDiv.style.display = 'block';
-        baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
-        console.log('LISTE ACILDI!');
-      } else {
-        icerikDiv.style.display = 'none';
-        baslikDiv.innerHTML = '<strong>🔽 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Tiklayin</strong>';
-        console.log('LISTE KAPANDI!');
-      }
-    });
-    
-    console.log('DEBUG: Temiz event listener eklendi');
-    
     console.log('✅ Eşleşmeyen tarifler BASİT LİSTE olarak eklendi');
   }
 
@@ -6037,8 +6019,6 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   saveToStorage();
 }
-
-// NO GLOBAL EVENT LISTENER NEEDED - DIRECT ATTACHMENT WORKS
 
     function gptMesajKaydet(i) {
       const hafta = getHaftaListesi()[i];
