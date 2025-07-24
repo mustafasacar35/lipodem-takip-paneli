@@ -5953,29 +5953,11 @@ function duzenleHafta(i) {
       if (icerikElement && baslikElement) {
         const acikMi = icerikElement.style.display === 'block';
         
-        // Display ve visibility birlikte ayarla
+        // Basit display toggle - karmaşık animasyonlar olmadan
         if (acikMi) {
           icerikElement.style.display = 'none';
-          icerikElement.style.visibility = 'hidden';
-          icerikElement.style.opacity = '0';
-          icerikElement.style.height = '0px';
-          icerikElement.style.overflow = 'hidden';
         } else {
           icerikElement.style.display = 'block';
-          icerikElement.style.visibility = 'visible';
-          icerikElement.style.opacity = '1';
-          icerikElement.style.height = 'auto';
-          icerikElement.style.maxHeight = '400px';
-          icerikElement.style.minHeight = '50px';
-          icerikElement.style.overflow = 'auto';
-          
-          // Force reflow
-          icerikElement.offsetHeight;
-          
-          // Zorla boyut ayarla
-          setTimeout(() => {
-            icerikElement.style.height = icerikElement.scrollHeight + 'px';
-          }, 10);
         }
         
         baslikElement.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
@@ -5986,13 +5968,10 @@ function duzenleHafta(i) {
         // Debug için element durumunu logla
         console.log('🧪 Element durumu kontrol:', {
           display: icerikElement.style.display,
-          visibility: icerikElement.style.visibility,
-          opacity: icerikElement.style.opacity,
-          height: icerikElement.offsetHeight,
-          width: icerikElement.offsetWidth,
+          offsetHeight: icerikElement.offsetHeight,
+          offsetWidth: icerikElement.offsetWidth,
           scrollHeight: icerikElement.scrollHeight,
-          children: icerikElement.children.length,
-          innerHTML: icerikElement.innerHTML.length + ' characters'
+          children: icerikElement.children.length
         });
         
         console.log('✅ GLOBAL akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
@@ -6010,23 +5989,18 @@ function duzenleHafta(i) {
     const akordiyonIcerik = document.createElement('div');
     akordiyonIcerik.id = akordiyonId + '_icerik';
     
-    // CSS ile açık hale getir test için
+    // Basit CSS - sadece gerekli olanlar
     akordiyonIcerik.style.cssText = `
       display: none;
-      visibility: hidden;
-      opacity: 0;
-      height: 0px;
-      overflow: hidden;
       background: #fff0f0;
       border: 1px solid #d9534f;
-      padding: 10px 16px;
-      margin-top: 4px;
+      padding: 15px;
+      margin-top: 5px;
       border-radius: 6px;
       width: 100%;
       box-sizing: border-box;
-      position: relative;
-      z-index: 999;
-      transition: none;
+      max-height: 300px;
+      overflow-y: auto;
     `;
     
     console.log('🧪 Akordiyon oluşturuldu, ID:', akordiyonId, 'eşleşmeyen tarif sayısı:', eslesmeyenTarifler.length);
