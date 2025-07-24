@@ -5915,30 +5915,15 @@ function duzenleHafta(i) {
     indirDiv.appendChild(comboBtn);
     eslesenDiv.appendChild(indirDiv);
     
-    // Yeni sidebar layout için butonları da sidebar'a ekle
-    const currentEslesenDiv = document.getElementById('currentEslesenKartlar');
-    if (currentEslesenDiv) {
-      // Eski butonları kaldır
-      const eskiIndirDiv = currentEslesenDiv.querySelector('.indir-butonlari');
-      if (eskiIndirDiv) {
-        eskiIndirDiv.remove();
-      }
-      
-      // Yeni butonları ekle
-      const sidebarIndirDiv = indirDiv.cloneNode(true);
-      sidebarIndirDiv.className = 'indir-butonlari';
-      sidebarIndirDiv.style.marginTop = '15px';
-      sidebarIndirDiv.style.borderTop = '1px solid #ddd';
-      sidebarIndirDiv.style.paddingTop = '15px';
-      currentEslesenDiv.appendChild(sidebarIndirDiv);
-    }
+    // Sidebar duplike butonları KALDIRILDI - sadece üst kısımdaki butonlar kullanılacak
+    // Bu şekilde duplike buton sorunu çözülür
   }
 
   // Eşleşmeyen tarifleri akordiyon başlık altında göster
   if (eslesmeyenTarifler.length > 0) {
     // Akordiyon başlık
     const akordiyonBaslik = document.createElement('button');
-    akordiyonBaslik.textContent = `Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+    akordiyonBaslik.textContent = `▼ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
     akordiyonBaslik.style.background = '#f8d7da';
     akordiyonBaslik.style.color = 'darkred';
     akordiyonBaslik.style.border = '1px solid #d9534f';
@@ -5947,6 +5932,8 @@ function duzenleHafta(i) {
     akordiyonBaslik.style.cursor = 'pointer';
     akordiyonBaslik.style.fontWeight = 'bold';
     akordiyonBaslik.style.borderRadius = '6px';
+    akordiyonBaslik.style.width = '100%';
+    akordiyonBaslik.style.textAlign = 'left';
     akordiyonBaslik.setAttribute('aria-expanded', 'false');
 
     // Akordiyon içerik
@@ -5966,10 +5953,20 @@ function duzenleHafta(i) {
       akordiyonIcerik.appendChild(p);
     });
 
-    akordiyonBaslik.onclick = function() {
+    akordiyonBaslik.onclick = function(e) {
+      console.log('🔍 Eşleşmeyen tarifler butonuna tıklandı');
+      e.preventDefault();
+      e.stopPropagation();
+      
       const acikMi = akordiyonIcerik.style.display === 'block';
       akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
       akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+      
+      // Buton metnini güncelle
+      const simge = acikMi ? '▼' : '▲';
+      akordiyonBaslik.textContent = `${simge} Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+      
+      console.log('✅ Akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
     };
 
     eslesenDiv.appendChild(akordiyonBaslik);
