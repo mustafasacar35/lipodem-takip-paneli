@@ -5934,7 +5934,12 @@ function duzenleHafta(i) {
     akordiyonBaslik.style.borderRadius = '6px';
     akordiyonBaslik.style.width = '100%';
     akordiyonBaslik.style.textAlign = 'left';
+    akordiyonBaslik.style.display = 'block';
+    akordiyonBaslik.style.position = 'relative';
+    akordiyonBaslik.style.zIndex = '1000';
+    akordiyonBaslik.style.fontSize = '14px';
     akordiyonBaslik.setAttribute('aria-expanded', 'false');
+    akordiyonBaslik.setAttribute('type', 'button'); // Explicit button type
 
     // Akordiyon içerik
     const akordiyonIcerik = document.createElement('div');
@@ -5953,7 +5958,9 @@ function duzenleHafta(i) {
       akordiyonIcerik.appendChild(p);
     });
 
-    akordiyonBaslik.onclick = function(e) {
+    // Event listener ekle
+    akordiyonBaslik.addEventListener('click', function(e) {
+      alert('Akordiyon butonuna tıklandı!'); // Test için alert
       console.log('🔍 Eşleşmeyen tarifler butonuna tıklandı');
       e.preventDefault();
       e.stopPropagation();
@@ -5967,6 +5974,11 @@ function duzenleHafta(i) {
       akordiyonBaslik.textContent = `${simge} Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
       
       console.log('✅ Akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
+    });
+    
+    // Backup onclick (eğer addEventListener çalışmazsa)
+    akordiyonBaslik.onclick = function() {
+      alert('Backup onclick çalıştı!');
     };
 
     eslesenDiv.appendChild(akordiyonBaslik);
