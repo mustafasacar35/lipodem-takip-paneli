@@ -5919,8 +5919,38 @@ function duzenleHafta(i) {
     // Bu şekilde duplike buton sorunu çözülür
   }
 
-  // Eşleşmeyen tarifleri akordiyon başlık altında göster
+  // Eşleşmeyen tarifleri BASİT LİSTE olarak göster (akordiyon sorunu yok)
   if (eslesmeyenTarifler.length > 0) {
+    console.log('🔍 Eşleşmeyen tarifler bulundu:', eslesmeyenTarifler.length);
+    
+    // Başlık
+    const eslesmeyenBaslik = document.createElement('h5');
+    eslesmeyenBaslik.textContent = `❌ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+    eslesmeyenBaslik.style.color = 'darkred';
+    eslesmeyenBaslik.style.fontWeight = 'bold';
+    eslesmeyenBaslik.style.marginTop = '15px';
+    eslesmeyenBaslik.style.marginBottom = '10px';
+    eslesenDiv.appendChild(eslesmeyenBaslik);
+    
+    // Liste container
+    const eslesmeyenContainer = document.createElement('div');
+    eslesmeyenContainer.style.background = '#fff0f0';
+    eslesmeyenContainer.style.border = '1px solid #d9534f';
+    eslesmeyenContainer.style.padding = '10px';
+    eslesmeyenContainer.style.borderRadius = '6px';
+    eslesmeyenContainer.style.marginBottom = '12px';
+    
+    // Tarifleri listeye ekle
+    eslesmeyenTarifler.forEach((tarif, index) => {
+      const p = document.createElement('p');
+      p.textContent = `${index + 1}. ${tarif}`;
+      p.style.color = 'darkred';
+      p.style.margin = '4px 0';
+      p.style.fontSize = '13px';
+      eslesmeyenContainer.appendChild(p);
+    });
+    
+    eslesenDiv.appendChild(eslesmeyenContainer);
     console.log('🔍 Eşleşmeyen tarifler bulundu:', eslesmeyenTarifler.length);
     
     // Ana container div
@@ -6000,7 +6030,7 @@ function duzenleHafta(i) {
     
     console.log('DEBUG: Temiz event listener eklendi');
     
-    console.log('✅ Eşleşmeyen tarifler DOM\'a eklendi');
+    console.log('✅ Eşleşmeyen tarifler BASİT LİSTE olarak eklendi');
   }
 
   // Eşleşen kartları hafta verisine kaydet
