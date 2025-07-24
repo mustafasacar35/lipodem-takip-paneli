@@ -5671,6 +5671,40 @@ function duzenleHafta(i) {
 
     eslesenDiv.appendChild(akordiyonBaslik);
     eslesenDiv.appendChild(akordiyonIcerik);
+    
+    // Sidebar'a da akordiyon ekle
+    const currentEslesenDiv = document.getElementById('currentEslesenKartlar');
+    if (currentEslesenDiv) {
+      // Eski eşleşmeyen tarifler butonunu kaldır
+      const eskiEslesmeyenBtn = currentEslesenDiv.querySelector('.eslesmeyenTarifler-btn');
+      if (eskiEslesmeyenBtn) {
+        eskiEslesmeyenBtn.remove();
+      }
+      const eskiEslesmeyenIcerik = currentEslesenDiv.querySelector('.eslesmeyenTarifler-icerik');
+      if (eskiEslesmeyenIcerik) {
+        eskiEslesmeyenIcerik.remove();
+      }
+      
+      // Sidebar için akordiyon butonunu klonla
+      const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
+      const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
+      
+      // Sidebar için class ekle (temizlik için)
+      sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
+      sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
+      sidebarAkordiyonBaslik.style.marginTop = '15px';
+      sidebarAkordiyonBaslik.style.width = '100%';
+      
+      // Sidebar akordiyon için tıklama event'i
+      sidebarAkordiyonBaslik.onclick = function() {
+        const acikMi = sidebarAkordiyonIcerik.style.display === 'block';
+        sidebarAkordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+        sidebarAkordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+      };
+      
+      currentEslesenDiv.appendChild(sidebarAkordiyonBaslik);
+      currentEslesenDiv.appendChild(sidebarAkordiyonIcerik);
+    }
   }
 
   // Eşleşen kartları hafta verisine kaydet
