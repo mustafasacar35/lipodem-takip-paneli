@@ -5991,7 +5991,20 @@ function duzenleHafta(i) {
           offsetHeight: icerikElement.offsetHeight,
           offsetWidth: icerikElement.offsetWidth,
           scrollHeight: icerikElement.scrollHeight,
-          children: icerikElement.children.length
+          children: icerikElement.children.length,
+          parentElement: icerikElement.parentElement ? icerikElement.parentElement.tagName : 'YOK',
+          computedDisplay: window.getComputedStyle(icerikElement).display,
+          computedVisibility: window.getComputedStyle(icerikElement).visibility,
+          computedPosition: window.getComputedStyle(icerikElement).position,
+          innerHTML: icerikElement.innerHTML.substring(0, 100) + '...'
+        });
+        
+        // Element'in DOM'da yerini kontrol et
+        console.log('🔍 Element DOM pozisyonu:', {
+          elementExists: !!document.getElementById(akordiyonId + '_icerik'),
+          elementInDOM: document.body.contains(icerikElement),
+          parentExists: !!icerikElement.parentElement,
+          parentVisible: icerikElement.parentElement ? window.getComputedStyle(icerikElement.parentElement).display : 'parent yok'
         });
         
         console.log('✅ GLOBAL akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
