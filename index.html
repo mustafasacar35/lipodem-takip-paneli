@@ -5983,9 +5983,14 @@ function duzenleHafta(i) {
     eslesenDiv.appendChild(eslesmeyenContainer);
     
     // SADECE addEventListener KULLAN - onclick kaldırıldı
-    baslikDiv.addEventListener('click', function() {
+    baslikDiv.addEventListener('click', function(e) {
       console.log('ESLESMEYEN TARIFLER BUTONUNA TIKLANDI!');
-      if (icerikDiv.style.display === 'none') {
+      console.log('Event object:', e);
+      console.log('Target element:', e.target);
+      console.log('Current display style:', icerikDiv.style.display);
+      
+      // Basit toggle
+      if (icerikDiv.style.display === 'none' || icerikDiv.style.display === '') {
         icerikDiv.style.display = 'block';
         baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
         console.log('LISTE ACILDI!');
@@ -5995,6 +6000,19 @@ function duzenleHafta(i) {
         console.log('LISTE KAPANDI!');
       }
     });
+    
+    // TEST: Element tıklanabilir mi kontrol et
+    setTimeout(() => {
+      console.log('TEST: baslikDiv tıklanabilir mi?');
+      console.log('- Element mevcut mu?', !!baslikDiv);
+      console.log('- Element DOM da mi?', document.body.contains(baslikDiv));
+      console.log('- Cursor style:', baslikDiv.style.cursor);
+      console.log('- Event listeners var mi?', baslikDiv.onclick, typeof baslikDiv.click);
+      
+      // Manuel test trigger
+      console.log('TEST: Manuel click tetikleniyor...');
+      baslikDiv.click();
+    }, 1000);
     
     console.log('DEBUG: Event listener eklendi');
     
