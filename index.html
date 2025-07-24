@@ -6850,6 +6850,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function gosterEslesenKartlarSidebar(haftaIndex) {
       console.log(`🔍 gosterEslesenKartlarSidebar çağrıldı, hafta index: ${haftaIndex}`);
       
+      // Önce sidebar'ı resetle
+      resetSidebar();
+      
       const currentDiv = document.getElementById('currentEslesenKartlar');
       if (!currentDiv) {
         console.log('❌ currentEslesenKartlar div bulunamadı!');
@@ -6943,6 +6946,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function sayfaBaslat() {
       console.log('🚀 Sidebar layout başlatılıyor...');
       
+      // Başlangıçta sidebar'ı resetle
+      resetSidebar();
+      
       // Hasta verilerini kontrol et
       console.log('👥 Hasta verileri:', hastalar);
       console.log('📊 Hasta sayısı:', hastalar ? hastalar.length : 0);
@@ -6989,6 +6995,30 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     
     // Toggle fonksiyonunu global yap
     window.toggleEslesenKartlar = toggleEslesenKartlar;
+    
+    // Sidebar'ı resetle (hasta/hafta değiştiğinde)
+    function resetSidebar() {
+      console.log('🔄 Sidebar resetleniyor...');
+      
+      // Eşleşen kartlar alanını temizle
+      const currentDiv = document.getElementById('currentEslesenKartlar');
+      if (currentDiv) {
+        currentDiv.innerHTML = `
+          <div style="text-align: center; color: #666; padding: 40px;">
+            Seçili hafta için eşleştirme yapılmadı...
+          </div>
+        `;
+      }
+      
+      // Butonlar alanını temizle
+      const sidebarButtonsDiv = document.getElementById('sidebarButtons');
+      if (sidebarButtonsDiv) {
+        sidebarButtonsDiv.innerHTML = '';
+      }
+    }
+    
+    // Reset fonksiyonunu global yap
+    window.resetSidebar = resetSidebar;
     
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
