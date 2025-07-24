@@ -371,39 +371,35 @@
       
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
-        <!-- Akordiyon başlık -->
-        <button id="eslesenKartlarToggle" style="
-          width: 100%;
-          background: #6f42c1;
-          color: white;
-          border: none;
-          padding: 12px 15px;
-          border-radius: 8px;
+        <!-- Eşleşen Kartlar Akordiyon Başlık -->
+        <button id="eslesenKartlarAkordiyonBaslik" style="
+          width: 100%; 
+          background: #6f42c1; 
+          color: white; 
+          border: none; 
+          padding: 12px 20px; 
+          border-radius: 8px; 
+          cursor: pointer; 
+          font-weight: bold; 
           font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
           text-align: left;
           margin-bottom: 10px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          transition: background-color 0.3s ease;
-        " onclick="toggleEslesenKartlar()" 
-           onmouseover="this.style.backgroundColor='#5a2d91'" 
-           onmouseout="this.style.backgroundColor='#6f42c1'">
-          <span>🔗 Eşleşen Kartlar</span>
-          <span id="eslesenKartlarIcon">▼</span>
+          transition: background-color 0.3s;
+        " onmouseover="this.style.backgroundColor='#5a359a'" onmouseout="this.style.backgroundColor='#6f42c1'">
+          🔗 Eşleşen Kartlar <span id="kartSayisi" style="float: right;">▼</span>
         </button>
         
-        <div id="eslesenKartlarContent" style="display: block;">
+        <!-- Eşleşen Kartlar Akordiyon İçerik -->
+        <div id="eslesenKartlarAkordiyonIcerik" style="display: block;">
           <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
             </div>
           </div>
-          <!-- Butonlar için sabit alan - akordiyon içinde -->
-          <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
-          </div>
+        </div>
+        
+        <!-- Butonlar için sabit alan -->
+        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
       </div>
     </div>
@@ -431,6 +427,17 @@
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
+      </div>
+
+      <!-- İstatistikler -->
+      <div class="sidebar-section">
+        <h3>📈 İstatistikler</h3>
+        <div id="istatistikler" style="font-size: 12px; line-height: 1.4;">
+          <div>📄 PDF Sayısı: <span id="statPdfCount">-</span></div>
+          <div>🍽️ Tarif Sayısı: <span id="statTarifCount">-</span></div>
+          <div>🖼️ Kart Sayısı: <span id="statKartCount">-</span></div>
+          <div>🔗 Eşleşme Sayısı: <span id="statEslesmeCount">-</span></div>
+        </div>
       </div>
 
       <!-- Araçlar -->
@@ -6823,6 +6830,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const haftaIndex = parseInt(actTab.dataset.haftaIndex);
         if (!isNaN(haftaIndex)) {
           gosterEslesenKartlarSidebar(haftaIndex);
+          guncelleIstatistikler(hastaIndex);
         }
       }
     }
@@ -6837,9 +6845,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // Eşleşen kartları sağ sidebar'da göster
     function gosterEslesenKartlarSidebar(haftaIndex) {
       console.log(`🔍 gosterEslesenKartlarSidebar çağrıldı, hafta index: ${haftaIndex}`);
-      
-      // Önce sidebar'ı resetle
-      resetSidebar();
       
       const currentDiv = document.getElementById('currentEslesenKartlar');
       if (!currentDiv) {
@@ -6887,8 +6892,53 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
       }
+      
+      // Akordiyon başlığında kart sayısını güncelle
+      const akordiyonBaslik = document.getElementById('eslesenKartlarAkordiyonBaslik');
+      if (akordiyonBaslik) {
+        const kartSayisi = currentDiv.children.length;
+        const baslikMetni = kartSayisi > 1 ? `🔗 Eşleşen Kartlar (${kartSayisi - 1})` : '🔗 Eşleşen Kartlar';
+        const okIsareti = document.getElementById('kartSayisi').textContent;
+        akordiyonBaslik.innerHTML = `${baslikMetni} <span id="kartSayisi" style="float: right;">${okIsareti}</span>`;
+      }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
+
+    // İstatistikleri güncelle
+    function guncelleIstatistikler(hastaIndex) {
+      if (hastaIndex === undefined || !hastalar[hastaIndex]) return;
+      
+      const hasta = hastalar[hastaIndex];
+      const haftalar = hasta.haftalar || [];
+      
+      let pdfCount = 0;
+      let tarifCount = 0;
+      let kartCount = 0;
+      let eslesmeCount = 0;
+      
+      haftalar.forEach(hafta => {
+        if (hafta.pdf && hafta.pdf.name) pdfCount++;
+        if (hafta.tarifler) tarifCount += hafta.tarifler.length;
+        if (hafta.eslesenKartlar) eslesmeCount += hafta.eslesenKartlar.length;
+      });
+      
+      // Tarif kartları sayısı (global)
+      if (window.tarifKartlari) {
+        kartCount = tarifKartlari.length;
+      }
+      
+      // Güncelle
+      const statPdf = document.getElementById('statPdfCount');
+      const statTarif = document.getElementById('statTarifCount');
+      const statKart = document.getElementById('statKartCount');
+      const statEslesme = document.getElementById('statEslesmeCount');
+      
+      if (statPdf) statPdf.textContent = pdfCount;
+      if (statTarif) statTarif.textContent = tarifCount;
+      if (statKart) statKart.textContent = kartCount;
+      if (statEslesme) statEslesme.textContent = eslesmeCount;
+    }
+    window.guncelleIstatistikler = guncelleIstatistikler;
 
     // ========================
     // SAYFA BAŞLATMA
@@ -6898,12 +6948,25 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function sayfaBaslat() {
       console.log('🚀 Sidebar layout başlatılıyor...');
       
-      // Başlangıçta sidebar'ı resetle
-      resetSidebar();
-      
       // Hasta verilerini kontrol et
       console.log('👥 Hasta verileri:', hastalar);
       console.log('📊 Hasta sayısı:', hastalar ? hastalar.length : 0);
+      
+      // İstatistikleri başlat
+      const statPdf = document.getElementById('statPdfCount');
+      const statTarif = document.getElementById('statTarifCount');
+      const statKart = document.getElementById('statKartCount');
+      const statEslesme = document.getElementById('statEslesmeCount');
+      
+      if (statPdf) statPdf.textContent = '0';
+      if (statTarif) statTarif.textContent = '0';
+      if (statKart) statKart.textContent = '0';
+      if (statEslesme) statEslesme.textContent = '0';
+      
+      // Eğer tarif kartları varsa sayıyı güncelle
+      if (window.tarifKartlari && statKart) {
+        statKart.textContent = tarifKartlari.length;
+      }
       
       // Hasta sayılarını başlat
       setTimeout(() => {
@@ -6915,53 +6978,37 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }, 100);
     }
     
-    // Eşleşen kartlar akordiyon toggle fonksiyonu
-    function toggleEslesenKartlar() {
-      const content = document.getElementById('eslesenKartlarContent');
-      const icon = document.getElementById('eslesenKartlarIcon');
-      
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.textContent = '▼';
-      } else {
-        content.style.display = 'none';
-        icon.textContent = '▶';
-      }
-    }
-    
-    // Toggle fonksiyonunu global yap
-    window.toggleEslesenKartlar = toggleEslesenKartlar;
-    
-    // Sidebar'ı resetle (hasta/hafta değiştiğinde)
-    function resetSidebar() {
-      console.log('🔄 Sidebar resetleniyor...');
-      
-      // Eşleşen kartlar alanını temizle
-      const currentDiv = document.getElementById('currentEslesenKartlar');
-      if (currentDiv) {
-        currentDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Seçili hafta için eşleştirme yapılmadı...
-          </div>
-        `;
-      }
-      
-      // Butonlar alanını temizle
-      const sidebarButtonsDiv = document.getElementById('sidebarButtons');
-      if (sidebarButtonsDiv) {
-        sidebarButtonsDiv.innerHTML = '';
-      }
-    }
-    
-    // Reset fonksiyonunu global yap
-    window.resetSidebar = resetSidebar;
-    
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', sayfaBaslat);
     } else {
       sayfaBaslat();
     }
+
+    // Eşleşen Kartlar Akordiyon Kontrolü
+    document.addEventListener('DOMContentLoaded', function() {
+      const akordiyonBaslik = document.getElementById('eslesenKartlarAkordiyonBaslik');
+      const akordiyonIcerik = document.getElementById('eslesenKartlarAkordiyonIcerik');
+      const kartSayisi = document.getElementById('kartSayisi');
+      
+      if (akordiyonBaslik && akordiyonIcerik) {
+        akordiyonBaslik.addEventListener('click', function() {
+          const acikMi = akordiyonIcerik.style.display === 'block';
+          
+          if (acikMi) {
+            // Kapat
+            akordiyonIcerik.style.display = 'none';
+            kartSayisi.textContent = '▶';
+            this.setAttribute('aria-expanded', 'false');
+          } else {
+            // Aç
+            akordiyonIcerik.style.display = 'block';
+            kartSayisi.textContent = '▼';
+            this.setAttribute('aria-expanded', 'true');
+          }
+        });
+      }
+    });
 
   </script>
 </body>
