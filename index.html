@@ -5602,8 +5602,8 @@ function duzenleHafta(i) {
     zipBtn.style.marginBottom = '10px';
     zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
     zipBtn.onclick = function() { 
-      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
-      zipEslesenGorseller(i); 
+      console.log('🔍 ZIP butonuna tıklandı (ana panel)');
+      zipEslesenGorseller(); 
     };
     
     // PDF Takip Tablosu oluştur butonu
@@ -5627,7 +5627,7 @@ function duzenleHafta(i) {
     comboBtn.style.borderRadius = '5px';
     comboBtn.style.cursor = 'pointer';
     comboBtn.onclick = function() { 
-      zipEslesenGorseller(i); 
+      zipEslesenGorseller(); 
       setTimeout(() => generatePatientPDF(), 1000); 
     };
     
@@ -5653,14 +5653,14 @@ function duzenleHafta(i) {
       // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
       const sidebarButtons = sidebarIndirDiv.children;
       if (sidebarButtons[0]) { // ZIP butonu
-        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(); };
       }
       if (sidebarButtons[1]) { // PDF butonu  
         sidebarButtons[1].onclick = function() { generatePatientPDF(); };
       }
       if (sidebarButtons[2]) { // COMBO butonu
         sidebarButtons[2].onclick = function() { 
-          zipEslesenGorseller(i); 
+          zipEslesenGorseller(); 
           setTimeout(() => generatePatientPDF(), 1000); 
         };
       }
@@ -6390,9 +6390,25 @@ function duzenleHafta(i) {
       }
     }
 
-    async function zipEslesenGorseller(i) {
+    async function zipEslesenGorseller() {
       try {
-        console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
+        console.log('🎯 ZIP fonksiyonu başlatıldı.');
+        
+        // Aktif tab'ı bul
+        const activeTab = document.querySelector('.hafta-tab.active');
+        if (!activeTab) {
+          console.error('❌ Aktif hafta tab\'ı bulunamadı!');
+          alert('Lütfen bir hafta seçin.');
+          return;
+        }
+
+        // Verileri aktif tab'ın dataset'inden al
+        const i = parseInt(activeTab.dataset.haftaIndex, 10);
+        const gercekHaftaNo = parseInt(activeTab.dataset.haftaNo, 10);
+        
+        console.log(`✅ Aktif tab bulundu. Hafta Index: ${i}, Gerçek Hafta No: ${gercekHaftaNo}`);
+        console.log(`🔍 Aktif tab elementi:`, activeTab);
+        console.log(`🔍 Tab text içeriği: "${activeTab.textContent.trim()}"`);
         
         // Kütüphane kontrolü
         if (typeof JSZip === 'undefined') {
@@ -6528,8 +6544,7 @@ function duzenleHafta(i) {
       }
       
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
-      const haftaNo = hafta.haftaNo || (i + 1);
-      if (haftaNo === 5) {
+      if (gercekHaftaNo === 5) {
         try {
           console.log('🏥 5. hafta tespit edildi, Sadece Masaj Takvim PDF\'i oluşturuluyor...');
           
@@ -6547,7 +6562,7 @@ function duzenleHafta(i) {
       }
       
       // 7. Sadece 9. haftada "Masaj + Egzersiz" Takvim PDF'ini ekle
-      if (haftaNo === 9) {
+      if (gercekHaftaNo === 9) {
         try {
           console.log('🏋️ 9. hafta tespit edildi, Masaj + Egzersiz Takvim PDF\'i oluşturuluyor...');
           
@@ -6913,8 +6928,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
               console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
               btn.onclick = function(e) { 
                 e.preventDefault();
-                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
-                zipEslesenGorseller(haftaIndex); 
+                console.log('🎯 ZIP butonuna tıklandı (sidebar)');
+                zipEslesenGorseller(); 
               };
             }
           }
