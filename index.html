@@ -6958,10 +6958,25 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (eslesmeyenBtn) {
         eslesmeyenBtn.click();
       } else {
-        // Dinamik buton yoksa kullanıcıya bilgi ver
+        // Dinamik buton yoksa aktif hafta için eşleştirme başlat
         const aktiveTabs = document.querySelectorAll('.hafta-tab.active');
         if (aktiveTabs.length > 0) {
-          alert('ℹ️ Bu hafta için henüz eşleştirme yapılmadı. Önce bir hafta seçip eşleştirme yapın.');
+          const activeTab = aktiveTabs[0];
+          const haftaIndex = parseInt(activeTab.getAttribute('data-hafta-index'));
+          if (!isNaN(haftaIndex)) {
+            console.log('🔄 Eşleştirme bulunamadı, hafta için eşleştirme başlatılıyor:', haftaIndex);
+            // Eşleştirme fonksiyonunu çağır
+            eslestir(haftaIndex);
+            // Kısa bir süre sonra dinamik butonu tekrar dene
+            setTimeout(() => {
+              const yeniEslesmeyenBtn = document.querySelector('.eslesmeyenTarifler-btn');
+              if (yeniEslesmeyenBtn) {
+                yeniEslesmeyenBtn.click();
+              }
+            }, 500);
+          } else {
+            alert('❌ Aktif hafta indeksi bulunamadı!');
+          }
         } else {
           alert('⚠️ Önce bir hasta ve hafta seçin.');
         }
