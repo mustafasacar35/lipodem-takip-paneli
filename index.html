@@ -5921,89 +5921,60 @@ function duzenleHafta(i) {
 
   // Eşleşmeyen tarifleri akordiyon başlık altında göster
   if (eslesmeyenTarifler.length > 0) {
-    // Akordiyon başlık
-    const akordiyonBaslik = document.createElement('button');
-    akordiyonBaslik.textContent = `▼ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-    akordiyonBaslik.style.background = '#f8d7da';
-    akordiyonBaslik.style.color = 'darkred';
-    akordiyonBaslik.style.border = '1px solid #d9534f';
-    akordiyonBaslik.style.padding = '8px 16px';
-    akordiyonBaslik.style.marginTop = '12px';
-    akordiyonBaslik.style.cursor = 'pointer';
-    akordiyonBaslik.style.fontWeight = 'bold';
-    akordiyonBaslik.style.borderRadius = '6px';
-    akordiyonBaslik.style.width = '100%';
-    akordiyonBaslik.style.textAlign = 'left';
-    akordiyonBaslik.style.display = 'block';
-    akordiyonBaslik.style.position = 'relative';
-    akordiyonBaslik.style.zIndex = '1000';
-    akordiyonBaslik.style.fontSize = '14px';
-    akordiyonBaslik.setAttribute('aria-expanded', 'false');
-    akordiyonBaslik.setAttribute('type', 'button'); // Explicit button type
-
-    // Akordiyon içerik
-    const akordiyonIcerik = document.createElement('div');
-    akordiyonIcerik.style.display = 'none'; // Başlangıçta kapalı
-    akordiyonIcerik.style.background = '#fff0f0';
-    akordiyonIcerik.style.border = '1px solid #d9534f';
-    akordiyonIcerik.style.padding = '10px 16px';
-    akordiyonIcerik.style.marginTop = '2px';
-    akordiyonIcerik.style.borderRadius = '6px';
-    akordiyonIcerik.style.marginBottom = '10px';
-    akordiyonIcerik.id = `akordiyon-icerik-${Date.now()}`; // Unique ID
-
-    // Eşleşmeyen tarifleri listeye ekle
+    console.log('🔍 Eşleşmeyen tarifler bulundu:', eslesmeyenTarifler.length);
+    
+    // Ana container div
+    const eslesmeyenContainer = document.createElement('div');
+    eslesmeyenContainer.style.marginTop = '12px';
+    eslesmeyenContainer.style.marginBottom = '12px';
+    
+    // Başlık butonu - daha basit yaklaşım
+    const baslikDiv = document.createElement('div');
+    baslikDiv.innerHTML = `<strong style="background: #f8d7da; color: darkred; padding: 8px 12px; border: 1px solid #d9534f; border-radius: 6px; display: block; cursor: pointer; user-select: none;">🔽 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Tıklayın</strong>`;
+    baslikDiv.style.marginBottom = '5px';
+    
+    // İçerik div - başlangıçta gizli
+    const icerikDiv = document.createElement('div');
+    icerikDiv.style.display = 'none';
+    icerikDiv.style.background = '#fff0f0';
+    icerikDiv.style.border = '1px solid #d9534f';
+    icerikDiv.style.padding = '10px';
+    icerikDiv.style.borderRadius = '6px';
+    icerikDiv.id = `eslesmeyenTarifler_${Date.now()}`;
+    
+    // Tarifleri listeye ekle
     eslesmeyenTarifler.forEach((tarif, index) => {
       const p = document.createElement('p');
       p.textContent = `${index + 1}. ${tarif}`;
       p.style.color = 'darkred';
-      p.style.margin = '6px 0';
+      p.style.margin = '4px 0';
       p.style.fontSize = '13px';
-      p.style.fontWeight = 'normal';
-      p.style.borderBottom = '1px dotted #ccc';
-      p.style.paddingBottom = '4px';
-      akordiyonIcerik.appendChild(p);
+      icerikDiv.appendChild(p);
     });
     
-    console.log(`📝 ${eslesmeyenTarifler.length} eşleşmeyen tarif listeye eklendi`);
-    
-    // Test için içerik ekle
-    if (eslesmeyenTarifler.length === 0) {
-      const testP = document.createElement('p');
-      testP.textContent = 'Test: Hiç eşleşmeyen tarif yok';
-      testP.style.color = 'green';
-      akordiyonIcerik.appendChild(testP);
-    }
-
-    // Event listener ekle - Basitleştirilmiş
-    akordiyonBaslik.addEventListener('click', function(e) {
-      console.log('🔍 Eşleşmeyen tarifler butonuna tıklandı');
+    // Tıklama olayı - innerHTML kullanarak
+    baslikDiv.onclick = function() {
+      console.log('� Eşleşmeyen tarifler başlığına tıklandı!');
       
-      // Mevcut durumu kontrol et
-      const suandaGizli = akordiyonIcerik.style.display === 'none' || akordiyonIcerik.style.display === '';
-      
-      console.log('📊 Mevcut durum - Gizli mi?:', suandaGizli);
-      console.log('📊 Display değeri:', akordiyonIcerik.style.display);
-      
-      if (suandaGizli) {
-        // Aç
-        akordiyonIcerik.style.display = 'block';
-        akordiyonBaslik.textContent = `▲ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-        akordiyonBaslik.setAttribute('aria-expanded', 'true');
-        console.log('✅ Akordiyon AÇILDI');
+      if (icerikDiv.style.display === 'none') {
+        icerikDiv.style.display = 'block';
+        baslikDiv.innerHTML = `<strong style="background: #f8d7da; color: darkred; padding: 8px 12px; border: 1px solid #d9534f; border-radius: 6px; display: block; cursor: pointer; user-select: none;">🔼 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Gizle</strong>`;
+        console.log('✅ Liste AÇILDI');
       } else {
-        // Kapat
-        akordiyonIcerik.style.display = 'none';
-        akordiyonBaslik.textContent = `▼ Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-        akordiyonBaslik.setAttribute('aria-expanded', 'false');
-        console.log('✅ Akordiyon KAPANDI');
+        icerikDiv.style.display = 'none';
+        baslikDiv.innerHTML = `<strong style="background: #f8d7da; color: darkred; padding: 8px 12px; border: 1px solid #d9534f; border-radius: 6px; display: block; cursor: pointer; user-select: none;">🔽 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length}) - Tıklayın</strong>`;
+        console.log('✅ Liste KAPANDI');
       }
-    });
+    };
     
-    // Test için backup onclick kaldırıldı
-
-    eslesenDiv.appendChild(akordiyonBaslik);
-    eslesenDiv.appendChild(akordiyonIcerik);
+    // Container'a ekle
+    eslesmeyenContainer.appendChild(baslikDiv);
+    eslesmeyenContainer.appendChild(icerikDiv);
+    
+    // Ana div'e ekle
+    eslesenDiv.appendChild(eslesmeyenContainer);
+    
+    console.log('✅ Eşleşmeyen tarifler DOM\'a eklendi');
   }
 
   // Eşleşen kartları hafta verisine kaydet
