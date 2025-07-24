@@ -5572,91 +5572,6 @@ function duzenleHafta(i) {
         eslesenDiv.appendChild(img);
       });
     });
-    
-    // İndir butonları ekle
-    const indirDiv = document.createElement('div');
-    indirDiv.style.marginTop = '15px';
-    indirDiv.style.display = 'flex';
-    indirDiv.style.gap = '10px';
-    indirDiv.style.flexWrap = 'wrap';
-    
-    // ZIP olarak indir butonu
-    const zipBtn = document.createElement('button');
-    zipBtn.textContent = '📦 Tüm Dosyaları ZIP İndir';
-    zipBtn.style.background = '#28a745';
-    zipBtn.style.color = 'white';
-    zipBtn.style.border = 'none';
-    zipBtn.style.padding = '10px 15px';
-    zipBtn.style.borderRadius = '5px';
-    zipBtn.style.cursor = 'pointer';
-    zipBtn.style.marginBottom = '10px';
-    zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
-    zipBtn.onclick = function() { 
-      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
-      zipEslesenGorseller(i); 
-    };
-    
-    // PDF Takip Tablosu oluştur butonu
-    const pdfBtn = document.createElement('button');
-    pdfBtn.textContent = '📄 Takip Tablosu PDF';
-    pdfBtn.style.background = '#dc3545';
-    pdfBtn.style.color = 'white';
-    pdfBtn.style.border = 'none';
-    pdfBtn.style.padding = '10px 15px';
-    pdfBtn.style.borderRadius = '5px';
-    pdfBtn.style.cursor = 'pointer';
-    pdfBtn.onclick = function() { generatePatientPDF(); };
-    
-    // ZIP + PDF Combo butonu
-    const comboBtn = document.createElement('button');
-    comboBtn.textContent = '🎯 Kartlar + PDF Tablosu';
-    comboBtn.style.background = '#6f42c1';
-    comboBtn.style.color = 'white';
-    comboBtn.style.border = 'none';
-    comboBtn.style.padding = '10px 15px';
-    comboBtn.style.borderRadius = '5px';
-    comboBtn.style.cursor = 'pointer';
-    comboBtn.onclick = function() { 
-      zipEslesenGorseller(i); 
-      setTimeout(() => generatePatientPDF(), 1000); 
-    };
-    
-    indirDiv.appendChild(zipBtn);
-    indirDiv.appendChild(pdfBtn);
-    indirDiv.appendChild(comboBtn);
-    // Ana area'ya buton eklemeyi kaldırdık - sadece sidebar'da olacak
-    // eslesenDiv.appendChild(indirDiv);
-    
-    // Sidebar için butonları ekle
-    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
-    if (sidebarButtonsDiv) {
-      // Eski butonları kaldır
-      sidebarButtonsDiv.innerHTML = '';
-      
-      // Sidebar için ZIP butonlarını ekle
-      const sidebarIndirDiv = indirDiv.cloneNode(true);
-      sidebarIndirDiv.className = 'indir-butonlari';
-      sidebarIndirDiv.style.marginTop = '0px';
-      sidebarIndirDiv.style.borderTop = 'none';
-      sidebarIndirDiv.style.paddingTop = '0px';
-      
-      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
-      const sidebarButtons = sidebarIndirDiv.children;
-      if (sidebarButtons[0]) { // ZIP butonu
-        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
-      }
-      if (sidebarButtons[1]) { // PDF butonu  
-        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
-      }
-      if (sidebarButtons[2]) { // COMBO butonu
-        sidebarButtons[2].onclick = function() { 
-          zipEslesenGorseller(i); 
-          setTimeout(() => generatePatientPDF(), 1000); 
-        };
-      }
-      
-      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
-    }
   }
 
   // Eşleşmeyen tarifleri akordiyon başlık altında göster
@@ -6862,24 +6777,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         });
         
         console.log('✅ Eşleşen kartlar sidebar\'a başarıyla klonlandı');
-        
-        // Sadece güvenlik için onclick'leri yeniden ata
-        const tumButonlar = currentDiv.querySelectorAll('button');
-        console.log('🔍 Sidebar\'da bulunan buton sayısı:', tumButonlar.length);
-        
-        tumButonlar.forEach((btn, index) => {
-          if (btn.textContent.includes('ZIP İndir')) {
-            console.log('🔍 ZIP butonu bulundu, onclick kontrol ediliyor...');
-            if (!btn.onclick) {
-              console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
-              btn.onclick = function(e) { 
-                e.preventDefault();
-                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
-                zipEslesenGorseller(haftaIndex); 
-              };
-            }
-          }
-        });
         
       } else {
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
