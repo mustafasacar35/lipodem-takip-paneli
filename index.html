@@ -5965,8 +5965,17 @@ function duzenleHafta(i) {
           icerikElement.style.visibility = 'visible';
           icerikElement.style.opacity = '1';
           icerikElement.style.height = 'auto';
+          icerikElement.style.maxHeight = '400px';
           icerikElement.style.minHeight = '50px';
-          icerikElement.style.overflow = 'visible';
+          icerikElement.style.overflow = 'auto';
+          
+          // Force reflow
+          icerikElement.offsetHeight;
+          
+          // Zorla boyut ayarla
+          setTimeout(() => {
+            icerikElement.style.height = icerikElement.scrollHeight + 'px';
+          }, 10);
         }
         
         baslikElement.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
@@ -6000,20 +6009,25 @@ function duzenleHafta(i) {
     // Akordiyon içerik
     const akordiyonIcerik = document.createElement('div');
     akordiyonIcerik.id = akordiyonId + '_icerik';
-    akordiyonIcerik.style.display = 'none';
-    akordiyonIcerik.style.visibility = 'hidden';
-    akordiyonIcerik.style.opacity = '0';
-    akordiyonIcerik.style.height = '0px';
-    akordiyonIcerik.style.overflow = 'hidden';
-    akordiyonIcerik.style.background = '#fff0f0';
-    akordiyonIcerik.style.border = '1px solid #d9534f';
-    akordiyonIcerik.style.padding = '10px 16px';
-    akordiyonIcerik.style.marginTop = '4px';
-    akordiyonIcerik.style.borderRadius = '6px';
-    akordiyonIcerik.style.width = '100%';
-    akordiyonIcerik.style.boxSizing = 'border-box';
-    akordiyonIcerik.style.position = 'relative';
-    akordiyonIcerik.style.zIndex = '999';
+    
+    // CSS ile açık hale getir test için
+    akordiyonIcerik.style.cssText = `
+      display: none;
+      visibility: hidden;
+      opacity: 0;
+      height: 0px;
+      overflow: hidden;
+      background: #fff0f0;
+      border: 1px solid #d9534f;
+      padding: 10px 16px;
+      margin-top: 4px;
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 999;
+      transition: none;
+    `;
     
     console.log('🧪 Akordiyon oluşturuldu, ID:', akordiyonId, 'eşleşmeyen tarif sayısı:', eslesmeyenTarifler.length);
 
