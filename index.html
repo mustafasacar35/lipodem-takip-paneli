@@ -1215,14 +1215,25 @@
 
     // Eşleşmeyen Tarifler Panel Fonksiyonları
     function eslesmeyenTariflerPaneliGoster() {
-      // Aktif hafta var mı kontrol et
-      const aktivTab = document.querySelector('.tab-button.active');
+      // Seçili hasta var mı kontrol et
+      if (secilenHastaIndex === undefined || secilenHastaIndex === null) {
+        alert('Önce bir hasta seçiniz!');
+        return;
+      }
+      
+      // Aktif hafta tab'ını bul
+      const aktivTab = document.querySelector('.hafta-tab.active');
       if (!aktivTab) {
         alert('Önce bir hafta seçiniz!');
         return;
       }
       
       const haftaIndex = parseInt(aktivTab.dataset.haftaIndex);
+      if (isNaN(haftaIndex)) {
+        alert('Hafta bilgisi bulunamadı!');
+        return;
+      }
+      
       eslesmeyenTarifleriGoster(haftaIndex);
       document.getElementById('eslesmeyenTariflerPanel').style.display = 'block';
     }
@@ -3093,6 +3104,9 @@
       { id: 2, isim: "Fatma Demir", not: "Zeytin sevmez", arsiv: false },
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
+    
+    // Seçili hasta indexi (global değişken)
+    let secilenHastaIndex = null;
     
     // Türkçe karakter düzeltmesi uygula (mevcut veriler için)
     console.log('🔧 Mevcut veriler için Türkçe karakter düzeltmesi uygulanıyor...');
@@ -6840,6 +6854,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
+      // Global değişkeni güncelle
+      secilenHastaIndex = hastaIndex;
+      
       // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
       const actTab = document.querySelector('.hafta-tab.active');
       if (actTab) {
