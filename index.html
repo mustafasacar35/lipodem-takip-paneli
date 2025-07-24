@@ -5982,19 +5982,21 @@ function duzenleHafta(i) {
     // Ana div'e ekle
     eslesenDiv.appendChild(eslesmeyenContainer);
     
-    // TIKLAMA OLAYINI YENIDEN ATAN FONKSİYON
-    setTimeout(() => {
-      baslikDiv.onclick = function() {
-        console.log('TIKLANDI!');
-        if (icerikDiv.style.display === 'none') {
-          icerikDiv.style.display = 'block';
-          baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
-        } else {
-          icerikDiv.style.display = 'none';
-          baslikDiv.innerHTML = '<strong>🔽 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Tiklayin</strong>';
-        }
-      };
-    }, 100);
+    // DOĞRUDAN EVENT LISTENER EKLEYELİM
+    baslikDiv.addEventListener('click', function() {
+      console.log('ESLESMEYEN TARIFLER BUTONUNA TIKLANDI!');
+      if (icerikDiv.style.display === 'none') {
+        icerikDiv.style.display = 'block';
+        baslikDiv.innerHTML = '<strong>🔼 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Gizle</strong>';
+        console.log('LISTE ACILDI!');
+      } else {
+        icerikDiv.style.display = 'none';
+        baslikDiv.innerHTML = '<strong>🔽 Eslesmeyen Tarifler (' + eslesmeyenTarifler.length + ') - Tiklayin</strong>';
+        console.log('LISTE KAPANDI!');
+      }
+    });
+    
+    console.log('DEBUG: Event listener eklendi');
     
     console.log('✅ Eşleşmeyen tarifler DOM\'a eklendi');
   }
