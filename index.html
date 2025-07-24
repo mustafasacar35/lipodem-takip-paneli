@@ -5938,7 +5938,34 @@ function duzenleHafta(i) {
     akordiyonBaslik.style.borderRadius = '6px';
     akordiyonBaslik.style.width = '100%';
     akordiyonBaslik.style.textAlign = 'left';
+    akordiyonBaslik.style.position = 'relative';
+    akordiyonBaslik.style.zIndex = '1000';
+    akordiyonBaslik.style.outline = 'none';
+    akordiyonBaslik.style.userSelect = 'none';
     akordiyonBaslik.setAttribute('aria-expanded', 'false');
+    
+    // Global akordiyon toggle fonksiyonu oluştur
+    window['toggleAkordiyon_' + akordiyonId] = function() {
+      console.log('🔍 GLOBAL akordiyon fonksiyonu çağrıldı:', akordiyonId);
+      const icerikElement = document.getElementById(akordiyonId + '_icerik');
+      const baslikElement = document.getElementById(akordiyonId + '_baslik');
+      
+      if (icerikElement && baslikElement) {
+        const acikMi = icerikElement.style.display === 'block';
+        icerikElement.style.display = acikMi ? 'none' : 'block';
+        baslikElement.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+        
+        const simge = acikMi ? '▼' : '▲';
+        baslikElement.textContent = `${simge} Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+        
+        console.log('✅ GLOBAL akordiyon durumu:', acikMi ? 'Kapatıldı' : 'Açıldı');
+      }
+    };
+    
+    // Inline onclick ekle
+    akordiyonBaslik.setAttribute('onclick', 'window.toggleAkordiyon_' + akordiyonId + '()');
+    
+    console.log('🧪 Global fonksiyon oluşturuldu:', 'toggleAkordiyon_' + akordiyonId);
 
     // Akordiyon içerik
     const akordiyonIcerik = document.createElement('div');
@@ -5973,7 +6000,8 @@ function duzenleHafta(i) {
       const icerikElement = document.getElementById(akordiyonId + '_icerik');
       
       if (baslikElement && icerikElement) {
-        baslikElement.addEventListener('click', function(e) {
+        // Akordiyon toggle fonksiyonu
+        function toggleAkordiyon(e) {
           console.log('🔍 Akordiyon butonuna tıklandı!', akordiyonId);
           e.preventDefault();
           e.stopPropagation();
@@ -5987,6 +6015,23 @@ function duzenleHafta(i) {
           baslikElement.textContent = `${simge} Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
           
           console.log('✅ Akordiyon durumu değiştirildi:', acikMi ? 'Kapatıldı' : 'Açıldı');
+        }
+        
+        // Multiple event listeners ekle
+        baslikElement.addEventListener('click', toggleAkordiyon);
+        baslikElement.addEventListener('mousedown', toggleAkordiyon);
+        baslikElement.addEventListener('touchstart', toggleAkordiyon);
+        
+        // Test için onclick da ekle
+        baslikElement.onclick = toggleAkordiyon;
+        
+        // Element tıklanabilirliğini test et
+        console.log('🧪 Element test:', {
+          id: baslikElement.id,
+          display: getComputedStyle(baslikElement).display,
+          visibility: getComputedStyle(baslikElement).visibility,
+          pointerEvents: getComputedStyle(baslikElement).pointerEvents,
+          zIndex: getComputedStyle(baslikElement).zIndex
         });
         
         console.log('✅ Event listener başarıyla eklendi:', akordiyonId);
