@@ -7660,25 +7660,33 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF içeriğinden açıklayıcı dosya adı oluşturan fonksiyon
     function extractDescriptiveFileName(pdfText, haftaNo) {
       try {
+        console.log('🔍 PDF text analiz ediliyor:', pdfText.substring(0, 500)); // İlk 500 karakteri logla
+        
         // İlk satırları kontrol et (hasta adı ve tarih bilgisi için)
-        const lines = pdfText.split('\n').filter(line => line.trim());
+        const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         
         let hastaAdi = '';
         let tarihBilgisi = '';
         
-        // İlk 10 satırda hasta adı ve tarih ara
-        for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        // İlk 5 satırda hasta adı ve tarih ara
+        for (let i = 0; i < Math.min(lines.length, 5); i++) {
           const line = lines[i].trim();
+          console.log(`📝 Satır ${i + 1}:`, line);
           
-          // Hasta adı pattern: Büyük harflerle yazılmış ad soyad
-          if (!hastaAdi && /^[A-ZÇĞÜÖŞİ\s]{3,}$/.test(line) && line.length > 5 && line.length < 50) {
+          // Hasta adı pattern: Büyük harflerle yazılmış ad soyad (3-40 karakter arası)
+          if (!hastaAdi && /^[A-ZÇĞÜÖŞİ\s]{3,40}$/.test(line) && !line.includes('HAFTA') && !line.includes('2025') && !line.includes('TEMMUZ') && !line.includes('AĞUSTOS')) {
             hastaAdi = line;
+            console.log('👤 Hasta adı bulundu:', hastaAdi);
           }
           
-          // Tarih pattern: "28 TEMMUZ -3 AĞUSTOS 2025" benzeri
-          if (!tarihBilgisi && /\d{1,2}\s+(OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK).*\d{4}/.test(line)) {
+          // Tarih pattern: "28 TEMMUZ -3 AĞUSTOS 2025" veya "4-10 AĞUSTOS 2025" benzeri
+          if (!tarihBilgisi && /\d{1,2}.*?(OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK).*?\d{4}/.test(line)) {
             tarihBilgisi = line;
+            console.log('📅 Tarih bilgisi bulundu:', tarihBilgisi);
           }
+          
+          // Her iki bilgi de bulunduysa dur
+          if (hastaAdi && tarihBilgisi) break;
         }
         
         if (hastaAdi || tarihBilgisi) {
@@ -7693,29 +7701,41 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
               .trim();
           }
           
-          // Tarih bilgisini temizle ve formatla
+          // Tarih bilgisini temizle ve formatla (sadece önemli kısımları al)
           if (tarihBilgisi) {
-            tarihBilgisi = tarihBilgisi
+            // Sadece tarih kısmını al, gereksiz kelimelerden temizle
+            let cleanTarih = tarihBilgisi
               .toLowerCase()
               .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ü/g, 'u')
               .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/İ/g, 'i')
-              .replace(/[^a-z0-9\s-]/g, '')
-              .replace(/\s+/g, '_')
-              .replace(/_-_/g, '_')
+              .replace(/[^a-z0-9\s-]/g, ' ')
+              .replace(/\s+/g, ' ')
               .trim();
+            
+            // Sadece tarih ve ay kısmını al (fazla uzun olmasın)
+            const tarihParts = cleanTarih.split(' ').filter(part => 
+              /\d/.test(part) || 
+              ['ocak', 'subat', 'mart', 'nisan', 'mayis', 'haziran', 'temmuz', 'agustos', 'eylul', 'ekim', 'kasim', 'aralik'].includes(part)
+            );
+            
+            if (tarihParts.length > 0) {
+              tarihBilgisi = tarihParts.slice(0, 4).join('_'); // Max 4 parça al
+            }
           }
           
-          // Dosya adını oluştur
+          // Dosya adını oluştur (kısa ve öz)
           let fileName = '';
-          if (hastaAdi) fileName += hastaAdi;
-          if (tarihBilgisi) fileName += (fileName ? '_' : '') + tarihBilgisi;
+          if (hastaAdi) fileName += hastaAdi.substring(0, 30); // Max 30 karakter
+          if (tarihBilgisi) fileName += (fileName ? '_' : '') + tarihBilgisi.substring(0, 20); // Max 20 karakter
           if (haftaNo) fileName += (fileName ? '_' : '') + haftaNo + '_hafta';
           
-          if (fileName) {
+          if (fileName && fileName.length > 10) { // En az 10 karakter olsun
+            console.log('✅ Oluşturulan dosya adı:', fileName + '.pdf');
             return fileName + '.pdf';
           }
         }
         
+        console.log('⚠️ Yeterli bilgi bulunamadı, standart format kullanılıyor');
         // Fallback: Standart format
         return `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
         
