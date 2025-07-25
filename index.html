@@ -4708,31 +4708,48 @@ function duzenleHafta(i) {
           doc.text('(5. Haftadan itibaren)', 20, 40);
         }
         
-        // Aktif haftayı temel al (5. veya 9. hafta olabilir)
-        // ZIP fonksiyonundan çağrıldığı için aktif hafta bilgisini kullan
-        const aktifTab = document.querySelector('.hafta-tab.active');
-        const aktifHaftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) : 5;
+        // HER ZAMAN 5. haftanın pazartesinden başla (sidebar butonu ile aynı mantık)
+        // Aktif hafta 5 veya 9 olsa da, takvim hep 5. haftadan başlar
         
-        // Mevcut hafta listesinden uygun haftayı bul
-        const temelHafta = haftalar.find(h => h.haftaNo === aktifHaftaNo) || haftalar[0];
-        console.log(`📅 Temel hafta bulundu: ${temelHafta.haftaNo}. hafta, başlangıç: ${temelHafta.baslangic}`);
+        // 5. haftayı bul - önce aktif hafta listesinden, yoksa sabit tarihe dayalı hesaplama
+        let besinciHaftaBaslangic;
+        const besinciHaftaVeri = haftalar.find(h => h.haftaNo === 5);
         
-        const temelHaftaBaslangic = new Date(temelHafta.baslangic);
+        if (besinciHaftaVeri && besinciHaftaVeri.baslangic) {
+          // 5. hafta verisi mevcut, onu kullan
+          besinciHaftaBaslangic = new Date(besinciHaftaVeri.baslangic);
+          console.log(`📅 5. hafta verisi bulundu: ${besinciHaftaVeri.baslangic}`);
+        } else {
+          // 5. hafta verisi yok, aktif haftadan geriye hesapla
+          const aktifTab = document.querySelector('.hafta-tab.active');
+          const aktifHaftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) : 5;
+          const aktifHaftaVeri = haftalar.find(h => h.haftaNo === aktifHaftaNo) || haftalar[0];
+          
+          const aktifBaslangic = new Date(aktifHaftaVeri.baslangic);
+          const haftaFarki = aktifHaftaNo - 5; // Kaç hafta geri gideceğimiz
+          besinciHaftaBaslangic = new Date(aktifBaslangic.getTime() - (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+          console.log(`📅 5. hafta hesaplandı: ${aktifHaftaNo}. haftadan ${haftaFarki} hafta geri`);
+        }
         
-        // Temel hafta başlangıç tarihinin pazartesi olmasını garanti altına al
-        const haftaGunu = temelHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
         if (haftaGunu !== 1) { // Eğer pazartesi değilse
           const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
-          temelHaftaBaslangic.setDate(temelHaftaBaslangic.getDate() + gunFarki);
+          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
         }
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
+        // Aktif hafta numarasını al (hangi haftaların tamamlanmış olacağını belirlemek için)
+        const aktifTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) : 5;
+        console.log(`🎯 Aktif hafta numarası: ${aktifHaftaNo}, egzersiz dahil: ${egzersizDahilMi}`);
+        
         // Kompakt tablo (Blob için)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
-          const gercekHaftaNo = lenfHaftaIndex + aktifHaftaNo; // Aktif haftadan başla (5 veya 9)
-          const haftaBaslangic = new Date(temelHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const gercekHaftaNo = lenfHaftaIndex + 5; // HER ZAMAN 5. haftadan başla
+          const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
           doc.setTextColor(0, 0, 0);
@@ -4743,11 +4760,15 @@ function duzenleHafta(i) {
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
           
-          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-          if (egzersizDahilMi && gercekHaftaNo <= 8) {
-            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          // Aktif haftaya göre tamamlanmış haftaları belirle
+          // 5. hafta aktifse: tamamlanmış yok
+          // 9. hafta aktifse: 5-8. haftalar tamamlanmış (soluk renk)
+          const haftaTamamlanmis = gercekHaftaNo < aktifHaftaNo;
+          
+          if (haftaTamamlanmis) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk (tamamlanmış)
           } else {
-            doc.setTextColor(0, 0, 0); // Normal siyah renk
+            doc.setTextColor(0, 0, 0); // Normal siyah renk (aktuel)
           }
           
           doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
@@ -4789,61 +4810,68 @@ function duzenleHafta(i) {
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
             
-            // Uygulama kontrolü - seçili haftaya göre egzersiz dahil edilir
+            // Uygulama kontrolü - sidebar mantığıyla uyumlu
             let sabahUygulama = '-';
             let aksamUygulama = '-';
             
-            if (lenfHaftaIndex < 2) {
-              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = 'Lenf Masaji';
-            } else if (lenfHaftaIndex < 4) {
-              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = '-';
-            } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı
-              if (egzersizDahilMi) {
-                // Egzersiz dahil versiyonu (9. hafta seçiliyse)
-                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                  // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
-                  sabahUygulama = 'Lenf Masaji';
-                  aksamUygulama = 'Egzersiz-2';
-                } else {
-                  // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
-                  sabahUygulama = 'Egzersiz-1';
-                  aksamUygulama = 'Egzersiz-2';
-                }
-              } else {
-                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
-                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                  sabahUygulama = 'Lenf Masaji';
-                } else {
-                  sabahUygulama = '-';
-                }
+            // Hafta numarasına göre sidebar'daki gibi program uygula
+            const haftaSiraNo = lenfHaftaIndex + 1; // 1-8 arası
+            
+            if (haftaTamamlanmis) {
+              // Tamamlanmış haftalar için ✓ işareti
+              if (haftaSiraNo === 1) {
+                // 1. hafta: Günde 2 kez
+                sabahUygulama = '✓ Uygulandı';
+                aksamUygulama = '✓ Uygulandı';
+              } else if (haftaSiraNo === 2 || haftaSiraNo === 3) {
+                // 2-3. hafta: Sadece sabahları
+                sabahUygulama = '✓ Uygulandı';
+                aksamUygulama = '-';
+              } else if (haftaSiraNo === 4) {
+                // 4. hafta: Günaşırı sabahları
+                sabahUygulama = '✓ Günaşırı Uyg.';
                 aksamUygulama = '-';
               }
             } else {
-              // Son 2 hafta (11-12): Salı, Cuma lenf masajı
-              if (egzersizDahilMi) {
-                // Egzersiz dahil versiyonu (9+ hafta seçiliyse)
-                if (gunIndex === 1 || gunIndex === 4) {
-                  // Salı, Cuma: Lenf masajı + akşam egzersiz
-                  sabahUygulama = 'Lenf Masaji';
-                  aksamUygulama = 'Egzersiz-2';
-                } else {
-                  // Diğer günler: Sabah ve akşam egzersiz
-                  sabahUygulama = 'Egzersiz-1';
-                  aksamUygulama = 'Egzersiz-2';
-                }
-              } else {
-                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
-                if (gunIndex === 1 || gunIndex === 4) {
-                  sabahUygulama = 'Lenf Masaji';
+              // Aktuel haftalar için plan - sidebar mantığıyla aynı
+              if (haftaSiraNo === 1) {
+                // 1. hafta: Günde 2 kez
+                sabahUygulama = 'Lenf Masajı';
+                aksamUygulama = 'Lenf Masajı';
+              } else if (haftaSiraNo === 2 || haftaSiraNo === 3) {
+                // 2-3. hafta: Sadece sabahları
+                sabahUygulama = 'Lenf Masajı';
+                aksamUygulama = '-';
+              } else if (haftaSiraNo === 4 || haftaSiraNo === 5) {
+                // 4-5. hafta: Günaşırı sabahları
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  sabahUygulama = 'Lenf Masajı';
                 } else {
                   sabahUygulama = '-';
                 }
                 aksamUygulama = '-';
+              } else if (haftaSiraNo === 6 || haftaSiraNo === 7 || haftaSiraNo === 8) {
+                // 6-7-8. hafta: Salı-Cuma
+                if (egzersizDahilMi) {
+                  // 9. hafta PDF'i: Egzersiz dahil
+                  if (gunIndex === 1 || gunIndex === 4) {
+                    // Salı, Cuma: Lenf masajı + akşam egzersiz
+                    sabahUygulama = 'Lenf Masajı';
+                    aksamUygulama = 'Egzersiz';
+                  } else {
+                    // Diğer günler: Egzersiz
+                    sabahUygulama = 'Egzersiz';
+                    aksamUygulama = 'Egzersiz';
+                  }
+                } else {
+                  // 5. hafta PDF'i: Sadece lenf masajı
+                  if (gunIndex === 1 || gunIndex === 4) {
+                    sabahUygulama = 'Lenf Masajı';
+                  } else {
+                    sabahUygulama = '-';
+                  }
+                  aksamUygulama = '-';
+                }
               }
             }
             
