@@ -459,6 +459,7 @@
         <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
         <button onclick="debugSheetStructure()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 GID Debug</button>
         <button onclick="openSheetShareSettings()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🔓 Sheet Paylaşım Ayarı</button>
+        <button onclick="quickGidFix()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">⚡ Hızlı GID Düzelt</button>
         <button onclick="setupPatientSheetMapping()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ea4335; color:white; border:none; border-radius:3px; cursor:pointer;">⚙️ Sheet Eşleştir</button>
         <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Sheet Yönetimi</button>
         
@@ -7551,8 +7552,32 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         hesaplananPDFTabGid: 12 + haftaNo
       });
       
-      // PDF tab'ının gid'ini hesapla
-      const pdfTabGid = 12 + haftaNo; // 13. tab (gid=13) 1. hafta PDF'i
+      // PDF tab'ının gid'ini hesapla (dinamik formül)
+      const savedFormula = localStorage.getItem('gidFormula');
+      let pdfTabGid;
+      
+      switch(savedFormula) {
+        case '1': // 13 + hafta - 1
+          pdfTabGid = 13 + haftaNo - 1;
+          break;
+        case '2': // hafta + 13  
+          pdfTabGid = haftaNo + 13;
+          break;
+        case '3': // (hafta - 1) + 14
+          pdfTabGid = (haftaNo - 1) + 14;
+          break;
+        case '4': // hafta * 2 + 11
+          pdfTabGid = haftaNo * 2 + 11;
+          break;
+        default: // Varsayılan: 12 + hafta
+          pdfTabGid = 12 + haftaNo;
+      }
+      
+      console.log('🔢 GID hesaplama:', {
+        haftaNo: haftaNo,
+        savedFormula: savedFormula || 'varsayılan',
+        hesaplananGid: pdfTabGid
+      });
       
       // Google Sheets PDF export URL'i
       const pdfUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${pdfTabGid}&portrait=true&fitw=true`;
@@ -7646,41 +7671,57 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const aktifTab = document.querySelector('.hafta-tab.active');
       const haftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) || (parseInt(aktifTab.dataset.haftaIndex) + 1) : 1;
       
+      // Farklı GID hesaplama yöntemlerini test et
+      const gidFormulleri = [
+        { formula: `12 + ${haftaNo}`, result: 12 + haftaNo, name: "Mevcut (12 + hafta)" },
+        { formula: `13 + ${haftaNo} - 1`, result: 13 + haftaNo - 1, name: "Alternatif 1 (13 + hafta - 1)" },
+        { formula: `${haftaNo} + 12`, result: haftaNo + 12, name: "Alternatif 2 (hafta + 12)" },
+        { formula: `${haftaNo - 1} + 13`, result: (haftaNo - 1) + 13, name: "Alternatif 3 (hafta-1 + 13)" },
+        { formula: `${haftaNo * 2} + 11`, result: (haftaNo * 2) + 11, name: "Alternatif 4 (hafta*2 + 11)" },
+        { formula: `2000000${haftaNo}`, result: 2000000000 + haftaNo, name: "Sheet ID Format" }
+      ];
+      
       const testUrls = [];
-      for (let gid = 10; gid <= 30; gid++) {
+      gidFormulleri.forEach(gid => {
+        const url = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${gid.result}&portrait=true&fitw=true`;
+        testUrls.push(`<p><a href="${url}" target="_blank" style="color:#4285f4; text-decoration:none; display:block; padding:5px; border:1px solid #ddd; margin:2px 0; border-radius:3px;">${gid.name}: GID ${gid.result}</a></p>`);
+      });
+      
+      // Ek manuel test GID'leri
+      for (let gid = 0; gid <= 30; gid++) {
         const url = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${gid}&portrait=true&fitw=true`;
-        testUrls.push(`<p><a href="${url}" target="_blank">GID ${gid} PDF Test</a></p>`);
+        testUrls.push(`<p><a href="${url}" target="_blank" style="color:#666; text-decoration:none; display:block; padding:3px; border:1px solid #eee; margin:1px 0; border-radius:2px; font-size:11px;">Manuel Test: GID ${gid}</a></p>`);
       }
       
       // Debug popup
       const debugDiv = document.createElement('div');
       debugDiv.innerHTML = `
-        <div style="position: fixed; top: 5%; left: 5%; width: 90%; height: 90%; 
-                    background: white; padding: 20px; border: 2px solid #4285f4; border-radius: 8px; 
+        <div style="position: fixed; top: 2%; left: 2%; width: 96%; height: 96%; 
+                    background: white; padding: 15px; border: 2px solid #4285f4; border-radius: 8px; 
                     box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; overflow-y: auto;">
           <h3>🔍 Sheet Yapısı Debug</h3>
           <p><strong>${seciliHasta.isim} - ${haftaNo}. Hafta</strong></p>
           <p><strong>Sheet ID:</strong> ${hastaMapping.sheetId}</p>
-          <p><strong>Hesaplanan GID:</strong> ${12 + haftaNo} (PDF Tab için)</p>
+          <p><strong>Şu anda kullanılan:</strong> GID ${12 + haftaNo}</p>
           
-          <div style="background:#fff3cd; padding:10px; margin:10px 0; border-radius:5px; border-left:3px solid #ffc107;">
-            <strong>⚠️ ÖNEMLİ:</strong> Eğer tüm linkler "sayfa bulunamadı" veriyor ise:<br>
-            <strong>1.</strong> Google Sheet'inizi açın<br>
-            <strong>2.</strong> Sağ üstte "Share" butonuna tıklayın<br>
-            <strong>3.</strong> "Anyone with the link can view" seçin<br>
-            <strong>4.</strong> "Done" butonuna tıklayın<br>
-            <strong>5.</strong> Sonra tekrar test edin
+          <h4 style="color:#28a745;">🎯 Öncelikli Test (Farklı Formüller):</h4>
+          <div style="column-count: 2; column-gap: 10px; margin-bottom: 20px;">
+            ${testUrls.slice(0, 6).join('')}
           </div>
           
-          <h4>📋 GID Test Listesi (Hangi tab doğru PDF'i veriyor?):</h4>
-          <div style="column-count: 2; column-gap: 20px;">
-            ${testUrls.join('')}
+          <h4 style="color:#666;">📋 Manuel Test (GID 0-30):</h4>
+          <div style="column-count: 4; column-gap: 10px; font-size: 11px;">
+            ${testUrls.slice(6).join('')}
           </div>
-          <br>
-          <p><strong>💡 Nasıl kullanılır:</strong><br>
-          Yukarıdaki linklere tıklayarak hangi GID'nin doğru PDF'i verdiğini bulun.<br>
-          Örneğin ${haftaNo}. hafta PDF'i GID 15'te çıkıyorsa, kod düzeltilmeli.</p>
-          <br>
+          
+          <div style="background:#e7f3ff; padding:10px; margin:15px 0; border-radius:5px;">
+            <strong>💡 Nasıl Test Edilir:</strong><br>
+            1. Yukarıdaki linklere tıklayın<br>
+            2. Hangi link ${haftaNo}. hafta PDF'ini gösteriyorsa, o GID doğru<br>
+            3. Doğru GID'yi bana söyleyin, kodu güncelleyeyim<br>
+            4. "Sayfa bulunamadı" = Yanlış GID, "PDF açılıyor" = Doğru GID
+          </div>
+          
           <button onclick="this.parentElement.parentElement.remove()" 
                   style="background: #4285f4; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
             Kapat
@@ -7716,6 +7757,95 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         alert(`🔓 ${seciliHasta.isim} Sheet Paylaşım Ayarları açıldı!\n\n📋 YAPMANIZ GEREKENLER:\n1. "Anyone with the link" seçeneğini seçin\n2. "Viewer" (görüntüleyici) seçin\n3. "Done" butonuna tıklayın\n\n✅ Bu ayarı yaptıktan sonra PDF linkleri çalışacak!`);
       } else {
         alert(`❌ Popup engellendi!\n\n🔗 Manuel link:\n${shareUrl}\n\nBu link ile Sheet paylaşım ayarlarını açabilirsiniz.`);
+      }
+    }
+
+    // Hızlı GID düzeltmesi - yaygın formülleri dener
+    function quickGidFix() {
+      if (!seciliHasta) {
+        alert('⚠️ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      const hastaSheetMappings = JSON.parse(localStorage.getItem('hastaSheetMappings') || '{}');
+      const hastaMapping = hastaSheetMappings[seciliHasta.id];
+      
+      if (!hastaMapping) {
+        alert('⚠️ Önce sheet eşleştirmesi yapın!');
+        return;
+      }
+      
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const haftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) || (parseInt(aktifTab.dataset.haftaIndex) + 1) : 1;
+      
+      // Yaygın GID formüllerini test et
+      const formüller = [
+        { name: "Formül 1", gid: 13 + haftaNo - 1, desc: "13 + hafta - 1" },
+        { name: "Formül 2", gid: haftaNo + 13, desc: "hafta + 13" },
+        { name: "Formül 3", gid: (haftaNo - 1) + 14, desc: "hafta - 1 + 14" },
+        { name: "Formül 4", gid: haftaNo * 2 + 11, desc: "hafta * 2 + 11" }
+      ];
+      
+      let testHtml = '';
+      formüller.forEach((f, index) => {
+        const url = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${f.gid}&portrait=true&fitw=true`;
+        testHtml += `
+          <div style="border:1px solid #ddd; padding:10px; margin:5px 0; border-radius:5px;">
+            <strong>${f.name}:</strong> ${f.desc} = GID ${f.gid}<br>
+            <a href="${url}" target="_blank" style="color:#4285f4;">🔗 Test Et</a>
+            <button onclick="applyGidFormula(${index + 1}, ${f.gid}, '${f.desc}')" 
+                    style="background:#28a745; color:white; padding:5px 10px; border:none; border-radius:3px; margin-left:10px; cursor:pointer;">
+              ✅ Bu Formülü Kullan
+            </button>
+          </div>
+        `;
+      });
+      
+      const quickDiv = document.createElement('div');
+      quickDiv.innerHTML = `
+        <div style="position: fixed; top: 10%; left: 10%; width: 80%; height: 80%; 
+                    background: white; padding: 20px; border: 2px solid #28a745; border-radius: 8px; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; overflow-y: auto;">
+          <h3>⚡ Hızlı GID Düzeltmesi</h3>
+          <p><strong>${seciliHasta.isim} - ${haftaNo}. Hafta</strong></p>
+          <p>Şu anda: GID ${12 + haftaNo} (12 + hafta) kullanılıyor</p>
+          
+          <h4>🔧 Alternatif Formülleri Test Edin:</h4>
+          ${testHtml}
+          
+          <div style="background:#e7f3ff; padding:10px; margin:15px 0; border-radius:5px;">
+            <strong>📋 Nasıl Kullanılır:</strong><br>
+            1. "🔗 Test Et" linklerine tıklayın<br>
+            2. Doğru PDF'i gösteren formülü bulun<br>
+            3. "✅ Bu Formülü Kullan" butonuna tıklayın<br>
+            4. Sistem otomatik güncellenir
+          </div>
+          
+          <button onclick="this.parentElement.parentElement.remove()" 
+                  style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            Kapat
+          </button>
+        </div>
+      `;
+      document.body.appendChild(quickDiv);
+    }
+
+    // GID formülünü uygula
+    function applyGidFormula(formulIndex, testGid, formulDesc) {
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const haftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) || (parseInt(aktifTab.dataset.haftaIndex) + 1) : 1;
+      
+      if (confirm(`Bu formülü kullanmak istediğinizden emin misiniz?\n\n${formulDesc}\n\n${haftaNo}. hafta için GID ${testGid} kullanılacak.`)) {
+        // LocalStorage'a formül kaydet
+        localStorage.setItem('gidFormula', formulIndex.toString());
+        
+        alert(`✅ GID formülü güncellendi!\n\nYeni formül: ${formulDesc}\n\nArtık PDF çekme işlemi bu formülü kullanacak.`);
+        
+        // Popup'ı kapat
+        const popup = document.querySelector('[style*="position: fixed"][style*="z-index: 10000"]');
+        if (popup && popup.parentElement) {
+          popup.parentElement.remove();
+        }
       }
     }
 
