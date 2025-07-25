@@ -440,6 +440,15 @@
         </div>
       </div>
 
+      <!-- Kaydetme Durumu -->
+      <div class="sidebar-section">
+        <h3>💾 Kaydetme Durumu</h3>
+        <div id="saveStatus" style="font-size: 12px; line-height: 1.4; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
+          <div id="saveIcon" style="font-size: 16px; margin-bottom: 4px;">💤</div>
+          <div id="saveText">Beklemede</div>
+        </div>
+      </div>
+
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
@@ -1086,7 +1095,32 @@
 
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
-      if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
+      if (!token) { 
+        console.warn('⚠️ GitHub API token gerekli');
+        showSaveNotification('error');
+        return; 
+      }
+      
+      // Token geçerliliğini test et
+      try {
+        const testResponse = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `token ${token}` }
+        });
+        
+        if (!testResponse.ok) {
+          console.error('❌ GitHub token geçersiz:', await testResponse.json());
+          showSaveNotification('error');
+          // Sadece konsol uyarısı, alert kaldırıldı
+          return;
+        }
+        
+        console.log('✅ GitHub token geçerli');
+      } catch (error) {
+        console.error('❌ Token test hatası:', error);
+        showSaveNotification('error');
+        return;
+      }
+      
       const owner = 'mustafasacar35'; // GitHub kullanıcı adın
       const repo = 'lipodem-takip-paneli'; // Repo adı
       const path = 'data/hasta_kayitlari.json'; // Dosya yolu (repo içinde data/ klasörü olmalı)
@@ -1153,7 +1187,8 @@
       if (res.ok) {
         // Cache timestamp'ini güncelle
         localStorage.setItem('lastGithubUpdate', Date.now().toString());
-        alert('✅ GitHub\'a başarıyla kaydedildi!');
+        console.log('✅ GitHub\'a başarıyla kaydedildi!');
+        // Alert kaldırıldı - sidebar'da ikon gösteriliyor
         console.log('✅ GitHub upload başarılı');
       } else {
         const errorText = await res.text();
@@ -3007,19 +3042,30 @@
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
     function saveToStorage() {
       try {
+        showSaveNotification('saving'); // Kaydetme başlıyor
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
         // Hasta sayılarını güncelle
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari();
         }
         
+        showSaveNotification('saved'); // Local kaydetme tamamlandı
+        
         // GitHub'a otomatik kaydetme (2 saniye sonra)
         clearTimeout(window.githubSaveTimeout);
         window.githubSaveTimeout = setTimeout(() => {
-          uploadToGitHub();
+          showSaveNotification('github_saving'); // GitHub'a kaydetme başlıyor
+          uploadToGitHub().then(() => {
+            showSaveNotification('github_saved'); // GitHub'a kaydetme tamamlandı
+          }).catch(() => {
+            showSaveNotification('error'); // Hata
+          });
         }, 2000);
         
-      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+      } catch(e) { 
+        console.error('localStorage kaydetme hatası:', e);
+        showSaveNotification('error');
+      }
     }
     function loadFromStorage() {
       try {
@@ -7099,53 +7145,55 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     });
 
-    // Kısa kaydetme bildirimi göster
-    function showSaveNotification() {
-      // Mevcut bildirimi kaldır
-      const existingNotification = document.getElementById('saveNotification');
-      if (existingNotification) {
-        existingNotification.remove();
+    // Kaydetme durumunu sidebar'da göster
+    function showSaveNotification(type = 'saved') {
+      const saveIcon = document.getElementById('saveIcon');
+      const saveText = document.getElementById('saveText');
+      const saveStatus = document.getElementById('saveStatus');
+      
+      if (!saveIcon || !saveText || !saveStatus) return;
+      
+      // Kaydetme durumuna göre ikon ve mesaj
+      switch(type) {
+        case 'saving':
+          saveIcon.textContent = '⏳';
+          saveText.textContent = 'Kaydediliyor...';
+          saveStatus.style.background = '#fff3cd';
+          break;
+        case 'saved':
+          saveIcon.textContent = '✅';
+          saveText.textContent = 'Kaydedildi';
+          saveStatus.style.background = '#d4edda';
+          break;
+        case 'github_saving':
+          saveIcon.textContent = '🔄';
+          saveText.textContent = 'GitHub\'a kaydediliyor...';
+          saveStatus.style.background = '#cce5ff';
+          break;
+        case 'github_saved':
+          saveIcon.textContent = '🐙';
+          saveText.textContent = 'GitHub\'a kaydedildi';
+          saveStatus.style.background = '#d4edda';
+          break;
+        case 'error':
+          saveIcon.textContent = '❌';
+          saveText.textContent = 'Hata oluştu';
+          saveStatus.style.background = '#f8d7da';
+          break;
+        default:
+          saveIcon.textContent = '💤';
+          saveText.textContent = 'Beklemede';
+          saveStatus.style.background = '#f8f9fa';
       }
       
-      // Yeni bildirim oluştur
-      const notification = document.createElement('div');
-      notification.id = 'saveNotification';
-      notification.innerHTML = '💾 Kaydedildi';
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #28a745;
-        color: white;
-        padding: 8px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-        z-index: 10000;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        opacity: 0;
-        transform: translateY(-10px);
-        transition: all 0.3s ease;
-      `;
-      
-      document.body.appendChild(notification);
-      
-      // Animasyonla göster
-      setTimeout(() => {
-        notification.style.opacity = '1';
-        notification.style.transform = 'translateY(0)';
-      }, 10);
-      
-      // 2 saniye sonra kaldır
-      setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-10px)';
+      // 3 saniye sonra beklemede durumuna dön
+      if (type !== 'error') {
         setTimeout(() => {
-          if (notification.parentNode) {
-            notification.remove();
-          }
-        }, 300);
-      }, 2000);
+          saveIcon.textContent = '💤';
+          saveText.textContent = 'Beklemede';
+          saveStatus.style.background = '#f8f9fa';
+        }, 3000);
+      }
     }
 
     // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
