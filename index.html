@@ -455,8 +455,24 @@
         <input type="text" id="googleSheetsApiKey" placeholder="Google Sheets API Key" style="width:100%; margin-bottom:5px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGoogleSheetsConnection()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#4285f4; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 API Test</button>
         <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">� Hasta Sheets Yönet</button>
-        <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Çek (Aktif Hafta)</button>
+        <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç (Yeni Sekme)</button>
+        <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
         <button onclick="setupPatientSheetMapping()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ea4335; color:white; border:none; border-radius:3px; cursor:pointer;">⚙️ Sheet Eşleştir</button>
+        <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Sheet Yönetimi</button>
+        
+        <div style="background:#fff3cd; padding:5px; margin:5px 0; border-radius:3px; font-size:9px; line-height:1.2; border-left:3px solid #ffc107;">
+          <strong>⚠️ CORS Sorunu:</strong><br>
+          Tarayıcı güvenliği nedeniyle otomatik indirme çalışmıyor.<br>
+          <strong>Çözüm:</strong> "📄 PDF Aç" ile yeni sekmede açıp manuel kaydedin.
+        </div>
+        
+        <div style="background:#e7f4ff; padding:5px; margin:5px 0; border-radius:3px; font-size:9px; line-height:1.2;">
+          <strong>📋 Kullanım:</strong><br>
+          1. API Key al → Test et<br>
+          2. Hasta seç → Sheet eşleştir<br>
+          3. Hafta seç → PDF aç<br>
+          4. Manuel: Sağ tık → "Farklı kaydet"
+        </div>
       </div>
 
       <!-- Araçlar -->
@@ -7500,17 +7516,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       alert(message);
     }
 
-    // Aktif hafta için PDF çek
-    async function loadPatientPDFFromSheets() {
+    // Aktif hafta için PDF çek (CORS sorunu nedeniyle popup yöntemi)
+    function loadPatientPDFFromSheets() {
       if (!seciliHasta) {
         alert('⚠️ Lütfen önce bir hasta seçin!');
-        return;
-      }
-      
-      const apiKey = document.getElementById('googleSheetsApiKey').value.trim() || localStorage.getItem('googleSheetsApiKey');
-      
-      if (!apiKey) {
-        alert('⚠️ Google Sheets API Key gerekli!\n\n"🔗 API Test" butonunu kullanın.');
         return;
       }
       
@@ -7530,51 +7539,89 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const hafta = haftalar[aktifHaftaIndex];
       const haftaNo = hafta ? (hafta.haftaNo || (aktifHaftaIndex + 1)) : 1;
       
-      try {
-        console.log('📄 Google Sheets\'ten PDF çekiliyor...');
-        console.log('🔍 Detaylar:', {
-          hastaAdi: seciliHasta.isim,
-          hastaId: seciliHasta.id,
-          sheetId: hastaMapping.sheetId,
-          haftaNo: haftaNo,
-          aktifHaftaIndex: aktifHaftaIndex
-        });
+      console.log('📄 Google Sheets PDF açılıyor (popup)...');
+      console.log('🔍 Detaylar:', {
+        hastaAdi: seciliHasta.isim,
+        hastaId: seciliHasta.id,
+        sheetId: hastaMapping.sheetId,
+        haftaNo: haftaNo,
+        aktifHaftaIndex: aktifHaftaIndex
+      });
+      
+      // PDF tab'ının gid'ini hesapla
+      const pdfTabGid = 12 + haftaNo; // 13. tab (gid=13) 1. hafta PDF'i
+      
+      // Google Sheets PDF export URL'i
+      const pdfUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${pdfTabGid}&portrait=true&fitw=true`;
+      
+      console.log('🔗 PDF URL:', pdfUrl);
+      
+      // Yeni sekmede aç (CORS sorunu olmaz)
+      const popup = window.open(pdfUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+      
+      if (popup) {
+        console.log('✅ PDF yeni sekmede açıldı!');
+        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\nSağ tık → "Farklı kaydet" ile indirebilirsiniz.`);
+      } else {
+        alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
         
-        // PDF tab'ının gid'ini hesapla (varsayılan: PDF tabları 13. hafta sonrası)
-        // İlk 13 tab: liste (gid: 0, 1, 2... 12)
-        // Sonraki 13 tab: PDF (gid: 13, 14, 15... 25)
-        const pdfTabGid = 12 + haftaNo; // 13. tab (gid=13) 1. hafta PDF'i
-        
-        // Google Sheets PDF export URL'i
-        const pdfUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${pdfTabGid}&portrait=true&fitw=true`;
-        
-        console.log('🔗 PDF URL:', pdfUrl);
-        
-        // PDF'i fetch et
-        const pdfResponse = await fetch(pdfUrl);
-        
-        if (!pdfResponse.ok) {
-          throw new Error(`PDF indirilemedi: ${pdfResponse.status} ${pdfResponse.statusText}`);
-        }
-        
-        const pdfBlob = await pdfResponse.blob();
-        
-        // PDF'i otomatik indir
-        const url = window.URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${seciliHasta.isim}_Hafta${haftaNo}_Menu.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        console.log('✅ PDF başarıyla indirildi!');
-        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i indirildi!`);
-        
-      } catch (error) {
-        console.error('❌ PDF çekme hatası:', error);
-        alert(`❌ PDF çekme hatası:\n${error.message}\n\n🔧 Kontrol Edin:\n- Sheet ID doğru mu?\n- ${haftaNo}. hafta PDF tab'ı var mı?\n- Sheet herkese açık mı?`);
+        // Manuel link göster
+        const linkDiv = document.createElement('div');
+        linkDiv.innerHTML = `
+          <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                      background: white; padding: 20px; border: 2px solid #4285f4; border-radius: 8px; 
+                      box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; max-width: 500px;">
+            <h3>📄 PDF Linki</h3>
+            <p><strong>${seciliHasta.isim} - ${haftaNo}. Hafta</strong></p>
+            <a href="${pdfUrl}" target="_blank" style="color: #4285f4; word-break: break-all;">${pdfUrl}</a>
+            <br><br>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: #4285f4; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+              Kapat
+            </button>
+          </div>
+        `;
+        document.body.appendChild(linkDiv);
+      }
+    }
+
+    // Google Sheets tab'ını direkt aç
+    function openPatientSheetDirect() {
+      if (!seciliHasta) {
+        alert('⚠️ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      const hastaSheetMappings = JSON.parse(localStorage.getItem('hastaSheetMappings') || '{}');
+      const hastaMapping = hastaSheetMappings[seciliHasta.id];
+      
+      if (!hastaMapping) {
+        alert(`⚠️ ${seciliHasta.isim} için Sheet ID bulunamadı!\n\n"⚙️ Sheet Eşleştir" butonunu kullanın.`);
+        return;
+      }
+      
+      // Aktif haftayı al
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+      const haftalar = getHaftaListesi();
+      const hafta = haftalar[aktifHaftaIndex];
+      const haftaNo = hafta ? (hafta.haftaNo || (aktifHaftaIndex + 1)) : 1;
+      
+      // PDF tab'ının gid'ini hesapla
+      const pdfTabGid = 12 + haftaNo;
+      
+      // Google Sheets URL'i (düzenlenebilir)
+      const sheetUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/edit#gid=${pdfTabGid}`;
+      
+      console.log('� Sheet URL:', sheetUrl);
+      
+      // Yeni sekmede aç
+      const popup = window.open(sheetUrl, '_blank');
+      
+      if (popup) {
+        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta Sheet'i açıldı!\n\nFile → Download → PDF ile indirebilirsiniz.`);
+      } else {
+        alert(`❌ Popup engellendi!\n\n🔗 Manuel link:\n${sheetUrl}`);
       }
     }
 
