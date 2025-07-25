@@ -7700,7 +7700,12 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
           
           // Hafta verilerini kaydet (localStorage + GitHub)
-          saveHaftaData();
+          const hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+          const hastaIndex = hastalar.findIndex(h => h.id === seciliHasta.id);
+          if (hastaIndex >= 0) {
+            hastalar[hastaIndex].haftalar = haftalar;
+            localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+          }
           
           console.log('✅ Sheet PDF sisteme kaydedildi');
           
