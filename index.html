@@ -7581,8 +7581,11 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           case '4': // hafta * 2 + 11
             pdfTabGid = haftaNo * 2 + 11;
             break;
-          default: // Varsayılan: 12 + hafta
-            pdfTabGid = 12 + haftaNo;
+          case '5': // hafta + 3 (Yeni: 2.hafta=5.tab=GID4)
+            pdfTabGid = haftaNo + 3;
+            break;
+          default: // Yeni Varsayılan: hafta + 3 (2.hafta=GID4, 5.tab)
+            pdfTabGid = haftaNo + 3;
         }
       }
       
@@ -7688,7 +7691,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Farklı GID hesaplama yöntemlerini test et
       const gidFormulleri = [
-        { formula: `12 + ${haftaNo}`, result: 12 + haftaNo, name: "Mevcut (12 + hafta)" },
+        { formula: `${haftaNo} + 3`, result: haftaNo + 3, name: "Yeni Varsayılan (hafta + 3)" },
+        { formula: `12 + ${haftaNo}`, result: 12 + haftaNo, name: "Eski Varsayılan (12 + hafta)" },
         { formula: `13 + ${haftaNo} - 1`, result: 13 + haftaNo - 1, name: "Alternatif 1 (13 + hafta - 1)" },
         { formula: `${haftaNo} + 12`, result: haftaNo + 12, name: "Alternatif 2 (hafta + 12)" },
         { formula: `${haftaNo - 1} + 13`, result: (haftaNo - 1) + 13, name: "Alternatif 3 (hafta-1 + 13)" },
