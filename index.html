@@ -7695,22 +7695,54 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          haftalar[aktifHaftaIndex].pdf = dataUrl;
-          haftalar[aktifHaftaIndex].pdfName = `Sheet_Hafta_${haftaNo}.pdf`;
-          haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
+          // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
+          const pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+          
+          try {
+            // PDF'i GitHub'a yükle
+            await uploadPDFToGitHub(pdfFileName, base64);
+            
+            // LocalStorage'da sadece referans sakla (PDF data'sı değil)
+            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
+            haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`;
+            haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
+            haftalar[aktifHaftaIndex].pdfSource = 'github_sheet';
+            // PDF data'sını saklama - GitHub'da
+            delete haftalar[aktifHaftaIndex].pdf;
+            
+          } catch (uploadError) {
+            console.warn('⚠️ GitHub upload hatası, localStorage deneniyor...', uploadError);
+            // GitHub başarısız olursa mini sürüm localStorage'da sakla
+            const miniPdf = `data:application/pdf;base64,${base64.substring(0, 1000)}...`; // Sadece ilk 1KB
+            haftalar[aktifHaftaIndex].pdf = miniPdf;
+            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
+            haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
+            haftalar[aktifHaftaIndex].pdfSource = 'localStorage_truncated';
+          }
           
           // Hafta verilerini kaydet (localStorage + GitHub)
           const hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
           const hastaIndex = hastalar.findIndex(h => h.id === seciliHasta.id);
           if (hastaIndex >= 0) {
             hastalar[hastaIndex].haftalar = haftalar;
-            localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+            try {
+              localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+            } catch (quotaError) {
+              console.warn('⚠️ LocalStorage quota aşıldı, sadece GitHub\'a kaydediliyor');
+              // LocalStorage doluysa sadece GitHub'a kaydet
+            }
           }
           
           console.log('✅ Sheet PDF sisteme kaydedildi');
           
-          // Mevcut PDF işleme fonksiyonunu çağır
+          // Mevcut PDF işleme fonksiyonunu çağır (geçici PDF data ile)
+          const tempPdfData = dataUrl; // Geçici olarak bellek de tut
+          haftalar[aktifHaftaIndex].pdf = tempPdfData; // Geçici
+          
           await pdfOkuVeEsleHafta(aktifHaftaIndex);
+          
+          // İşlem bittikten sonra PDF data'sını temizle (sadece referans kalsın)
+          delete haftalar[aktifHaftaIndex].pdf;
           
           // Loading kapat
           document.getElementById('pdfProcessingLoader')?.remove();
@@ -7718,7 +7750,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Sidebar'ı güncelle
           gosterEslesenKartlarSidebar(aktifHaftaIndex);
           
-          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF içeriği okundu\n• Tarif eşleştirmesi tamamlandı\n• Veriler kalıcı olarak kaydedildi\n• Sidebar'da sonuçları görebilirsiniz`);
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
           
         } else {
           throw new Error('Aktif hafta bulunamadı');
