@@ -4146,17 +4146,31 @@ function duzenleHafta(i) {
       reader.onload = async function(e) {
         const haftalar = getHaftaListesi();
         
-        // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
-        const pdfFileName = `pdf_${seciliHasta.id}_hafta_${i}_${Date.now()}.pdf`;
+        // PDF dosya adını oluştur - orijinal ismi koru
+        const originalFileName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim || 'Hasta').replace(/\s+/g, '_');
+        const haftaNo = i + 1;
+        
+        // Dosya adı formatı: HastaAdı_HaftaNo_OriginalName.pdf
+        const fileExtension = originalFileName.substring(originalFileName.lastIndexOf('.'));
+        const fileNameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
+        const pdfFileName = `${hastaAdi}_Hafta${haftaNo}_${fileNameWithoutExt}${fileExtension}`;
+        
+        console.log('📁 PDF dosya adı oluşturuldu:', {
+          original: file.name,
+          cleaned: originalFileName,
+          final: pdfFileName
+        });
+        
         const base64Data = e.target.result.split(',')[1];
         
         try {
           // GitHub'a ayrı PDF dosyası olarak yükle
           console.log('📤 PDF GitHub\'a yükleniyor:', pdfFileName);
-          await uploadPDFToGitHub(pdfFileName, base64Data);
+          const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
           
           // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
-          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${pdfFileName}`;
+          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
           haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
           
@@ -4164,6 +4178,7 @@ function duzenleHafta(i) {
             index: i,
             originalFileName: file.name,
             savedPdfName: haftalar[i].pdfName,
+            actualFileName: actualFileName,
             pdfUrl: haftalar[i].pdfUrl,
             kayitTarihi: haftalar[i].kayitTarihi
           });
@@ -7281,14 +7296,40 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         // Önce pdfs klasörünün varlığını kontrol et ve gerekirse oluştur
         await ensurePDFDirectoryExists();
         
-        const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${fileName}`, {
+        // Aynı dosya adı varsa kontrol et
+        let finalFileName = fileName;
+        let counter = 1;
+        
+        while (true) {
+          const checkResponse = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${finalFileName}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          
+          if (checkResponse.status === 404) {
+            // Dosya yok, kullanabiliriz
+            break;
+          } else if (checkResponse.ok) {
+            // Dosya var, yeni isim oluştur
+            const dotIndex = fileName.lastIndexOf('.');
+            const namepart = fileName.substring(0, dotIndex);
+            const extension = fileName.substring(dotIndex);
+            finalFileName = `${namepart}_${counter}${extension}`;
+            counter++;
+            console.log(`📝 Dosya mevcut, yeni isim: ${finalFileName}`);
+          } else {
+            // Başka bir hata
+            break;
+          }
+        }
+        
+        const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${finalFileName}`, {
           method: 'PUT',
           headers: {
             'Authorization': `token ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            message: `PDF yüklendi: ${fileName}`,
+            message: `PDF yüklendi: ${finalFileName}`,
             content: base64Data
           })
         });
@@ -7297,8 +7338,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           throw new Error(`GitHub API hatası: ${response.status}`);
         }
         
-        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', fileName);
-        return true;
+        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName);
+        return finalFileName; // Gerçek dosya adını döndür
       } catch (error) {
         console.error('❌ PDF GitHub\'a yüklenemedi:', error);
         throw error;
