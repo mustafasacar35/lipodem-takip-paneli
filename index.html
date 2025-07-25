@@ -7657,6 +7657,74 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
 
     // Sheet PDF'ini download edip tarif eşleştirmesi için işle
+    // PDF içeriğinden açıklayıcı dosya adı oluşturan fonksiyon
+    function extractDescriptiveFileName(pdfText, haftaNo) {
+      try {
+        // İlk satırları kontrol et (hasta adı ve tarih bilgisi için)
+        const lines = pdfText.split('\n').filter(line => line.trim());
+        
+        let hastaAdi = '';
+        let tarihBilgisi = '';
+        
+        // İlk 10 satırda hasta adı ve tarih ara
+        for (let i = 0; i < Math.min(lines.length, 10); i++) {
+          const line = lines[i].trim();
+          
+          // Hasta adı pattern: Büyük harflerle yazılmış ad soyad
+          if (!hastaAdi && /^[A-ZÇĞÜÖŞİ\s]{3,}$/.test(line) && line.length > 5 && line.length < 50) {
+            hastaAdi = line;
+          }
+          
+          // Tarih pattern: "28 TEMMUZ -3 AĞUSTOS 2025" benzeri
+          if (!tarihBilgisi && /\d{1,2}\s+(OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK).*\d{4}/.test(line)) {
+            tarihBilgisi = line;
+          }
+        }
+        
+        if (hastaAdi || tarihBilgisi) {
+          // Hasta adını temizle ve formatla
+          if (hastaAdi) {
+            hastaAdi = hastaAdi
+              .toLowerCase()
+              .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+              .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/İ/g, 'i')
+              .replace(/[^a-z0-9\s]/g, '')
+              .replace(/\s+/g, '_')
+              .trim();
+          }
+          
+          // Tarih bilgisini temizle ve formatla
+          if (tarihBilgisi) {
+            tarihBilgisi = tarihBilgisi
+              .toLowerCase()
+              .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+              .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/İ/g, 'i')
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/\s+/g, '_')
+              .replace(/_-_/g, '_')
+              .trim();
+          }
+          
+          // Dosya adını oluştur
+          let fileName = '';
+          if (hastaAdi) fileName += hastaAdi;
+          if (tarihBilgisi) fileName += (fileName ? '_' : '') + tarihBilgisi;
+          if (haftaNo) fileName += (fileName ? '_' : '') + haftaNo + '_hafta';
+          
+          if (fileName) {
+            return fileName + '.pdf';
+          }
+        }
+        
+        // Fallback: Standart format
+        return `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+        
+      } catch (error) {
+        console.warn('⚠️ Dosya adı çıkarma hatası:', error);
+        return `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+      }
+    }
+
     async function downloadAndProcessSheetPDF(pdfUrl, haftaNo) {
       try {
         console.log('📥 Sheet PDF indiriliyor ve işleniyor...');
@@ -7695,11 +7763,34 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
-          const pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+          // Önce PDF içeriğini analiz edelim (dosya adı için)
+          let pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`; // Fallback
           
           try {
-            // PDF'i GitHub'a yükle
+            // PDF'ten metin çıkar (dosya adı için - basit versiyon)
+            const base64Data = dataUrl.split(',')[1];
+            const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+            
+            let pdfText = '';
+            // Sadece ilk sayfayı oku (dosya adı için yeterli)
+            if (pdf.numPages > 0) {
+              const page = await pdf.getPage(1);
+              const textContent = await page.getTextContent();
+              pdfText = textContent.items.map(item => item.str).join(' ');
+            }
+            
+            if (pdfText) {
+              // İçerikten açıklayıcı dosya adı oluştur
+              pdfFileName = extractDescriptiveFileName(pdfText, haftaNo);
+              console.log('📝 PDF içeriğinden oluşturulan dosya adı:', pdfFileName);
+            }
+          } catch (textError) {
+            console.warn('⚠️ PDF metin çıkarma hatası, standart dosya adı kullanılıyor:', textError);
+          }
+          
+          try {
+            // PDF'i GitHub'a yükle (yeni açıklayıcı adla)
             await uploadPDFToGitHub(pdfFileName, base64);
             
             // LocalStorage'da sadece referans sakla (PDF data'sı değil)
