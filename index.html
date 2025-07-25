@@ -7660,21 +7660,39 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF içeriğinden açıklayıcı dosya adı oluşturan fonksiyon
     function extractDescriptiveFileName(pdfText, haftaNo) {
       try {
-        console.log('🔍 PDF text analiz ediliyor:', pdfText.substring(0, 500)); // İlk 500 karakteri logla
+        console.log('🔍 PDF text analiz ediliyor (ilk 200 karakter):', pdfText.substring(0, 200));
         
         // İlk satırları kontrol et (hasta adı ve tarih bilgisi için)
         const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        console.log('📝 Toplam satır sayısı:', lines.length);
         
         let hastaAdi = '';
         let tarihBilgisi = '';
         
-        // İlk 5 satırda hasta adı ve tarih ara
-        for (let i = 0; i < Math.min(lines.length, 5); i++) {
+        // İlk 3 satırda hasta adı ve tarih ara
+        for (let i = 0; i < Math.min(lines.length, 3); i++) {
           const line = lines[i].trim();
-          console.log(`📝 Satır ${i + 1}:`, line);
+          console.log(`📝 Satır ${i + 1} (${line.length} karakter):`, line);
           
-          // Hasta adı pattern: Büyük harflerle yazılmış ad soyad (3-40 karakter arası)
-          if (!hastaAdi && /^[A-ZÇĞÜÖŞİ\s]{3,40}$/.test(line) && !line.includes('HAFTA') && !line.includes('2025') && !line.includes('TEMMUZ') && !line.includes('AĞUSTOS')) {
+          // Hasta adı pattern: Büyük harflerle yazılmış ad soyad (3-25 karakter arası, çok uzun değil)
+          if (!hastaAdi && 
+              line.length >= 3 && line.length <= 25 &&
+              /^[A-ZÇĞÜÖŞİ\s]{3,25}$/.test(line) && 
+              !line.includes('HAFTA') && 
+              !line.includes('2025') && 
+              !line.includes('TEMMUZ') && 
+              !line.includes('AĞUSTOS') &&
+              !line.includes('OCAK') &&
+              !line.includes('ŞUBAT') &&
+              !line.includes('MART') &&
+              !line.includes('NİSAN') &&
+              !line.includes('MAYIS') &&
+              !line.includes('HAZİRAN') &&
+              !line.includes('EYLÜL') &&
+              !line.includes('EKİM') &&
+              !line.includes('KASIM') &&
+              !line.includes('ARALIK') &&
+              line.split(' ').length <= 4) { // Maximum 4 kelime
             hastaAdi = line;
             console.log('👤 Hasta adı bulundu:', hastaAdi);
           }
@@ -7683,6 +7701,27 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           if (!tarihBilgisi && /\d{1,2}.*?(OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK).*?\d{4}/.test(line)) {
             tarihBilgisi = line;
             console.log('📅 Tarih bilgisi bulundu:', tarihBilgisi);
+          }
+          
+          // İlk satırda "/" ile ayrılmışsa hasta adı / tarih ayır
+          if (i === 0 && !hastaAdi && !tarihBilgisi && line.includes('/')) {
+            const parts = line.split('/').map(p => p.trim());
+            if (parts.length >= 2) {
+              const potentialName = parts[0].trim();
+              const potentialDate = parts[1].trim();
+              
+              if (potentialName.length >= 3 && potentialName.length <= 25 && 
+                  /^[A-ZÇĞÜÖŞİ\s]{3,25}$/.test(potentialName) && 
+                  potentialName.split(' ').length <= 4) {
+                hastaAdi = potentialName;
+                console.log('👤 İlk satırdan (/) hasta adı:', hastaAdi);
+              }
+              
+              if (/\d{1,2}.*?(OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK).*?\d{4}/.test(potentialDate)) {
+                tarihBilgisi = potentialDate;
+                console.log('📅 İlk satırdan (/) tarih:', tarihBilgisi);
+              }
+            }
           }
           
           // Her iki bilgi de bulunduysa dur
@@ -7725,11 +7764,20 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           
           // Dosya adını oluştur (kısa ve öz)
           let fileName = '';
-          if (hastaAdi) fileName += hastaAdi.substring(0, 30); // Max 30 karakter
-          if (tarihBilgisi) fileName += (fileName ? '_' : '') + tarihBilgisi.substring(0, 20); // Max 20 karakter
+          if (hastaAdi) fileName += hastaAdi.substring(0, 15); // Max 15 karakter
+          if (tarihBilgisi) {
+            // Tarihten sadece kısa kısmı al
+            const tarihKisa = tarihBilgisi.substring(0, 12).replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, '_');
+            fileName += (fileName ? '_' : '') + tarihKisa;
+          }
           if (haftaNo) fileName += (fileName ? '_' : '') + haftaNo + '_hafta';
           
-          if (fileName && fileName.length > 10) { // En az 10 karakter olsun
+          // Dosya adı çok uzunsa kısalt
+          if (fileName.length > 50) {
+            fileName = fileName.substring(0, 50);
+          }
+          
+          if (fileName && fileName.length > 8 && fileName.length < 60) { // 8-60 karakter arası
             console.log('✅ Oluşturulan dosya adı:', fileName + '.pdf');
             return fileName + '.pdf';
           }
@@ -7797,7 +7845,33 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             if (pdf.numPages > 0) {
               const page = await pdf.getPage(1);
               const textContent = await page.getTextContent();
-              pdfText = textContent.items.map(item => item.str).join(' ');
+              
+              // Satır yapısını koruyarak metni çıkar
+              let currentLine = '';
+              let lines = [];
+              let lastY = null;
+              
+              textContent.items.forEach(item => {
+                // Y pozisyonu değiştiyse yeni satır
+                if (lastY !== null && Math.abs(lastY - item.transform[5]) > 5) {
+                  if (currentLine.trim()) {
+                    lines.push(currentLine.trim());
+                  }
+                  currentLine = item.str;
+                } else {
+                  currentLine += (currentLine ? ' ' : '') + item.str;
+                }
+                lastY = item.transform[5];
+              });
+              
+              // Son satırı da ekle
+              if (currentLine.trim()) {
+                lines.push(currentLine.trim());
+              }
+              
+              // İlk 10 satırı al (dosya adı için yeterli)
+              pdfText = lines.slice(0, 10).join('\n');
+              console.log('📄 PDF ilk satırlar:', pdfText);
             }
             
             if (pdfText) {
