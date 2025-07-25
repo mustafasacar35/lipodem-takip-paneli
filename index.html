@@ -458,21 +458,22 @@
         <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç (Yeni Sekme)</button>
         <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
         <button onclick="debugSheetStructure()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 GID Debug</button>
+        <button onclick="openSheetShareSettings()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🔓 Sheet Paylaşım Ayarı</button>
         <button onclick="setupPatientSheetMapping()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ea4335; color:white; border:none; border-radius:3px; cursor:pointer;">⚙️ Sheet Eşleştir</button>
         <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Sheet Yönetimi</button>
         
         <div style="background:#fff3cd; padding:5px; margin:5px 0; border-radius:3px; font-size:9px; line-height:1.2; border-left:3px solid #ffc107;">
-          <strong>⚠️ CORS Sorunu:</strong><br>
-          Tarayıcı güvenliği nedeniyle otomatik indirme çalışmıyor.<br>
-          <strong>Çözüm:</strong> "📄 PDF Aç" ile yeni sekmede açıp manuel kaydedin.
+          <strong>⚠️ ÖNEMLİ:</strong><br>
+          PDF indirme çalışması için Google Sheet'inizi <strong>herkese açık</strong> yapmanız gerekiyor!<br>
+          <strong>Nasıl:</strong> Sheet'te → Share → "Anyone with the link can view"
         </div>
         
         <div style="background:#e7f4ff; padding:5px; margin:5px 0; border-radius:3px; font-size:9px; line-height:1.2;">
           <strong>📋 Kullanım:</strong><br>
           1. API Key al → Test et<br>
-          2. Hasta seç → Sheet eşleştir<br>
-          3. Hafta seç → PDF aç<br>
-          4. Manuel: Sağ tık → "Farklı kaydet"
+          2. Sheet'i herkese açık yap<br>
+          3. Hasta seç → Sheet eşleştir<br>
+          4. Hafta seç → PDF aç
         </div>
       </div>
 
@@ -7563,7 +7564,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       if (popup) {
         console.log('✅ PDF yeni sekmede açıldı!');
-        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n📋 PDF İndirme Yöntemleri:\n• Sağ tık → "Farklı kaydet"\n• Ctrl+S tuşları\n• Tarayıcı menüsü → İndir\n\n💡 PDF gözükmüyorsa Google hesabınızla giriş yapmanız gerekebilir.`);
+        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
         alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
         
@@ -7661,7 +7662,16 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           <p><strong>${seciliHasta.isim} - ${haftaNo}. Hafta</strong></p>
           <p><strong>Sheet ID:</strong> ${hastaMapping.sheetId}</p>
           <p><strong>Hesaplanan GID:</strong> ${12 + haftaNo} (PDF Tab için)</p>
-          <br>
+          
+          <div style="background:#fff3cd; padding:10px; margin:10px 0; border-radius:5px; border-left:3px solid #ffc107;">
+            <strong>⚠️ ÖNEMLİ:</strong> Eğer tüm linkler "sayfa bulunamadı" veriyor ise:<br>
+            <strong>1.</strong> Google Sheet'inizi açın<br>
+            <strong>2.</strong> Sağ üstte "Share" butonuna tıklayın<br>
+            <strong>3.</strong> "Anyone with the link can view" seçin<br>
+            <strong>4.</strong> "Done" butonuna tıklayın<br>
+            <strong>5.</strong> Sonra tekrar test edin
+          </div>
+          
           <h4>📋 GID Test Listesi (Hangi tab doğru PDF'i veriyor?):</h4>
           <div style="column-count: 2; column-gap: 20px;">
             ${testUrls.join('')}
@@ -7678,6 +7688,35 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         </div>
       `;
       document.body.appendChild(debugDiv);
+    }
+
+    // Sheet paylaşım ayarlarını hızlıca açma
+    function openSheetShareSettings() {
+      if (!seciliHasta) {
+        alert('⚠️ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      const hastaSheetMappings = JSON.parse(localStorage.getItem('hastaSheetMappings') || '{}');
+      const hastaMapping = hastaSheetMappings[seciliHasta.id];
+      
+      if (!hastaMapping) {
+        alert('⚠️ Önce sheet eşleştirmesi yapın!');
+        return;
+      }
+      
+      // Sheet'i paylaşım modu ile aç
+      const shareUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/edit#sharing`;
+      
+      console.log('🔓 Share URL:', shareUrl);
+      
+      const popup = window.open(shareUrl, '_blank');
+      
+      if (popup) {
+        alert(`🔓 ${seciliHasta.isim} Sheet Paylaşım Ayarları açıldı!\n\n📋 YAPMANIZ GEREKENLER:\n1. "Anyone with the link" seçeneğini seçin\n2. "Viewer" (görüntüleyici) seçin\n3. "Done" butonuna tıklayın\n\n✅ Bu ayarı yaptıktan sonra PDF linkleri çalışacak!`);
+      } else {
+        alert(`❌ Popup engellendi!\n\n🔗 Manuel link:\n${shareUrl}\n\nBu link ile Sheet paylaşım ayarlarını açabilirsiniz.`);
+      }
     }
 
     // Hasta bilgilerini Sheets'e yazıp PDF oluştur
