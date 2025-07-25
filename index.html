@@ -3765,7 +3765,7 @@
         tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
-        const hasPdf = (hafta.pdf || hafta.pdfName) ? 'status-pdf' : 'status-empty';
+        const hasPdf = hafta.pdf ? 'status-pdf' : 'status-empty';
         const hasKartlar = (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) ? 'status-kartlar' : 'status-empty';
         const hasEslesen = (hafta.tarifler && hafta.tarifler.length > 0) ? 'status-eslesen' : 'status-empty';
         
@@ -3835,7 +3835,7 @@
               <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
               <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
-              ${(hafta.pdf || hafta.pdfName) ? `
+              ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
                   ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfName || 'hafta.pdf'}</strong>
                   <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
@@ -7656,129 +7656,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     }
 
-    // Sheet metadata çekme fonksiyonu
-    async function getSheetMetadata(sheetId, gid) {
-      try {
-        const apiKey = localStorage.getItem('googleSheetsApiKey');
-        if (!apiKey) {
-          throw new Error('Google Sheets API Key bulunamadı');
-        }
-
-        // Sheet genel bilgilerini çek
-        const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?key=${apiKey}&includeGridData=true&ranges=Sheet1!A1:Z10`;
-        const response = await fetch(metadataUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Sheet metadata çekilemedi: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // Sheet adını ve tab bilgilerini al
-        const sheetTitle = data.properties?.title || 'Hasta';
-        let hastaAdi = sheetTitle;
-        let haftaNo = null;
-        let tarihAraligi = '';
-
-        // Tab'ları kontrol et
-        if (data.sheets) {
-          const targetSheet = data.sheets.find(sheet => 
-            sheet.properties?.sheetId == gid
-          );
-          
-          if (targetSheet) {
-            const tabName = targetSheet.properties?.title || '';
-            
-            // Tab adından hafta numarasını çıkar
-            const haftaMatch = tabName.match(/(\d+)\.?\s*hafta/i);
-            if (haftaMatch) {
-              haftaNo = parseInt(haftaMatch[1]);
-            }
-
-            // Grid data'dan tarih bilgilerini çıkarmaya çalış
-            if (targetSheet.data && targetSheet.data[0] && targetSheet.data[0].rowData) {
-              const rows = targetSheet.data[0].rowData;
-              
-              // İlk birkaç satırda tarih formatlarını ara
-              for (let i = 0; i < Math.min(10, rows.length); i++) {
-                if (rows[i] && rows[i].values) {
-                  for (let j = 0; j < Math.min(10, rows[i].values.length); j++) {
-                    const cell = rows[i].values[j];
-                    if (cell && cell.formattedValue) {
-                      const cellText = cell.formattedValue;
-                      
-                      // Tarih aralığı formatlarını kontrol et
-                      const tarihRegex = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})\s*[-–]\s*(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/;
-                      const tarihMatch = cellText.match(tarihRegex);
-                      
-                      if (tarihMatch) {
-                        tarihAraligi = `${tarihMatch[1]} - ${tarihMatch[2]}`;
-                        break;
-                      }
-                    }
-                  }
-                  if (tarihAraligi) break;
-                }
-              }
-            }
-          }
-        }
-
-        // Hasta adını temizle (sheet başlığından)
-        hastaAdi = hastaAdi.replace(/\s*(hafta|week)\s*\d+/gi, '').trim();
-        
-        console.log('📊 Sheet metadata:', {
-          sheetTitle,
-          hastaAdi,
-          haftaNo,
-          tarihAraligi,
-          gid
-        });
-
-        return {
-          hastaAdi,
-          haftaNo,
-          tarihAraligi,
-          sheetTitle
-        };
-
-      } catch (error) {
-        console.warn('⚠️ Sheet metadata alınamadı:', error);
-        return {
-          hastaAdi: 'Hasta',
-          haftaNo: null,
-          tarihAraligi: '',
-          sheetTitle: 'Sheet'
-        };
-      }
-    }
-
     // Sheet PDF'ini download edip tarif eşleştirmesi için işle
     async function downloadAndProcessSheetPDF(pdfUrl, haftaNo) {
       try {
         console.log('📥 Sheet PDF indiriliyor ve işleniyor...');
-        
-        // Sheet metadata'sını çek
-        const hastaMapping = JSON.parse(localStorage.getItem('hastaSheetMappings') || '{}')[seciliHasta.id];
-        let sheetMetadata = {
-          hastaAdi: seciliHasta.isim,
-          haftaNo: haftaNo,
-          tarihAraligi: '',
-          sheetTitle: 'Sheet'
-        };
-        
-        // PDF URL'den GID'i çıkar
-        const gidMatch = pdfUrl.match(/gid=(\d+)/);
-        const gid = gidMatch ? gidMatch[1] : null;
-        
-        if (hastaMapping && gid) {
-          try {
-            sheetMetadata = await getSheetMetadata(hastaMapping.sheetId, gid);
-            console.log('✅ Sheet metadata alındı:', sheetMetadata);
-          } catch (error) {
-            console.warn('⚠️ Sheet metadata alınamadı, varsayılan değerler kullanılıyor:', error);
-          }
-        }
         
         // Loading indicator göster
         const loadingDiv = document.createElement('div');
@@ -7788,11 +7669,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
                       background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; 
                       z-index: 10001; text-align: center;">
             <div style="margin-bottom: 10px;">📥 Sheet PDF İşleniyor...</div>
-            <div style="font-size: 12px;">• PDF indiriliyor<br>• İçerik analiz ediliyor<br>• Tarif eşleştirmesi hazırlanıyor</div>
-            <div style="margin-top: 10px; font-size: 11px; color: #ccc;">
-              ${sheetMetadata.hastaAdi} - ${sheetMetadata.haftaNo || haftaNo}. Hafta
-              ${sheetMetadata.tarihAraligi ? `<br>${sheetMetadata.tarihAraligi}` : ''}
-            </div>
+            <div style="font-size: 12px;">• PDF indiriliyor<br>• GitHub'a yükleniyor<br>• İçerik analiz ediliyor<br>• Tarif eşleştirmesi hazırlanıyor<br>• PDF adı hafta tabına ekleniyor</div>
           </div>
         `;
         document.body.appendChild(loadingDiv);
@@ -7818,52 +7695,22 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // Metadata'dan PDF dosya adını oluştur
-          let pdfFileName = '';
-          const hastaAdi = sheetMetadata.hastaAdi || seciliHasta.isim;
-          const finalHaftaNo = sheetMetadata.haftaNo || haftaNo;
-          const tarihAraligi = sheetMetadata.tarihAraligi;
-          
-          // Hasta adını temizle (dosya adı için uygun hale getir)
-          const temizHastaAdi = hastaAdi
-            .replace(/[^\w\s]/g, '') // Özel karakterleri kaldır
-            .replace(/\s+/g, '_') // Boşlukları _ ile değiştir
-            .toUpperCase(); // Büyük harf yap
-          
-          // PDF dosya adını oluştur
-          if (tarihAraligi) {
-            // Tarih aralığını dosya adı için uygun hale getir
-            const temizTarih = tarihAraligi
-              .replace(/[^\d\-\/\.]/g, '') // Sadece rakam, tire, slash ve nokta
-              .replace(/\//g, '.') // Slash'leri nokta ile değiştir
-              .replace(/\s+/g, ''); // Boşlukları kaldır
-            
-            pdfFileName = `${temizHastaAdi}_${finalHaftaNo}.HAFTA_${temizTarih}.pdf`;
-          } else {
-            pdfFileName = `${temizHastaAdi}_${finalHaftaNo}.HAFTA.pdf`;
-          }
-          
-          console.log('📝 PDF dosya adı oluşturuldu:', {
-            hastaAdi,
-            temizHastaAdi,
-            finalHaftaNo,
-            tarihAraligi,
-            pdfFileName
-          });
+          // PDF ismini güzel formatta oluştur
+          const bugün = new Date();
+          const tarih = `${bugün.getDate().toString().padStart(2, '0')}.${(bugün.getMonth() + 1).toString().padStart(2, '0')}.${bugün.getFullYear()}`;
+          const displayName = `${seciliHasta.isim} - ${tarih} - Hafta ${haftaNo}`;
+          const pdfFileName = `Sheet_${seciliHasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Hafta_${haftaNo}_${tarih.replace(/\./g, '')}.pdf`;
           
           try {
             // PDF'i GitHub'a yükle
             await uploadPDFToGitHub(pdfFileName, base64);
             
             // LocalStorage'da sadece referans sakla (PDF data'sı değil)
-            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
-            haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`;
+            haftalar[aktifHaftaIndex].pdfName = displayName; // Görünen isim
+            haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`; // GitHub dosya yolu
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'github_sheet';
-            
-            // Sheet metadata'sını da sakla
-            haftalar[aktifHaftaIndex].sheetMetadata = sheetMetadata;
-            
+            haftalar[aktifHaftaIndex].isSheetPDF = true; // Sheet'ten geldiğini belirt
             // PDF data'sını saklama - GitHub'da
             delete haftalar[aktifHaftaIndex].pdf;
             
@@ -7872,12 +7719,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             // GitHub başarısız olursa mini sürüm localStorage'da sakla
             const miniPdf = `data:application/pdf;base64,${base64.substring(0, 1000)}...`; // Sadece ilk 1KB
             haftalar[aktifHaftaIndex].pdf = miniPdf;
-            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
+            haftalar[aktifHaftaIndex].pdfName = displayName;
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'localStorage_truncated';
-            
-            // Sheet metadata'sını da sakla
-            haftalar[aktifHaftaIndex].sheetMetadata = sheetMetadata;
+            haftalar[aktifHaftaIndex].isSheetPDF = true;
           }
           
           // Hafta verilerini kaydet (localStorage + GitHub)
@@ -7893,34 +7738,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             }
           }
           
-          console.log('✅ Sheet PDF sisteme kaydedildi');
-          
-          // Sheet metadata'dan tarih bilgisi varsa hafta tarihlerini güncelle
-          if (sheetMetadata.tarihAraligi) {
-            try {
-              // Tarih aralığını ayrıştır
-              const tarihParts = sheetMetadata.tarihAraligi.split(' - ');
-              if (tarihParts.length === 2) {
-                // Tarihleri normalize et (YYYY-MM-DD formatına çevir)
-                const baslangic = normalizeTarih(tarihParts[0].trim());
-                const bitis = normalizeTarih(tarihParts[1].trim());
-                
-                if (baslangic && bitis) {
-                  haftalar[aktifHaftaIndex].baslangic = baslangic;
-                  haftalar[aktifHaftaIndex].bitis = bitis;
-                  console.log('📅 Hafta tarihleri sheet\'ten güncellendi:', { baslangic, bitis });
-                }
-              }
-            } catch (tarihError) {
-              console.warn('⚠️ Sheet tarihlerini parse etme hatası:', tarihError);
-            }
-          }
-          
-          // Hafta numarasını da güncelle (eğer sheet'ten farklı geldi ise)
-          if (sheetMetadata.haftaNo && sheetMetadata.haftaNo !== haftaNo) {
-            haftalar[aktifHaftaIndex].haftaNo = sheetMetadata.haftaNo;
-            console.log('🔢 Hafta numarası sheet\'ten güncellendi:', sheetMetadata.haftaNo);
-          }
+          console.log('✅ Sheet PDF sisteme kaydedildi:', displayName);
           
           // Mevcut PDF işleme fonksiyonunu çağır (geçici PDF data ile)
           const tempPdfData = dataUrl; // Geçici olarak bellek de tut
@@ -7940,7 +7758,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Hafta görünümünü güncelle (PDF adını göstermek için)
           gosterHaftalar();
           
-          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n� PDF: ${displayName}\n�📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• PDF ismi hafta tabına eklendi\n• Sidebar'da sonuçları görebilirsiniz`);
           
         } else {
           throw new Error('Aktif hafta bulunamadı');
@@ -7950,50 +7768,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         console.error('❌ Sheet PDF işleme hatası:', error);
         document.getElementById('pdfProcessingLoader')?.remove();
         alert(`❌ Sheet PDF işlenirken hata oluştu:\n\n${error.message}\n\n🔧 Alternatifler:\n• PDF'i manuel indirip yükleyin\n• Sheet paylaşım ayarlarını kontrol edin\n• API key'i kontrol edin`);
-      }
-    }
-
-    // Tarih normalleştirme fonksiyonu (YYYY-MM-DD formatına çevirir)
-    function normalizeTarih(tarihStr) {
-      try {
-        // Farklı tarih formatlarını işle
-        let cleanTarih = tarihStr.replace(/[^\d\/\-\.]/g, ''); // Sadece rakam ve ayırıcıları tut
-        
-        // DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY formatlarını kontrol et
-        const patterns = [
-          /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/, // DD/MM/YYYY
-          /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/, // DD/MM/YY
-          /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/, // YYYY/MM/DD
-        ];
-        
-        for (let pattern of patterns) {
-          const match = cleanTarih.match(pattern);
-          if (match) {
-            let gun = match[1];
-            let ay = match[2]; 
-            let yil = match[3];
-            
-            // 2 haneli yılı 4 haneli yap
-            if (yil.length === 2) {
-              yil = '20' + yil;
-            }
-            
-            // YYYY/MM/DD formatı ise gün/ay yerlerini değiştirme
-            if (pattern === patterns[2]) {
-              // Zaten doğru sırada
-              return `${yil}-${ay.padStart(2, '0')}-${gun.padStart(2, '0')}`;
-            } else {
-              // DD/MM/YYYY formatından YYYY-MM-DD'ye çevir
-              return `${yil}-${ay.padStart(2, '0')}-${gun.padStart(2, '0')}`;
-            }
-          }
-        }
-        
-        console.warn('⚠️ Tanınmayan tarih formatı:', tarihStr);
-        return null;
-      } catch (error) {
-        console.warn('⚠️ Tarih parse hatası:', error);
-        return null;
       }
     }
 
