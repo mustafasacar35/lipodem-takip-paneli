@@ -4150,30 +4150,20 @@ function duzenleHafta(i) {
         const pdfFileName = `pdf_${seciliHasta.id}_hafta_${i}_${Date.now()}.pdf`;
         const base64Data = e.target.result.split(',')[1];
         
-        try {
-          // PDF'i ayrı dosya olarak GitHub'a yükle
-          await uploadPDFToGitHub(pdfFileName, base64Data);
-          
-          // JSON'da sadece dosya referansını sakla (base64 değil!)
-          haftalar[i].pdf = null; // Base64'ü temizle
-          haftalar[i].pdfFileName = pdfFileName; // Sadece dosya adını sakla
-          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-          haftalar[i].kayitTarihi = new Date().toISOString();
-          
-          console.log('✅ PDF ayrı dosya olarak kaydedildi:', {
-            index: i,
-            pdfFileName: pdfFileName,
-            originalFileName: file.name,
-            savedPdfName: haftalar[i].pdfName
-          });
-          
-        } catch (error) {
-          console.warn('⚠️ PDF ayrı dosya yüklenemedi, base64 olarak saklanıyor:', error);
-          // Fallback: Eski yöntem
-          haftalar[i].pdf = e.target.result;
-          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-          haftalar[i].kayitTarihi = new Date().toISOString();
-        }
+        // Şimdilik PDF ayrı dosya sistemi devre dışı (GitHub yetki sorunu)
+        console.log('⚠️ PDF ayrı dosya sistemi geçici olarak devre dışı bırakıldı');
+        
+        // Eski yöntem: Base64 olarak JSON'da sakla
+        haftalar[i].pdf = e.target.result;
+        haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+        haftalar[i].kayitTarihi = new Date().toISOString();
+        
+        console.log('✅ PDF base64 olarak kaydedildi:', {
+          index: i,
+          originalFileName: file.name,
+          savedPdfName: haftalar[i].pdfName,
+          kayitTarihi: haftalar[i].kayitTarihi
+        });
         
         // Seçili hasta objesini de güncelle (referans sorunu olabilir)
         if (seciliHasta && seciliHasta.haftalar) {
@@ -7203,13 +7193,18 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
     async function uploadPDFToGitHub(fileName, base64Data) {
       try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+          throw new Error('GitHub token gerekli');
+        }
+        
         // Önce pdfs klasörünün varlığını kontrol et ve gerekirse oluştur
         await ensurePDFDirectoryExists();
         
         const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${fileName}`, {
           method: 'PUT',
           headers: {
-            'Authorization': 'token ghp_tJKOPwONJCPcvRbLGYRWEk4rLQpNLj4Nkx6S',
+            'Authorization': `token ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
