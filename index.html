@@ -460,6 +460,8 @@
         <button onclick="debugSheetStructure()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 GID Debug</button>
         <button onclick="openSheetShareSettings()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🔓 Sheet Paylaşım Ayarı</button>
         <button onclick="quickGidFix()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">⚡ Hızlı GID Düzelt</button>
+        <button onclick="analyzeSheetStructure()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔬 Sheet Yapısı Analiz</button>
+        <button onclick="manualPdfDownload()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Manuel PDF İndir</button>
         <button onclick="setupPatientSheetMapping()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ea4335; color:white; border:none; border-radius:3px; cursor:pointer;">⚙️ Sheet Eşleştir</button>
         <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Sheet Yönetimi</button>
         
@@ -7552,30 +7554,43 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         hesaplananPDFTabGid: 12 + haftaNo
       });
       
-      // PDF tab'ının gid'ini hesapla (dinamik formül)
-      const savedFormula = localStorage.getItem('gidFormula');
+      // PDF tab'ının gid'ini hesapla (dinamik formül + özel mapping)
+      const customGidMapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+      const hastaKey = `${seciliHasta.id}_hafta${haftaNo}`;
+      
       let pdfTabGid;
       
-      switch(savedFormula) {
-        case '1': // 13 + hafta - 1
-          pdfTabGid = 13 + haftaNo - 1;
-          break;
-        case '2': // hafta + 13  
-          pdfTabGid = haftaNo + 13;
-          break;
-        case '3': // (hafta - 1) + 14
-          pdfTabGid = (haftaNo - 1) + 14;
-          break;
-        case '4': // hafta * 2 + 11
-          pdfTabGid = haftaNo * 2 + 11;
-          break;
-        default: // Varsayılan: 12 + hafta
-          pdfTabGid = 12 + haftaNo;
+      // Önce özel mapping kontrol et
+      if (customGidMapping[hastaKey]) {
+        pdfTabGid = customGidMapping[hastaKey].gid;
+        console.log('🎯 Özel GID mapping kullanılıyor:', customGidMapping[hastaKey]);
+      } else {
+        // Sonra kayıtlı formül kontrol et
+        const savedFormula = localStorage.getItem('gidFormula');
+        
+        switch(savedFormula) {
+          case '1': // 13 + hafta - 1
+            pdfTabGid = 13 + haftaNo - 1;
+            break;
+          case '2': // hafta + 13  
+            pdfTabGid = haftaNo + 13;
+            break;
+          case '3': // (hafta - 1) + 14
+            pdfTabGid = (haftaNo - 1) + 14;
+            break;
+          case '4': // hafta * 2 + 11
+            pdfTabGid = haftaNo * 2 + 11;
+            break;
+          default: // Varsayılan: 12 + hafta
+            pdfTabGid = 12 + haftaNo;
+        }
       }
       
       console.log('🔢 GID hesaplama:', {
         haftaNo: haftaNo,
-        savedFormula: savedFormula || 'varsayılan',
+        hastaKey: hastaKey,
+        customMapping: customGidMapping[hastaKey] ? 'var' : 'yok',
+        savedFormula: localStorage.getItem('gidFormula') || 'varsayılan',
         hesaplananGid: pdfTabGid
       });
       
@@ -7840,6 +7855,130 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         localStorage.setItem('gidFormula', formulIndex.toString());
         
         alert(`✅ GID formülü güncellendi!\n\nYeni formül: ${formulDesc}\n\nArtık PDF çekme işlemi bu formülü kullanacak.`);
+        
+        // Popup'ı kapat
+        const popup = document.querySelector('[style*="position: fixed"][style*="z-index: 10000"]');
+        if (popup && popup.parentElement) {
+          popup.parentElement.remove();
+        }
+      }
+    }
+
+    // Sheet yapısını analiz et - API ile tab listesini al
+    async function analyzeSheetStructure() {
+      if (!seciliHasta) {
+        alert('⚠️ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      const apiKey = document.getElementById('googleSheetsApiKey').value.trim() || localStorage.getItem('googleSheetsApiKey');
+      
+      if (!apiKey) {
+        alert('⚠️ Google Sheets API Key gerekli!');
+        return;
+      }
+      
+      const hastaSheetMappings = JSON.parse(localStorage.getItem('hastaSheetMappings') || '{}');
+      const hastaMapping = hastaSheetMappings[seciliHasta.id];
+      
+      if (!hastaMapping) {
+        alert('⚠️ Önce sheet eşleştirmesi yapın!');
+        return;
+      }
+      
+      try {
+        console.log('🔬 Sheet yapısı analiz ediliyor...');
+        
+        const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${hastaMapping.sheetId}?key=${apiKey}`);
+        
+        if (!response.ok) {
+          throw new Error(`API Hatası: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const sheets = data.sheets || [];
+        
+        console.log('📊 Sheet analiz sonucu:', sheets);
+        
+        let tabListHtml = '';
+        sheets.forEach((sheet, index) => {
+          const sheetProps = sheet.properties;
+          const title = sheetProps.title;
+          const sheetId = sheetProps.sheetId;
+          
+          // PDF olabilecek tabları vurgula
+          const isPdfTab = title.toLowerCase().includes('pdf') || title.includes('hafta') || /\d+/.test(title);
+          const bgColor = isPdfTab ? '#fff3cd' : '#f8f9fa';
+          
+          const testUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/export?format=pdf&gid=${sheetId}&portrait=true&fitw=true`;
+          
+          tabListHtml += `
+            <div style="border:1px solid #ddd; padding:8px; margin:3px 0; border-radius:4px; background:${bgColor};">
+              <strong>Tab ${index + 1}:</strong> ${title} <span style="color:#666; font-size:11px;">(GID: ${sheetId})</span><br>
+              <a href="${testUrl}" target="_blank" style="color:#4285f4; text-decoration:none;">🔗 PDF Test</a>
+              <button onclick="selectThisGid('${title}', ${sheetId})" 
+                      style="background:#28a745; color:white; padding:3px 8px; border:none; border-radius:3px; margin-left:10px; cursor:pointer; font-size:11px;">
+                ✅ Bu Tab'ı Kullan
+              </button>
+            </div>
+          `;
+        });
+        
+        const analysisDiv = document.createElement('div');
+        analysisDiv.innerHTML = `
+          <div style="position: fixed; top: 5%; left: 5%; width: 90%; height: 90%; 
+                      background: white; padding: 15px; border: 2px solid #17a2b8; border-radius: 8px; 
+                      box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; overflow-y: auto;">
+            <h3>🔬 Sheet Yapısı Analizi</h3>
+            <p><strong>${seciliHasta.isim}</strong> - Sheet: ${data.properties.title}</p>
+            <p><strong>Toplam Tab Sayısı:</strong> ${sheets.length}</p>
+            
+            <div style="background:#e7f3ff; padding:10px; margin:10px 0; border-radius:5px;">
+              <strong>💡 Açıklama:</strong><br>
+              • Sarı arka plan = PDF olabilecek tablar<br>
+              • Her tab için "🔗 PDF Test" linkini deneyin<br>
+              • Doğru PDF'i gösteren tab'ı "✅ Bu Tab'ı Kullan" ile seçin
+            </div>
+            
+            <h4>📋 Tüm Tablar:</h4>
+            <div style="max-height:400px; overflow-y:auto;">
+              ${tabListHtml}
+            </div>
+            
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-top: 15px;">
+              Kapat
+            </button>
+          </div>
+        `;
+        document.body.appendChild(analysisDiv);
+        
+      } catch (error) {
+        console.error('❌ Sheet analiz hatası:', error);
+        alert(`❌ Sheet analiz hatası:\n${error.message}\n\nAPI Key'inizi kontrol edin.`);
+      }
+    }
+
+    // Belirli bir GID'yi kullanmaya başla
+    function selectThisGid(tabTitle, gid) {
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const haftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) || (parseInt(aktifTab.dataset.haftaIndex) + 1) : 1;
+      
+      if (confirm(`"${tabTitle}" tab'ını ${haftaNo}. hafta için kullanmak istediğinizden emin misiniz?\n\nGID: ${gid}`)) {
+        // Özel GID kaydet
+        const customGidMapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+        const hastaKey = `${seciliHasta.id}_hafta${haftaNo}`;
+        customGidMapping[hastaKey] = {
+          gid: gid,
+          tabTitle: tabTitle,
+          haftaNo: haftaNo,
+          hastaId: seciliHasta.id,
+          kayitTarihi: new Date().toISOString()
+        };
+        
+        localStorage.setItem('customGidMapping', JSON.stringify(customGidMapping));
+        
+        alert(`✅ Ayarlandı!\n\n${seciliHasta.isim} - ${haftaNo}. hafta için "${tabTitle}" tab'ı kullanılacak.\n\nGID: ${gid}`);
         
         // Popup'ı kapat
         const popup = document.querySelector('[style*="position: fixed"][style*="z-index: 10000"]');
