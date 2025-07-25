@@ -3012,6 +3012,13 @@
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari();
         }
+        
+        // GitHub'a otomatik kaydetme (2 saniye sonra)
+        clearTimeout(window.githubSaveTimeout);
+        window.githubSaveTimeout = setTimeout(() => {
+          uploadToGitHub();
+        }, 2000);
+        
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
     }
     function loadFromStorage() {
