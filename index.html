@@ -6630,7 +6630,9 @@ function duzenleHafta(i) {
           const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
           
           // Sadece masaj içeren takvim PDF'ini oluştur (egzersiz dahil değil)
+          console.log('🔍 generateLenfDrenajPDFBlob çağrılıyor (egzersiz: false)...');
           const masajTakvimBlob = await generateLenfDrenajPDFBlob(false); // false = egzersiz dahil değil
+          console.log('🔍 generateLenfDrenajPDFBlob sonucu:', masajTakvimBlob ? 'Başarılı' : 'Null');
           if (masajTakvimBlob) {
             const masajTakvimFileName = `${baseName}_Lenf_Masaji_Takvimi.pdf`;
             zip.file(masajTakvimFileName, masajTakvimBlob);
@@ -6653,7 +6655,9 @@ function duzenleHafta(i) {
           const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
           
           // Masaj + egzersiz içeren takvim PDF'ini oluştur (egzersiz dahil)
+          console.log('🔍 generateLenfDrenajPDFBlob çağrılıyor (egzersiz: true)...');
           const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(true); // true = egzersiz dahil
+          console.log('🔍 generateLenfDrenajPDFBlob sonucu:', masajEgzersizTakvimBlob ? 'Başarılı' : 'Null');
           if (masajEgzersizTakvimBlob) {
             const masajEgzersizTakvimFileName = `${baseName}_Lenf_Masaji_Egzersiz_Takvimi.pdf`;
             zip.file(masajEgzersizTakvimFileName, masajEgzersizTakvimBlob);
@@ -7199,6 +7203,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
     async function uploadPDFToGitHub(fileName, base64Data) {
       try {
+        // Önce pdfs klasörünün varlığını kontrol et ve gerekirse oluştur
+        await ensurePDFDirectoryExists();
+        
         const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${fileName}`, {
           method: 'PUT',
           headers: {
@@ -7220,6 +7227,38 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       } catch (error) {
         console.error('❌ PDF GitHub\'a yüklenemedi:', error);
         throw error;
+      }
+    }
+
+    // PDF klasörünün varlığını garanti et
+    async function ensurePDFDirectoryExists() {
+      try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) return;
+        
+        // pdfs klasörünü kontrol et
+        const checkResponse = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs', {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (checkResponse.status === 404) {
+          // Klasör yok, README.md ile oluştur
+          console.log('📁 PDFs klasörü oluşturuluyor...');
+          await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/README.md', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'PDFs klasörü oluşturuldu',
+              content: btoa('# PDF Dosyaları\n\nBu klasörde hasta PDF dosyaları saklanır.')
+            })
+          });
+          console.log('✅ PDFs klasörü oluşturuldu');
+        }
+      } catch (error) {
+        console.warn('⚠️ PDF klasörü kontrol edilemedi:', error);
       }
     }
 
