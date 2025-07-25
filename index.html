@@ -7607,6 +7607,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       if (popup) {
         console.log('✅ PDF yeni sekmede açıldı!');
+        
+        // Akıllı PDF açma sistemi
+        alert(`🚀 PDF açılıyor: ${seciliHasta.isim} - Hafta ${haftaNo}\n\n🔍 Debug:\n• GID: ${pdfTabGid}\n\n⏳ 3 saniye sonra kontrol...`);
+        
+        // 3 saniye sonra başarı kontrolü
+        setTimeout(() => {
+          if (confirm(`❓ PDF açıldı mı?\n\nGID: ${pdfTabGid}\n\n✅ EVET = OK\n❌ HAYIR = İptal`)) {
+            // Başarılı
+            const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+            mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
+            localStorage.setItem('customGidMapping', JSON.stringify(mapping));
+            alert(`✅ GID ${pdfTabGid} kaydedildi!`);
+          } else {
+            // Başarısız
+            alert(`🔧 Sheet Analiz aracı açılacak`);
+            setTimeout(() => analyzeSheetStructure(), 500);
+          }
+        }, 3000);
         alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
         alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
