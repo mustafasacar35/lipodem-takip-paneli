@@ -455,7 +455,8 @@
         <input type="text" id="googleSheetsApiKey" placeholder="Google Sheets API Key" style="width:100%; margin-bottom:5px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGoogleSheetsConnection()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#4285f4; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 API Test</button>
         <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">� Hasta Sheets Yönet</button>
-        <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç (Yeni Sekme)</button>
+        <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç ve İşle</button>
+        <button onclick="checkCurrentPDFStatus()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#e83e8c; color:white; border:none; border-radius:3px; cursor:pointer;">📋 PDF Durum Kontrol</button>
         <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
         <button onclick="debugSheetStructure()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 GID Debug</button>
         <button onclick="openSheetShareSettings()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🔓 Sheet Paylaşım Ayarı</button>
@@ -7613,12 +7614,16 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         // 3 saniye sonra başarı kontrolü
         setTimeout(() => {
-          if (confirm(`❓ PDF açıldı mı?\n\nGID: ${pdfTabGid}\n\n✅ EVET = OK\n❌ HAYIR = İptal`)) {
-            // Başarılı
+          if (devamEt) {
+            // Başarılı - GID'i kaydet VE PDF'i işle
             const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
             mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
             localStorage.setItem('customGidMapping', JSON.stringify(mapping));
-            alert(`✅ GID ${pdfTabGid} kaydedildi!`);
+            
+            alert(`✅ GID ${pdfTabGid} kaydedildi!\n\n🔄 Şimdi PDF içeriği tarif eşleştirmesi için işleniyor...`);
+            
+            // PDF'i download edip tarif eşleştirmesine gönder
+            downloadAndProcessSheetPDF(pdfUrl, haftaNo);
           } else {
             // Başarısız
             alert(`🔧 Sheet Analiz aracı açılacak`);
@@ -7647,6 +7652,131 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
         document.body.appendChild(linkDiv);
       }
+    }
+
+    // Sheet PDF'ini download edip tarif eşleştirmesi için işle
+    async function downloadAndProcessSheetPDF(pdfUrl, haftaNo) {
+      try {
+        console.log('📥 Sheet PDF indiriliyor ve işleniyor...');
+        
+        // Loading indicator göster
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'pdfProcessingLoader';
+        loadingDiv.innerHTML = `
+          <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                      background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; 
+                      z-index: 10001; text-align: center;">
+            <div style="margin-bottom: 10px;">📥 Sheet PDF İşleniyor...</div>
+            <div style="font-size: 12px;">• PDF indiriliyor<br>• İçerik analiz ediliyor<br>• Tarif eşleştirmesi hazırlanıyor</div>
+          </div>
+        `;
+        document.body.appendChild(loadingDiv);
+        
+        // PDF'i fetch ile indir
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        
+        // Base64'e çevir (mevcut sistem base64 bekliyor)
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        const dataUrl = `data:application/pdf;base64,${base64}`;
+        
+        // PDF'i mevcut sisteme kaydet
+        const haftalar = getHaftaListesi();
+        const aktifTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+        
+        if (haftalar[aktifHaftaIndex]) {
+          haftalar[aktifHaftaIndex].pdf = dataUrl;
+          haftalar[aktifHaftaIndex].pdfName = `Sheet_Hafta_${haftaNo}.pdf`;
+          haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
+          
+          // Hafta verilerini kaydet (localStorage + GitHub)
+          saveHaftaData();
+          
+          console.log('✅ Sheet PDF sisteme kaydedildi');
+          
+          // Mevcut PDF işleme fonksiyonunu çağır
+          await pdfOkuVeEsleHafta(aktifHaftaIndex);
+          
+          // Loading kapat
+          document.getElementById('pdfProcessingLoader')?.remove();
+          
+          // Sidebar'ı güncelle
+          gosterEslesenKartlarSidebar(aktifHaftaIndex);
+          
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF içeriği okundu\n• Tarif eşleştirmesi tamamlandı\n• Veriler kalıcı olarak kaydedildi\n• Sidebar'da sonuçları görebilirsiniz`);
+          
+        } else {
+          throw new Error('Aktif hafta bulunamadı');
+        }
+        
+      } catch (error) {
+        console.error('❌ Sheet PDF işleme hatası:', error);
+        document.getElementById('pdfProcessingLoader')?.remove();
+        alert(`❌ Sheet PDF işlenirken hata oluştu:\n\n${error.message}\n\n🔧 Alternatifler:\n• PDF'i manuel indirip yükleyin\n• Sheet paylaşım ayarlarını kontrol edin\n• API key'i kontrol edin`);
+      }
+    }
+
+    // Mevcut hafta için PDF durumunu kontrol et
+    function checkCurrentPDFStatus() {
+      if (!seciliHasta) {
+        alert('⚠️ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+      const haftalar = getHaftaListesi();
+      const hafta = haftalar[aktifHaftaIndex];
+      const haftaNo = hafta ? (hafta.haftaNo || (aktifHaftaIndex + 1)) : 1;
+      
+      let durum = `📋 PDF Durum Raporu\n\n`;
+      durum += `👤 Hasta: ${seciliHasta.isim}\n`;
+      durum += `📅 Hafta: ${haftaNo}\n\n`;
+      
+      // PDF varlık kontrolü
+      if (hafta && hafta.pdf) {
+        durum += `✅ PDF Durumu: Mevcut\n`;
+        durum += `📁 Dosya Adı: ${hafta.pdfName || 'Bilinmiyor'}\n`;
+        durum += `📅 Kayıt Tarihi: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}\n\n`;
+        
+        // Tarif eşleştirmesi kontrolü
+        const eslesenKartlar = hafta.eslesenKartlar || [];
+        if (eslesenKartlar.length > 0) {
+          durum += `🍽️ Eşleşen Tarifler: ${eslesenKartlar.length} adet\n`;
+          durum += `📝 Tarifler: ${eslesenKartlar.slice(0, 3).map(k => k.kartTitle || k.title).join(', ')}${eslesenKartlar.length > 3 ? '...' : ''}\n\n`;
+        } else {
+          durum += `⚠️ Tarif Eşleştirmesi: Henüz yapılmamış\n\n`;
+        }
+        
+        // Sheet entegrasyonu kontrolü
+        const customGidMapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+        const hastaKey = `${seciliHasta.id}_hafta${haftaNo}`;
+        if (customGidMapping[hastaKey]) {
+          durum += `🔗 Sheet Entegrasyonu: Aktif (GID: ${customGidMapping[hastaKey].gid})\n`;
+        } else {
+          durum += `🔗 Sheet Entegrasyonu: Henüz yapılmamış\n`;
+        }
+        
+        durum += `\n✅ Bu hafta tamamlanmış durumda!`;
+        
+      } else {
+        durum += `❌ PDF Durumu: Yok\n\n`;
+        durum += `🔧 Yapılacaklar:\n`;
+        durum += `1. "📄 PDF Aç ve İşle" butonunu kullanın\n`;
+        durum += `2. Doğru GID'i bulup kaydedin\n`;
+        durum += `3. PDF otomatik işlenecek\n`;
+        durum += `4. Tarif eşleştirmesi hazır olacak`;
+      }
+      
+      alert(durum);
     }
 
     // Google Sheets tab'ını direkt aç
