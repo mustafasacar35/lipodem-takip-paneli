@@ -7323,10 +7323,52 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       try {
         console.log(`🔍 DEBUG - uploadPDFToGitHub'a gelen fileName: ${fileName} (${fileName.length} karakter)`);
         
-        // Dosya adı çok uzunsa zorla kısalt
-        if (fileName.length > 100) {
+        // İçerik tabanlı uzun dosya adlarını yakala ve düzelt
+        if (fileName.length > 100 || 
+            fileName.includes('her_sabah') || 
+            fileName.includes('ogle_tercihen') ||
+            fileName.includes('pazartesi') ||
+            fileName.includes('hafta_') ||
+            fileName.includes('badem_unu') ||
+            fileName.includes('zeytinyagi') ||
+            /.*[a-z]{20,}.*[a-z]{20,}.*/.test(fileName)) {
+            
+          console.warn(`🚨 İçerik tabanlı uzun dosya adı tespit edildi (${fileName.length} karakter)!`);
+          console.log(`🔍 Orijinal uzun ad (ilk 200 karakter): ${fileName.substring(0, 200)}...`);
+          
+          // Stack trace ile kaynağı bul
+          try {
+            throw new Error('Kaynak tespiti için');
+          } catch (e) {
+            console.log('📍 Uzun dosya adının kaynağı:', e.stack);
+          }
+          
+          // Güvenli yapılandırılmış ad oluştur
+          const timestamp = Date.now();
+          let structuredName = `pdf_${timestamp}.pdf`;
+          
+          // Eğer seciliHasta varsa daha anlamlı isim oluştur
+          if (typeof seciliHasta !== 'undefined' && seciliHasta && seciliHasta.isim) {
+            const hastaAdiKisa = seciliHasta.isim.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ0-9]/g, '').substring(0, 15);
+            const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '');
+            
+            // Hafta numarasını uzun dosya adından çıkarmaya çalış
+            let haftaNo = 1;
+            const haftaMatch = fileName.match(/(\d+)\.?\s*hafta/i);
+            if (haftaMatch) {
+              haftaNo = parseInt(haftaMatch[1]);
+            }
+            
+            structuredName = `${hastaAdiKisa}_${tarih}_H${haftaNo}.pdf`;
+          }
+          
+          console.log(`✅ Yapılandırılmış dosya adı oluşturuldu: ${structuredName} (${structuredName.length} karakter)`);
+          fileName = structuredName;
+        }
+        
+        // Normal uzunluk kontrolü (100 karakter üzeri için ek güvenlik)
+        else if (fileName.length > 100) {
           console.warn(`⚠️ Dosya adı çok uzun (${fileName.length} karakter), kısaltılıyor...`);
-          // PDF içeriğinden geliyorsa, safe fallback ad oluştur
           const timestamp = Date.now();
           const shortName = `pdf_${timestamp}.pdf`;
           console.log(`🔄 Kısaltılmış dosya adı: ${shortName}`);
