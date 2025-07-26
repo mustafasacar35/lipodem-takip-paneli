@@ -7321,89 +7321,82 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
     async function uploadPDFToGitHub(fileName, base64Data) {
       try {
-        console.log(`🔍 DEBUG - uploadPDFToGitHub'a gelen fileName: ${fileName} (${fileName.length} karakter)`);
-        
-        // İçerik tabanlı uzun dosya adlarını yakala ve düzelt - GELİŞTİRİLMİŞ KORUMA
-        if (fileName.length > 50 || 
-            fileName.includes('her_sabah') || 
-            fileName.includes('ogle_tercihen') ||
-            fileName.includes('pazartesi') ||
-            fileName.includes('sali') ||
-            fileName.includes('carsamba') ||
-            fileName.includes('persembe') ||
-            fileName.includes('cuma') ||
-            fileName.includes('cumartesi') ||
-            fileName.includes('pazar') ||
-            fileName.includes('hafta_') ||
-            fileName.includes('badem_unu') ||
-            fileName.includes('zeytinyagi') ||
-            fileName.includes('hindistan_cevizi') ||
-            fileName.includes('yumurta') ||
-            fileName.includes('mantar') ||
-            fileName.includes('ispanak') ||
-            fileName.includes('tereyagi') ||
-            fileName.includes('kasigi') ||
-            fileName.includes('gramkollajen') ||
-            fileName.includes('adet') ||
-            fileName.includes('bardagi') ||
-            fileName.includes('damla') ||
-            fileName.includes('limon') ||
-            fileName.includes('sirke') ||
-            fileName.includes('kahve_fincan') ||
-            fileName.includes('_unnu_') ||
-            fileName.includes('agustos') ||
-            fileName.includes('meryem') ||
-            fileName.includes('karadag') ||
-            /.*[a-z_]{15,}.*[a-z_]{15,}.*/.test(fileName)) {
-            
-          console.warn(`🚨 İÇERİK TABANLI UZUN DOSYA ADI TESPİT EDİLDİ! (${fileName.length} karakter)`);
-          console.log(`🔍 Orijinal uzun ad (ilk 200 karakter): ${fileName.substring(0, 200)}...`);
-          console.log(`🚫 Bu tür içerik-tabanlı dosya adları YASAK! Yapılandırılmış isme çevriliyor...`);
-          
-          // Stack trace ile kaynağı bul
-          try {
-            throw new Error('Kaynak tespiti için');
-          } catch (e) {
-            console.log('📍 Uzun dosya adının kaynağı:', e.stack);
-          }
+        // ANTİ-İÇERİK KORUMASI: İçerik-tabanlı dosya adlarını hemen engelle
+        const isMaliciousName = fileName.length > 80 || 
+          fileName.includes('her_sabah') || 
+          fileName.includes('ogle_tercihen') ||
+          fileName.includes('pazartesi') ||
+          fileName.includes('sali') ||
+          fileName.includes('carsamba') ||
+          fileName.includes('persembe') ||
+          fileName.includes('cuma') ||
+          fileName.includes('cumartesi') ||
+          fileName.includes('pazar') ||
+          fileName.includes('badem_unu') ||
+          fileName.includes('zeytinyagi') ||
+          fileName.includes('hindistan_cevizi') ||
+          fileName.includes('yumurta') ||
+          fileName.includes('mantar') ||
+          fileName.includes('ispanak') ||
+          fileName.includes('tereyagi') ||
+          fileName.includes('kasigi') ||
+          fileName.includes('gramkollajen') ||
+          fileName.includes('adet') ||
+          fileName.includes('bardagi') ||
+          fileName.includes('damla') ||
+          fileName.includes('limon') ||
+          fileName.includes('sirke') ||
+          fileName.includes('kahve_fincan') ||
+          fileName.includes('_unnu_') ||
+          fileName.includes('agustos') ||
+          fileName.includes('meryem') ||
+          fileName.includes('karadag') ||
+          /.*[a-z_]{15,}.*[a-z_]{15,}.*/.test(fileName);
+
+        if (isMaliciousName) {
+          console.error(`🚨 YASAK İÇERİK-TABANLI DOSYA ADI ENGELLENDİ! (${fileName.length} karakter)`);
+          console.error(`� Bu tür PDF içeriğinden oluşturulan dosya adları sistem performansını bozar!`);
           
           // Güvenli yapılandırılmış ad oluştur
           const timestamp = Date.now();
-          let structuredName = `pdf_${timestamp}.pdf`;
+          let structuredName = `Sheet_PDF_${timestamp}.pdf`;
           
           // Eğer seciliHasta varsa daha anlamlı isim oluştur
           if (typeof seciliHasta !== 'undefined' && seciliHasta && seciliHasta.isim) {
             const hastaAdiKisa = seciliHasta.isim.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ0-9]/g, '').substring(0, 15);
             const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '');
             
-            // Hafta numarasını uzun dosya adından çıkarmaya çalış
+            // Hafta numarasını belirle
             let haftaNo = 1;
-            const haftaMatch = fileName.match(/(\d+)\.?\s*hafta/i);
+            const haftaMatch = fileName.match(/(\d+)\.?\s*hafta/i) || fileName.match(/H(\d+)/i);
             if (haftaMatch) {
               haftaNo = parseInt(haftaMatch[1]);
             }
             
-            structuredName = `${hastaAdiKisa}_${tarih}_H${haftaNo}.pdf`;
+            structuredName = `${hastaAdiKisa}_Sheet_H${haftaNo}_${timestamp}.pdf`;
           }
           
-          console.log(`✅ Yapılandırılmış dosya adı oluşturuldu: ${structuredName} (${structuredName.length} karakter)`);
+          console.warn(`✅ Güvenli dosya adı oluşturuldu: ${structuredName} (${structuredName.length} karakter)`);
           fileName = structuredName;
         }
         
+        console.log(`🔍 uploadPDFToGitHub işlemi - fileName: ${fileName} (${fileName.length} karakter)`);
+        
         // Normal uzunluk kontrolü (50 karakter üzeri için ek güvenlik)
-        else if (fileName.length > 50) {
+        if (fileName.length > 50) {
           console.warn(`⚠️ Dosya adı 50 karakterden uzun (${fileName.length} karakter), kısaltılıyor...`);
           const timestamp = Date.now();
-          const shortName = `pdf_${timestamp}.pdf`;
+          const shortName = `Sheet_PDF_${timestamp}.pdf`;
           console.log(`🔄 Kısaltılmış dosya adı: ${shortName}`);
           fileName = shortName;
         }
+        
         
         // SON KONTROL: 50 karakter limiti zorla
         if (fileName.length > 50) {
           console.error(`🚨 HALA 50 karakterden uzun! (${fileName.length}) Acil kısaltma uygulanıyor...`);
           const timestamp = Date.now();
-          fileName = `pdf_${timestamp}.pdf`;
+          fileName = `Sheet_PDF_${timestamp}.pdf`;
           console.log(`🆘 Acil kısaltma: ${fileName}`);
         }
         
@@ -7438,8 +7431,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             counter++;
             console.log(`📝 Dosya mevcut, yeni isim: ${finalFileName}`);
           } else {
-            // Başka bir hata
-            break;
+            throw new Error(`GitHub API hatası: ${checkResponse.status}`);
           }
         }
         
