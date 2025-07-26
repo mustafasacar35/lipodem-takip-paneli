@@ -6600,13 +6600,14 @@ function duzenleHafta(i) {
       // Eğer PDF varsa ama pdfName yoksa, bunu düzelt
       if (hafta.pdf && !hafta.pdfName) {
         console.log('🔧 PDF var ama pdfName yok, düzeltiliyor...');
-        // Hasta adından PDF adı oluştur (Türkçe karakter düzeltme ile)
-        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
-        const tarih = new Date().toISOString().slice(0,10);
+        // Kısa ve öz PDF dosya adı oluştur (max 50 karakter)
+        const hastaAdiKisa = seciliHasta && seciliHasta.isim ? 
+          seciliHasta.isim.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ0-9]/g, '').substring(0, 15) : 'Hasta';
+        const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '');
         const haftaNo = hafta.haftaNo || (i + 1);
-        hafta.pdfName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}.pdf`;
+        hafta.pdfName = `${hastaAdiKisa}_${tarih}_H${haftaNo}.pdf`;
         saveToStorage(); // Değişikliği kaydet
-        console.log('✅ PDF adı oluşturuldu:', hafta.pdfName);
+        console.log('✅ PDF adı oluşturuldu:', hafta.pdfName, `(${hafta.pdfName.length} karakter)`);
       }
       
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
@@ -7707,7 +7708,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             await uploadPDFToGitHub(pdfFileName, base64);
             
             // LocalStorage'da sadece referans sakla (PDF data'sı değil)
-            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
+            haftalar[aktifHaftaIndex].pdfName = pdfFileName; // Bizim oluşturduğumuz kısa ad
             haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`;
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'github_sheet';
