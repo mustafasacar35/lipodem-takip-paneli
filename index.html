@@ -6597,8 +6597,8 @@ function duzenleHafta(i) {
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
       
-      // Eğer PDF varsa ama pdfName yoksa, bunu düzelt
-      if (hafta.pdf && !hafta.pdfName) {
+      // Eğer PDF varsa ama pdfName yoksa, bunu düzelt (GitHub PDF'ler için pdfGithubPath de kontrol et)
+      if ((hafta.pdf || hafta.pdfGithubPath) && !hafta.pdfName) {
         console.log('🔧 PDF var ama pdfName yok, düzeltiliyor...');
         // Hasta adından PDF adı oluştur (Türkçe karakter düzeltme ile)
         const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
@@ -6612,8 +6612,8 @@ function duzenleHafta(i) {
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       const imgs = eslesenDiv.querySelectorAll('img');
       
-      // İçerik kontrolü - hem URL hem base64 desteği
-      const hasPdf = hafta.pdf || hafta.pdfUrl;
+      // İçerik kontrolü - hem URL, base64 hem de GitHub PDF desteği
+      const hasPdf = hafta.pdf || hafta.pdfUrl || hafta.pdfGithubPath;
       const hasGptMessage = hafta.gptMesaj && hafta.gptMesaj.trim();
       const hasImages = imgs.length > 0;
       
@@ -7789,10 +7789,30 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           const tempPdfData = dataUrl; // Geçici olarak bellek de tut
           haftalar[aktifHaftaIndex].pdf = tempPdfData; // Geçici
           
+          // PDF ismini koru (işlem sırasında kaybolmasın)
+          const korunacakPdfName = haftalar[aktifHaftaIndex].pdfName;
+          const korunacakGithubPath = haftalar[aktifHaftaIndex].pdfGithubPath;
+          const korunacakPdfSource = haftalar[aktifHaftaIndex].pdfSource;
+          
           await pdfOkuVeEsleHafta(aktifHaftaIndex);
           
-          // İşlem bittikten sonra PDF data'sını temizle (sadece referans kalsın)
+          // İşlem bittikten sonra PDF data'sını temizle ve korunan bilgileri geri yükle
           delete haftalar[aktifHaftaIndex].pdf;
+          haftalar[aktifHaftaIndex].pdfName = korunacakPdfName; // İsmi koru
+          haftalar[aktifHaftaIndex].pdfGithubPath = korunacakGithubPath; // GitHub path'i koru
+          haftalar[aktifHaftaIndex].pdfSource = korunacakPdfSource; // Kaynak bilgisini koru
+          
+          // Güncellenmiş verileri kaydet
+          const hastalarList = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+          const hastaIdx = hastalarList.findIndex(h => h.id === seciliHasta.id);
+          if (hastaIdx >= 0) {
+            hastalarList[hastaIdx].haftalar = haftalar;
+            try {
+              localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalarList));
+            } catch (quotaError) {
+              console.warn('⚠️ LocalStorage quota aşıldı, sadece GitHub\'a kaydediliyor');
+            }
+          }
           
           // Loading kapat
           document.getElementById('pdfProcessingLoader')?.remove();
