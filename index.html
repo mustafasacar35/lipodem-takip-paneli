@@ -7323,18 +7323,42 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       try {
         console.log(`🔍 DEBUG - uploadPDFToGitHub'a gelen fileName: ${fileName} (${fileName.length} karakter)`);
         
-        // İçerik tabanlı uzun dosya adlarını yakala ve düzelt
-        if (fileName.length > 100 || 
+        // İçerik tabanlı uzun dosya adlarını yakala ve düzelt - GELİŞTİRİLMİŞ KORUMA
+        if (fileName.length > 50 || 
             fileName.includes('her_sabah') || 
             fileName.includes('ogle_tercihen') ||
             fileName.includes('pazartesi') ||
+            fileName.includes('sali') ||
+            fileName.includes('carsamba') ||
+            fileName.includes('persembe') ||
+            fileName.includes('cuma') ||
+            fileName.includes('cumartesi') ||
+            fileName.includes('pazar') ||
             fileName.includes('hafta_') ||
             fileName.includes('badem_unu') ||
             fileName.includes('zeytinyagi') ||
-            /.*[a-z]{20,}.*[a-z]{20,}.*/.test(fileName)) {
+            fileName.includes('hindistan_cevizi') ||
+            fileName.includes('yumurta') ||
+            fileName.includes('mantar') ||
+            fileName.includes('ispanak') ||
+            fileName.includes('tereyagi') ||
+            fileName.includes('kasigi') ||
+            fileName.includes('gramkollajen') ||
+            fileName.includes('adet') ||
+            fileName.includes('bardagi') ||
+            fileName.includes('damla') ||
+            fileName.includes('limon') ||
+            fileName.includes('sirke') ||
+            fileName.includes('kahve_fincan') ||
+            fileName.includes('_unnu_') ||
+            fileName.includes('agustos') ||
+            fileName.includes('meryem') ||
+            fileName.includes('karadag') ||
+            /.*[a-z_]{15,}.*[a-z_]{15,}.*/.test(fileName)) {
             
-          console.warn(`🚨 İçerik tabanlı uzun dosya adı tespit edildi (${fileName.length} karakter)!`);
+          console.warn(`🚨 İÇERİK TABANLI UZUN DOSYA ADI TESPİT EDİLDİ! (${fileName.length} karakter)`);
           console.log(`🔍 Orijinal uzun ad (ilk 200 karakter): ${fileName.substring(0, 200)}...`);
+          console.log(`🚫 Bu tür içerik-tabanlı dosya adları YASAK! Yapılandırılmış isme çevriliyor...`);
           
           // Stack trace ile kaynağı bul
           try {
@@ -7366,14 +7390,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           fileName = structuredName;
         }
         
-        // Normal uzunluk kontrolü (100 karakter üzeri için ek güvenlik)
-        else if (fileName.length > 100) {
-          console.warn(`⚠️ Dosya adı çok uzun (${fileName.length} karakter), kısaltılıyor...`);
+        // Normal uzunluk kontrolü (50 karakter üzeri için ek güvenlik)
+        else if (fileName.length > 50) {
+          console.warn(`⚠️ Dosya adı 50 karakterden uzun (${fileName.length} karakter), kısaltılıyor...`);
           const timestamp = Date.now();
           const shortName = `pdf_${timestamp}.pdf`;
           console.log(`🔄 Kısaltılmış dosya adı: ${shortName}`);
           fileName = shortName;
         }
+        
+        // SON KONTROL: 50 karakter limiti zorla
+        if (fileName.length > 50) {
+          console.error(`🚨 HALA 50 karakterden uzun! (${fileName.length}) Acil kısaltma uygulanıyor...`);
+          const timestamp = Date.now();
+          fileName = `pdf_${timestamp}.pdf`;
+          console.log(`🆘 Acil kısaltma: ${fileName}`);
+        }
+        
+        console.log(`✅ FINAL fileName: ${fileName} (${fileName.length} karakter) - 50 karakter limiti: ${fileName.length <= 50 ? 'UYGUN' : 'AŞIYOR!'}`);
         
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
