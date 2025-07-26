@@ -7657,6 +7657,40 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
 
     // Sheet PDF'ini download edip tarif eşleştirmesi için işle
+    // Türkçe tarih formatını oluşturan yardımcı fonksiyon
+    function createTurkishDateRange(baslangic, bitis) {
+      const monthNames = [
+        'ocak', 'subat', 'mart', 'nisan', 'mayis', 'haziran',
+        'temmuz', 'agustos', 'eylul', 'ekim', 'kasim', 'aralik'
+      ];
+      
+      try {
+        if (!baslangic || !bitis) return '';
+        
+        const startDate = new Date(baslangic);
+        const endDate = new Date(bitis);
+        
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return '';
+        
+        const startDay = startDate.getDate();
+        const startMonth = monthNames[startDate.getMonth()];
+        const endDay = endDate.getDate();
+        const endMonth = monthNames[endDate.getMonth()];
+        const year = startDate.getFullYear();
+        
+        // Aynı ay içindeyse: "22_28_temmuz_2025"
+        if (startDate.getMonth() === endDate.getMonth()) {
+          return `${startDay}_${endDay}_${startMonth}_${year}`;
+        } else {
+          // Farklı aylarsa: "30_haziran_6_temmuz_2025"
+          return `${startDay}_${startMonth}_${endDay}_${endMonth}_${year}`;
+        }
+      } catch (e) {
+        console.warn('Tarih formatı oluşturulamadı:', e);
+        return '';
+      }
+    }
+
     async function downloadAndProcessSheetPDF(pdfUrl, haftaNo) {
       try {
         console.log('📥 Sheet PDF indiriliyor ve işleniyor...');
@@ -7695,9 +7729,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
-          const pdfDisplayName = `📊 Sheet - Hafta ${haftaNo} - ${seciliHasta.isim}.pdf`;
-          const pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`; // GitHub için safe name
+          // Aktif hafta bilgilerini al
+          const hafta = haftalar[aktifHaftaIndex];
+          const hastaAdi = seciliHasta.isim.replace(/[^a-zA-Z0-9_]/g, '_'); // Dosya adı için güvenli hale getir
+          
+          // Tarih aralığını oluştur
+          const tarihAraligi = createTurkishDateRange(hafta.baslangic, hafta.bitis);
+          
+          // PDF isimlendirmesi: AAA_deneme_22_temmuz_3_agustos_2025_4_hafta.pdf
+          let pdfDisplayName, pdfFileName;
+          
+          if (tarihAraligi) {
+            pdfDisplayName = `📊 ${seciliHasta.isim} - ${tarihAraligi} - ${haftaNo}.hafta.pdf`;
+            pdfFileName = `${hastaAdi}_${tarihAraligi}_${haftaNo}_hafta.pdf`;
+          } else {
+            // Tarih aralığı oluşturulamazsa fallback
+            pdfDisplayName = `📊 Sheet - Hafta ${haftaNo} - ${seciliHasta.isim}.pdf`;
+            pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+          }
           
           try {
             // PDF'i GitHub'a yükle
