@@ -7612,21 +7612,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         // Akıllı PDF açma sistemi
         alert(`🚀 PDF açılıyor: ${seciliHasta.isim} - Hafta ${haftaNo}\n\n🔍 Debug:\n• GID: ${pdfTabGid}\n\n⏳ 3 saniye sonra kontrol...`);
         
-        // 3 saniye sonra otomatik işlem
-        setTimeout(() => {
-          console.log('🤖 OTOMATIK PDF İŞLEME BAŞLIYOR...');
-          
-          // Otomatik "EVET" - GID'i kaydet VE PDF'i işle
-          const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
-          mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
-          localStorage.setItem('customGidMapping', JSON.stringify(mapping));
-          
-          console.log(`✅ GID ${pdfTabGid} otomatik kaydedildi!`);
-          alert(`🤖 OTOMATIK İŞLEM\n\n✅ GID ${pdfTabGid} kaydedildi!\n🔄 PDF içeriği tarif eşleştirmesi için işleniyor...`);
-          
-          // PDF'i download edip tarif eşleştirmesine gönder
-          downloadAndProcessSheetPDF(pdfUrl, haftaNo);
-        }, 3000);
+        // Hemen otomatik işlem (3 saniye beklemeden)
+        console.log('🤖 OTOMATIK PDF İŞLEME BAŞLIYOR...');
+        
+        // Otomatik "EVET" - GID'i kaydet VE PDF'i işle
+        const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+        mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
+        localStorage.setItem('customGidMapping', JSON.stringify(mapping));
+        
+        console.log(`✅ GID ${pdfTabGid} otomatik kaydedildi!`);
+        alert(`🤖 OTOMATIK İŞLEM\n\n✅ GID ${pdfTabGid} kaydedildi!\n🔄 PDF içeriği tarif eşleştirmesi için işleniyor...`);
+        
+        // PDF'i download edip tarif eşleştirmesine gönder
+        downloadAndProcessSheetPDF(pdfUrl, haftaNo);
         alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
         alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
