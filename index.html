@@ -7321,6 +7321,18 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
     async function uploadPDFToGitHub(fileName, base64Data) {
       try {
+        console.log(`🔍 DEBUG - uploadPDFToGitHub'a gelen fileName: ${fileName} (${fileName.length} karakter)`);
+        
+        // Dosya adı çok uzunsa zorla kısalt
+        if (fileName.length > 100) {
+          console.warn(`⚠️ Dosya adı çok uzun (${fileName.length} karakter), kısaltılıyor...`);
+          // PDF içeriğinden geliyorsa, safe fallback ad oluştur
+          const timestamp = Date.now();
+          const shortName = `pdf_${timestamp}.pdf`;
+          console.log(`🔄 Kısaltılmış dosya adı: ${shortName}`);
+          fileName = shortName;
+        }
+        
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
           throw new Error('GitHub token gerekli');
@@ -7701,7 +7713,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '');
           const pdfFileName = `${hastaAdiKisa}_${tarih}_H${haftaNo}.pdf`;
           
-          console.log(`📁 PDF dosya adı: ${pdfFileName} (${pdfFileName.length} karakter)`);
+          console.log(`� DEBUG - Oluşturulan pdfFileName: ${pdfFileName} (${pdfFileName.length} karakter)`);
+          console.log(`🔍 DEBUG - hastaAdiKisa: ${hastaAdiKisa}, tarih: ${tarih}, haftaNo: ${haftaNo}`);
+          console.log(`�📁 PDF dosya adı: ${pdfFileName} (${pdfFileName.length} karakter)`);
           
           try {
             // PDF'i GitHub'a yükle
