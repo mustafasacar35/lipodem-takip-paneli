@@ -7695,8 +7695,12 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
-          const pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`;
+          // Kısa ve öz PDF dosya adı oluştur (max 50 karakter)
+          const hastaAdiKisa = seciliHasta.isim.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ0-9]/g, '').substring(0, 15);
+          const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '');
+          const pdfFileName = `${hastaAdiKisa}_${tarih}_H${haftaNo}.pdf`;
+          
+          console.log(`📁 PDF dosya adı: ${pdfFileName} (${pdfFileName.length} karakter)`);
           
           try {
             // PDF'i GitHub'a yükle
