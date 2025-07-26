@@ -7710,6 +7710,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           const pdfDisplayName = `${temizIsim} - ${haftaNo}.Hafta (${tarihAraligi}).pdf`;
           const pdfFileName = `Sheet_${temizIsim}_Hafta${haftaNo}_${seciliHasta.id}.pdf`; // GitHub için safe name
           
+          console.log('🏷️ PDF isimlendirme sistemi:', {
+            eskiAd: haftalar[aktifHaftaIndex].pdfName,
+            yeniDisplayName: pdfDisplayName,
+            githubFileName: pdfFileName,
+            temizIsim,
+            haftaNo,
+            tarihAraligi
+          });
+          
           try {
             // PDF'i GitHub'a yükle
             await uploadPDFToGitHub(pdfFileName, base64);
@@ -7765,7 +7774,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Hafta tablarını güncelle (PDF ismini göstermek için)
           gosterHaftalar();
           
-          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
+          console.log('✅ PDF isimlendirme sistemi tamamlandı - UI güncellendi');
+          
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF adı: ${pdfDisplayName}\n• GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
           
         } else {
           throw new Error('Aktif hafta bulunamadı');
