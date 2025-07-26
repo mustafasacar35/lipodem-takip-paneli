@@ -425,6 +425,7 @@
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <button onclick="uploadToGitHub()" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 GitHub'a Kaydet</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
+        <button onclick="acilPDFTemizligi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 PDF Temizlik</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
       </div>
@@ -3064,9 +3065,51 @@
         
       } catch(e) { 
         console.error('localStorage kaydetme hatası:', e);
-        showSaveNotification('error');
+        
+        // Eğer quota aşıldıysa, acil temizlik yap
+        if (e.name === 'QuotaExceededError') {
+          console.warn('🧹 localStorage dolu! Acil PDF temizliği yapılıyor...');
+          try {
+            // PDF'leri base64'ten URL'e çevir
+            convertBase64PDFsToURLs();
+            // Tekrar kaydetmeyi dene
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+            showSaveNotification('saved');
+            console.log('✅ PDF temizliği sonrası kaydetme başarılı');
+          } catch (secondError) {
+            console.error('❌ PDF temizliği sonrası da kaydetme başarısız:', secondError);
+            showSaveNotification('error');
+          }
+        } else {
+          showSaveNotification('error');
+        }
       }
     }
+    
+    // Acil durum: Base64 PDF'leri temizle (localStorage quota aşımı için)
+    function convertBase64PDFsToURLs() {
+      console.log('🧹 Base64 PDF temizliği başlıyor...');
+      let temizlenenSayisi = 0;
+      
+      hastalar.forEach(hasta => {
+        if (hasta.haftalar && Array.isArray(hasta.haftalar)) {
+          hasta.haftalar.forEach(hafta => {
+            if (hafta.pdf && hafta.pdf.startsWith('data:application/pdf;base64,')) {
+              // Base64 PDF'i sil, sadece pdfName'i koru
+              console.log(`🗑️ Base64 PDF siliniyor: ${hafta.pdfName || 'isimsiz'}`);
+              delete hafta.pdf;
+              hafta.pdfTemizlendi = true;
+              hafta.temizlikTarihi = new Date().toISOString();
+              temizlenenSayisi++;
+            }
+          });
+        }
+      });
+      
+      console.log(`✅ ${temizlenenSayisi} adet base64 PDF temizlendi`);
+      return temizlenenSayisi;
+    }
+    
     function loadFromStorage() {
       try {
         const data = localStorage.getItem(STORAGE_KEY);
@@ -6911,6 +6954,25 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     window.yeniBirDenemeEt = yeniBirDenemeEt;
 
     // ===== CACHE YÖNETİMİ FONKSİYONLARI =====
+    
+    // Acil PDF temizliği (localStorage quota aşımı için)
+    function acilPDFTemizligi() {
+      if (!confirm('🧹 PDF Temizlik İşlemi\n\nBu işlem:\n• Base64 PDF\'leri silecek\n• PDF isimlerini koruyacak\n• JSON boyutunu küçültecek\n• Yeni PDF\'ler GitHub\'a yüklenecek\n\nDevam etmek istiyor musunuz?')) {
+        return;
+      }
+      
+      console.log('🧹 Acil PDF temizliği başlıyor...');
+      
+      const temizlenenSayisi = convertBase64PDFsToURLs();
+      
+      // Temizlik sonrası kaydet
+      try {
+        saveToStorage();
+        alert(`✅ PDF Temizlik Başarılı!\n\n• ${temizlenenSayisi} adet base64 PDF temizlendi\n• JSON boyutu küçültüldü\n• localStorage sorunu çözüldü\n\nArtık yeni PDF'ler GitHub'a yüklenecek.`);
+      } catch (error) {
+        alert(`❌ Temizlik sonrası kaydetme hatası!\n\n${error.message}\n\nLütfen sayfayı yenileyin.`);
+      }
+    }
     
     // Tüm cache'i temizle (localStorage + tarifler klasörü cache)
     function tumCacheyiTemizle() {
