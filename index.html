@@ -4177,26 +4177,22 @@ function duzenleHafta(i) {
       const reader = new FileReader();
       reader.onload = async function(e) {
         const haftalar = getHaftaListesi();
+        
+        // PDF dosya adını oluştur - orijinal ismi koru
+        const originalFileName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim || 'Hasta').replace(/\s+/g, '_');
         const haftaNo = i + 1;
         
-        // Hafta tarih aralığını al
-        const aktifHafta = haftalar[i];
-        let tarihAraligi = '';
+        // Dosya adı formatı: HastaAdı_HaftaNo_OriginalName.pdf
+        const fileExtension = originalFileName.substring(originalFileName.lastIndexOf('.'));
+        const fileNameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
+        const pdfFileName = `${hastaAdi}_Hafta${haftaNo}_${fileNameWithoutExt}${fileExtension}`;
         
-        if (aktifHafta && aktifHafta.baslangic && aktifHafta.bitis) {
-          const baslangic = new Date(aktifHafta.baslangic).toLocaleDateString('tr-TR');
-          const bitis = new Date(aktifHafta.bitis).toLocaleDateString('tr-TR');
-          tarihAraligi = `${baslangic}-${bitis}`;
-        } else {
-          tarihAraligi = `Hafta${haftaNo}`;
-        }
-        
-        // Hasta ismini temizle (dosya ismi için güvenli hale getirir)
-        const temizIsim = seciliHasta.isim.replace(/[^a-zA-ZğĞüÜşŞıİöÖçÇ\s]/g, '').replace(/\s+/g, '_');
-        
-        // Yeni PDF isimlendirme sistemi
-        const displayName = `${temizIsim} - ${haftaNo}.Hafta (${tarihAraligi}).pdf`;
-        const pdfFileName = `Manuel_${temizIsim}_Hafta${haftaNo}_${seciliHasta.id}.pdf`; // GitHub için safe name
+        console.log('📁 PDF dosya adı oluşturuldu:', {
+          original: file.name,
+          cleaned: originalFileName,
+          final: pdfFileName
+        });
         
         const base64Data = e.target.result.split(',')[1];
         
@@ -4207,7 +4203,7 @@ function duzenleHafta(i) {
           
           // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
           haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
-          haftalar[i].pdfName = displayName; // Yeni görünen isim sistemi
+          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
           
           console.log('✅ PDF GitHub\'a yüklendi ve URL kaydedildi:', {
@@ -4224,7 +4220,7 @@ function duzenleHafta(i) {
           
           // Fallback: Base64 olarak JSON'da sakla
           haftalar[i].pdf = e.target.result;
-          haftalar[i].pdfName = displayName; // Aynı isimlendirme sistemi
+          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
           
           console.log('✅ PDF base64 olarak kaydedildi (fallback):', {
@@ -4243,7 +4239,7 @@ function duzenleHafta(i) {
           
           if (seciliHaftaIndex !== -1) {
             seciliHasta.haftalar[seciliHaftaIndex].pdf = e.target.result;
-            seciliHasta.haftalar[seciliHaftaIndex].pdfName = displayName; // Yeni isimlendirme sistemi
+            seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
             seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = new Date().toISOString();
             console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
           }
@@ -7613,20 +7609,28 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (popup) {
         console.log('✅ PDF yeni sekmede açıldı!');
         
-        // Akıllı PDF açma sistemi - Otomatik eşleştirme
-        alert(`🚀 PDF açılıyor: ${seciliHasta.isim} - Hafta ${haftaNo}\n\n� Yeni sekmede PDF görüntüleniyor...\n⏳ 3 saniye sonra otomatik eşleştirme başlayacak`);
+        // Akıllı PDF açma sistemi
+        alert(`🚀 PDF açılıyor: ${seciliHasta.isim} - Hafta ${haftaNo}\n\n🔍 Debug:\n• GID: ${pdfTabGid}\n\n⏳ 3 saniye sonra kontrol...`);
         
-        // 3 saniye sonra otomatik eşleştirme başlat
+        // 3 saniye sonra başarı kontrolü
         setTimeout(() => {
-          // GID'i kaydet 
-          const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
-          mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
-          localStorage.setItem('customGidMapping', JSON.stringify(mapping));
+          const devamEt = confirm(`❓ PDF açıldı mı?\n\nGID: ${pdfTabGid}\n\n✅ EVET = OK\n❌ HAYIR = İptal`);
           
-          console.log(`✅ GID ${pdfTabGid} kaydedildi - Otomatik eşleştirme başlıyor...`);
-          
-          // PDF'i download edip tarif eşleştirmesine gönder
-          downloadAndProcessSheetPDF(pdfUrl, haftaNo);
+          if (devamEt) {
+            // Başarılı - GID'i kaydet VE PDF'i işle
+            const mapping = JSON.parse(localStorage.getItem('customGidMapping') || '{}');
+            mapping[`${seciliHasta.id}_hafta${haftaNo}`] = { gid: pdfTabGid, timestamp: new Date().toISOString() };
+            localStorage.setItem('customGidMapping', JSON.stringify(mapping));
+            
+            alert(`✅ GID ${pdfTabGid} kaydedildi!\n\n🔄 Şimdi PDF içeriği tarif eşleştirmesi için işleniyor...`);
+            
+            // PDF'i download edip tarif eşleştirmesine gönder
+            downloadAndProcessSheetPDF(pdfUrl, haftaNo);
+          } else {
+            // Başarısız
+            alert(`🔧 Sheet Analiz aracı açılacak`);
+            setTimeout(() => analyzeSheetStructure(), 500);
+          }
         }, 3000);
         alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
@@ -7691,40 +7695,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // Hafta tarih aralığını al
-          const aktifHafta = haftalar[aktifHaftaIndex];
-          let tarihAraligi = '';
-          
-          if (aktifHafta.baslangic && aktifHafta.bitis) {
-            const baslangic = new Date(aktifHafta.baslangic).toLocaleDateString('tr-TR');
-            const bitis = new Date(aktifHafta.bitis).toLocaleDateString('tr-TR');
-            tarihAraligi = `${baslangic}-${bitis}`;
-          } else {
-            tarihAraligi = `Hafta${haftaNo}`;
-          }
-          
-          // Hasta ismini temizle (dosya ismi için güvenli hale getirir)
-          const temizIsim = seciliHasta.isim.replace(/[^a-zA-ZğĞüÜşŞıİöÖçÇ\s]/g, '').replace(/\s+/g, '_');
-          
           // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
-          const pdfDisplayName = `${temizIsim} - ${haftaNo}.Hafta (${tarihAraligi}).pdf`;
-          const pdfFileName = `Sheet_${temizIsim}_Hafta${haftaNo}_${seciliHasta.id}.pdf`; // GitHub için safe name
-          
-          console.log('🏷️ PDF isimlendirme sistemi:', {
-            eskiAd: haftalar[aktifHaftaIndex].pdfName,
-            yeniDisplayName: pdfDisplayName,
-            githubFileName: pdfFileName,
-            temizIsim,
-            haftaNo,
-            tarihAraligi
-          });
+          const pdfFileName = `h${haftaNo}.pdf`; // En basit: h1.pdf, h2.pdf, h3.pdf
           
           try {
             // PDF'i GitHub'a yükle
             await uploadPDFToGitHub(pdfFileName, base64);
             
             // LocalStorage'da sadece referans sakla (PDF data'sı değil)
-            haftalar[aktifHaftaIndex].pdfName = pdfDisplayName; // Görünen isim
+            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
             haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`;
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'github_sheet';
@@ -7736,7 +7715,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             // GitHub başarısız olursa mini sürüm localStorage'da sakla
             const miniPdf = `data:application/pdf;base64,${base64.substring(0, 1000)}...`; // Sadece ilk 1KB
             haftalar[aktifHaftaIndex].pdf = miniPdf;
-            haftalar[aktifHaftaIndex].pdfName = pdfDisplayName; // Görünen isim
+            haftalar[aktifHaftaIndex].pdfName = pdfFileName;
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'localStorage_truncated';
           }
@@ -7771,12 +7750,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Sidebar'ı güncelle
           gosterEslesenKartlarSidebar(aktifHaftaIndex);
           
-          // Hafta tablarını güncelle (PDF ismini göstermek için)
-          gosterHaftalar();
-          
-          console.log('✅ PDF isimlendirme sistemi tamamlandı - UI güncellendi');
-          
-          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF adı: ${pdfDisplayName}\n• GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
           
         } else {
           throw new Error('Aktif hafta bulunamadı');
