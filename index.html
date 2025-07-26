@@ -7669,7 +7669,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
                       background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; 
                       z-index: 10001; text-align: center;">
             <div style="margin-bottom: 10px;">📥 Sheet PDF İşleniyor...</div>
-            <div style="font-size: 12px;">• PDF indiriliyor<br>• GitHub'a yükleniyor<br>• İçerik analiz ediliyor<br>• Tarif eşleştirmesi hazırlanıyor<br>• PDF adı hafta tabına ekleniyor</div>
+            <div style="font-size: 12px;">• PDF indiriliyor<br>• İçerik analiz ediliyor<br>• Tarif eşleştirmesi hazırlanıyor</div>
           </div>
         `;
         document.body.appendChild(loadingDiv);
@@ -7695,22 +7695,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
         
         if (haftalar[aktifHaftaIndex]) {
-          // PDF ismini güzel formatta oluştur
-          const bugün = new Date();
-          const tarih = `${bugün.getDate().toString().padStart(2, '0')}.${(bugün.getMonth() + 1).toString().padStart(2, '0')}.${bugün.getFullYear()}`;
-          const displayName = `${seciliHasta.isim} - ${tarih} - Hafta ${haftaNo}`;
-          const pdfFileName = `Sheet_${seciliHasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Hafta_${haftaNo}_${tarih.replace(/\./g, '')}.pdf`;
+          // PDF'i GitHub'a yükle, localStorage'da sadece referans sakla
+          const pdfDisplayName = `📊 Sheet - Hafta ${haftaNo} - ${seciliHasta.isim}.pdf`;
+          const pdfFileName = `Sheet_Hafta_${haftaNo}_${seciliHasta.id}.pdf`; // GitHub için safe name
           
           try {
             // PDF'i GitHub'a yükle
             await uploadPDFToGitHub(pdfFileName, base64);
             
             // LocalStorage'da sadece referans sakla (PDF data'sı değil)
-            haftalar[aktifHaftaIndex].pdfName = displayName; // Görünen isim
-            haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`; // GitHub dosya yolu
+            haftalar[aktifHaftaIndex].pdfName = pdfDisplayName; // Görünen isim
+            haftalar[aktifHaftaIndex].pdfGithubPath = `pdfs/${pdfFileName}`;
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'github_sheet';
-            haftalar[aktifHaftaIndex].isSheetPDF = true; // Sheet'ten geldiğini belirt
             // PDF data'sını saklama - GitHub'da
             delete haftalar[aktifHaftaIndex].pdf;
             
@@ -7719,10 +7716,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             // GitHub başarısız olursa mini sürüm localStorage'da sakla
             const miniPdf = `data:application/pdf;base64,${base64.substring(0, 1000)}...`; // Sadece ilk 1KB
             haftalar[aktifHaftaIndex].pdf = miniPdf;
-            haftalar[aktifHaftaIndex].pdfName = displayName;
+            haftalar[aktifHaftaIndex].pdfName = pdfDisplayName; // Görünen isim
             haftalar[aktifHaftaIndex].kayitTarihi = new Date().toISOString();
             haftalar[aktifHaftaIndex].pdfSource = 'localStorage_truncated';
-            haftalar[aktifHaftaIndex].isSheetPDF = true;
           }
           
           // Hafta verilerini kaydet (localStorage + GitHub)
@@ -7738,7 +7734,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             }
           }
           
-          console.log('✅ Sheet PDF sisteme kaydedildi:', displayName);
+          console.log('✅ Sheet PDF sisteme kaydedildi');
           
           // Mevcut PDF işleme fonksiyonunu çağır (geçici PDF data ile)
           const tempPdfData = dataUrl; // Geçici olarak bellek de tut
@@ -7755,10 +7751,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Sidebar'ı güncelle
           gosterEslesenKartlarSidebar(aktifHaftaIndex);
           
-          // Hafta görünümünü güncelle (PDF adını göstermek için)
+          // Hafta tablarını güncelle (PDF ismini göstermek için)
           gosterHaftalar();
           
-          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n� PDF: ${displayName}\n�📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• PDF ismi hafta tabına eklendi\n• Sidebar'da sonuçları görebilirsiniz`);
+          alert(`🎉 Sheet PDF başarıyla işlendi!\n\n📊 Hafta ${haftaNo} için:\n• PDF GitHub'a yüklendi\n• İçerik analiz edildi\n• Tarif eşleştirmesi tamamlandı\n• Veriler optimize edildi (quota sorunu çözüldü)\n• Sidebar'da sonuçları görebilirsiniz`);
           
         } else {
           throw new Error('Aktif hafta bulunamadı');
