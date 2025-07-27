@@ -4174,27 +4174,43 @@ function silHafta(i) {
     const pdfUrl = hafta.pdfUrl;
     // PDF dosya adını URL'den çıkar
     const pdfFileName = pdfUrl.split('/').pop();
+    // Dosya adını mutlaka encode et
+    const encodedFileName = encodeURIComponent(pdfFileName);
     // GitHub API ile silme isteği
     // Not: Kullanıcıda token ve repo bilgisi olmalı
     const githubToken = localStorage.getItem('githubToken');
     if (githubToken) {
-      fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${pdfFileName}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': 'token ' + githubToken,
-          'Accept': 'application/vnd.github.v3+json'
-        },
-        body: JSON.stringify({
-          message: `Hafta silindiği için PDF dosyası silindi: ${pdfFileName}`,
-          sha: hafta.pdfSha || ''
-        })
-      }).then(r => r.json()).then(res => {
-        console.log('✅ PDF GitHub\'dan silindi:', pdfFileName, res);
-      }).catch(err => {
-        console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, err);
-      });
+      if (!hafta.pdfSha || typeof hafta.pdfSha !== 'string' || hafta.pdfSha.length < 5) {
+        console.warn('⚠️ PDF SHA eksik veya hatalı, silme işlemi yapılamaz:', pdfFileName, hafta.pdfSha);
+        alert('PDF SHA eksik veya hatalı, GitHub silme işlemi yapılamadı!');
+      } else {
+        fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${encodedFileName}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'token ' + githubToken,
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({
+            message: `Hafta silindiği için PDF dosyası silindi: ${pdfFileName}`,
+            sha: hafta.pdfSha
+          })
+        }).then(async r => {
+          if (r.ok) {
+            const res = await r.json();
+            console.log('✅ PDF GitHub\'dan silindi:', pdfFileName, res);
+          } else {
+            const errText = await r.text();
+            console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, errText);
+            alert('PDF GitHub silme hatası: ' + errText);
+          }
+        }).catch(err => {
+          console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, err);
+          alert('PDF GitHub silme hatası: ' + err.message);
+        });
+      }
     } else {
       console.warn('⚠️ GitHub token yok, PDF dosyası GitHub\'dan silinemedi:', pdfFileName);
+      alert('GitHub token yok, PDF dosyası GitHub\'dan silinemedi!');
     }
   }
   haftalar.splice(i, 1);
