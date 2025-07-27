@@ -371,12 +371,33 @@
       
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
-        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
-        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Önce bir hasta seçin...
+        <!-- Eşleşen Kartlar Akordiyon Başlık -->
+        <button id="eslesenKartlarAkordiyonBaslik" style="
+          width: 100%; 
+          background: #6f42c1; 
+          color: white; 
+          border: none; 
+          padding: 12px 20px; 
+          border-radius: 8px; 
+          cursor: pointer; 
+          font-weight: bold; 
+          font-size: 16px;
+          text-align: left;
+          margin-bottom: 10px;
+          transition: background-color 0.3s;
+        " onmouseover="this.style.backgroundColor='#5a359a'" onmouseout="this.style.backgroundColor='#6f42c1'">
+          🔗 Eşleşen Kartlar <span id="kartSayisi" style="float: right;">▼</span>
+        </button>
+        
+        <!-- Eşleşen Kartlar Akordiyon İçerik -->
+        <div id="eslesenKartlarAkordiyonIcerik" style="display: block;">
+          <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+            <div style="text-align: center; color: #666; padding: 40px;">
+              Önce bir hasta seçin...
+            </div>
           </div>
         </div>
+        
         <!-- Butonlar için sabit alan -->
         <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
@@ -404,6 +425,7 @@
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <button onclick="uploadToGitHub()" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 GitHub'a Kaydet</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
+        <button onclick="acilPDFTemizligi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 PDF Temizlik</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
       </div>
@@ -419,16 +441,25 @@
         </div>
       </div>
 
+      <!-- Kaydetme Durumu -->
+      <div class="sidebar-section">
+        <h3>💾 Kaydetme Durumu</h3>
+        <div id="saveStatus" style="font-size: 12px; line-height: 1.4; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
+          <div id="saveIcon" style="font-size: 16px; margin-bottom: 4px;">💤</div>
+          <div id="saveText">Beklemede</div>
+        </div>
+      </div>
+
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -1065,7 +1096,32 @@
 
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
-      if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
+      if (!token) { 
+        console.warn('⚠️ GitHub API token gerekli');
+        showSaveNotification('error');
+        return; 
+      }
+      
+      // Token geçerliliğini test et
+      try {
+        const testResponse = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `token ${token}` }
+        });
+        
+        if (!testResponse.ok) {
+          console.error('❌ GitHub token geçersiz:', await testResponse.json());
+          showSaveNotification('error');
+          // Sadece konsol uyarısı, alert kaldırıldı
+          return;
+        }
+        
+        console.log('✅ GitHub token geçerli');
+      } catch (error) {
+        console.error('❌ Token test hatası:', error);
+        showSaveNotification('error');
+        return;
+      }
+      
       const owner = 'mustafasacar35'; // GitHub kullanıcı adın
       const repo = 'lipodem-takip-paneli'; // Repo adı
       const path = 'data/hasta_kayitlari.json'; // Dosya yolu (repo içinde data/ klasörü olmalı)
@@ -1132,7 +1188,8 @@
       if (res.ok) {
         // Cache timestamp'ini güncelle
         localStorage.setItem('lastGithubUpdate', Date.now().toString());
-        alert('✅ GitHub\'a başarıyla kaydedildi!');
+        console.log('✅ GitHub\'a başarıyla kaydedildi!');
+        // Alert kaldırıldı - sidebar'da ikon gösteriliyor
         console.log('✅ GitHub upload başarılı');
       } else {
         const errorText = await res.text();
@@ -2986,13 +3043,73 @@
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
     function saveToStorage() {
       try {
+        showSaveNotification('saving'); // Kaydetme başlıyor
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
         // Hasta sayılarını güncelle
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari();
         }
-      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+        
+        showSaveNotification('saved'); // Local kaydetme tamamlandı
+        
+        // GitHub'a otomatik kaydetme (2 saniye sonra)
+        clearTimeout(window.githubSaveTimeout);
+        window.githubSaveTimeout = setTimeout(() => {
+          showSaveNotification('github_saving'); // GitHub'a kaydetme başlıyor
+          uploadToGitHub().then(() => {
+            showSaveNotification('github_saved'); // GitHub'a kaydetme tamamlandı
+          }).catch(() => {
+            showSaveNotification('error'); // Hata
+          });
+        }, 2000);
+        
+      } catch(e) { 
+        console.error('localStorage kaydetme hatası:', e);
+        
+        // Eğer quota aşıldıysa, acil temizlik yap
+        if (e.name === 'QuotaExceededError') {
+          console.warn('🧹 localStorage dolu! Acil PDF temizliği yapılıyor...');
+          try {
+            // PDF'leri base64'ten URL'e çevir
+            convertBase64PDFsToURLs();
+            // Tekrar kaydetmeyi dene
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+            showSaveNotification('saved');
+            console.log('✅ PDF temizliği sonrası kaydetme başarılı');
+          } catch (secondError) {
+            console.error('❌ PDF temizliği sonrası da kaydetme başarısız:', secondError);
+            showSaveNotification('error');
+          }
+        } else {
+          showSaveNotification('error');
+        }
+      }
     }
+    
+    // Acil durum: Base64 PDF'leri temizle (localStorage quota aşımı için)
+    function convertBase64PDFsToURLs() {
+      console.log('🧹 Base64 PDF temizliği başlıyor...');
+      let temizlenenSayisi = 0;
+      
+      hastalar.forEach(hasta => {
+        if (hasta.haftalar && Array.isArray(hasta.haftalar)) {
+          hasta.haftalar.forEach(hafta => {
+            if (hafta.pdf && hafta.pdf.startsWith('data:application/pdf;base64,')) {
+              // Base64 PDF'i sil, sadece pdfName'i koru
+              console.log(`🗑️ Base64 PDF siliniyor: ${hafta.pdfName || 'isimsiz'}`);
+              delete hafta.pdf;
+              hafta.pdfTemizlendi = true;
+              hafta.temizlikTarihi = new Date().toISOString();
+              temizlenenSayisi++;
+            }
+          });
+        }
+      });
+      
+      console.log(`✅ ${temizlenenSayisi} adet base64 PDF temizlendi`);
+      return temizlenenSayisi;
+    }
+    
     function loadFromStorage() {
       try {
         const data = localStorage.getItem(STORAGE_KEY);
@@ -3654,7 +3771,8 @@
         // Tab başlığı oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const tabDiv = document.createElement('div');
         tabDiv.className = `hafta-tab ${i === enBuyukHaftaIndex ? 'active' : ''}`;
-        tabDiv.dataset.haftaIndex = i; // Dataset ekle
+        tabDiv.dataset.haftaIndex = i; // Array pozisyonu
+        tabDiv.dataset.haftaNo = haftaNo; // Gerçek hafta numarası
         tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
@@ -3728,11 +3846,10 @@
               <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
               <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
-              ${(hafta.pdf || hafta.pdfFile) ? `
+              ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
                   ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfName || 'hafta.pdf'}</strong>
                   <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
-                    ${hafta.pdfOrijinalIsim ? `📁 Orijinal dosya: <span style='color:#007bff;'>${hafta.pdfOrijinalIsim}</span><br>` : ''}
                     📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
                   </div>
                   <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
@@ -3894,7 +4011,7 @@ function aciklamaKaydet(i) {
   haftalar[i].aciklama = aciklamaInput.value;
   saveToStorage();
   
-  // Visual feedback
+  // Visual feedback - yeşil yanıp sönme
   aciklamaInput.style.backgroundColor = '#d4edda';
   aciklamaInput.style.borderColor = '#28a745';
   setTimeout(() => {
@@ -3902,7 +4019,12 @@ function aciklamaKaydet(i) {
     aciklamaInput.style.borderColor = '';
   }, 800);
   
-  console.log('Açıklama otomatik kaydedildi:', aciklamaInput.value);
+  // Kısa bildirim göster (sadece boş değilse)
+  if (aciklamaInput.value.trim()) {
+    showSaveNotification();
+  }
+  
+  console.log('✅ Açıklama otomatik kaydedildi ve GitHub\'a gönderilecek:', aciklamaInput.value);
 }
 
 // Hafta numarası düzenleme (inline editing)
@@ -4060,71 +4182,95 @@ function duzenleHafta(i) {
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
       if (!file) return;
+      
       console.log('🔍 PDF yükleniyor:', file.name);
-      const haftalar = getHaftaListesi();
-      haftalar[i].pdfFile = file; // Geçici olarak File objesi
-      haftalar[i].pdfOrijinalIsim = file.name; // Sadece orijinal dosya ismi
-      haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-      haftalar[i].kayitTarihi = new Date().toISOString();
-
-      // Seçili hasta objesini de güncelle (referans sorunu olabilir)
-      if (seciliHasta && seciliHasta.haftalar) {
-        const haftaNo = haftalar[i].haftaNo || (i + 1);
-        const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
-        if (seciliHaftaIndex !== -1) {
-          seciliHasta.haftalar[seciliHaftaIndex].pdfFile = file;
-          seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-          seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
-        }
-      }
-
-      // PDF dosya adından hafta numarasını otomatik tespit et
-      const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
-      if (dosyaAdindenHaftaNo) {
-        const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
-        haftalar[i].haftaNo = dosyaAdindenHaftaNo;
-        setTimeout(() => {
-          const haftaNoInput = document.getElementById('haftaNo_' + i);
-          if (haftaNoInput) {
-            haftaNoInput.value = dosyaAdindenHaftaNo;
-            haftaNoInput.style.backgroundColor = '#d4edda';
-            haftaNoInput.style.borderColor = '#28a745';
-            setTimeout(() => {
-              haftaNoInput.style.backgroundColor = '';
-              haftaNoInput.style.borderColor = '';
-            }, 2000);
-          }
-        }, 100);
-      }
-
-      saveToStorage();
-      renderHastalar();
-      gosterHaftalar();
-
-      // PDF'i analiz et ve tarifleri çıkar
+      
       const reader = new FileReader();
       reader.onload = async function(e) {
-        const bytes = new Uint8Array(e.target.result);
-        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-        let fullText = '';
-        for (let p = 1; p <= pdf.numPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          const strings = content.items.map(item => item.str);
-          fullText += strings.join('\n') + '\n';
+        const haftalar = getHaftaListesi();
+        
+        // PDF dosya adını oluştur - orijinal ismi koru
+        const originalFileName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim || 'Hasta').replace(/\s+/g, '_');
+        const haftaNo = i + 1;
+        
+        // Dosya adı formatı: HastaAdı_HaftaNo_OriginalName.pdf
+        const fileExtension = originalFileName.substring(originalFileName.lastIndexOf('.'));
+        const fileNameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
+        const pdfFileName = `${hastaAdi}_Hafta${haftaNo}_${fileNameWithoutExt}${fileExtension}`;
+        
+        console.log('📁 PDF dosya adı oluşturuldu:', {
+          original: file.name,
+          cleaned: originalFileName,
+          final: pdfFileName
+        });
+        
+        const base64Data = e.target.result.split(',')[1];
+        
+        try {
+          // GitHub'a ayrı PDF dosyası olarak yükle
+          console.log('📤 PDF GitHub\'a yükleniyor:', pdfFileName);
+          const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
+          
+          // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
+          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
+          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+          haftalar[i].kayitTarihi = new Date().toISOString();
+          
+          console.log('✅ PDF GitHub\'a yüklendi ve URL kaydedildi:', {
+            index: i,
+            originalFileName: file.name,
+            savedPdfName: haftalar[i].pdfName,
+            actualFileName: actualFileName,
+            pdfUrl: haftalar[i].pdfUrl,
+            kayitTarihi: haftalar[i].kayitTarihi
+          });
+          
+        } catch (error) {
+          console.warn('⚠️ PDF GitHub\'a yüklenemedi, base64 olarak kaydediliyor:', error.message);
+          
+          // Fallback: Base64 olarak JSON'da sakla
+          haftalar[i].pdf = e.target.result;
+          haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+          haftalar[i].kayitTarihi = new Date().toISOString();
+          
+          console.log('✅ PDF base64 olarak kaydedildi (fallback):', {
+            index: i,
+            originalFileName: file.name,
+            savedPdfName: haftalar[i].pdfName,
+            kayitTarihi: haftalar[i].kayitTarihi
+          });
         }
-
-        // PDF içeriğinden hafta numarasını kontrol et
-        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
-        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(haftalar[i].pdfName)) {
+        
+        // Seçili hasta objesini de güncelle (referans sorunu olabilir)
+        if (seciliHasta && seciliHasta.haftalar) {
+          // Hafta sıralaması sonrası index karışıklığı olabilir, hafta numarasına göre bul
+          const haftaNo = haftalar[i].haftaNo || (i + 1);
+          const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
+          
+          if (seciliHaftaIndex !== -1) {
+            seciliHasta.haftalar[seciliHaftaIndex].pdf = e.target.result;
+            seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+            seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = new Date().toISOString();
+            console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
+          }
+        }
+        
+        // PDF dosya adından hafta numarasını otomatik tespit et
+        const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
+        if (dosyaAdindenHaftaNo) {
           const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
-          haftalar[i].haftaNo = iceriktenHaftaNo;
+          haftalar[i].haftaNo = dosyaAdindenHaftaNo;
+          
+          console.log(`🎯 Hafta numarası otomatik güncellendi: ${eskiHaftaNo}. hafta → ${dosyaAdindenHaftaNo}. hafta`);
+          
+          // UI'da görsel feedback göster
           setTimeout(() => {
             const haftaNoInput = document.getElementById('haftaNo_' + i);
             if (haftaNoInput) {
-              haftaNoInput.value = iceriktenHaftaNo;
-              haftaNoInput.style.backgroundColor = '#d1ecf1';
-              haftaNoInput.style.borderColor = '#17a2b8';
+              haftaNoInput.value = dosyaAdindenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d4edda';
+              haftaNoInput.style.borderColor = '#28a745';
               setTimeout(() => {
                 haftaNoInput.style.backgroundColor = '';
                 haftaNoInput.style.borderColor = '';
@@ -4132,12 +4278,22 @@ function duzenleHafta(i) {
             }
           }, 100);
         }
-
-        haftalar[i].tarifler = extractTariflerDetay(fullText);
+        
         saveToStorage();
-        otomatikEsleHafta(i);
+        
+        // Kısa bildirim göster
+        showSaveNotification();
+        
+        // Hasta listesini güncelle (PDF hafta numarası değişmiş olabilir)
+        renderHastalar();
+        
+        // Haftalar görünümünü de güncelle (PDF adını göstermek için)
+        gosterHaftalar();
+        
+        // PDF yüklenir yüklenmez otomatik tara ve eşleştir
+        pdfOkuVeEsleHafta(i);
       };
-      reader.readAsArrayBuffer(file);
+      reader.readAsDataURL(file);
     }
 
     // PDF'den otomatik tara ve eşleştir
@@ -4558,26 +4714,21 @@ function duzenleHafta(i) {
     }
 
     // ZIP için Lenf Drenaj PDF Blob oluşturucu (indirmeden, sadece memory'de)
-    async function generateLenfDrenajPDFBlob(belirliHaftaNo = null) {
+    async function generateLenfDrenajPDFBlob(egzersizDahilMi = false) {
       try {
         console.log('📄 Lenf Drenaj PDF Blob oluşturuluyor...');
         
-        if (!seciliHasta) return null;
+        if (!seciliHasta) {
+          console.error('❌ Seçili hasta yok!');
+          return null;
+        }
         
         const haftalar = getHaftaListesi();
-        if (haftalar.length < 5) return null;
+        console.log(`📊 Mevcut hafta sayısı: ${haftalar.length}`);
+        // Hafta sayısı kontrolü kaldırıldı - PDF adından hafta numarası tespit edildiği için gerekli değil
         
-        // Seçili haftayı al - eğer belirli hafta belirtilmişse onu kullan
-        let egzersizDahilMi;
-        if (belirliHaftaNo !== null) {
-          // ZIP için belirli bir hafta belirtilmiş
-          egzersizDahilMi = belirliHaftaNo >= 9; // 9. hafta ve sonrası için egzersiz dahil
-          console.log(`🎯 ZIP için ${belirliHaftaNo}. hafta PDF'i oluşturuluyor, egzersiz dahil: ${egzersizDahilMi}`);
-        } else {
-          // Normal PDF indirme için seçili haftayı kullan
-          const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
-          egzersizDahilMi = seciliHaftaIndex >= 8; // 9. hafta ve sonrası için egzersiz dahil
-        }
+        // Parametre olarak gelen egzersizDahilMi değerini kullan
+        console.log(`🎯 ZIP için PDF oluşturuluyor, egzersiz dahil: ${egzersizDahilMi}`);
         
         // jsPDF kontrolü
         let jsPDFLib;
@@ -4634,9 +4785,28 @@ function duzenleHafta(i) {
           doc.text('(5. Haftadan itibaren)', 20, 40);
         }
         
-        // 5. haftanın başlangıcı
-        const besinciHafta = haftalar[4];
-        const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
+        // HER ZAMAN 5. haftanın pazartesinden başla (sidebar butonu ile aynı mantık)
+        // Aktif hafta 5 veya 9 olsa da, takvim hep 5. haftadan başlar
+        
+        // 5. haftayı bul - önce aktif hafta listesinden, yoksa sabit tarihe dayalı hesaplama
+        let besinciHaftaBaslangic;
+        const besinciHaftaVeri = haftalar.find(h => h.haftaNo === 5);
+        
+        if (besinciHaftaVeri && besinciHaftaVeri.baslangic) {
+          // 5. hafta verisi mevcut, onu kullan
+          besinciHaftaBaslangic = new Date(besinciHaftaVeri.baslangic);
+          console.log(`📅 5. hafta verisi bulundu: ${besinciHaftaVeri.baslangic}`);
+        } else {
+          // 5. hafta verisi yok, aktif haftadan geriye hesapla
+          const aktifTab = document.querySelector('.hafta-tab.active');
+          const aktifHaftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) : 5;
+          const aktifHaftaVeri = haftalar.find(h => h.haftaNo === aktifHaftaNo) || haftalar[0];
+          
+          const aktifBaslangic = new Date(aktifHaftaVeri.baslangic);
+          const haftaFarki = aktifHaftaNo - 5; // Kaç hafta geri gideceğimiz
+          besinciHaftaBaslangic = new Date(aktifBaslangic.getTime() - (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+          console.log(`📅 5. hafta hesaplandı: ${aktifHaftaNo}. haftadan ${haftaFarki} hafta geri`);
+        }
         
         // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
         const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
@@ -4648,9 +4818,14 @@ function duzenleHafta(i) {
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
+        // Aktif hafta numarasını al (hangi haftaların tamamlanmış olacağını belirlemek için)
+        const aktifTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaNo = aktifTab ? parseInt(aktifTab.dataset.haftaNo) : 5;
+        console.log(`🎯 Aktif hafta numarası: ${aktifHaftaNo}, egzersiz dahil: ${egzersizDahilMi}`);
+        
         // Kompakt tablo (Blob için)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
-          const gercekHaftaNo = lenfHaftaIndex + 5;
+          const gercekHaftaNo = lenfHaftaIndex + 5; // HER ZAMAN 5. haftadan başla
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
@@ -4662,11 +4837,15 @@ function duzenleHafta(i) {
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
           
-          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-          if (egzersizDahilMi && gercekHaftaNo <= 8) {
-            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          // Aktif haftaya göre tamamlanmış haftaları belirle
+          // 5. hafta aktifse: tamamlanmış yok
+          // 9. hafta aktifse: 5-8. haftalar tamamlanmış (soluk renk)
+          const haftaTamamlanmis = gercekHaftaNo < aktifHaftaNo;
+          
+          if (haftaTamamlanmis) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk (tamamlanmış)
           } else {
-            doc.setTextColor(0, 0, 0); // Normal siyah renk
+            doc.setTextColor(0, 0, 0); // Normal siyah renk (aktuel)
           }
           
           doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
@@ -4708,61 +4887,68 @@ function duzenleHafta(i) {
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
             
-            // Uygulama kontrolü - seçili haftaya göre egzersiz dahil edilir
+            // Uygulama kontrolü - sidebar mantığıyla uyumlu
             let sabahUygulama = '-';
             let aksamUygulama = '-';
             
-            if (lenfHaftaIndex < 2) {
-              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = 'Lenf Masaji';
-            } else if (lenfHaftaIndex < 4) {
-              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = '-';
-            } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı
-              if (egzersizDahilMi) {
-                // Egzersiz dahil versiyonu (9. hafta seçiliyse)
-                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                  // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
-                  sabahUygulama = 'Lenf Masaji';
-                  aksamUygulama = 'Egzersiz-2';
-                } else {
-                  // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
-                  sabahUygulama = 'Egzersiz-1';
-                  aksamUygulama = 'Egzersiz-2';
-                }
-              } else {
-                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
-                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                  sabahUygulama = 'Lenf Masaji';
-                } else {
-                  sabahUygulama = '-';
-                }
+            // Hafta numarasına göre sidebar'daki gibi program uygula
+            const haftaSiraNo = lenfHaftaIndex + 1; // 1-8 arası
+            
+            if (haftaTamamlanmis) {
+              // Tamamlanmış haftalar için ✓ işareti
+              if (haftaSiraNo === 1) {
+                // 1. hafta: Günde 2 kez
+                sabahUygulama = '✓ Uygulandı';
+                aksamUygulama = '✓ Uygulandı';
+              } else if (haftaSiraNo === 2 || haftaSiraNo === 3) {
+                // 2-3. hafta: Sadece sabahları
+                sabahUygulama = '✓ Uygulandı';
+                aksamUygulama = '-';
+              } else if (haftaSiraNo === 4) {
+                // 4. hafta: Günaşırı sabahları
+                sabahUygulama = '✓ Günaşırı Uyg.';
                 aksamUygulama = '-';
               }
             } else {
-              // Son 2 hafta (11-12): Salı, Cuma lenf masajı
-              if (egzersizDahilMi) {
-                // Egzersiz dahil versiyonu (9+ hafta seçiliyse)
-                if (gunIndex === 1 || gunIndex === 4) {
-                  // Salı, Cuma: Lenf masajı + akşam egzersiz
-                  sabahUygulama = 'Lenf Masaji';
-                  aksamUygulama = 'Egzersiz-2';
-                } else {
-                  // Diğer günler: Sabah ve akşam egzersiz
-                  sabahUygulama = 'Egzersiz-1';
-                  aksamUygulama = 'Egzersiz-2';
-                }
-              } else {
-                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
-                if (gunIndex === 1 || gunIndex === 4) {
-                  sabahUygulama = 'Lenf Masaji';
+              // Aktuel haftalar için plan - sidebar mantığıyla aynı
+              if (haftaSiraNo === 1) {
+                // 1. hafta: Günde 2 kez
+                sabahUygulama = 'Lenf Masajı';
+                aksamUygulama = 'Lenf Masajı';
+              } else if (haftaSiraNo === 2 || haftaSiraNo === 3) {
+                // 2-3. hafta: Sadece sabahları
+                sabahUygulama = 'Lenf Masajı';
+                aksamUygulama = '-';
+              } else if (haftaSiraNo === 4 || haftaSiraNo === 5) {
+                // 4-5. hafta: Günaşırı sabahları
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  sabahUygulama = 'Lenf Masajı';
                 } else {
                   sabahUygulama = '-';
                 }
                 aksamUygulama = '-';
+              } else if (haftaSiraNo === 6 || haftaSiraNo === 7 || haftaSiraNo === 8) {
+                // 6-7-8. hafta: Salı-Cuma
+                if (egzersizDahilMi) {
+                  // 9. hafta PDF'i: Egzersiz dahil
+                  if (gunIndex === 1 || gunIndex === 4) {
+                    // Salı, Cuma: Lenf masajı + akşam egzersiz
+                    sabahUygulama = 'Lenf Masajı';
+                    aksamUygulama = 'Egzersiz';
+                  } else {
+                    // Diğer günler: Egzersiz
+                    sabahUygulama = 'Egzersiz';
+                    aksamUygulama = 'Egzersiz';
+                  }
+                } else {
+                  // 5. hafta PDF'i: Sadece lenf masajı
+                  if (gunIndex === 1 || gunIndex === 4) {
+                    sabahUygulama = 'Lenf Masajı';
+                  } else {
+                    sabahUygulama = '-';
+                  }
+                  aksamUygulama = '-';
+                }
               }
             }
             
@@ -5593,8 +5779,8 @@ function duzenleHafta(i) {
     zipBtn.style.marginBottom = '10px';
     zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
     zipBtn.onclick = function() { 
-      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
-      zipEslesenGorseller(i); 
+      console.log('🔍 ZIP butonuna tıklandı (ana panel)');
+      zipEslesenGorseller(); 
     };
     
     // PDF Takip Tablosu oluştur butonu
@@ -5618,7 +5804,7 @@ function duzenleHafta(i) {
     comboBtn.style.borderRadius = '5px';
     comboBtn.style.cursor = 'pointer';
     comboBtn.onclick = function() { 
-      zipEslesenGorseller(i); 
+      zipEslesenGorseller(); 
       setTimeout(() => generatePatientPDF(), 1000); 
     };
     
@@ -5644,14 +5830,14 @@ function duzenleHafta(i) {
       // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
       const sidebarButtons = sidebarIndirDiv.children;
       if (sidebarButtons[0]) { // ZIP butonu
-        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(); };
       }
       if (sidebarButtons[1]) { // PDF butonu  
         sidebarButtons[1].onclick = function() { generatePatientPDF(); };
       }
       if (sidebarButtons[2]) { // COMBO butonu
         sidebarButtons[2].onclick = function() { 
-          zipEslesenGorseller(i); 
+          zipEslesenGorseller(); 
           setTimeout(() => generatePatientPDF(), 1000); 
         };
       }
@@ -5746,12 +5932,13 @@ function duzenleHafta(i) {
       const hafta = getHaftaListesi()[i];
       hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
       saveToStorage();
-      alert('Mesaj kaydedildi.');
+      
+      // Kısa bildirim göster
+      showSaveNotification();
       
       console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
       
-      // Otomatik GitHub kaydetme kaldırıldı (çakışmaları önlemek için)
-      // Manuel kaydetme için GitHub'a Kaydet butonunu kullanın
+      // GitHub otomatik kaydetme artık saveToStorage() içinde gerçekleşiyor
     }
     // --- JSON dışa aktar/yükle fonksiyonları ---
     function exportData() {
@@ -6381,61 +6568,25 @@ function duzenleHafta(i) {
       }
     }
 
-    async function zipEslesenGorseller(i) {
-      // PDF dosyasını önce GitHub'daki pdfs klasörüne orijinal ismiyle yükle
-      if (hafta.pdfFile && hafta.pdfOrijinalIsim) {
-        try {
-          const token = document.getElementById('githubToken').value.trim();
-          if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
-          const owner = 'mustafasacar35';
-          const repo = 'lipodem-takip-paneli';
-          const branch = 'main';
-          const pdfPath = `pdfs/${hafta.pdfOrijinalIsim}`;
-          // PDF dosyasını arrayBuffer olarak oku
-          const arrayBuffer = await hafta.pdfFile.arrayBuffer();
-          // Base64'e çevir
-          const uint8Array = new Uint8Array(arrayBuffer);
-          let binary = '';
-          for (let b of uint8Array) binary += String.fromCharCode(b);
-          const base64PDF = btoa(binary);
-          // Mevcut dosyanın SHA'sını al
-          let sha = undefined;
-          try {
-            const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${pdfPath}?ref=${branch}`, {
-              headers: { Authorization: `token ${token}` }
-            });
-            if (resp.ok) {
-              const data = await resp.json();
-              sha = data.sha;
-            }
-          } catch (e) {}
-          // PDF dosyasını yükle
-          const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${pdfPath}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `token ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              message: `PDF yüklendi: ${hafta.pdfOrijinalIsim}`,
-              content: base64PDF,
-              branch,
-              sha
-            })
-          });
-          if (res.ok) {
-            console.log('✅ PDF GitHub pdfs klasörüne yüklendi:', hafta.pdfOrijinalIsim);
-          } else {
-            const errorText = await res.text();
-            console.error('❌ PDF GitHub yükleme hatası:', res.status, errorText);
-            alert('PDF GitHub yükleme hatası: ' + res.status);
-          }
-        } catch (err) {
-          console.error('❌ PDF GitHub yükleme genel hatası:', err);
-        }
-      }
+    async function zipEslesenGorseller() {
       try {
-        console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
+        console.log('🎯 ZIP fonksiyonu başlatıldı.');
+        
+        // Aktif tab'ı bul
+        const activeTab = document.querySelector('.hafta-tab.active');
+        if (!activeTab) {
+          console.error('❌ Aktif hafta tab\'ı bulunamadı!');
+          alert('Lütfen bir hafta seçin.');
+          return;
+        }
+
+        // Verileri aktif tab'ın dataset'inden al
+        const i = parseInt(activeTab.dataset.haftaIndex, 10);
+        const gercekHaftaNo = parseInt(activeTab.dataset.haftaNo, 10);
+        
+        console.log(`✅ Aktif tab bulundu. Hafta Index: ${i}, Gerçek Hafta No: ${gercekHaftaNo}`);
+        console.log(`🔍 Aktif tab elementi:`, activeTab);
+        console.log(`🔍 Tab text içeriği: "${activeTab.textContent.trim()}"`);
         
         // Kütüphane kontrolü
         if (typeof JSZip === 'undefined') {
@@ -6472,8 +6623,8 @@ function duzenleHafta(i) {
       const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       const imgs = eslesenDiv.querySelectorAll('img');
       
-      // İçerik kontrolü
-      const hasPdf = hafta.pdf;
+      // İçerik kontrolü - hem URL hem base64 desteği
+      const hasPdf = hafta.pdf || hafta.pdfUrl;
       const hasGptMessage = hafta.gptMesaj && hafta.gptMesaj.trim();
       const hasImages = imgs.length > 0;
       
@@ -6487,12 +6638,35 @@ function duzenleHafta(i) {
       
       // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
       let baseName, zipName, pdfFileName, txtFileName;
-      let pdfOrijinalIsim = hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf';
-      pdfFileName = pdfOrijinalIsim;
-      baseName = pdfOrijinalIsim.replace(/\.[^.]+$/, '');
-      zipName = baseName + '.zip';
-      txtFileName = baseName + '.txt';
-      console.log('✅ PDF orijinal adı kullanılıyor:', pdfFileName);
+      
+      console.log('🔍 Debug - hafta objesi:', hafta);
+      console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
+      console.log('🔍 Debug - hafta indeksi:', i);
+      console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
+      
+      if (hafta.pdfName && hafta.pdfName.trim()) {
+        // Yüklenen PDF dosyasının adını kullan - Türkçe karakterleri düzelt
+        const duzeltilmisPdfName = turkceKarakterDuzelt(hafta.pdfName);
+        baseName = duzeltilmisPdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
+        zipName = duzeltilmisPdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
+        pdfFileName = duzeltilmisPdfName;  // Düzeltilmiş PDF adını kullan
+        txtFileName = baseName + '.txt';
+        console.log('✅ PDF adı kullanılıyor (düzeltilmiş):', duzeltilmisPdfName);
+      } else {
+        // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
+        console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
+        
+        // Hasta adından ve hafta numarasından dosya adı oluştur (Türkçe karakter düzeltme ile)
+        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
+        const tarih = new Date().toISOString().slice(0,10);
+        const haftaNo = hafta.haftaNo || (i + 1);
+        
+        baseName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}`;
+        zipName = baseName + '.zip';
+        pdfFileName = baseName + '.pdf';
+        txtFileName = baseName + '.txt';
+        console.log('📝 Oluşturulan dosya adı:', baseName);
+      }
       
       console.log('📦 ZIP oluşturuluyor:', {
         hasPdf,
@@ -6522,71 +6696,106 @@ function duzenleHafta(i) {
       // 2. Manuel yüklenen kartları da ana dizine ekle (sadece eşleşenler)
       // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
       
-      // 3. PDF dosyasını ekle
+      // 3. PDF dosyasını ekle (hem URL hem base64 desteği)
       if (hasPdf) {
         try {
-          if (hafta.pdfFile) {
-            zip.file(pdfFileName, hafta.pdfFile);
-            fileCount++;
-            console.log('✅ PDF dosya objesi eklendi:', pdfFileName);
+          if (hafta.pdfUrl) {
+            // URL'den PDF al (GitHub'daki ayrı dosya)
+            console.log('📥 PDF URL\'den indiriliyor:', hafta.pdfUrl);
+            const pdfResponse = await fetch(hafta.pdfUrl);
+            if (pdfResponse.ok) {
+              const pdfBlob = await pdfResponse.blob();
+              zip.file(pdfFileName, pdfBlob);
+              fileCount++;
+              console.log('✅ PDF URL\'den eklendi:', pdfFileName);
+            } else {
+              throw new Error(`PDF indirilemedi: ${pdfResponse.status}`);
+            }
           } else if (hafta.pdf) {
+            // Base64'ten PDF al (eski sistem)
             const base64 = hafta.pdf.split(',')[1];
             zip.file(pdfFileName, base64, {base64: true});
             fileCount++;
-            console.log('✅ PDF base64 eklendi:', pdfFileName);
+            console.log('✅ PDF base64\'ten eklendi:', pdfFileName);
+          } else {
+            console.warn('⚠️ PDF verisi bulunamadı');
           }
         } catch (e) {
           console.warn('⚠️ PDF eklenemedi:', e);
+          // Fallback: Base64 varsa onu dene
+          if (hafta.pdf && !hafta.pdfUrl) {
+            try {
+              const base64 = hafta.pdf.split(',')[1];
+              zip.file(pdfFileName, base64, {base64: true});
+              fileCount++;
+              console.log('✅ PDF fallback ile eklendi:', pdfFileName);
+            } catch (fallbackError) {
+              console.error('❌ PDF fallback de başarısız:', fallbackError);
+            }
+          }
         }
       }
       
-      // 5. GPT mesajını txt dosyası olarak ekle (PDF ismi + içerik)
+      // 5. GPT mesajını txt dosyası olarak ekle (sadece içerik)
       if (hasGptMessage) {
         try {
-          const mesajIcerigi = hafta.gptMesaj.trim();
-          const txtIcerik = `PDF Dosya İsmi: ${pdfFileName}\n\n${mesajIcerigi}`;
-          zip.file(txtFileName, txtIcerik);
+          const mesajIcerigi = hafta.gptMesaj.trim();  // Sadece GPT mesajı içeriği
+          
+          zip.file(txtFileName, mesajIcerigi);
           fileCount++;
-          console.log('✅ GPT mesajı ve PDF ismi txt olarak eklendi:', txtFileName);
+          console.log('✅ GPT mesajı eklendi:', txtFileName);
         } catch (e) {
           console.warn('⚠️ GPT mesajı eklenemedi:', e);
         }
       }
       
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
-      const haftaNo = hafta.haftaNo || (i + 1);
-      if (haftaNo === 5) {
+      if (gercekHaftaNo === 5) {
         try {
-          console.log('🏥 5. hafta tespit edildi, Sadece Masaj Takvim PDF\'i oluşturuluyor...');
+          console.log('🏥 5. hafta tespit edildi, Sadece Lenf Masajı Takvim PDF\'i oluşturuluyor...');
           
-          // Sadece masaj içeren takvim PDF'ini oluştur (5. hafta için, egzersiz dahil değil)
-          const masajTakvimBlob = await generateLenfDrenajPDFBlob(5);
+          // Hasta adını al
+          const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
+          
+          // Sadece masaj içeren takvim PDF'ini oluştur (egzersiz dahil değil)
+          console.log('🔍 generateLenfDrenajPDFBlob çağrılıyor (egzersiz: false)...');
+          const masajTakvimBlob = await generateLenfDrenajPDFBlob(false); // false = egzersiz dahil değil
+          console.log('🔍 generateLenfDrenajPDFBlob sonucu:', masajTakvimBlob ? 'Başarılı' : 'Null');
           if (masajTakvimBlob) {
-            const masajTakvimFileName = `${baseName}_Masaj_Takvimi.pdf`;
+            const masajTakvimFileName = `${baseName}_Lenf_Masaji_Takvimi.pdf`;
             zip.file(masajTakvimFileName, masajTakvimBlob);
             fileCount++;
-            console.log('✅ Masaj Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
+            console.log('✅ Lenf Masajı Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
+          } else {
+            console.error('❌ Lenf Masajı Takvim PDF\'i oluşturulamadı!');
           }
         } catch (e) {
-          console.warn('⚠️ Masaj Takvim PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Lenf Masajı Takvim PDF\'i eklenemedi:', e);
         }
       }
       
       // 7. Sadece 9. haftada "Masaj + Egzersiz" Takvim PDF'ini ekle
-      if (haftaNo === 9) {
+      if (gercekHaftaNo === 9) {
         try {
-          console.log('🏋️ 9. hafta tespit edildi, Masaj + Egzersiz Takvim PDF\'i oluşturuluyor...');
+          console.log('🏋️ 9. hafta tespit edildi, Lenf Masajı + Egzersiz Takvim PDF\'i oluşturuluyor...');
           
-          // Masaj + egzersiz içeren takvim PDF'ini oluştur (9. hafta için, egzersiz dahil)
-          const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(9);
+          // Hasta adını al
+          const hastaAdi = seciliHasta && seciliHasta.isim ? seciliHasta.isim : 'Hasta';
+          
+          // Masaj + egzersiz içeren takvim PDF'ini oluştur (egzersiz dahil)
+          console.log('🔍 generateLenfDrenajPDFBlob çağrılıyor (egzersiz: true)...');
+          const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(true); // true = egzersiz dahil
+          console.log('🔍 generateLenfDrenajPDFBlob sonucu:', masajEgzersizTakvimBlob ? 'Başarılı' : 'Null');
           if (masajEgzersizTakvimBlob) {
-            const masajEgzersizTakvimFileName = `${baseName}_Masaj_Egzersiz_Takvimi.pdf`;
+            const masajEgzersizTakvimFileName = `${baseName}_Lenf_Masaji_Egzersiz_Takvimi.pdf`;
             zip.file(masajEgzersizTakvimFileName, masajEgzersizTakvimBlob);
             fileCount++;
-            console.log('✅ Masaj + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
+            console.log('✅ Lenf Masajı + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
+          } else {
+            console.error('❌ Lenf Masajı + Egzersiz Takvim PDF\'i oluşturulamadı!');
           }
         } catch (e) {
-          console.warn('⚠️ Masaj + Egzersiz Takvim PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Lenf Masajı + Egzersiz Takvim PDF\'i eklenemedi:', e);
         }
       }
       
@@ -6746,6 +6955,25 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // ===== CACHE YÖNETİMİ FONKSİYONLARI =====
     
+    // Acil PDF temizliği (localStorage quota aşımı için)
+    function acilPDFTemizligi() {
+      if (!confirm('🧹 PDF Temizlik İşlemi\n\nBu işlem:\n• Base64 PDF\'leri silecek\n• PDF isimlerini koruyacak\n• JSON boyutunu küçültecek\n• Yeni PDF\'ler GitHub\'a yüklenecek\n\nDevam etmek istiyor musunuz?')) {
+        return;
+      }
+      
+      console.log('🧹 Acil PDF temizliği başlıyor...');
+      
+      const temizlenenSayisi = convertBase64PDFsToURLs();
+      
+      // Temizlik sonrası kaydet
+      try {
+        saveToStorage();
+        alert(`✅ PDF Temizlik Başarılı!\n\n• ${temizlenenSayisi} adet base64 PDF temizlendi\n• JSON boyutu küçültüldü\n• localStorage sorunu çözüldü\n\nArtık yeni PDF'ler GitHub'a yüklenecek.`);
+      } catch (error) {
+        alert(`❌ Temizlik sonrası kaydetme hatası!\n\n${error.message}\n\nLütfen sayfayı yenileyin.`);
+      }
+    }
+    
     // Tüm cache'i temizle (localStorage + tarifler klasörü cache)
     function tumCacheyiTemizle() {
       if (!confirm('⚠️ TÜM VERİLER SİLİNECEK!\n\nBu işlem şunları silecek:\n• Tüm hasta kayıtları\n• Manuel eşleştirmeler\n• Eşleşme yasakları\n• Tarifler klasörü cache\n• GitHub token\n\nDevam etmek istiyor musunuz?')) {
@@ -6850,13 +7078,36 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
-      // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
-      const actTab = document.querySelector('.hafta-tab.active');
-      if (actTab) {
-        const haftaIndex = parseInt(actTab.dataset.haftaIndex);
-        if (!isNaN(haftaIndex)) {
-          gosterEslesenKartlarSidebar(haftaIndex);
-          guncelleIstatistikler(hastaIndex);
+      console.log(`👤 Hasta seçildi: ${hastaIndex}`);
+      
+      // Seçili hastanın aktif tab'ını yükle
+      const hasta = hastalar[hastaIndex];
+      if (hasta && hasta.activeTab !== undefined) {
+        console.log(`📍 Aktif tab yükleniyor: Hafta ${hasta.activeTab + 1}`);
+        
+        // Tab'ları güncelle
+        setTimeout(() => {
+          const tabs = document.querySelectorAll('.hafta-tab');
+          const targetTab = tabs[hasta.activeTab];
+          
+          if (targetTab) {
+            // Önce tüm tab'ları pasif yap
+            tabs.forEach(tab => tab.classList.remove('active'));
+            // Hedef tab'ı aktif yap
+            targetTab.classList.add('active');
+            // Tab içeriğini göster
+            targetTab.click();
+          }
+        }, 100);
+      } else {
+        // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
+        const actTab = document.querySelector('.hafta-tab.active');
+        if (actTab) {
+          const haftaIndex = parseInt(actTab.dataset.haftaIndex);
+          if (!isNaN(haftaIndex)) {
+            gosterEslesenKartlarSidebar(haftaIndex);
+            guncelleIstatistikler(hastaIndex);
+          }
         }
       }
     }
@@ -6864,6 +7115,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Hafta tab'ı seçildiğinde sidebar'ları güncelle
     function haftaTabSecildiginde(haftaIndex) {
+      console.log(`📍 Hafta tab seçildi: ${haftaIndex + 1}`);
+      
+      // Aktif tab'ı hasta verisine kaydet
+      if (seciliHasta) {
+        seciliHasta.activeTab = haftaIndex;
+        saveToStorage();
+        console.log(`✅ Aktif tab kaydedildi: Hafta ${haftaIndex + 1}`);
+      }
+      
       gosterEslesenKartlarSidebar(haftaIndex);
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
@@ -6907,8 +7167,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
               console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
               btn.onclick = function(e) { 
                 e.preventDefault();
-                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
-                zipEslesenGorseller(haftaIndex); 
+                console.log('🎯 ZIP butonuna tıklandı (sidebar)');
+                zipEslesenGorseller(); 
               };
             }
           }
@@ -6917,6 +7177,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       } else {
         console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
+      }
+      
+      // Akordiyon başlığında kart sayısını güncelle
+      const akordiyonBaslik = document.getElementById('eslesenKartlarAkordiyonBaslik');
+      if (akordiyonBaslik) {
+        const kartSayisi = currentDiv.children.length;
+        const baslikMetni = kartSayisi > 1 ? `🔗 Eşleşen Kartlar (${kartSayisi - 1})` : '🔗 Eşleşen Kartlar';
+        const okIsareti = document.getElementById('kartSayisi').textContent;
+        akordiyonBaslik.innerHTML = `${baslikMetni} <span id="kartSayisi" style="float: right;">${okIsareti}</span>`;
       }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
@@ -7000,6 +7269,195 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       document.addEventListener('DOMContentLoaded', sayfaBaslat);
     } else {
       sayfaBaslat();
+    }
+
+    // Eşleşen Kartlar Akordiyon Kontrolü
+    document.addEventListener('DOMContentLoaded', function() {
+      const akordiyonBaslik = document.getElementById('eslesenKartlarAkordiyonBaslik');
+      const akordiyonIcerik = document.getElementById('eslesenKartlarAkordiyonIcerik');
+      const kartSayisi = document.getElementById('kartSayisi');
+      
+      if (akordiyonBaslik && akordiyonIcerik) {
+        akordiyonBaslik.addEventListener('click', function() {
+          const acikMi = akordiyonIcerik.style.display === 'block';
+          
+          if (acikMi) {
+            // Kapat
+            akordiyonIcerik.style.display = 'none';
+            kartSayisi.textContent = '▶';
+            this.setAttribute('aria-expanded', 'false');
+          } else {
+            // Aç
+            akordiyonIcerik.style.display = 'block';
+            kartSayisi.textContent = '▼';
+            this.setAttribute('aria-expanded', 'true');
+          }
+        });
+      }
+    });
+
+    // Kaydetme durumunu sidebar'da göster
+    function showSaveNotification(type = 'saved') {
+      const saveIcon = document.getElementById('saveIcon');
+      const saveText = document.getElementById('saveText');
+      const saveStatus = document.getElementById('saveStatus');
+      
+      if (!saveIcon || !saveText || !saveStatus) return;
+      
+      // Kaydetme durumuna göre ikon ve mesaj
+      switch(type) {
+        case 'saving':
+          saveIcon.textContent = '⏳';
+          saveText.textContent = 'Kaydediliyor...';
+          saveStatus.style.background = '#fff3cd';
+          break;
+        case 'saved':
+          saveIcon.textContent = '✅';
+          saveText.textContent = 'Kaydedildi';
+          saveStatus.style.background = '#d4edda';
+          break;
+        case 'github_saving':
+          saveIcon.textContent = '🔄';
+          saveText.textContent = 'GitHub\'a kaydediliyor...';
+          saveStatus.style.background = '#cce5ff';
+          break;
+        case 'github_saved':
+          saveIcon.textContent = '🐙';
+          saveText.textContent = 'GitHub\'a kaydedildi';
+          saveStatus.style.background = '#d4edda';
+          break;
+        case 'error':
+          saveIcon.textContent = '❌';
+          saveText.textContent = 'Hata oluştu';
+          saveStatus.style.background = '#f8d7da';
+          break;
+        default:
+          saveIcon.textContent = '💤';
+          saveText.textContent = 'Beklemede';
+          saveStatus.style.background = '#f8f9fa';
+      }
+      
+      // 3 saniye sonra beklemede durumuna dön
+      if (type !== 'error') {
+        setTimeout(() => {
+          saveIcon.textContent = '💤';
+          saveText.textContent = 'Beklemede';
+          saveStatus.style.background = '#f8f9fa';
+        }, 3000);
+      }
+    }
+
+    // PDF'i ayrı dosya olarak GitHub'a yükle (performans optimizasyonu)
+    async function uploadPDFToGitHub(fileName, base64Data) {
+      try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+          throw new Error('GitHub token gerekli');
+        }
+        
+        // Önce pdfs klasörünün varlığını kontrol et ve gerekirse oluştur
+        await ensurePDFDirectoryExists();
+        
+        // Aynı dosya adı varsa kontrol et
+        let finalFileName = fileName;
+        let counter = 1;
+        
+        while (true) {
+          const checkResponse = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${finalFileName}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          
+          if (checkResponse.status === 404) {
+            // Dosya yok, kullanabiliriz
+            break;
+          } else if (checkResponse.ok) {
+            // Dosya var, yeni isim oluştur
+            const dotIndex = fileName.lastIndexOf('.');
+            const namepart = fileName.substring(0, dotIndex);
+            const extension = fileName.substring(dotIndex);
+            finalFileName = `${namepart}_${counter}${extension}`;
+            counter++;
+            console.log(`📝 Dosya mevcut, yeni isim: ${finalFileName}`);
+          } else {
+            // Başka bir hata
+            break;
+          }
+        }
+        
+        const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${finalFileName}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `PDF yüklendi: ${finalFileName}`,
+            content: base64Data
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`GitHub API hatası: ${response.status}`);
+        }
+        
+        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName);
+        return finalFileName; // Gerçek dosya adını döndür
+      } catch (error) {
+        console.error('❌ PDF GitHub\'a yüklenemedi:', error);
+        throw error;
+      }
+    }
+
+    // PDF klasörünün varlığını garanti et
+    async function ensurePDFDirectoryExists() {
+      try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) return;
+        
+        // pdfs klasörünü kontrol et
+        const checkResponse = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs', {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (checkResponse.status === 404) {
+          // Klasör yok, README.md ile oluştur
+          console.log('📁 PDFs klasörü oluşturuluyor...');
+          await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/README.md', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'PDFs klasörü oluşturuldu',
+              content: btoa('# PDF Dosyaları\n\nBu klasörde hasta PDF dosyaları saklanır.')
+            })
+          });
+          console.log('✅ PDFs klasörü oluşturuldu');
+        }
+      } catch (error) {
+        console.warn('⚠️ PDF klasörü kontrol edilemedi:', error);
+      }
+    }
+
+    // PDF'i GitHub'dan yükle
+    async function loadPDFFromGitHub(fileName) {
+      try {
+        const response = await fetch(`https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${fileName}`);
+        if (!response.ok) {
+          throw new Error(`PDF bulunamadı: ${fileName}`);
+        }
+        
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.warn('⚠️ PDF GitHub\'dan yüklenemedi:', error);
+        return null;
+      }
     }
 
   </script>
