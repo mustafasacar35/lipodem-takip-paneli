@@ -4167,62 +4167,9 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
   const haftalar = getHaftaListesi();
-  // Silinecek haftanın PDF url veya adı varsa, GitHub'dan da sil
-  const hafta = haftalar[i];
-  if (hafta && hafta.pdfUrl) {
-    // GitHub'dan PDF silme (API ile)
-    const pdfUrl = hafta.pdfUrl;
-    // PDF dosya adını URL'den çıkar
-    const pdfFileName = pdfUrl.split('/').pop();
-    // Dosya adını mutlaka encode et
-    const encodedFileName = encodeURIComponent(pdfFileName);
-    // GitHub API ile silme isteği
-    // Not: Kullanıcıda token ve repo bilgisi olmalı
-    const githubToken = localStorage.getItem('githubToken');
-    console.log('[PDF Silme] Dosya adı:', pdfFileName);
-    console.log('[PDF Silme] Encoded dosya adı:', encodedFileName);
-    console.log('[PDF Silme] SHA:', hafta.pdfSha);
-    console.log('[PDF Silme] Token:', githubToken);
-    if (githubToken) {
-      if (!hafta.pdfSha || typeof hafta.pdfSha !== 'string' || hafta.pdfSha.length < 5) {
-        console.warn('⚠️ PDF SHA eksik veya hatalı, silme işlemi yapılamaz:', pdfFileName, hafta.pdfSha);
-        alert('PDF SHA eksik veya hatalı, GitHub silme işlemi yapılamadı!');
-      } else {
-        const apiUrl = `https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${encodedFileName}`;
-        const bodyData = {
-          message: `Hafta silindiği için PDF dosyası silindi: ${pdfFileName}`,
-          sha: hafta.pdfSha
-        };
-        console.log('[PDF Silme] API URL:', apiUrl);
-        console.log('[PDF Silme] Body:', bodyData);
-        fetch(apiUrl, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': 'token ' + githubToken,
-            'Accept': 'application/vnd.github.v3+json'
-          },
-          body: JSON.stringify(bodyData)
-        }).then(async r => {
-          if (r.ok) {
-            const res = await r.json();
-            console.log('✅ PDF GitHub\'dan silindi:', pdfFileName, res);
-          } else {
-            const errText = await r.text();
-            console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, errText);
-            alert('PDF GitHub silme hatası: ' + errText);
-          }
-        }).catch(err => {
-          console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, err);
-          alert('PDF GitHub silme hatası: ' + err.message);
-        });
-      }
-    } else {
-      console.warn('⚠️ GitHub token yok, PDF dosyası GitHub\'dan silinemedi:', pdfFileName);
-      alert('GitHub token yok, PDF dosyası GitHub\'dan silinemedi!');
-    }
-  }
   haftalar.splice(i, 1);
   saveToStorage();
+  
   // Tab sistemini yeniden yükle
   gosterHaftalar();
 }
@@ -4273,21 +4220,22 @@ function duzenleHafta(i) {
         try {
           // GitHub'a ayrı PDF dosyası olarak yükle
           console.log('📤 PDF GitHub\'a yükleniyor:', pdfFileName);
-          const uploadResult = await uploadPDFToGitHub(pdfFileName, base64Data);
-          // uploadPDFToGitHub fonksiyonu hem dosya adını hem de SHA'yı döndürmeli
-          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${uploadResult.fileName}`;
+          const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
+          
+          // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
+          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
           haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
-          haftalar[i].pdfSha = uploadResult.sha || '';
-          console.log('✅ PDF GitHub\'a yüklendi ve URL/SHA kaydedildi:', {
+          
+          console.log('✅ PDF GitHub\'a yüklendi ve URL kaydedildi:', {
             index: i,
             originalFileName: file.name,
             savedPdfName: haftalar[i].pdfName,
-            actualFileName: uploadResult.fileName,
+            actualFileName: actualFileName,
             pdfUrl: haftalar[i].pdfUrl,
-            kayitTarihi: haftalar[i].kayitTarihi,
-            pdfSha: haftalar[i].pdfSha
+            kayitTarihi: haftalar[i].kayitTarihi
           });
+          
         } catch (error) {
           console.warn('⚠️ PDF GitHub\'a yüklenemedi, base64 olarak kaydediliyor:', error.message);
           
@@ -7483,13 +7431,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             content: base64Data
           })
         });
+        
         if (!response.ok) {
           throw new Error(`GitHub API hatası: ${response.status}`);
         }
-        const result = await response.json();
-        const sha = result.content && result.content.sha ? result.content.sha : '';
-        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName, 'SHA:', sha);
-        return { fileName: finalFileName, sha };
+        
+        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName);
+        return finalFileName; // Gerçek dosya adını döndür
       } catch (error) {
         console.error('❌ PDF GitHub\'a yüklenemedi:', error);
         throw error;
