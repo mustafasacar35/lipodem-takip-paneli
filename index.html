@@ -395,7 +395,20 @@
             <div style="text-align: center; color: #666; padding: 40px;">
               Önce bir hasta seçin...
             </div>
-          </div>
+          
+           <!-- MANUEL KART EKLEME BAŞLANGIÇ -->
+  <button id="manuelKartEkleBtn" style="margin-top:10px; padding:8px 16px; background:#6f42c1; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">+ Kart Ekle</button>
+  <div id="manuelKartEkleModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; padding:30px; border-radius:12px; min-width:350px; max-width:90vw; box-shadow:0 2px 16px #0002;">
+      <h3 style="margin-bottom:16px;">Tarifler Klasöründen Kart Ekle</h3>
+      <input id="manuelKartAramaInput" type="text" placeholder="Kart ara..." style="width:100%; margin-bottom:12px; padding:8px; border-radius:6px; border:1px solid #ccc;">
+      <div id="manuelKartSecimListesi" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div>
+      <button id="manuelKartEkleOnayBtn" style="background:#28a745; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer;">Ekle</button>
+      <button id="manuelKartEkleIptalBtn" style="background:#dc3545; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; margin-left:8px;">İptal</button>
+    </div>
+  </div>
+  <!-- MANUEL KART EKLEME BİTİŞ -->
+  </div>
         </div>
         
         <!-- Butonlar için sabit alan -->
@@ -8417,6 +8430,52 @@ Hazır olduğunda API Key ve Sheet ID'yi yukarıdaki kutulara girin!
       }
     });
 
-  </script>
+  // MANUEL KART EKLEME FONKSİYONLARI
+setTimeout(function() {
+  const btn = document.getElementById('manuelKartEkleBtn');
+  if (btn) btn.onclick = function() {
+    document.getElementById('manuelKartEkleModal').style.display = 'flex';
+    manuelKartSecimListesiniGoster();
+  };
+  const iptalBtn = document.getElementById('manuelKartEkleIptalBtn');
+  if (iptalBtn) iptalBtn.onclick = function() {
+    document.getElementById('manuelKartEkleModal').style.display = 'none';
+  };
+  const aramaInput = document.getElementById('manuelKartAramaInput');
+  if (aramaInput) aramaInput.oninput = function() {
+    manuelKartSecimListesiniGoster(this.value);
+  };
+  const onayBtn = document.getElementById('manuelKartEkleOnayBtn');
+  if (onayBtn) onayBtn.onclick = function() {
+    const seciliKartlar = Array.from(document.querySelectorAll('#manuelKartSecimListesi input[type=checkbox]:checked')).map(cb => cb.value);
+    if (!window.secilenHastaHafta) return alert('Önce bir hasta ve hafta seçin!');
+    window.secilenHastaHafta.tarifKartlar = window.secilenHastaHafta.tarifKartlar || [];
+    seciliKartlar.forEach(kartAdi => {
+      if (!window.secilenHastaHafta.tarifKartlar.includes(kartAdi)) {
+        window.secilenHastaHafta.tarifKartlar.push(kartAdi);
+      }
+    });
+    if (typeof guncelleEslesenKartlarPaneli === 'function') guncelleEslesenKartlarPaneli();
+    document.getElementById('manuelKartEkleModal').style.display = 'none';
+    if (typeof updateHasta === 'function') updateHasta(window.secilenHasta);
+  };
+}, 500);
+
+function manuelKartSecimListesiniGoster(arama = '') {
+  const div = document.getElementById('manuelKartSecimListesi');
+  if (!div) return;
+  div.innerHTML = '';
+  let kartlar = window.tumKartListesi || [];
+  if (arama) {
+    kartlar = kartlar.filter(k => k.name.toLowerCase().includes(arama.toLowerCase()));
+  }
+  kartlar.forEach(kart => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:block; margin:4px 0; cursor:pointer; padding:2px;';
+    label.innerHTML = `<input type=\"checkbox\" value=\"${kart.name}\"> ${kart.name}`;
+    div.appendChild(label);
+  });
+}
+</script>
 </body>
 </html>
