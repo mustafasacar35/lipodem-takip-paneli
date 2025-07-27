@@ -455,10 +455,10 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -6654,42 +6654,21 @@ function duzenleHafta(i) {
       // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
       
       // 3. PDF dosyasını ekle (hem URL hem base64 desteği)
-      if (hasPdf) {
+      if (hasPdf && hafta.pdfUrl) {
         try {
-          if (hafta.pdfUrl) {
-            // URL'den PDF al (GitHub'daki ayrı dosya)
-            console.log('📥 PDF URL\'den indiriliyor:', hafta.pdfUrl);
-            const pdfResponse = await fetch(hafta.pdfUrl);
-            if (pdfResponse.ok) {
-              const pdfBlob = await pdfResponse.blob();
-              zip.file(pdfFileName, pdfBlob);
-              fileCount++;
-              console.log('✅ PDF URL\'den eklendi:', pdfFileName);
-            } else {
-              throw new Error(`PDF indirilemedi: ${pdfResponse.status}`);
-            }
-          } else if (hafta.pdf) {
-            // Base64'ten PDF al (eski sistem)
-            const base64 = hafta.pdf.split(',')[1];
-            zip.file(pdfFileName, base64, {base64: true});
+          // PDF sadece URL'den alınır (GitHub'daki ayrı dosya)
+          console.log('📥 PDF URL\'den indiriliyor:', hafta.pdfUrl);
+          const pdfResponse = await fetch(hafta.pdfUrl);
+          if (pdfResponse.ok) {
+            const pdfBlob = await pdfResponse.blob();
+            zip.file(pdfFileName, pdfBlob);
             fileCount++;
-            console.log('✅ PDF base64\'ten eklendi:', pdfFileName);
+            console.log('✅ PDF URL\'den eklendi:', pdfFileName);
           } else {
-            console.warn('⚠️ PDF verisi bulunamadı');
+            throw new Error(`PDF indirilemedi: ${pdfResponse.status}`);
           }
         } catch (e) {
           console.warn('⚠️ PDF eklenemedi:', e);
-          // Fallback: Base64 varsa onu dene
-          if (hafta.pdf && !hafta.pdfUrl) {
-            try {
-              const base64 = hafta.pdf.split(',')[1];
-              zip.file(pdfFileName, base64, {base64: true});
-              fileCount++;
-              console.log('✅ PDF fallback ile eklendi:', pdfFileName);
-            } catch (fallbackError) {
-              console.error('❌ PDF fallback de başarısız:', fallbackError);
-            }
-          }
         }
       }
       
