@@ -3803,9 +3803,10 @@
               <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
               <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
-              ${hafta.pdf ? `
+              ${hafta.pdfUrl ? `
                 <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
                   ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfName || 'hafta.pdf'}</strong>
+                  <a href="${hafta.pdfUrl}" target="_blank" style="margin-left:8px; font-size:11px; color:#007bff; text-decoration:underline;">PDF'i Görüntüle</a>
                   <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
                     📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
                   </div>
@@ -4255,19 +4256,45 @@ function duzenleHafta(i) {
     // PDF'den otomatik tara ve eşleştir
     async function pdfOkuVeEsleHafta(i) {
       const hafta = getHaftaListesi()[i];
-      if (!hafta.pdf) return;
-      const base64 = hafta.pdf.split(',')[1];
-      const binary = atob(base64);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let j = 0; j < len; j++) bytes[j] = binary.charCodeAt(j);
-      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-      let fullText = '';
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join('\n') + '\n';
+      if (!hafta.pdfUrl) return;
+      // PDF'i GitHub'dan indir ve analiz et
+      try {
+        const response = await fetch(hafta.pdfUrl);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join('\n') + '\n';
+        }
+        // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
+        const haftalar = getHaftaListesi();
+        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(hafta.pdfName)) {
+          const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+          haftalar[i].haftaNo = iceriktenHaftaNo;
+          console.log(`📄 PDF içeriğinden hafta numarası güncellendi: ${eskiHaftaNo}. hafta → ${iceriktenHaftaNo}. hafta`);
+          setTimeout(() => {
+            const haftaNoInput = document.getElementById('haftaNo_' + i);
+            if (haftaNoInput) {
+              haftaNoInput.value = iceriktenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d1ecf1';
+              haftaNoInput.style.borderColor = '#17a2b8';
+              setTimeout(() => {
+                haftaNoInput.style.backgroundColor = '';
+                haftaNoInput.style.borderColor = '';
+              }, 2000);
+            }
+          }, 100);
+        }
+        hafta.tarifler = extractTariflerDetay(fullText);
+        saveToStorage();
+        otomatikEsleHafta(i);
+      } catch (err) {
+        console.error('PDF analiz hatası:', err);
       }
       
       // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
