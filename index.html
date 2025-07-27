@@ -4061,7 +4061,6 @@ function duzenleHafta(i) {
       if (!file) return;
       console.log('🔍 PDF yükleniyor:', file.name);
       const haftalar = getHaftaListesi();
-      haftalar[i].pdfFile = file; // Geçici olarak File objesi
       haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
       haftalar[i].kayitTarihi = new Date().toISOString();
 
@@ -4070,7 +4069,6 @@ function duzenleHafta(i) {
         const haftaNo = haftalar[i].haftaNo || (i + 1);
         const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
         if (seciliHaftaIndex !== -1) {
-          seciliHasta.haftalar[seciliHaftaIndex].pdfFile = file;
           seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
         }
@@ -4098,44 +4096,7 @@ function duzenleHafta(i) {
       saveToStorage();
       renderHastalar();
       gosterHaftalar();
-
-      // PDF'i analiz et ve tarifleri çıkar
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        const bytes = new Uint8Array(e.target.result);
-        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-        let fullText = '';
-        for (let p = 1; p <= pdf.numPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          const strings = content.items.map(item => item.str);
-          fullText += strings.join('\n') + '\n';
-        }
-
-        // PDF içeriğinden hafta numarasını kontrol et
-        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
-        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(haftalar[i].pdfName)) {
-          const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
-          haftalar[i].haftaNo = iceriktenHaftaNo;
-          setTimeout(() => {
-            const haftaNoInput = document.getElementById('haftaNo_' + i);
-            if (haftaNoInput) {
-              haftaNoInput.value = iceriktenHaftaNo;
-              haftaNoInput.style.backgroundColor = '#d1ecf1';
-              haftaNoInput.style.borderColor = '#17a2b8';
-              setTimeout(() => {
-                haftaNoInput.style.backgroundColor = '';
-                haftaNoInput.style.borderColor = '';
-              }, 2000);
-            }
-          }, 100);
-        }
-
-        haftalar[i].tarifler = extractTariflerDetay(fullText);
-        saveToStorage();
-        otomatikEsleHafta(i);
-      };
-      reader.readAsArrayBuffer(file);
+      // PDF dosyasını yüklemiyor veya kaydetmiyor, sadece ismini kaydediyor.
     }
 
     // PDF'den otomatik tara ve eşleştir
