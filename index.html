@@ -6625,37 +6625,38 @@ function duzenleHafta(i) {
       const zip = new JSZip();
       let fileCount = 0;
       
-      // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
-      let baseName, zipName, pdfFileName, txtFileName;
-      
-      console.log('🔍 Debug - hafta objesi:', hafta);
-      console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
-      console.log('🔍 Debug - hafta indeksi:', i);
-      console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
-      
-      if (hafta.pdfName && hafta.pdfName.trim()) {
-        // Yüklenen PDF dosyasının adını kullan - Türkçe karakterleri düzelt
-        const duzeltilmisPdfName = turkceKarakterDuzelt(hafta.pdfName);
-        baseName = duzeltilmisPdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
-        zipName = duzeltilmisPdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
-        pdfFileName = duzeltilmisPdfName;  // Düzeltilmiş PDF adını kullan
-        txtFileName = baseName + '.txt';
-        console.log('✅ PDF adı kullanılıyor (düzeltilmiş):', duzeltilmisPdfName);
-      } else {
-        // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
-        console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
-        
-        // Hasta adından ve hafta numarasından dosya adı oluştur (Türkçe karakter düzeltme ile)
-        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
-        const tarih = new Date().toISOString().slice(0,10);
-        const haftaNo = hafta.haftaNo || (i + 1);
-        
-        baseName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}`;
-        zipName = baseName + '.zip';
-        pdfFileName = baseName + '.pdf';
-        txtFileName = baseName + '.txt';
-        console.log('📝 Oluşturulan dosya adı:', baseName);
+      // 1. Dosya isimlerini belirle (istenen formatta)
+      // Hasta adı (büyük harf), hafta aralığı, hafta numarası
+      function turkceBuyuk(str) {
+        return str
+          .replace(/i/g, 'İ')
+          .replace(/ı/g, 'I')
+          .replace(/ş/g, 'Ş')
+          .replace(/ğ/g, 'Ğ')
+          .replace(/ü/g, 'Ü')
+          .replace(/ö/g, 'Ö')
+          .replace(/ç/g, 'Ç')
+          .toUpperCase();
       }
+
+      const hastaAdi = seciliHasta && seciliHasta.isim ? turkceBuyuk(seciliHasta.isim) : 'HASTA';
+      // Hafta aralığı: 28 NİSAN - 4 MAYIS
+      function tarihAralikStr(baslangic, bitis) {
+        const aylar = ['OCAK','ŞUBAT','MART','NİSAN','MAYIS','HAZİRAN','TEMMUZ','AĞUSTOS','EYLÜL','EKİM','KASIM','ARALIK'];
+        function gunAy(tarihStr) {
+          const d = new Date(tarihStr);
+          const gun = d.getDate();
+          const ay = aylar[d.getMonth()];
+          return `${gun} ${ay}`;
+        }
+        return `${gunAy(baslangic)} - ${gunAy(bitis)}`;
+      }
+      const haftaAralik = tarihAralikStr(hafta.baslangic, hafta.bitis);
+      const haftaNoStr = (hafta.haftaNo || (i + 1)) + '.HAFTA';
+      const baseName = `${hastaAdi} ${haftaAralik} ${haftaNoStr}`;
+      const zipName = baseName + '.zip';
+      const pdfFileName = baseName + '.pdf';
+      const txtFileName = baseName + '.txt';
       
       console.log('📦 ZIP oluşturuluyor:', {
         hasPdf,
