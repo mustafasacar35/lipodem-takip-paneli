@@ -6435,35 +6435,12 @@ function duzenleHafta(i) {
       
       // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
       let baseName, zipName, pdfFileName, txtFileName;
-      
-      console.log('🔍 Debug - hafta objesi:', hafta);
-      console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
-      console.log('🔍 Debug - hafta indeksi:', i);
-      console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
-      
-      if (hafta.pdfName && hafta.pdfName.trim()) {
-        // Yüklenen PDF dosyasının adını kullan - Türkçe karakterleri düzelt
-        const duzeltilmisPdfName = turkceKarakterDuzelt(hafta.pdfName);
-        baseName = duzeltilmisPdfName.replace(/\.[^.]+$/, '');  // Uzantısız ad
-        zipName = duzeltilmisPdfName.replace(/\.pdf$/i, '.zip');  // PDF uzantısını ZIP ile değiştir
-        pdfFileName = duzeltilmisPdfName;  // Düzeltilmiş PDF adını kullan
-        txtFileName = baseName + '.txt';
-        console.log('✅ PDF adı kullanılıyor (düzeltilmiş):', duzeltilmisPdfName);
-      } else {
-        // PDF adı yoksa, PDF içeriğinden veya hasta adından türetelim
-        console.log('⚠️ PDF adı yok, alternatif çözüm arıyor...');
-        
-        // Hasta adından ve hafta numarasından dosya adı oluştur (Türkçe karakter düzeltme ile)
-        const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
-        const tarih = new Date().toISOString().slice(0,10);
-        const haftaNo = hafta.haftaNo || (i + 1);
-        
-        baseName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}`;
-        zipName = baseName + '.zip';
-        pdfFileName = baseName + '.pdf';
-        txtFileName = baseName + '.txt';
-        console.log('📝 Oluşturulan dosya adı:', baseName);
-      }
+      let pdfOrijinalIsim = hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf';
+      pdfFileName = pdfOrijinalIsim;
+      baseName = pdfOrijinalIsim.replace(/\.[^.]+$/, '');
+      zipName = baseName + '.zip';
+      txtFileName = baseName + '.txt';
+      console.log('✅ PDF orijinal adı kullanılıyor:', pdfFileName);
       
       console.log('📦 ZIP oluşturuluyor:', {
         hasPdf,
@@ -6496,23 +6473,29 @@ function duzenleHafta(i) {
       // 3. PDF dosyasını ekle
       if (hasPdf) {
         try {
-          const base64 = hafta.pdf.split(',')[1];
-          zip.file(pdfFileName, base64, {base64: true});
-          fileCount++;
-          console.log('✅ PDF eklendi:', pdfFileName);
+          if (hafta.pdfFile) {
+            zip.file(pdfFileName, hafta.pdfFile);
+            fileCount++;
+            console.log('✅ PDF dosya objesi eklendi:', pdfFileName);
+          } else if (hafta.pdf) {
+            const base64 = hafta.pdf.split(',')[1];
+            zip.file(pdfFileName, base64, {base64: true});
+            fileCount++;
+            console.log('✅ PDF base64 eklendi:', pdfFileName);
+          }
         } catch (e) {
           console.warn('⚠️ PDF eklenemedi:', e);
         }
       }
       
-      // 5. GPT mesajını txt dosyası olarak ekle (sadece içerik)
+      // 5. GPT mesajını txt dosyası olarak ekle (PDF ismi + içerik)
       if (hasGptMessage) {
         try {
-          const mesajIcerigi = hafta.gptMesaj.trim();  // Sadece GPT mesajı içeriği
-          
-          zip.file(txtFileName, mesajIcerigi);
+          const mesajIcerigi = hafta.gptMesaj.trim();
+          const txtIcerik = `PDF Dosya İsmi: ${pdfFileName}\n\n${mesajIcerigi}`;
+          zip.file(txtFileName, txtIcerik);
           fileCount++;
-          console.log('✅ GPT mesajı eklendi:', txtFileName);
+          console.log('✅ GPT mesajı ve PDF ismi txt olarak eklendi:', txtFileName);
         } catch (e) {
           console.warn('⚠️ GPT mesajı eklenemedi:', e);
         }
