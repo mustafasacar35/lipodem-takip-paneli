@@ -6687,41 +6687,37 @@ function duzenleHafta(i) {
       
       // 3. PDF dosyasını ekle (hem URL hem base64 desteği)
       if (hasPdf) {
-        try {
-          if (hafta.pdfUrl) {
-            // URL'den PDF al (GitHub'daki ayrı dosya)
+        let pdfEklendi = false;
+        if (hafta.pdfUrl) {
+          try {
             console.log('📥 PDF URL\'den indiriliyor:', hafta.pdfUrl);
             const pdfResponse = await fetch(hafta.pdfUrl);
             if (pdfResponse.ok) {
               const pdfBlob = await pdfResponse.blob();
               zip.file(pdfFileName, pdfBlob);
               fileCount++;
+              pdfEklendi = true;
               console.log('✅ PDF URL\'den eklendi:', pdfFileName);
             } else {
-              throw new Error(`PDF indirilemedi: ${pdfResponse.status}`);
+              console.warn(`⚠️ PDF URL\'den indirilemedi: ${pdfResponse.status}`);
             }
-          } else if (hafta.pdf) {
-            // Base64'ten PDF al (eski sistem)
+          } catch (e) {
+            console.warn('⚠️ PDF URL\'den indirme hatası:', e);
+          }
+        }
+        // Eğer PDF URL'den eklenemediyse, base64 ile ekle
+        if (!pdfEklendi && hafta.pdf) {
+          try {
             const base64 = hafta.pdf.split(',')[1];
             zip.file(pdfFileName, base64, {base64: true});
             fileCount++;
-            console.log('✅ PDF base64\'ten eklendi:', pdfFileName);
-          } else {
-            console.warn('⚠️ PDF verisi bulunamadı');
+            console.log('✅ PDF base64 ile eklendi (fallback):', pdfFileName);
+          } catch (fallbackError) {
+            console.error('❌ PDF base64 fallback başarısız:', fallbackError);
           }
-        } catch (e) {
-          console.warn('⚠️ PDF eklenemedi:', e);
-          // Fallback: Base64 varsa onu dene
-          if (hafta.pdf && !hafta.pdfUrl) {
-            try {
-              const base64 = hafta.pdf.split(',')[1];
-              zip.file(pdfFileName, base64, {base64: true});
-              fileCount++;
-              console.log('✅ PDF fallback ile eklendi:', pdfFileName);
-            } catch (fallbackError) {
-              console.error('❌ PDF fallback de başarısız:', fallbackError);
-            }
-          }
+        }
+        if (!pdfEklendi && !hafta.pdf) {
+          console.warn('⚠️ PDF verisi bulunamadı, ZIP\'e eklenemedi');
         }
       }
       
