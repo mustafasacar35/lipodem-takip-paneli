@@ -1,3 +1,132 @@
+// --- Yeni Hasta JSON Sistemi ---
+// Ana dosya: data/hasta_kayitlari.json
+// Hasta detay dosyası: data/hasta_[ID].json
+
+// Ana dosyadan hasta listesi yükle
+async function loadHastaListesi() {
+  const response = await fetch('data/hasta_kayitlari.json');
+  const data = await response.json();
+  return data.hastalar || [];
+}
+
+// Hasta detay dosyasını yükle
+async function loadHastaDetay(id) {
+  const response = await fetch(`data/hasta_${id}.json`);
+  return await response.json();
+}
+
+// Hasta detay dosyasını kaydet
+async function saveHastaDetay(hastaObj) {
+  // Gerçek uygulamada sunucuya POST/PATCH ile kaydedilir
+  // Demo için localde dosya yazılamaz, sadece şablon
+  // fetch('/save', {method:'POST', body: JSON.stringify(hastaObj)})
+}
+
+// Ana dosyaya yeni hasta ekle
+async function addHastaAnaDosya(hastaMeta) {
+  // hastaMeta: {id, isim, arsiv, dosya}
+  // Gerçek uygulamada ana dosya güncellenir
+}
+
+// Hasta ekleme örneği
+async function yeniHastaEkle(hastaObj) {
+  await saveHastaDetay(hastaObj); // Detay dosyasını kaydet
+  await addHastaAnaDosya({id: hastaObj.id, isim: hastaObj.isim, arsiv: hastaObj.arsiv, dosya: `data/hasta_${hastaObj.id}.json`});
+}
+
+// Hafta ekleme/silme, PDF upload vs. işlemlerinde önce ilgili hasta dosyası yüklenir, güncellenir, sonra kaydedilir
+// Örnek:
+async function haftaEkle(hastaId, yeniHaftaObj) {
+  const hasta = await loadHastaDetay(hastaId);
+  hasta.haftalar.push(yeniHaftaObj);
+  await saveHastaDetay(hasta);
+}
+
+// Arşive alma işlemi:
+async function arsiveAl(hastaId) {
+  const anaListe = await loadHastaListesi();
+  const hastaMeta = anaListe.find(h => h.id === hastaId);
+  if (hastaMeta) {
+    hastaMeta.arsiv = true;
+    // Ana dosya güncellenir
+    await addHastaAnaDosya(hastaMeta);
+  }
+}
+
+// Sistem açılışında ana dosyadan hasta listesi okunur, detaylar ilgili dosyalardan yüklenir
+// ...existing code...
+// --- Nihai Hasta JSON Sistemi ---
+// Ana dosya: data/hasta_kayitlari.json
+// Hasta detay dosyası: data/hasta_[ID].json
+
+// Ana dosyadan hasta listesi yükle
+async function loadHastaListesi() {
+  const response = await fetch('data/hasta_kayitlari.json');
+  const data = await response.json();
+  return data.hastalar || [];
+}
+
+// Hasta detay dosyasını yükle
+async function loadHastaDetay(id) {
+  const response = await fetch(`data/hasta_${id}.json`);
+  return await response.json();
+}
+
+// Hasta detay dosyasını kaydet
+async function saveHastaDetay(hastaObj) {
+  // Sunucuya POST/PATCH ile kaydedilir
+  // fetch('/save', {method:'POST', body: JSON.stringify(hastaObj)})
+}
+
+// Ana dosyaya yeni hasta ekle
+async function addHastaAnaDosya(hastaMeta) {
+  // hastaMeta: {id, isim, arsiv, dosya}
+  // Ana dosya güncellenir
+}
+
+// Yeni hasta ekleme
+async function yeniHastaEkle(hastaObj) {
+  await saveHastaDetay(hastaObj);
+  await addHastaAnaDosya({id: hastaObj.id, isim: hastaObj.isim, arsiv: hastaObj.arsiv, dosya: `data/hasta_${hastaObj.id}.json`});
+}
+
+// Hafta ekleme
+async function haftaEkle(hastaId, yeniHaftaObj) {
+  const hasta = await loadHastaDetay(hastaId);
+  hasta.haftalar.push(yeniHaftaObj);
+  await saveHastaDetay(hasta);
+}
+
+// Hafta silme
+async function haftaSil(hastaId, haftaNo) {
+  const hasta = await loadHastaDetay(hastaId);
+  hasta.haftalar = hasta.haftalar.filter(h => h.haftaNo !== haftaNo);
+  await saveHastaDetay(hasta);
+}
+
+// PDF upload
+async function pdfUpload(hastaId, haftaNo, pdfData, pdfName) {
+  const hasta = await loadHastaDetay(hastaId);
+  const hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
+  if (hafta) {
+    hafta.pdf = pdfData;
+    hafta.pdfName = pdfName;
+    await saveHastaDetay(hasta);
+  }
+}
+
+// Arşive alma
+async function arsiveAl(hastaId) {
+  const anaListe = await loadHastaListesi();
+  const hastaMeta = anaListe.find(h => h.id === hastaId);
+  if (hastaMeta) {
+    hastaMeta.arsiv = true;
+    await addHastaAnaDosya(hastaMeta);
+  }
+}
+
+// Sistem açılışında ana dosyadan hasta listesi okunur, detaylar ilgili dosyalardan yüklenir
+// ...existing code...
 
 <!DOCTYPE html>
 <html lang="tr">
