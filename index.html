@@ -4167,9 +4167,38 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
   const haftalar = getHaftaListesi();
+  // Silinecek haftanın PDF url veya adı varsa, GitHub'dan da sil
+  const hafta = haftalar[i];
+  if (hafta && hafta.pdfUrl) {
+    // GitHub'dan PDF silme (API ile)
+    const pdfUrl = hafta.pdfUrl;
+    // PDF dosya adını URL'den çıkar
+    const pdfFileName = pdfUrl.split('/').pop();
+    // GitHub API ile silme isteği
+    // Not: Kullanıcıda token ve repo bilgisi olmalı
+    const githubToken = localStorage.getItem('githubToken');
+    if (githubToken) {
+      fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/pdfs/${pdfFileName}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': 'token ' + githubToken,
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({
+          message: `Hafta silindiği için PDF dosyası silindi: ${pdfFileName}`,
+          sha: hafta.pdfSha || ''
+        })
+      }).then(r => r.json()).then(res => {
+        console.log('✅ PDF GitHub\'dan silindi:', pdfFileName, res);
+      }).catch(err => {
+        console.warn('⚠️ PDF GitHub\'dan silinemedi:', pdfFileName, err);
+      });
+    } else {
+      console.warn('⚠️ GitHub token yok, PDF dosyası GitHub\'dan silinemedi:', pdfFileName);
+    }
+  }
   haftalar.splice(i, 1);
   saveToStorage();
-  
   // Tab sistemini yeniden yükle
   gosterHaftalar();
 }
