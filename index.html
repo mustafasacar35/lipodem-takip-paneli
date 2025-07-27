@@ -712,6 +712,95 @@
 
 
 // Her hasta için ayrı JSON dosyası yönetimi
+// GitHub'da dosya SHA'sını almak için yardımcı fonksiyon
+async function getFileSha(fileName) {
+  const url = `https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`;
+  const response = await fetch(url, {
+    headers: { 'Authorization': 'token ' + GITHUB_TOKEN }
+  });
+  if (response.status === 200) {
+    const data = await response.json();
+    return data.sha;
+  }
+  return null;
+}
+
+// Her hasta için ayrı JSON dosyasını GitHub'a yükle
+async function uploadHastaJsonToGitHub(hasta) {
+  if (!hasta || !hasta.id) return;
+  const fileName = `data/hasta_${hasta.id}.json`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
+  const sha = await getFileSha(fileName);
+  const body = {
+    message: `Hasta verisi güncellendi: ${hasta.isim}`,
+    content: content
+  };
+  if (sha) body.sha = sha;
+  await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'token ' + GITHUB_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+// Hasta eklenince ana JSON'a sadece temel bilgiler eklenir, detaylar ayrı dosyada
+async function addHasta(hasta) {
+  // ...mevcut ekleme kodunuz...
+  await uploadHastaJsonToGitHub(hasta);
+  updateAnaJson();
+}
+
+// Hafta ekle/sil, PDF upload vs. işlemlerinde ilgili hasta dosyası güncellenir
+async function updateHasta(hasta) {
+  await uploadHastaJsonToGitHub(hasta);
+  updateAnaJson();
+}
+
+// Hasta silinince dosya da silinir
+async function deleteHasta(hastaId) {
+  const fileName = `data/hasta_${hastaId}.json`;
+  const sha = await getFileSha(fileName);
+  if (sha) {
+    await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'token ' + GITHUB_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Hasta silindi: ${hastaId}`,
+        sha: sha
+      })
+    });
+  }
+  updateAnaJson();
+}
+
+// Arşive alınan hastalar için dosya taşınır (GitHub'da dosya taşıma yok, yeni dosya oluşturulup eskisi silinir)
+async function archiveHasta(hasta) {
+  if (!hasta || !hasta.id) return;
+  const fileName = `data/hasta_${hasta.id}.json`;
+  const archiveFileName = `data/arsiv/hasta_${hasta.id}.json`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
+  // Arşiv dosyasını oluştur
+  await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${archiveFileName}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'token ' + GITHUB_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: `Hasta arşive alındı: ${hasta.isim}`,
+      content: content
+    })
+  });
+  // Eski dosyayı sil
+  await deleteHasta(hasta.id);
+  updateAnaJson();
+}
 function saveHastaToFile(hasta) {
   if (!hasta || !hasta.id) return;
   const fileName = `data/hasta_${hasta.id}.json`;
