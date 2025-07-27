@@ -3220,25 +3220,25 @@
       filtrelenenHastalar.forEach((hasta, index) => {
         const li = document.createElement('li');
         const enSonPdfHafta = getEnSonPdfHafta(hasta);
-        const haftaGosterim = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ' (PDF yok)';
-        
-        // HTML içeriği oluştur (hafta bilgisini kırmızı yapmak için)
-        const haftaKismi = enSonPdfHafta > 0 
-          ? `<span style="color: red; font-weight: bold;"> (${enSonPdfHafta}. Hafta)</span>`
+        let haftaBaslangic = '';
+        if (enSonPdfHafta > 0) {
+          const enSonHaftaObj = hasta.haftalar.find(h => h.haftaNo === enSonPdfHafta);
+          if (enSonHaftaObj && enSonHaftaObj.baslangic) {
+            const tarihObj = new Date(enSonHaftaObj.baslangic);
+            haftaBaslangic = tarihObj.toLocaleDateString('tr-TR');
+          }
+        }
+        // Sadece rakam ve tarih gösterimi
+        const haftaKismi = enSonPdfHafta > 0
+          ? `<span style="color: red; font-weight: bold;"> (${enSonPdfHafta}) <span style='color:#007bff'>${haftaBaslangic}</span></span>`
           : `<span style="color: #999; font-style: italic;"> (PDF yok)</span>`;
-        
         const arsivKismi = hasta.arsiv ? ' <span style="color: #666;">[Arşiv]</span>' : '';
-        
-        // Türkçe karakter düzeltme uygula
         const duzeltilenIsim = turkceKarakterDuzelt(hasta.isim);
-        
         li.innerHTML = `${index + 1}. ${duzeltilenIsim}${haftaKismi}${arsivKismi}`;
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
-        li.dataset.hastaId = hasta.id; // ID'yi data attribute olarak ekle
-        
-        // Aktif hasta ise vurgula
+        li.dataset.hastaId = hasta.id;
         if (seciliHasta && seciliHasta.id === hasta.id) {
           li.style.backgroundColor = '#007bff';
           li.style.color = 'white';
@@ -3248,7 +3248,6 @@
           li.style.color = '';
           li.style.fontWeight = '';
         }
-        
         li.onclick = () => hastaDetayGoster(hasta.id);
         ul.appendChild(li);
       });
@@ -6060,6 +6059,50 @@ function duzenleHafta(i) {
 
     // Sayfa açılışında storage'dan yükle ve listele
     renderHastalar();
+
+    // Sol sidebar'a draggable seperatör ekle
+    window.addEventListener('DOMContentLoaded', function() {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && !document.getElementById('sidebar-separator')) {
+        const separator = document.createElement('div');
+        separator.id = 'sidebar-separator';
+        separator.style.width = '6px';
+        separator.style.background = '#ccc';
+        separator.style.cursor = 'ew-resize';
+        separator.style.position = 'absolute';
+        separator.style.top = '0';
+        separator.style.right = '-3px';
+        separator.style.bottom = '0';
+        separator.style.zIndex = '1000';
+        sidebar.appendChild(separator);
+        let isDragging = false;
+        separator.addEventListener('mousedown', function(e) {
+          isDragging = true;
+          document.body.style.cursor = 'ew-resize';
+        });
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          const minWidth = 120, maxWidth = 500;
+          let newWidth = e.clientX - sidebar.getBoundingClientRect().left;
+          if (newWidth < minWidth) newWidth = minWidth;
+          if (newWidth > maxWidth) newWidth = maxWidth;
+          sidebar.style.width = newWidth + 'px';
+        });
+        document.addEventListener('mouseup', function(e) {
+          if (isDragging) {
+            isDragging = false;
+            document.body.style.cursor = '';
+            // Genişliği localStorage'a kaydet
+            localStorage.setItem('sidebarWidth', sidebar.style.width);
+          }
+        });
+        // Sayfa açılışında genişliği yükle
+        const kayitliWidth = localStorage.getItem('sidebarWidth');
+        if (kayitliWidth) sidebar.style.width = kayitliWidth;
+      }
+    });
+    // Her hafta ekle/sil, PDF upload, tab tarih değişikliği vs. işlemlerinde saveToStorage fonksiyonu çağrılmalı
+    // Zaten bir çok yerde çağrılıyor, ama ek olarak tab ekleme/silme, tarih değişikliği, PDF upload fonksiyonlarında da saveToStorage çağrısını güçlendirin.
 
     // Özel Lenf Masaj PDF oluşturucu (5. hafta ZIP benzeri)
     async function generateCustomLenfMasajPDF(hastaAdi, baslangicTarihi) {
