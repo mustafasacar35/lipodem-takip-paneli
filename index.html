@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -453,7 +454,7 @@
         <h3>☁️ Google Drive (Mevcut Sheets)</h3>
         <input type="text" id="googleSheetsApiKey" placeholder="Google Sheets API Key" style="width:100%; margin-bottom:5px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGoogleSheetsConnection()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#4285f4; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 API Test</button>
-        <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">� Hasta Sheets Yönet</button>
+        <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">  Hasta Sheets Yönet</button>
         <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç ve İşle</button>
         <button onclick="checkCurrentPDFStatus()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#e83e8c; color:white; border:none; border-radius:3px; cursor:pointer;">📋 PDF Durum Kontrol</button>
         <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
@@ -486,10 +487,10 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -709,172 +710,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
-
-
-// Her hasta için ayrı JSON dosyası yönetimi
-// GitHub'da dosya SHA'sını almak için yardımcı fonksiyon
-async function getFileSha(fileName) {
-  const url = `https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`;
-  const response = await fetch(url, {
-    headers: { 'Authorization': 'token ' + GITHUB_TOKEN }
-  });
-  if (response.status === 200) {
-    const data = await response.json();
-    return data.sha;
-  }
-  return null;
-}
-
-// Her hasta için ayrı JSON dosyasını GitHub'a yükle
-async function uploadHastaJsonToGitHub(hasta) {
-  if (!hasta || !hasta.id) return;
-  const fileName = `data/hasta_${hasta.id}.json`;
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
-  const sha = await getFileSha(fileName);
-  const body = {
-    message: `Hasta verisi güncellendi: ${hasta.isim}`,
-    content: content
-  };
-  if (sha) body.sha = sha;
-  await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'token ' + GITHUB_TOKEN,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-}
-
-// Hasta eklenince ana JSON'a sadece temel bilgiler eklenir, detaylar ayrı dosyada
-async function addHasta(hasta) {
-  // ...mevcut ekleme kodunuz...
-  await uploadHastaJsonToGitHub(hasta);
-  updateAnaJson();
-}
-
-// Hafta ekle/sil, PDF upload vs. işlemlerinde ilgili hasta dosyası güncellenir
-async function updateHasta(hasta) {
-  await uploadHastaJsonToGitHub(hasta);
-  updateAnaJson();
-}
-
-// Hasta silinince dosya da silinir
-async function deleteHasta(hastaId) {
-  const fileName = `data/hasta_${hastaId}.json`;
-  const sha = await getFileSha(fileName);
-  if (sha) {
-    await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${fileName}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': 'token ' + GITHUB_TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Hasta silindi: ${hastaId}`,
-        sha: sha
-      })
-    });
-  }
-  updateAnaJson();
-}
-
-// Arşive alınan hastalar için dosya taşınır (GitHub'da dosya taşıma yok, yeni dosya oluşturulup eskisi silinir)
-async function archiveHasta(hasta) {
-  if (!hasta || !hasta.id) return;
-  const fileName = `data/hasta_${hasta.id}.json`;
-  const archiveFileName = `data/arsiv/hasta_${hasta.id}.json`;
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
-  // Arşiv dosyasını oluştur
-  await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/${archiveFileName}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'token ' + GITHUB_TOKEN,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: `Hasta arşive alındı: ${hasta.isim}`,
-      content: content
-    })
-  });
-  // Eski dosyayı sil
-  await deleteHasta(hasta.id);
-  updateAnaJson();
-}
-function saveHastaToFile(hasta) {
-  if (!hasta || !hasta.id) return;
-  const fileName = `data/hasta_${hasta.id}.json`;
-  // JSON.stringify ile dosya içeriği hazırla
-  const jsonStr = JSON.stringify(hasta, null, 2);
-  // Dosya kaydetme işlemi (örnek: GitHub API veya localStorage ile)
-  // Burada localStorage ile örnek:
-  localStorage.setItem(fileName, jsonStr);
-  // Gerçek dosya kaydı için sunucuya veya GitHub'a push yapılmalı
-}
-
-// Hasta eklenince ana JSON'a sadece temel bilgiler eklenir, detaylar ayrı dosyada
-function addHasta(hasta) {
-  // ...mevcut ekleme kodunuz...
-  saveHastaToFile(hasta);
-  // Ana JSON'u güncelle (sadece temel bilgiler)
-  updateAnaJson();
-}
-
-// Hafta ekle/sil, PDF upload vs. işlemlerinde ilgili hasta dosyası güncellenir
-function updateHasta(hasta) {
-  saveHastaToFile(hasta);
-  updateAnaJson();
-}
-
-// Hasta silinince dosya da silinir
-function deleteHasta(hastaId) {
-  const fileName = `data/hasta_${hastaId}.json`;
-  localStorage.removeItem(fileName);
-  // Gerçek dosya silme için sunucuya/GitHub'a API ile silme eklenmeli
-  updateAnaJson();
-}
-
-// Ana JSON sadece hasta listesi ve temel bilgileri tutar
-function updateAnaJson() {
-  // Sadece temel bilgileri ekle
-  const anaJson = hastalar.map(h => ({
-    id: h.id,
-    isim: h.isim,
-    arsiv: h.arsiv || false
-    // Detay (haftalar, PDF, kartlar) eklenmez!
-  }));
-  localStorage.setItem('data/hasta_kayitlari.json', JSON.stringify(anaJson, null, 2));
-}
-
-// Arşive alınan hastalar için dosya taşınır
-function archiveHasta(hasta) {
-  if (!hasta || !hasta.id) return;
-  const fileName = `data/hasta_${hasta.id}.json`;
-  const archiveFileName = `data/arsiv/hasta_${hasta.id}.json`;
-  const jsonStr = JSON.stringify(hasta, null, 2);
-  localStorage.setItem(archiveFileName, jsonStr);
-  localStorage.removeItem(fileName);
-  updateAnaJson();
-}
-
-// Sayfa açılışında ana JSON'dan hasta listesi yüklenir, detaylar hasta_{id}.json dosyalarından alınır
-function loadHastalar() {
-  const anaJsonStr = localStorage.getItem('data/hasta_kayitlari.json');
-  if (!anaJsonStr) return [];
-  const anaJson = JSON.parse(anaJsonStr);
-  // Her hasta için detay dosyasını yükle
-  return anaJson.map(h => {
-    const detayStr = localStorage.getItem(`data/hasta_${h.id}.json`);
-    if (detayStr) {
-      return JSON.parse(detayStr);
-    }
-    return h;
-  });
-}
-
-
-
-
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
@@ -7866,7 +7701,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         // PDF'i download edip tarif eşleştirmesine gönder
         downloadAndProcessSheetPDF(pdfUrl, haftaNo);
-        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
+        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n  PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
         alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
         
@@ -8094,7 +7929,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Google Sheets URL'i (düzenlenebilir)
       const sheetUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/edit#gid=${pdfTabGid}`;
       
-      console.log('� Sheet URL:', sheetUrl);
+      console.log('  Sheet URL:', sheetUrl);
       
       // Yeni sekmede aç
       const popup = window.open(sheetUrl, '_blank');
