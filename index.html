@@ -4169,60 +4169,23 @@ function duzenleHafta(i) {
 }
 
     // ...pdfYukleHafta fonksiyonu içinde...
+// ...pdfYukleHafta fonksiyonu içinde...
 function pdfYukleHafta(i, input) {
   const file = input.files[0];
   if (!file) return;
 
-  console.log('🔍 PDF yükleniyor:', file.name);
+  console.log('🔍 PDF seçildi:', file.name);
 
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const haftalar = getHaftaListesi();
+  const haftalar = getHaftaListesi();
+  haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+  haftalar[i].kayitTarihi = new Date().toISOString();
 
-    // PDF dosya adını oluştur - orijinal ismi koru
-    const originalFileName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-    const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim || 'Hasta').replace(/\s+/g, '_');
-    const haftaNo = i + 1;
+  // PDF dosya adını sadece ekranda göster
+  saveToStorage();
 
-    // Dosya adı formatı: HastaAdı_HaftaNo_OriginalName.pdf
-    const fileExtension = originalFileName.substring(originalFileName.lastIndexOf('.'));
-    const fileNameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
-    const pdfFileName = `${hastaAdi}_Hafta${haftaNo}_${fileNameWithoutExt}${fileExtension}`;
-
-    console.log('📁 PDF dosya adı oluşturuldu:', {
-      original: file.name,
-      cleaned: originalFileName,
-      final: pdfFileName
-    });
-
-    const base64Data = e.target.result.split(',')[1];
-
-    try {
-      // GitHub'a ayrı PDF dosyası olarak yükle
-      console.log('📤 PDF GitHub\'a yükleniyor:', pdfFileName);
-      const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
-
-      // Sadece URL ve dosya adını kaydet, base64 asla kaydetme!
-      haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
-      haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-      haftalar[i].kayitTarihi = new Date().toISOString();
-
-      // Base64 veri kaydetme: kaldırıldı!
-      delete haftalar[i].pdf;
-    } catch (error) {
-      // Yükleme başarısızsa uyarı ver, base64 kaydetme!
-      alert('PDF GitHub\'a yüklenemedi. Lütfen tekrar deneyin.');
-      return;
-    }
-
-    saveToStorage();
-
-    // UI güncellemesi ve eşleştirme işlemleri
-    renderHastalar();
-    gosterHaftalar();
-    pdfOkuVeEsleHafta(i);
-  };
-  reader.readAsDataURL(file);
+  // UI güncellemesi
+  renderHastalar();
+  gosterHaftalar();
 }
 
     // PDF'den otomatik tara ve eşleştir
