@@ -4184,14 +4184,13 @@ function duzenleHafta(i) {
           });
           
         } catch (error) {
-          console.warn('⚠️ PDF GitHub\'a yüklenemedi, base64 olarak kaydediliyor:', error.message);
-          
-          // Fallback: Base64 olarak JSON'da sakla
-          haftalar[i].pdf = e.target.result;
+          console.warn('⚠️ PDF GitHub\'a yüklenemedi, base64 olarak kaydedilmeyecek:', error.message);
+          // Fallback: Sadece pdfName ve pdfUrl/null kaydedilsin, base64 asla eklenmesin
+          haftalar[i].pdf = null;
+          haftalar[i].pdfUrl = null;
           haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
-          
-          console.log('✅ PDF base64 olarak kaydedildi (fallback):', {
+          console.log('✅ PDF sadece ad ile kaydedildi (base64 yok):', {
             index: i,
             originalFileName: file.name,
             savedPdfName: haftalar[i].pdfName,
