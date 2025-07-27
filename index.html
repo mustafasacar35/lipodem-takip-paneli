@@ -4181,20 +4181,21 @@ function pdfYukleHafta(i, input) {
 
   // PDF dosyasını geçici belleğe yükle (tarif kartı eşleştirme için)
   const reader = new FileReader();
-  reader.onload = function(e) {
-    haftalar[i].pdfTemp = e.target.result; // Geçici PDF (tarif eşleştirme için)
+reader.onload = function(e) {
+  haftalar[i].pdfTemp = e.target.result; // Geçici PDF (tarif eşleştirme için)
+  haftalar[i].pdf = e.target.result;     // PDF içeriğini kalıcı olarak kaydet
+  saveToStorage();
+  // Tarif kartı eşleştirmesi başlat
+  pdfOkuVeEsleHafta(i);
+  // PDF işlendikten sonra geçici belleği temizle
+  setTimeout(() => {
+    delete haftalar[i].pdfTemp;
     saveToStorage();
-    // Tarif kartı eşleştirmesi başlat
-    pdfOkuVeEsleHafta(i);
-    // PDF işlendikten sonra geçici belleği temizle
-    setTimeout(() => {
-      delete haftalar[i].pdfTemp;
-      saveToStorage();
-    }, 3000); // 3 saniye sonra sil
-    // UI güncellemesi
-    renderHastalar();
-    gosterHaftalar();
-  };
+  }, 3000); // 3 saniye sonra sil
+  // UI güncellemesi
+  renderHastalar();
+  gosterHaftalar();
+};
   reader.readAsDataURL(file);
 
   // UI güncellemesi (dosya adını hemen göster)
