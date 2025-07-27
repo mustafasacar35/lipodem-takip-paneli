@@ -4174,16 +4174,30 @@ function pdfYukleHafta(i, input) {
   const file = input.files[0];
   if (!file) return;
 
-  console.log('🔍 PDF seçildi:', file.name);
-
+  // Sadece dosya adını kaydet
   const haftalar = getHaftaListesi();
   haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
   haftalar[i].kayitTarihi = new Date().toISOString();
 
-  // PDF dosya adını sadece ekranda göster
-  saveToStorage();
+  // PDF dosyasını geçici belleğe yükle (tarif kartı eşleştirme için)
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    haftalar[i].pdfTemp = e.target.result; // Geçici PDF (tarif eşleştirme için)
+    saveToStorage();
+    // Tarif kartı eşleştirmesi başlat
+    pdfOkuVeEsleHafta(i);
+    // PDF işlendikten sonra geçici belleği temizle
+    setTimeout(() => {
+      delete haftalar[i].pdfTemp;
+      saveToStorage();
+    }, 3000); // 3 saniye sonra sil
+    // UI güncellemesi
+    renderHastalar();
+    gosterHaftalar();
+  };
+  reader.readAsDataURL(file);
 
-  // UI güncellemesi
+  // UI güncellemesi (dosya adını hemen göster)
   renderHastalar();
   gosterHaftalar();
 }
