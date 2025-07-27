@@ -396,10 +396,7 @@
               Önce bir hasta seçin...
             </div>
           
-           
-  </div>
-        </div>
-        <!-- MANUEL KART EKLEME BAŞLANGIÇ -->
+           <!-- MANUEL KART EKLEME BAŞLANGIÇ -->
   <button id="manuelKartEkleBtn" style="margin-top:10px; padding:8px 16px; background:#6f42c1; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">+ Kart Ekle</button>
   <div id="manuelKartEkleModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:white; padding:30px; border-radius:12px; min-width:350px; max-width:90vw; box-shadow:0 2px 16px #0002;">
@@ -411,6 +408,9 @@
     </div>
   </div>
   <!-- MANUEL KART EKLEME BİTİŞ -->
+  </div>
+        </div>
+        
         <!-- Butonlar için sabit alan -->
         <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
@@ -467,7 +467,7 @@
         <h3>☁️ Google Drive (Mevcut Sheets)</h3>
         <input type="text" id="googleSheetsApiKey" placeholder="Google Sheets API Key" style="width:100%; margin-bottom:5px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGoogleSheetsConnection()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#4285f4; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 API Test</button>
-        <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">� Hasta Sheets Yönet</button>
+        <button onclick="managePatientSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#34a853; color:white; border:none; border-radius:3px; cursor:pointer;">  Hasta Sheets Yönet</button>
         <button onclick="loadPatientPDFFromSheets()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fbbc04; color:black; border:none; border-radius:3px; cursor:pointer;">📄 PDF Aç ve İşle</button>
         <button onclick="checkCurrentPDFStatus()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#e83e8c; color:white; border:none; border-radius:3px; cursor:pointer;">📋 PDF Durum Kontrol</button>
         <button onclick="openPatientSheetDirect()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6d01; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Sheet Aç</button>
@@ -500,10 +500,10 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -7714,7 +7714,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         // PDF'i download edip tarif eşleştirmesine gönder
         downloadAndProcessSheetPDF(pdfUrl, haftaNo);
-        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n� PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
+        alert(`✅ ${seciliHasta.isim} - ${haftaNo}. Hafta PDF'i yeni sekmede açıldı!\n\n⚠️ EĞER "SAYFA BULUNAMADI" HATASI ALIYORSANIZ:\n1. Google Sheet'inizi açın\n2. Sağ üstte "Share" butonuna tıklayın\n3. "Anyone with the link can view" seçin\n4. "Done" butonuna tıklayın\n\n  PDF İndirme:\n• Sayfa yüklendikten sonra Ctrl+S\n• Veya sağ tık → "Farklı kaydet"`);
       } else {
         alert(`❌ Popup engellendi!\n\nTarayıcınızın popup engelleyicisini devre dışı bırakın.\n\n🔗 Manuel link:\n${pdfUrl}`);
         
@@ -7942,7 +7942,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Google Sheets URL'i (düzenlenebilir)
       const sheetUrl = `https://docs.google.com/spreadsheets/d/${hastaMapping.sheetId}/edit#gid=${pdfTabGid}`;
       
-      console.log('� Sheet URL:', sheetUrl);
+      console.log('  Sheet URL:', sheetUrl);
       
       // Yeni sekmede aç
       const popup = window.open(sheetUrl, '_blank');
