@@ -4355,64 +4355,47 @@ function duzenleHafta(i) {
         
         console.log('📝 Tam İçerik:', fullText);
         
-        // PDF format analizi
-        const lines = fullText.split('\n').filter(line => line.trim());
-        console.log('📊 İçerik analizi:');
-        console.log('- Toplam satır:', lines.length);
-        console.log('- İlk 10 satır:', lines.slice(0, 10));
-        
-        // Hasta adı, tarih, hafta bilgisi arama
-        const hastaPattern = /([A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)/g;
-        const tarihPattern = /(\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4})/g;
-        const haftaPattern = /(\d+)\.\s*hafta/gi;
-        
-        console.log('🔍 Tespit edilen veriler:');
-        console.log('- Hasta adları:', fullText.match(hastaPattern));
-        console.log('- Tarihler:', fullText.match(tarihPattern));
-        console.log('- Hafta bilgileri:', fullText.match(haftaPattern));
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    // PDF Generator - Hasta Takip Tablosu Oluştur
-    function generatePatientPDF() {
-      console.log('🎯 PDF Generator başlatılıyor...');
-      
-      if (!seciliHasta) {
-        alert('Lütfen önce bir hasta seçin!');
-        console.log('❌ Hasta seçilmemiş');
-        return;
+      // ...existing code...
+      try {
+        const response = await fetch(hafta.pdfUrl);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join('\n') + '\n';
+        }
+      } catch (err) {
+        console.error('PDF analiz hatası:', err);
       }
-      
-      console.log('✅ Seçili hasta:', seciliHasta.isim);
-      
-      const haftalar = getHaftaListesi();
-      if (haftalar.length === 0) {
-        alert('Bu hasta için hiç hafta kaydı bulunamadı!');
-        console.log('❌ Hafta kaydı bulunamadı');
-        return;
+      if (fullText) {
+        // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
+        const haftalar = getHaftaListesi();
+        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(hafta.pdfName)) {
+          const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+          haftalar[i].haftaNo = iceriktenHaftaNo;
+          console.log(`📄 PDF içeriğinden hafta numarası güncellendi: ${eskiHaftaNo}. hafta → ${iceriktenHaftaNo}. hafta`);
+          setTimeout(() => {
+            const haftaNoInput = document.getElementById('haftaNo_' + i);
+            if (haftaNoInput) {
+              haftaNoInput.value = iceriktenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d1ecf1';
+              haftaNoInput.style.borderColor = '#17a2b8';
+              setTimeout(() => {
+                haftaNoInput.style.backgroundColor = '';
+                haftaNoInput.style.borderColor = '';
+              }, 2000);
+            }
+          }, 100);
+        }
+        hafta.tarifler = extractTariflerDetay(fullText);
+        saveToStorage();
+        otomatikEsleHafta(i);
       }
-      
-      console.log('✅ Hafta sayısı:', haftalar.length);
-      
-      // Sadece 5. haftada lenf drenaj programı oluşturulacak
-      const mevcutHaftaNo = haftalar.length;
-      if (mevcutHaftaNo === 5) {
-        console.log('✅ 5. hafta tespit edildi, Lenf Drenaj Masajı programı hazırlanıyor');
-      } else {
-        console.log(`📋 ${mevcutHaftaNo}. hafta - Genel takip PDF\'i oluşturuluyor`);
-      }
-      
-      // Sabit 12 haftalık program 
-      const haftaSayisi = 12;
-      console.log('✅ PDF için hafta sayısı:', haftaSayisi);
-      
-      // Türkçe karakter düzeltme uygula
-      const duzeltilenHastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
-      
-      if (mevcutHaftaNo === 5) {
-        generateLenfDrenajPDF(duzeltilenHastaAdi, haftalar, haftaSayisi);
-      } else {
         generateGenelTakipPDF(duzeltilenHastaAdi, haftalar, haftaSayisi);
       }
     }
@@ -4558,68 +4541,48 @@ function duzenleHafta(i) {
             const gun = gunler[gunIndex];
             
             // Uygulama kontrolü
-            let sabahUygulama = '-';
-            let aksamUygulama = '-';
-            
-            if (lenfHaftaIndex < 2) {
-              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = 'Lenf Masaji';
-            } else if (lenfHaftaIndex < 4) {
-              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
-              sabahUygulama = 'Lenf Masaji';
-              aksamUygulama = '-';
-            } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + sürekli akşam egzersiz
-              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
-                sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = 'Egzersiz-2';
-              } else {
-                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
-                sabahUygulama = 'Egzersiz-1';
-                aksamUygulama = 'Egzersiz-2';
+      (async () => {
+        let fullText = '';
+        try {
+          const response = await fetch(hafta.pdfUrl);
+          const blob = await response.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const strings = content.items.map(item => item.str);
+            fullText += strings.join('\n') + '\n';
+          }
+        } catch (err) {
+          console.error('PDF analiz hatası:', err);
+          return;
+        }
+        if (fullText) {
+          const haftalar = getHaftaListesi();
+          const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+          if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(hafta.pdfName)) {
+            const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+            haftalar[i].haftaNo = iceriktenHaftaNo;
+            console.log(`📄 PDF içeriğinden hafta numarası güncellendi: ${eskiHaftaNo}. hafta → ${iceriktenHaftaNo}. hafta`);
+            setTimeout(() => {
+              const haftaNoInput = document.getElementById('haftaNo_' + i);
+              if (haftaNoInput) {
+                haftaNoInput.value = iceriktenHaftaNo;
+                haftaNoInput.style.backgroundColor = '#d1ecf1';
+                haftaNoInput.style.borderColor = '#17a2b8';
+                setTimeout(() => {
+                  haftaNoInput.style.backgroundColor = '';
+                  haftaNoInput.style.borderColor = '';
+                }, 2000);
               }
-            } else {
-              // Son 2 hafta (11-12): Salı, Cuma lenf masajı + sürekli akşam egzersiz
-              if (gunIndex === 1 || gunIndex === 4) {
-                // Salı, Cuma: Lenf masajı + akşam egzersiz
-                sabahUygulama = 'Lenf Masaji';
-                aksamUygulama = 'Egzersiz-2';
-              } else {
-                // Diğer günler: Sabah ve akşam egzersiz
-                sabahUygulama = 'Egzersiz-1';
-                aksamUygulama = 'Egzersiz-2';
-              }
-            }
-            
-            tableStartX = 15;
-            
-            // Seçili haftadan önceki haftalar soluk renkte olsun
-            if (gercekHaftaNo < seciliHaftaNo) {
-              doc.setTextColor(150, 150, 150); // Soluk gri renk
-            } else {
-              doc.setTextColor(0, 0, 0); // Normal siyah renk
-            }
-            
-            // Tarih sütunu
-            doc.rect(tableStartX, currentY, colWidths[0], 5);
-            doc.text(tarihStr, tableStartX + 2, currentY + 3.5);
-            tableStartX += colWidths[0];
-            
-            // Gün sütunu
-            doc.rect(tableStartX, currentY, colWidths[1], 5);
-            doc.text(gun, tableStartX + 2, currentY + 3.5);
-            tableStartX += colWidths[1];
-            
-            // Sabah sütunu
-            doc.rect(tableStartX, currentY, colWidths[2], 5);
-            doc.text(sabahUygulama, tableStartX + 2, currentY + 3.5);
-            tableStartX += colWidths[2];
-            
-            // Akşam sütunu
-            doc.rect(tableStartX, currentY, colWidths[3], 5);
-            doc.text(aksamUygulama, tableStartX + 2, currentY + 3.5);
+            }, 100);
+          }
+          hafta.tarifler = extractTariflerDetay(fullText);
+          saveToStorage();
+          otomatikEsleHafta(i);
+        }
+      })();
             
             currentY += 5;
           }
