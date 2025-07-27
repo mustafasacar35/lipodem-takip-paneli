@@ -425,10 +425,10 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -4059,53 +4059,70 @@ function duzenleHafta(i) {
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
       if (!file) return;
-      
       console.log('🔍 PDF yükleniyor:', file.name);
-      
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const haftalar = getHaftaListesi();
-        haftalar[i].pdf = e.target.result;
-        // PDF dosya adını Türkçe karakter düzeltme ile kaydet
-        haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-        haftalar[i].kayitTarihi = new Date().toISOString(); // PDF yükleme tarihini kaydet
-        
-        console.log('✅ PDF kaydedildi:', {
-          index: i,
-          originalFileName: file.name,
-          savedPdfName: haftalar[i].pdfName,
-          kayitTarihi: haftalar[i].kayitTarihi
-        });
-        
-        // Seçili hasta objesini de güncelle (referans sorunu olabilir)
-        if (seciliHasta && seciliHasta.haftalar) {
-          // Hafta sıralaması sonrası index karışıklığı olabilir, hafta numarasına göre bul
-          const haftaNo = haftalar[i].haftaNo || (i + 1);
-          const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
-          
-          if (seciliHaftaIndex !== -1) {
-            seciliHasta.haftalar[seciliHaftaIndex].pdf = e.target.result;
-            seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-            seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = new Date().toISOString();
-            console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
-          }
+      const haftalar = getHaftaListesi();
+      haftalar[i].pdfFile = file; // Geçici olarak File objesi
+      haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+      haftalar[i].kayitTarihi = new Date().toISOString();
+
+      // Seçili hasta objesini de güncelle (referans sorunu olabilir)
+      if (seciliHasta && seciliHasta.haftalar) {
+        const haftaNo = haftalar[i].haftaNo || (i + 1);
+        const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
+        if (seciliHaftaIndex !== -1) {
+          seciliHasta.haftalar[seciliHaftaIndex].pdfFile = file;
+          seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+          seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
         }
-        
-        // PDF dosya adından hafta numarasını otomatik tespit et
-        const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
-        if (dosyaAdindenHaftaNo) {
+      }
+
+      // PDF dosya adından hafta numarasını otomatik tespit et
+      const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
+      if (dosyaAdindenHaftaNo) {
+        const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+        haftalar[i].haftaNo = dosyaAdindenHaftaNo;
+        setTimeout(() => {
+          const haftaNoInput = document.getElementById('haftaNo_' + i);
+          if (haftaNoInput) {
+            haftaNoInput.value = dosyaAdindenHaftaNo;
+            haftaNoInput.style.backgroundColor = '#d4edda';
+            haftaNoInput.style.borderColor = '#28a745';
+            setTimeout(() => {
+              haftaNoInput.style.backgroundColor = '';
+              haftaNoInput.style.borderColor = '';
+            }, 2000);
+          }
+        }, 100);
+      }
+
+      saveToStorage();
+      renderHastalar();
+      gosterHaftalar();
+
+      // PDF'i analiz et ve tarifleri çıkar
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const bytes = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join('\n') + '\n';
+        }
+
+        // PDF içeriğinden hafta numarasını kontrol et
+        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(haftalar[i].pdfName)) {
           const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
-          haftalar[i].haftaNo = dosyaAdindenHaftaNo;
-          
-          console.log(`🎯 Hafta numarası otomatik güncellendi: ${eskiHaftaNo}. hafta → ${dosyaAdindenHaftaNo}. hafta`);
-          
-          // UI'da görsel feedback göster
+          haftalar[i].haftaNo = iceriktenHaftaNo;
           setTimeout(() => {
             const haftaNoInput = document.getElementById('haftaNo_' + i);
             if (haftaNoInput) {
-              haftaNoInput.value = dosyaAdindenHaftaNo;
-              haftaNoInput.style.backgroundColor = '#d4edda';
-              haftaNoInput.style.borderColor = '#28a745';
+              haftaNoInput.value = iceriktenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d1ecf1';
+              haftaNoInput.style.borderColor = '#17a2b8';
               setTimeout(() => {
                 haftaNoInput.style.backgroundColor = '';
                 haftaNoInput.style.borderColor = '';
@@ -4113,19 +4130,12 @@ function duzenleHafta(i) {
             }
           }, 100);
         }
-        
+
+        haftalar[i].tarifler = extractTariflerDetay(fullText);
         saveToStorage();
-        
-        // Hasta listesini güncelle (PDF hafta numarası değişmiş olabilir)
-        renderHastalar();
-        
-        // Haftalar görünümünü de güncelle (PDF adını göstermek için)
-        gosterHaftalar();
-        
-        // PDF yüklenir yüklenmez otomatik tara ve eşleştir
-        pdfOkuVeEsleHafta(i);
+        otomatikEsleHafta(i);
       };
-      reader.readAsDataURL(file);
+      reader.readAsArrayBuffer(file);
     }
 
     // PDF'den otomatik tara ve eşleştir
