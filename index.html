@@ -4249,22 +4249,21 @@ function duzenleHafta(i) {
         try {
           // GitHub'a ayrı PDF dosyası olarak yükle
           console.log('📤 PDF GitHub\'a yükleniyor:', pdfFileName);
-          const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
-          
-          // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
-          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
+          const uploadResult = await uploadPDFToGitHub(pdfFileName, base64Data);
+          // uploadPDFToGitHub fonksiyonu hem dosya adını hem de SHA'yı döndürmeli
+          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${uploadResult.fileName}`;
           haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
-          
-          console.log('✅ PDF GitHub\'a yüklendi ve URL kaydedildi:', {
+          haftalar[i].pdfSha = uploadResult.sha || '';
+          console.log('✅ PDF GitHub\'a yüklendi ve URL/SHA kaydedildi:', {
             index: i,
             originalFileName: file.name,
             savedPdfName: haftalar[i].pdfName,
-            actualFileName: actualFileName,
+            actualFileName: uploadResult.fileName,
             pdfUrl: haftalar[i].pdfUrl,
-            kayitTarihi: haftalar[i].kayitTarihi
+            kayitTarihi: haftalar[i].kayitTarihi,
+            pdfSha: haftalar[i].pdfSha
           });
-          
         } catch (error) {
           console.warn('⚠️ PDF GitHub\'a yüklenemedi, base64 olarak kaydediliyor:', error.message);
           
@@ -7460,13 +7459,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             content: base64Data
           })
         });
-        
         if (!response.ok) {
           throw new Error(`GitHub API hatası: ${response.status}`);
         }
-        
-        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName);
-        return finalFileName; // Gerçek dosya adını döndür
+        const result = await response.json();
+        const sha = result.content && result.content.sha ? result.content.sha : '';
+        console.log('✅ PDF GitHub\'a ayrı dosya olarak yüklendi:', finalFileName, 'SHA:', sha);
+        return { fileName: finalFileName, sha };
       } catch (error) {
         console.error('❌ PDF GitHub\'a yüklenemedi:', error);
         throw error;
