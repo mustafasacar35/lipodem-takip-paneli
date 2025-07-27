@@ -742,6 +742,28 @@
 
     // Data klasöründen hasta verilerini otomatik yükle
     // Türkçe karakter düzeltme fonksiyonu - BASİT VE ETKİLİ ÇÖZÜM
+    // Türkçe karakterleri bozmadan büyük harfe çevirme
+    function toUpperCaseTR(str) {
+      return str.replace(/i/g, 'İ')
+        .replace(/ı/g, 'I')
+        .replace(/ş/g, 'Ş')
+        .replace(/ğ/g, 'Ğ')
+        .replace(/ü/g, 'Ü')
+        .replace(/ö/g, 'Ö')
+        .replace(/ç/g, 'Ç')
+        .toUpperCase();
+    }
+    // Türkçe karakterleri bozmadan küçük harfe çevirme
+    function toLowerCaseTR(str) {
+      return str.replace(/İ/g, 'i')
+        .replace(/I/g, 'ı')
+        .replace(/Ş/g, 'ş')
+        .replace(/Ğ/g, 'ğ')
+        .replace(/Ü/g, 'ü')
+        .replace(/Ö/g, 'ö')
+        .replace(/Ç/g, 'ç')
+        .toLowerCase();
+    }
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
@@ -6639,7 +6661,7 @@ function duzenleHafta(i) {
           .toUpperCase();
       }
 
-      const hastaAdi = seciliHasta && seciliHasta.isim ? turkceBuyuk(seciliHasta.isim) : 'HASTA';
+      const hastaAdi = seciliHasta && seciliHasta.isim ? toUpperCaseTR(turkceKarakterDuzelt(seciliHasta.isim)) : 'HASTA';
       // Hafta aralığı: 28 NİSAN - 4 MAYIS
       function tarihAralikStr(baslangic, bitis) {
         const aylar = ['OCAK','ŞUBAT','MART','NİSAN','MAYIS','HAZİRAN','TEMMUZ','AĞUSTOS','EYLÜL','EKİM','KASIM','ARALIK'];
@@ -6649,7 +6671,8 @@ function duzenleHafta(i) {
           const ay = aylar[d.getMonth()];
           return `${gun} ${ay}`;
         }
-        return `${gunAy(baslangic)} - ${gunAy(bitis)}`;
+        // Aralıkta Türkçe karakterler büyük harfli olsun
+        return `${gunAy(baslangic)} - ${gunAy(bitis)}`.replace(/[a-zçğıöşü]/g, function(m){return toUpperCaseTR(m);});
       }
       const haftaAralik = tarihAralikStr(hafta.baslangic, hafta.bitis);
       const haftaNoStr = (hafta.haftaNo || (i + 1)) + '.HAFTA';
