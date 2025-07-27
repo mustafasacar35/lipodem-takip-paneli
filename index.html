@@ -6382,6 +6382,58 @@ function duzenleHafta(i) {
     }
 
     async function zipEslesenGorseller(i) {
+      // PDF dosyasını önce GitHub'daki pdfs klasörüne orijinal ismiyle yükle
+      if (hafta.pdfFile && hafta.pdfOrijinalIsim) {
+        try {
+          const token = document.getElementById('githubToken').value.trim();
+          if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
+          const owner = 'mustafasacar35';
+          const repo = 'lipodem-takip-paneli';
+          const branch = 'main';
+          const pdfPath = `pdfs/${hafta.pdfOrijinalIsim}`;
+          // PDF dosyasını arrayBuffer olarak oku
+          const arrayBuffer = await hafta.pdfFile.arrayBuffer();
+          // Base64'e çevir
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let b of uint8Array) binary += String.fromCharCode(b);
+          const base64PDF = btoa(binary);
+          // Mevcut dosyanın SHA'sını al
+          let sha = undefined;
+          try {
+            const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${pdfPath}?ref=${branch}`, {
+              headers: { Authorization: `token ${token}` }
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              sha = data.sha;
+            }
+          } catch (e) {}
+          // PDF dosyasını yükle
+          const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${pdfPath}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `PDF yüklendi: ${hafta.pdfOrijinalIsim}`,
+              content: base64PDF,
+              branch,
+              sha
+            })
+          });
+          if (res.ok) {
+            console.log('✅ PDF GitHub pdfs klasörüne yüklendi:', hafta.pdfOrijinalIsim);
+          } else {
+            const errorText = await res.text();
+            console.error('❌ PDF GitHub yükleme hatası:', res.status, errorText);
+            alert('PDF GitHub yükleme hatası: ' + res.status);
+          }
+        } catch (err) {
+          console.error('❌ PDF GitHub yükleme genel hatası:', err);
+        }
+      }
       try {
         console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
