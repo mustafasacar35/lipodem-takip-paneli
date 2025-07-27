@@ -6063,6 +6063,7 @@ function duzenleHafta(i) {
     // Sol sidebar'a draggable seperatör ekle
     window.addEventListener('DOMContentLoaded', function() {
       const sidebar = document.getElementById('sidebar');
+      const mainPanel = document.getElementById('mainPanel') || document.querySelector('.main-panel') || document.getElementById('main');
       if (sidebar && !document.getElementById('sidebar-separator')) {
         const separator = document.createElement('div');
         separator.id = 'sidebar-separator';
@@ -6087,6 +6088,10 @@ function duzenleHafta(i) {
           if (newWidth < minWidth) newWidth = minWidth;
           if (newWidth > maxWidth) newWidth = maxWidth;
           sidebar.style.width = newWidth + 'px';
+          // Ana paneli de daralt/esnet
+          if (mainPanel) {
+            mainPanel.style.marginLeft = newWidth + 'px';
+          }
         });
         document.addEventListener('mouseup', function(e) {
           if (isDragging) {
@@ -6094,11 +6099,16 @@ function duzenleHafta(i) {
             document.body.style.cursor = '';
             // Genişliği localStorage'a kaydet
             localStorage.setItem('sidebarWidth', sidebar.style.width);
+            if (mainPanel) localStorage.setItem('mainPanelMarginLeft', mainPanel.style.marginLeft);
           }
         });
         // Sayfa açılışında genişliği yükle
         const kayitliWidth = localStorage.getItem('sidebarWidth');
         if (kayitliWidth) sidebar.style.width = kayitliWidth;
+        if (mainPanel) {
+          const kayitliMargin = localStorage.getItem('mainPanelMarginLeft');
+          if (kayitliMargin) mainPanel.style.marginLeft = kayitliMargin;
+        }
       }
     });
     // Her hafta ekle/sil, PDF upload, tab tarih değişikliği vs. işlemlerinde saveToStorage fonksiyonu çağrılmalı
