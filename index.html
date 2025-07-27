@@ -6363,14 +6363,17 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
-        // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
+        // 9. hafta tabı seçili ise, tablo 5. haftadan başlasın ve 9. hafta satırı seçili tabın tarihine denk gelsin
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
-        
-        // 8 haftalık program (5-12. haftalar) - ZIP sistemindeki gibi
+
+        // 9. haftanın başlangıcı = seçili tabın başlangıç tarihinden 4 hafta geri
+        const ilkHaftaBaslangic = new Date(baslangicTarihi.getTime() - (4 * 7 * 24 * 60 * 60 * 1000));
+
+        // 8 haftalık program (5-12. haftalar)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
+          const haftaBaslangic = new Date(ilkHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
