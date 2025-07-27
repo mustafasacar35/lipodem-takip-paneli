@@ -4138,6 +4138,12 @@ function duzenleHafta(i) {
 }
 
     function pdfYukleHafta(i, input) {
+      // PDF dosya adını tamamen güvenli hale getiren fonksiyon
+      function safeFileName(str) {
+        return turkceKarakterDuzelt(str)
+          .replace(/[^a-zA-Z0-9-_\.]/g, '_')
+          .replace(/_+/g, '_');
+      }
       const file = input.files[0];
       if (!file) return;
       
@@ -4148,8 +4154,8 @@ function duzenleHafta(i) {
         const haftalar = getHaftaListesi();
         
         // PDF dosya adını oluştur - orijinal ismi koru
-        const originalFileName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim || 'Hasta').replace(/\s+/g, '_');
+        const originalFileName = safeFileName(file.name || 'hafta.pdf');
+        const hastaAdi = safeFileName(seciliHasta.isim || 'Hasta');
         const haftaNo = i + 1;
         
         // Dosya adı formatı: HastaAdı_HaftaNo_OriginalName.pdf
@@ -4171,7 +4177,7 @@ function duzenleHafta(i) {
           const actualFileName = await uploadPDFToGitHub(pdfFileName, base64Data);
           
           // Başarılı yükleme sonrası sadece URL'yi sakla (JSON küçük kalır)
-          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${actualFileName}`;
+          haftalar[i].pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${encodeURI(actualFileName)}`;
           haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           haftalar[i].kayitTarihi = new Date().toISOString();
           
@@ -4259,7 +4265,7 @@ function duzenleHafta(i) {
       if (!hafta.pdfUrl) return;
       // PDF'i GitHub'dan indir ve analiz et
       try {
-        const response = await fetch(hafta.pdfUrl);
+        const response = await fetch(encodeURI(hafta.pdfUrl));
         const blob = await response.blob();
         const arrayBuffer = await blob.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
