@@ -1,133 +1,3 @@
-// --- Yeni Hasta JSON Sistemi ---
-// Ana dosya: data/hasta_kayitlari.json
-// Hasta detay dosyası: data/hasta_[ID].json
-
-// Ana dosyadan hasta listesi yükle
-async function loadHastaListesi() {
-  const response = await fetch('data/hasta_kayitlari.json');
-  const data = await response.json();
-  return data.hastalar || [];
-}
-
-// Hasta detay dosyasını yükle
-async function loadHastaDetay(id) {
-  const response = await fetch(`data/hasta_${id}.json`);
-  return await response.json();
-}
-
-// Hasta detay dosyasını kaydet
-async function saveHastaDetay(hastaObj) {
-  // Gerçek uygulamada sunucuya POST/PATCH ile kaydedilir
-  // Demo için localde dosya yazılamaz, sadece şablon
-  // fetch('/save', {method:'POST', body: JSON.stringify(hastaObj)})
-}
-
-// Ana dosyaya yeni hasta ekle
-async function addHastaAnaDosya(hastaMeta) {
-  // hastaMeta: {id, isim, arsiv, dosya}
-  // Gerçek uygulamada ana dosya güncellenir
-}
-
-// Hasta ekleme örneği
-async function yeniHastaEkle(hastaObj) {
-  await saveHastaDetay(hastaObj); // Detay dosyasını kaydet
-  await addHastaAnaDosya({id: hastaObj.id, isim: hastaObj.isim, arsiv: hastaObj.arsiv, dosya: `data/hasta_${hastaObj.id}.json`});
-}
-
-// Hafta ekleme/silme, PDF upload vs. işlemlerinde önce ilgili hasta dosyası yüklenir, güncellenir, sonra kaydedilir
-// Örnek:
-async function haftaEkle(hastaId, yeniHaftaObj) {
-  const hasta = await loadHastaDetay(hastaId);
-  hasta.haftalar.push(yeniHaftaObj);
-  await saveHastaDetay(hasta);
-}
-
-// Arşive alma işlemi:
-async function arsiveAl(hastaId) {
-  const anaListe = await loadHastaListesi();
-  const hastaMeta = anaListe.find(h => h.id === hastaId);
-  if (hastaMeta) {
-    hastaMeta.arsiv = true;
-    // Ana dosya güncellenir
-    await addHastaAnaDosya(hastaMeta);
-  }
-}
-
-// Sistem açılışında ana dosyadan hasta listesi okunur, detaylar ilgili dosyalardan yüklenir
-// ...existing code...
-// --- Nihai Hasta JSON Sistemi ---
-// Ana dosya: data/hasta_kayitlari.json
-// Hasta detay dosyası: data/hasta_[ID].json
-
-// Ana dosyadan hasta listesi yükle
-async function loadHastaListesi() {
-  const response = await fetch('data/hasta_kayitlari.json');
-  const data = await response.json();
-  return data.hastalar || [];
-}
-
-// Hasta detay dosyasını yükle
-async function loadHastaDetay(id) {
-  const response = await fetch(`data/hasta_${id}.json`);
-  return await response.json();
-}
-
-// Hasta detay dosyasını kaydet
-async function saveHastaDetay(hastaObj) {
-  // Sunucuya POST/PATCH ile kaydedilir
-  // fetch('/save', {method:'POST', body: JSON.stringify(hastaObj)})
-}
-
-// Ana dosyaya yeni hasta ekle
-async function addHastaAnaDosya(hastaMeta) {
-  // hastaMeta: {id, isim, arsiv, dosya}
-  // Ana dosya güncellenir
-}
-
-// Yeni hasta ekleme
-async function yeniHastaEkle(hastaObj) {
-  await saveHastaDetay(hastaObj);
-  await addHastaAnaDosya({id: hastaObj.id, isim: hastaObj.isim, arsiv: hastaObj.arsiv, dosya: `data/hasta_${hastaObj.id}.json`});
-}
-
-// Hafta ekleme
-async function haftaEkle(hastaId, yeniHaftaObj) {
-  const hasta = await loadHastaDetay(hastaId);
-  hasta.haftalar.push(yeniHaftaObj);
-  await saveHastaDetay(hasta);
-}
-
-// Hafta silme
-async function haftaSil(hastaId, haftaNo) {
-  const hasta = await loadHastaDetay(hastaId);
-  hasta.haftalar = hasta.haftalar.filter(h => h.haftaNo !== haftaNo);
-  await saveHastaDetay(hasta);
-}
-
-// PDF upload
-async function pdfUpload(hastaId, haftaNo, pdfData, pdfName) {
-  const hasta = await loadHastaDetay(hastaId);
-  const hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
-  if (hafta) {
-    hafta.pdf = pdfData;
-    hafta.pdfName = pdfName;
-    await saveHastaDetay(hasta);
-  }
-}
-
-// Arşive alma
-async function arsiveAl(hastaId) {
-  const anaListe = await loadHastaListesi();
-  const hastaMeta = anaListe.find(h => h.id === hastaId);
-  if (hastaMeta) {
-    hastaMeta.arsiv = true;
-    await addHastaAnaDosya(hastaMeta);
-  }
-}
-
-// Sistem açılışında ana dosyadan hasta listesi okunur, detaylar ilgili dosyalardan yüklenir
-// ...existing code...
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -839,6 +709,82 @@ async function arsiveAl(hastaId) {
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+
+
+// Her hasta için ayrı JSON dosyası yönetimi
+function saveHastaToFile(hasta) {
+  if (!hasta || !hasta.id) return;
+  const fileName = `data/hasta_${hasta.id}.json`;
+  // JSON.stringify ile dosya içeriği hazırla
+  const jsonStr = JSON.stringify(hasta, null, 2);
+  // Dosya kaydetme işlemi (örnek: GitHub API veya localStorage ile)
+  // Burada localStorage ile örnek:
+  localStorage.setItem(fileName, jsonStr);
+  // Gerçek dosya kaydı için sunucuya veya GitHub'a push yapılmalı
+}
+
+// Hasta eklenince ana JSON'a sadece temel bilgiler eklenir, detaylar ayrı dosyada
+function addHasta(hasta) {
+  // ...mevcut ekleme kodunuz...
+  saveHastaToFile(hasta);
+  // Ana JSON'u güncelle (sadece temel bilgiler)
+  updateAnaJson();
+}
+
+// Hafta ekle/sil, PDF upload vs. işlemlerinde ilgili hasta dosyası güncellenir
+function updateHasta(hasta) {
+  saveHastaToFile(hasta);
+  updateAnaJson();
+}
+
+// Hasta silinince dosya da silinir
+function deleteHasta(hastaId) {
+  const fileName = `data/hasta_${hastaId}.json`;
+  localStorage.removeItem(fileName);
+  // Gerçek dosya silme için sunucuya/GitHub'a API ile silme eklenmeli
+  updateAnaJson();
+}
+
+// Ana JSON sadece hasta listesi ve temel bilgileri tutar
+function updateAnaJson() {
+  const anaJson = hastalar.map(h => ({
+    id: h.id,
+    isim: h.isim,
+    arsiv: h.arsiv || false,
+    // ...diğer temel bilgiler...
+  }));
+  localStorage.setItem('data/hasta_kayitlari.json', JSON.stringify(anaJson, null, 2));
+}
+
+// Arşive alınan hastalar için dosya taşınır
+function archiveHasta(hasta) {
+  if (!hasta || !hasta.id) return;
+  const fileName = `data/hasta_${hasta.id}.json`;
+  const archiveFileName = `data/arsiv/hasta_${hasta.id}.json`;
+  const jsonStr = JSON.stringify(hasta, null, 2);
+  localStorage.setItem(archiveFileName, jsonStr);
+  localStorage.removeItem(fileName);
+  updateAnaJson();
+}
+
+// Sayfa açılışında ana JSON'dan hasta listesi yüklenir, detaylar hasta_{id}.json dosyalarından alınır
+function loadHastalar() {
+  const anaJsonStr = localStorage.getItem('data/hasta_kayitlari.json');
+  if (!anaJsonStr) return [];
+  const anaJson = JSON.parse(anaJsonStr);
+  // Her hasta için detay dosyasını yükle
+  return anaJson.map(h => {
+    const detayStr = localStorage.getItem(`data/hasta_${h.id}.json`);
+    if (detayStr) {
+      return JSON.parse(detayStr);
+    }
+    return h;
+  });
+}
+
+
+
+
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
