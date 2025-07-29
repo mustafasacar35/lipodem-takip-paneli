@@ -8553,6 +8553,49 @@ function manuelKartSecimListesiniGoster(arama = '') {
       currentEslesenKartlar.appendChild(btn);
     }
   }, 100);
+  // + Kart Ekle butonunu her zaman çalışır ve tek olacak şekilde garanti altına al
+function kartEkleButonunuGuncelle() {
+  const currentEslesenKartlar = document.getElementById('currentEslesenKartlar');
+  const modal = document.getElementById('manuelKartEkleModal');
+  if (currentEslesenKartlar) {
+    // Eski butonları kaldır
+    Array.from(currentEslesenKartlar.querySelectorAll('#manuelKartEkleBtn')).forEach(b => b.remove());
+    // Yeni buton oluştur ve ekle
+    const btn = document.createElement('button');
+    btn.id = 'manuelKartEkleBtn';
+    btn.textContent = '+ Kart Ekle';
+    btn.style.marginTop = '10px';
+    btn.style.padding = '8px 16px';
+    btn.style.background = '#6f42c1';
+    btn.style.color = 'white';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '6px';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '14px';
+    btn.onclick = function() {
+      if (modal) {
+        modal.style.display = 'flex';
+        manuelKartSecimListesiniGoster();
+      }
+    };
+    currentEslesenKartlar.appendChild(btn);
+  }
+}
+
+// Panel güncellendiğinde çağrılmalı
+if (typeof guncelleEslesenKartlarPaneli === 'function') {
+  const eskiGuncelle = guncelleEslesenKartlarPaneli;
+  window.guncelleEslesenKartlarPaneli = function() {
+    eskiGuncelle.apply(this, arguments);
+    setTimeout(kartEkleButonunuGuncelle, 100);
+  };
+}
+
+// Sayfa ilk yüklendiğinde de çağır
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(kartEkleButonunuGuncelle, 500);
+});
 </script>
+
 </body>
 </html>
