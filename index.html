@@ -1,17 +1,30 @@
   // ...existing code...
   // Panel güncellendikten sonra '+ Kart Ekle' butonunu tekrar ekle ve event listener ata
   setTimeout(function() {
-    let btn = document.getElementById('manuelKartEkleBtn');
-    const modal = document.getElementById('manuelKartEkleModal');
     const currentEslesenKartlar = document.getElementById('currentEslesenKartlar');
-    if (btn && currentEslesenKartlar && !currentEslesenKartlar.contains(btn)) {
-      currentEslesenKartlar.appendChild(btn);
-    }
-    if (btn && modal) {
+    const modal = document.getElementById('manuelKartEkleModal');
+    // Eski butonları kaldır
+    if (currentEslesenKartlar) {
+      Array.from(currentEslesenKartlar.querySelectorAll('#manuelKartEkleBtn')).forEach(b => b.remove());
+      // Yeni buton oluştur ve ekle
+      const btn = document.createElement('button');
+      btn.id = 'manuelKartEkleBtn';
+      btn.textContent = '+ Kart Ekle';
+      btn.style.marginTop = '10px';
+      btn.style.padding = '8px 16px';
+      btn.style.background = '#6f42c1';
+      btn.style.color = 'white';
+      btn.style.border = 'none';
+      btn.style.borderRadius = '6px';
+      btn.style.cursor = 'pointer';
+      btn.style.fontSize = '14px';
       btn.onclick = function() {
-        modal.style.display = 'flex';
-        manuelKartSecimListesiniGoster();
+        if (modal) {
+          modal.style.display = 'flex';
+          manuelKartSecimListesiniGoster();
+        }
       };
+      currentEslesenKartlar.appendChild(btn);
     }
   }, 100);
 
