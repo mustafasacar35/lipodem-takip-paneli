@@ -723,6 +723,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+
 // Türkçe karakter düzeltme fonksiyonu
 function turkceKarakterDuzelt(text) {
   if (!text) return text;
@@ -739,6 +740,15 @@ function turkceKarakterDuzelt(text) {
     .replace(/û/g, 'u')
     .replace(/ô/g, 'o');
 }
+
+// Hasta ismi ve notu DOM'a basılırken karakter düzeltme zorunlu
+function setHastaBilgiPanel(seciliHasta) {
+  const secilenHastaIsim = document.getElementById('secilenHastaIsim');
+  const secilenHastaNot = document.getElementById('secilenHastaNot');
+  if (secilenHastaIsim) secilenHastaIsim.textContent = turkceKarakterDuzelt(seciliHasta.isim);
+  if (secilenHastaNot) secilenHastaNot.textContent = turkceKarakterDuzelt(seciliHasta.not || 'Not bulunmuyor');
+}
+
 
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
@@ -8450,10 +8460,13 @@ Hazır olduğunda API Key ve Sheet ID'yi yukarıdaki kutulara girin!
   // MANUEL KART EKLEME FONKSİYONLARI
 setTimeout(function() {
   const btn = document.getElementById('manuelKartEkleBtn');
-  if (btn) btn.onclick = function() {
-    document.getElementById('manuelKartEkleModal').style.display = 'flex';
-    manuelKartSecimListesiniGoster();
-  };
+  const modal = document.getElementById('manuelKartEkleModal');
+  if (btn && modal) {
+    btn.onclick = function() {
+      modal.style.display = 'flex';
+      manuelKartSecimListesiniGoster();
+    };
+  }
   // Butonun DOM'dan kaldırılmasını/gizlenmesini engelle
   if (btn) {
     btn.style.display = 'block';
@@ -8472,8 +8485,8 @@ setTimeout(function() {
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
   }
   const iptalBtn = document.getElementById('manuelKartEkleIptalBtn');
-  if (iptalBtn) iptalBtn.onclick = function() {
-    document.getElementById('manuelKartEkleModal').style.display = 'none';
+  if (iptalBtn && modal) iptalBtn.onclick = function() {
+    modal.style.display = 'none';
   };
   const aramaInput = document.getElementById('manuelKartAramaInput');
   if (aramaInput) aramaInput.oninput = function() {
