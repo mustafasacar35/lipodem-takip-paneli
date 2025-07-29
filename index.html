@@ -723,6 +723,23 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+// Türkçe karakter düzeltme fonksiyonu
+function turkceKarakterDuzelt(text) {
+  if (!text) return text;
+  return text
+    .replace(/Ä±/g, 'ı')
+    .replace(/Ä/g, 'ğ')
+    .replace(/Å/g, 'ş')
+    .replace(/Ğ/g, 'ğ')
+    .replace(/Ã¼/g, 'ü')
+    .replace(/Ã¶/g, 'ö')
+    .replace(/Ã§/g, 'ç')
+    .replace(/â/g, 'a')
+    .replace(/î/g, 'i')
+    .replace(/û/g, 'u')
+    .replace(/ô/g, 'o');
+}
+
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
@@ -8437,6 +8454,23 @@ setTimeout(function() {
     document.getElementById('manuelKartEkleModal').style.display = 'flex';
     manuelKartSecimListesiniGoster();
   };
+  // Butonun DOM'dan kaldırılmasını/gizlenmesini engelle
+  if (btn) {
+    btn.style.display = 'block';
+    const observer = new MutationObserver(() => {
+      if (!btn.parentElement) {
+        // Buton DOM'dan kaldırılırsa tekrar ekle
+        const currentEslesenKartlar = document.getElementById('currentEslesenKartlar');
+        if (currentEslesenKartlar) {
+          currentEslesenKartlar.appendChild(btn);
+        }
+      }
+      if (btn.style.display === 'none') {
+        btn.style.display = 'block';
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  }
   const iptalBtn = document.getElementById('manuelKartEkleIptalBtn');
   if (iptalBtn) iptalBtn.onclick = function() {
     document.getElementById('manuelKartEkleModal').style.display = 'none';
