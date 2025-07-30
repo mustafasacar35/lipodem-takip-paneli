@@ -3,8 +3,6 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tarif Eşleştirme Paneli</title>
   
   <!-- PDF.js -->
@@ -56,6 +54,71 @@
       border-right: 1px solid #ddd;
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .sidebar-section {
+      border-bottom: 1px solid #eee;
+      padding: 15px;
+    }
+    
+    .sidebar-section h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #495057;
+      text-transform: uppercase;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 5px;
+    }
+    
+    /* Hasta Listesi */
+    #hastaListesi {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    #hastaListesi li {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    
+    #hastaListesi li:hover {
+      background: #f8f9fa;
+    }
+    
+    /* Orta Panel */
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      overflow-y: auto;
+    }
+    
+    /* Sağ Sidebar */
+    .right-sidebar {
+      background: white;
+      border-left: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    /* Sistem Durumu Kompakt */
+    .sistem-durumu-kompakt {
+      background: #e9ecef;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    
+    .sistem-durumu-kompakt .durum-item {
+      display: block;
       margin-bottom: 3px;
     }
     
@@ -308,17 +371,14 @@
       
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h4 style="margin: 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
-          <button onclick="anaSayfaKartEkle()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;"
-                  title="Tarif kartı arşivinden manuel kart ekleme">
-            ➕ Kart Ekle
-          </button>
-        </div>
-        <div id="currentEslesenKartlar" style="min-height: 200px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
+        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
           <div style="text-align: center; color: #666; padding: 40px;">
             Önce bir hasta seçin...
           </div>
+        </div>
+        <!-- Butonlar için sabit alan -->
+        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
       </div>
     </div>
@@ -365,12 +425,13 @@
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
-        <button onclick="generateLenfDrenajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🏥 Lenf Drenaj Takvimi</button>
+        <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
+        <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
         <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
         <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
       </div>
@@ -585,77 +646,6 @@
     <div id="duzenlemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
   </div>
 
-  <!-- +Kart Ekle Modal -->
-  <div id="kartEkleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:30px; border-radius:10px; width:90%; max-width:800px; max-height:80vh; overflow-y:auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #007bff; padding-bottom:10px;">
-        <h3 style="margin:0; color:#007bff;">📋 Tarif Kartı Arşivinden Manuel Ekleme</h3>
-        <button onclick="kartEkleModalKapat()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; width:30px; height:30px; display:flex; align-items:center; justify-content:center;" title="Kapat">×</button>
-      </div>
-      
-      <div style="margin-bottom:20px;">
-        <p style="color:#666; margin:0; font-size:14px;">
-          Bu bölümde tarif kartı arşivinden istediğiniz kartları seçerek mevcut eşleşmelere ek olarak manuel ekleyebilirsiniz.
-        </p>
-      </div>
-      
-      <!-- Arama ve Filtreleme -->
-      <div style="margin-bottom:20px; padding:15px; background:#f8f9fa; border-radius:8px;">
-        <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
-          <div style="flex:1; min-width:200px;">
-            <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">🔍 Kart Ara:</label>
-            <input type="text" id="kartAramaInput" placeholder="Kart adında ara... (örn: tavuk, salata, çorba)"
-                   style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:14px;"
-                   oninput="kartListesiniFiltrele(this.value)">
-          </div>
-          <div style="min-width:120px;">
-            <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">📊 Toplam:</label>
-            <div id="kartSayisiGosterge" style="padding:10px; background:white; border:1px solid #ddd; border-radius:5px; text-align:center; font-weight:bold; color:#007bff;">
-              0 kart
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Kart Listesi -->
-      <div style="margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <h4 style="margin:0; color:#333;">📚 Mevcut Kartlar</h4>
-          <div>
-            <button onclick="tumKartlariSec()" style="padding:5px 10px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px; margin-right:5px;">✅ Tümünü Seç</button>
-            <button onclick="tumKartlariKaldir()" style="padding:5px 10px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px;">❌ Tümünü Kaldır</button>
-          </div>
-        </div>
-        
-        <div id="kartListesiContainer" style="max-height:400px; overflow-y:auto; border:1px solid #ddd; border-radius:8px; background:white;">
-          <div id="kartListesi" style="padding:15px;">
-            <div style="text-align:center; color:#666; padding:40px;">
-              Kartlar yükleniyor...
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Seçili Kartlar Özeti -->
-      <div style="margin-bottom:20px; padding:15px; background:#e8f5e8; border:1px solid #28a745; border-radius:8px;">
-        <h4 style="margin:0 0 10px 0; color:#155724;">✅ Seçili Kartlar</h4>
-        <div id="seciliKartlarOzeti" style="color:#155724; font-weight:bold;">
-          Henüz kart seçilmedi
-        </div>
-      </div>
-      
-      <!-- İşlem Butonları -->
-      <div style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #ddd; padding-top:15px;">
-        <button onclick="kartEkleModalKapat()" style="padding:10px 20px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">
-          ❌ İptal
-        </button>
-        <button onclick="seciliKartlariEkle()" style="padding:10px 20px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
-          ➕ Seçili Kartları Ekle
-        </button>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
@@ -689,121 +679,102 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
-    // Türkçe karakter düzeltme fonksiyonu - GELİŞTİRİLMİŞ ÇÖZÜM
+    // Türkçe karakter düzeltme fonksiyonu - BASİT VE ETKİLİ ÇÖZÜM
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // İlk olarak tüm problemli karakterleri normalize et
-      let duzeltilmisText = text;
-      
-      // ÇÖZÜM 1: Yaygın encoding bozukluklarını düzelt
-      const encodingDuzeltmeleri = [
-        // UTF-8 encoding sorunları
-        { yanlis: /Ã§/g, dogru: 'ç' },
-        { yanlis: /Ã‡/g, dogru: 'Ç' },
-        { yanlis: /Ã¶/g, dogru: 'ö' },
-        { yanlis: /Ã–/g, dogru: 'Ö' },
-        { yanlis: /Ã¼/g, dogru: 'ü' },
-        { yanlis: /Ãœ/g, dogru: 'Ü' },
-        { yanlis: /Ä±/g, dogru: 'ı' },
-        { yanlis: /Ä°/g, dogru: 'İ' },
-        { yanlis: /Å/g, dogru: 'ş' },
-        { yanlis: /Å/g, dogru: 'Ş' },
-        { yanlis: /Ä/g, dogru: 'ğ' },
-        { yanlis: /Ä/g, dogru: 'Ğ' },
+      // Basit karakter eşleştirme tablosu
+      const karakterTablosu = {
+        // Şefike için özel çözümler
+        '^EF0KE': 'ŞEFİKE',
+        'ŞEF0KE': 'ŞEFİKE', 
+        'SEF0KE': 'ŞEFİKE',
+        '^EFIKE': 'ŞEFİKE',
+        '^EF\u0130KE': 'ŞEFİKE',
+        'ÅEFÄ°KE': 'ŞEFİKE',
         
-        // Windows-1254 encoding sorunları
-        { yanlis: /Þ/g, dogru: 'ş' },
-        { yanlis: /Ð/g, dogru: 'ğ' },
-        { yanlis: /Ý/g, dogru: 'İ' },
-        { yanlis: /ý/g, dogru: 'ı' },
+        // Yaygın bozuk kodlamalar
+        'Ã§': 'ç',
+        'Ã¼': 'ü', 
+        'Ã¶': 'ö',
+        'ÄŸ': 'ğ',
+        'Ä±': 'ı',
+        'Ä°': 'İ',
+        'Åž': 'Ş',
+        'ÅŸ': 'ş',
+        'Ã‡': 'Ç',
+        'Ãœ': 'Ü',
+        'Ã–': 'Ö',
+        'ÄžÄ': 'Ğ',
         
-        // ISO-8859-9 encoding sorunları
-        { yanlis: /ÿ/g, dogru: 'ı' },
-        { yanlis: /Ÿ/g, dogru: 'İ' },
+        // Ş harfleri
+        'Ş': ['Ş', 'ÅŸ', 'Åž', 'Å ', 'Ã…Â', 'ÃÂ', 'ÅŠÂŞ', 'Åž', '^', 'Å', '\u015E'],
+        'ş': ['ş', 'ÅŸ', 'Å ', '\u015F'],
         
-        // Diğer yaygın bozukluklar
-        { yanlis: /â/g, dogru: 'a' },
-        { yanlis: /î/g, dogru: 'i' },
-        { yanlis: /û/g, dogru: 'u' },
-        { yanlis: /ô/g, dogru: 'o' },
-        { yanlis: /Â/g, dogru: 'A' },
-        { yanlis: /Î/g, dogru: 'I' },
-        { yanlis: /Û/g, dogru: 'U' },
-        { yanlis: /Ô/g, dogru: 'O' },
+        // İ harfleri  
+        'İ': ['İ', 'Ä°', 'Ä ', 'ÄÂ°', 'ÃÄÂ°', '0', '\u0130'],
+        'i': ['i', 'Ä±', 'Ä '],
         
-        // Garip karakterleri temizle
-        { yanlis: /[°º‡†]/g, dogru: '' },
-        { yanlis: /\u00A0/g, dogru: ' ' }, // Non-breaking space
+        // I harfi (büyük ı)
+        'I': ['I'],
+        'ı': ['ı', 'Ä±', 'Ä ', '\u0131'],
         
-        // Eski encoding sorunları (mevcut veriler için)
-        { yanlis: /[ÂÃ]/g, dogru: '' },
-        { yanlis: /[ÅŠŞŚΣΣ]/g, dogru: 'Ş' },
-        { yanlis: /[åšşśσ]/g, dogru: 'ş' },
-        { yanlis: /[ÄİĮÍÌÎÏ]/g, dogru: 'İ' },
-        { yanlis: /[äiįíìîï]/g, dogru: 'i' },
-        { yanlis: /[ÃœÜÚÙÛ]/g, dogru: 'Ü' },
-        { yanlis: /[ãüúùû]/g, dogru: 'ü' },
-        { yanlis: /[Ã–ÖÓÒÔÕº]/g, dogru: 'Ö' },
-        { yanlis: /[öóòôõ]/g, dogru: 'ö' },
-        { yanlis: /[Ã‡ÇĆĈĊČ]/g, dogru: 'Ç' },
-        { yanlis: /[çćĉċč]/g, dogru: 'ç' },
-        { yanlis: /[ÄŸĞĜĞĠĢǦǤǴǵḠ]/g, dogru: 'Ğ' },
-        { yanlis: /[ğĝğġģǧǥḡ]/g, dogru: 'ğ' }
-      ];
-      
-      // Encoding düzeltmelerini uygula
-      encodingDuzeltmeleri.forEach(({yanlis, dogru}) => {
-        duzeltilmisText = duzeltilmisText.replace(yanlis, dogru);
-      });
-      
-      // ÇÖZÜM 2: Özel isim düzeltmeleri (büyük/küçük harf duyarlı)
-      const ozelIsimler = {
-        // Büyük harfli isimler
-        'AYŞE': ['AYŞÂE', 'AYÅÂE', 'AYÅ E', 'AYÅE', 'AYÅâE', 'AYÃ E'],
-        'ŞENAY': ['ŞÂENAY', 'ÅÂENAY', 'Å ENAY', 'ÅENAY', 'ÅâENAY', 'Ã ENAY'],
-        'ÖZLEM': ['ÜÂZLEM', 'ÃÂZLEM', 'Ã ZLEM', 'ÃZLEM', 'ÜâZLEM', 'Ã–ZLEM'],
-        'BİRİNCİ': ['BİRİNCÂİ', 'BÄ°RÄ°NCÄ°', 'BÄ RÄ NCÄ ', 'BÄRÄNCÄ', 'BÃRÃNCÃ'],
-        'ŞAHİN': ['ŞÂAHİN', 'ÅÂAHÄ°N', 'Å AHÄ N', 'ÅAHÄN', 'Ã AHÄ°N'],
-        'ULUDAĞ': ['ULUDAÂĞ', 'ULUDAÄ', 'ULUDA Ä', 'ULUDAÄ', 'ULUDAÃ'],
-        'YEŞİM': ['YEŞÂİM', 'YEÅÂÄ°M', 'YEÅ Ä M', 'YEÅÄM', 'YEÃ Ä°M'],
-        'KARADAĞ': ['KARADAÂĞ', 'KARADAÄ', 'KARADA Ä', 'KARADAÄ', 'KARADAÃ'],
-        'GENÇ': ['GENÂÇ', 'GENÃÂ', 'GEN Ã', 'GENÃ', 'GENÃ‡'],
-        'DEĞERLİ': ['DEĞERLÂİ', 'DEÄERLÄ°', 'DE ÄERL Ä ', 'DEÄERLÄ', 'DEÃERLÄ°'],
-        'COŞKUN': ['COŞÂKUN', 'COÅÂKUN', 'CO Å KUN', 'COÅKUN', 'COÃ KUN'],
-        'DOĞAN': ['DOĞAN', 'DOÄAN', 'DO ÄAN', 'DOÄAN', 'DOÃAN'],
+        // Ü harfleri
+        'Ü': ['Ü', 'Ãœ', 'Ã ', '\u00DC'],
+        'ü': ['ü', 'Ã¼', 'Ã ', '\u00FC'],
         
-        // Küçük harfli kelimeler
-        'çorba': ['Ã§orba', 'corba', 'Ã orba'],
-        'güveç': ['gÃ¼veÃ§', 'guvec', 'gÃ¼veÃ‡'],
-        'köfte': ['kÃ¶fte', 'kofte', 'kÃ–fte'],
-        'şiş': ['Å iÅ ', 'sis', 'Ã iÃ '],
-        'döner': ['dÃ¶ner', 'doner', 'dÃ–ner'],
-        'börek': ['bÃ¶rek', 'borek', 'bÃ–rek'],
-        'içli': ['iÃ§li', 'icli', 'iÃ‡li'],
-        'üzüm': ['Ã¼zÃ¼m', 'uzum', 'ÃœzÃœm'],
-        'ığdır': ['Ä±ÄdÄ±r', 'igdir', 'Ä°ÄÄ°r']
+        // Ö harfleri
+        'Ö': ['Ö', 'Ã–', 'Ã ', '\u00D6'],
+        'ö': ['ö', 'Ã¶', 'Ã ', '\u00F6'],
+        
+        // Ç harfleri
+        'Ç': ['Ç', 'Ã‡', 'Ã ', '\u00C7'],
+        'ç': ['ç', 'Ã§', 'Ã ', '\u00E7'],
+        
+        // Ğ harfleri
+        'Ğ': ['Ğ', 'ÄŸ', 'Ä ', '\u011E'],
+        'ğ': ['ğ', 'ÄŸ', 'Ä ', '\u011F']
       };
       
-      // Özel isim düzeltmelerini uygula
-      for (const [dogruKelime, yanlislar] of Object.entries(ozelIsimler)) {
-        yanlislar.forEach(yanlis => {
-          const regex = new RegExp(yanlis.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-          duzeltilmisText = duzeltilmisText.replace(regex, dogruKelime);
-        });
+      let duzeltilmisText = text;
+      
+      // Özel isim düzeltmeleri önce
+      if (duzeltilmisText.includes('^EF0KE') || duzeltilmisText.includes('ŞEF0KE') || duzeltilmisText.includes('ÅEFÄ°KE')) {
+        duzeltilmisText = 'ŞEFİKE';
       }
       
-      // ÇÖZÜM 3: Son temizlik ve normalizasyon
+      // Yaygın bozuk kodlamaları önce düzelt
+      const bozukKodlamalar = {
+        'Ã§': 'ç', 'Ã¼': 'ü', 'Ã¶': 'ö', 'ÄŸ': 'ğ', 'Ä±': 'ı', 'Ä°': 'İ',
+        'Åž': 'Ş', 'ÅŸ': 'ş', 'Ã‡': 'Ç', 'Ãœ': 'Ü', 'Ã–': 'Ö', 'ÄžÄ': 'Ğ'
+      };
+      
+      Object.keys(bozukKodlamalar).forEach(bozuk => {
+        duzeltilmisText = duzeltilmisText.replace(new RegExp(bozuk, 'g'), bozukKodlamalar[bozuk]);
+      });
+      
+      // Her Türkçe karakter için eşleşmeleri kontrol et
+      Object.keys(karakterTablosu).forEach(dogruKarakter => {
+        if (Array.isArray(karakterTablosu[dogruKarakter])) {
+          karakterTablosu[dogruKarakter].forEach(yanlisKarakter => {
+            const regex = new RegExp(yanlisKarakter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            duzeltilmisText = duzeltilmisText.replace(regex, dogruKarakter);
+          });
+        }
+      });
+      
+      // Garip semboller ve karakterleri temizle
       duzeltilmisText = duzeltilmisText
-        .replace(/\s+/g, ' ')  // Çoklu boşlukları tek boşluk yap
-        .trim();               // Baş/son boşlukları temizle
+        .replace(/[ÂÃ°º†‡^Å]+/g, '') // Gereksiz semboller
+        .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
+        .trim();                    // Baştaki ve sondaki boşlukları kaldır
       
       return duzeltilmisText;
     }
 
-    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu - RADIKAL ÇÖZÜM
+    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
     function manuelHastaIsimleriniDuzelt() {
-      console.log('🔧 RADIKAL KARAKTER DÜZELTMESİ başlatılıyor...');
+      console.log('🔧 Hasta isimlerini düzeltiliyor...');
       let degisiklikSayisi = 0;
       
       hastalar.forEach((hasta, index) => {
@@ -848,9 +819,8 @@
         console.log(`🎉 RADIKAL DÜZELTMe TAmamlandı: ${degisiklikSayisi} hasta ismi düzeltildi!`);
         alert(`✅ RADIKAL ÇÖZÜM: ${degisiklikSayisi} hasta ismi düzeltildi!\n\nArtık "AYŞÂE" → "AYŞE" gibi düzeltmeler yapıldı.`);
         
-        // GitHub'a otomatik kaydet
-        const token = document.getElementById('githubToken')?.value?.trim();
-        if (token) {
+        // GitHub'a kaydetmeyi öner
+        if (confirm('Düzeltmeler GitHub\'a da kaydedilsin mi?')) {
           uploadToGitHub();
         }
       } else {
@@ -1533,28 +1503,7 @@
       try {
         const data = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
         if (data) {
-          let raw = JSON.parse(data);
-          // Tüm anahtar ve metinleri düzelt
-          function turkceKarakterDuzelt(str) {
-            if (!str) return str;
-            return str
-              .replace(/Ã§/g, 'ç').replace(/Ã¶/g, 'ö').replace(/Ã¼/g, 'ü')
-              .replace(/Ã/g, 'Ç').replace(/Ã/g, 'Ö').replace(/Ã/g, 'Ü')
-              .replace(/Ä±/g, 'ı').replace(/Ä°/g, 'İ')
-              .replace(/Å/g, 'ş').replace(/Å/g, 'Ş')
-              .replace(/Ä/g, 'ğ').replace(/Ä/g, 'Ğ');
-          }
-          if (raw.eslestirmeler) {
-            let fixed = {};
-            Object.keys(raw.eslestirmeler).forEach(key => {
-              const yeniKey = turkceKarakterDuzelt(key);
-              fixed[yeniKey] = raw.eslestirmeler[key];
-              if (fixed[yeniKey].orijinalMetin)
-                fixed[yeniKey].orijinalMetin = turkceKarakterDuzelt(fixed[yeniKey].orijinalMetin);
-            });
-            raw.eslestirmeler = fixed;
-          }
-          manuelEslestirmeler = raw;
+          manuelEslestirmeler = JSON.parse(data);
         }
       } catch(e) {
         console.error('Manuel eşleştirme yükleme hatası:', e);
@@ -3042,48 +2991,12 @@
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari();
         }
-        
-        // GitHub'a otomatik kaydet (eğer token varsa)
-        const token = document.getElementById('githubToken')?.value?.trim();
-        if (token) {
-          // Debounce: Çok sık kaydı önlemek için 2 saniye bekle
-          clearTimeout(window.githubAutoSaveTimeout);
-          window.githubAutoSaveTimeout = setTimeout(() => {
-            uploadToGitHub();
-          }, 2000);
-        }
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
     }
     function loadFromStorage() {
       try {
         const data = localStorage.getItem(STORAGE_KEY);
-        if (data) {
-          let raw = JSON.parse(data);
-          // Tüm anahtar ve metinleri düzelt
-          function turkceKarakterDuzelt(str) {
-            if (!str) return str;
-            return str
-              .replace(/Ã§/g, 'ç').replace(/Ã¶/g, 'ö').replace(/Ã¼/g, 'ü')
-              .replace(/Ã/g, 'Ç').replace(/Ã/g, 'Ö').replace(/Ã/g, 'Ü')
-              .replace(/Ä±/g, 'ı').replace(/Ä°/g, 'İ')
-              .replace(/Å/g, 'ş').replace(/Å/g, 'Ş')
-              .replace(/Ä/g, 'ğ').replace(/Ä/g, 'Ğ');
-          }
-          if (Array.isArray(raw)) {
-            raw.forEach(hasta => {
-              if (hasta.isim) hasta.isim = turkceKarakterDuzelt(hasta.isim);
-              if (hasta.not) hasta.not = turkceKarakterDuzelt(hasta.not);
-              if (hasta.haftalar) {
-                hasta.haftalar.forEach(hafta => {
-                  if (hafta.aciklama) hafta.aciklama = turkceKarakterDuzelt(hafta.aciklama);
-                  if (hafta.pdfName) hafta.pdfName = turkceKarakterDuzelt(hafta.pdfName);
-                  if (hafta.gptMesaj) hafta.gptMesaj = turkceKarakterDuzelt(hafta.gptMesaj);
-                });
-              }
-            });
-          }
-          return raw;
-        }
+        if (data) return JSON.parse(data);
       } catch(e) { console.error('localStorage okuma hatası:', e); }
       return null;
     }
@@ -3323,9 +3236,8 @@
       // Yeni eklenen hastayı otomatik seç
       hastaDetayGoster(yeniHasta.id);
       
-      // GitHub'a otomatik kaydet
-      const token = document.getElementById('githubToken')?.value?.trim();
-      if (token) {
+      // GitHub'a kaydetmeyi öner (opsiyonel)
+      if (confirm('Yeni hasta eklendi. GitHub\'a da kaydetmek ister misiniz?')) {
         uploadToGitHub();
       }
     }
@@ -3429,9 +3341,8 @@
       
       console.log(`✅ Hasta bilgileri güncellendi: ${mevcutIsim} → ${duzeltilmisIsim}`);
       
-      // GitHub'a otomatik kaydet
-      const token = document.getElementById('githubToken')?.value?.trim();
-      if (token) {
+      // GitHub'a kaydetmeyi öner (opsiyonel)
+      if (confirm('Değişiklikler kaydedildi. GitHub\'a da kaydetmek ister misiniz?')) {
         uploadToGitHub();
       }
     }
@@ -3647,7 +3558,10 @@
         if (!hafta.baslangic || !hafta.bitis) {
           try {
             const now = new Date();
-            const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1 + (index * 7));
+            // Bu haftanın pazartesini bul
+            const thisWeekMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+            // İstenen hafta için pazartesi (index * 7 gün ekle)
+            const weekStart = new Date(thisWeekMonday.getTime() + (index * 7 * 24 * 60 * 60 * 1000));
             const weekEnd = new Date(weekStart.getTime() + 6*24*60*60*1000);
             
             hafta.baslangic = weekStart.toISOString().slice(0,10);
@@ -3655,6 +3569,28 @@
             dataUpdated = true;
           } catch (e) {
             console.warn('Tarih oluşturma hatası hafta', index + 1, ':', e);
+          }
+        } else {
+          // Mevcut başlangıç tarihinin pazartesi olmasını garanti altına al
+          try {
+            const baslangicTarihi = new Date(hafta.baslangic);
+            const gunNo = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi
+            
+            if (gunNo !== 1) { // Pazartesi değilse düzelt
+              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo); // Pazartesiye kadar olan gün farkı
+              baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
+              
+              // Bitiş tarihini de güncelle (6 gün sonra pazar)
+              const bitisTarihi = new Date(baslangicTarihi.getTime() + 6*24*60*60*1000);
+              
+              hafta.baslangic = baslangicTarihi.toISOString().slice(0,10);
+              hafta.bitis = bitisTarihi.toISOString().slice(0,10);
+              dataUpdated = true;
+              
+              console.log(`📅 ${index + 1}. hafta başlangıcı pazartesi olarak düzeltildi:`, hafta.baslangic);
+            }
+          } catch (e) {
+            console.warn('Tarih düzeltme hatası hafta', index + 1, ':', e);
           }
         }
       });
@@ -3718,8 +3654,7 @@
         // Tab başlığı oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
         const tabDiv = document.createElement('div');
         tabDiv.className = `hafta-tab ${i === enBuyukHaftaIndex ? 'active' : ''}`;
-        tabDiv.dataset.haftaIndex = i; // Array index'i (sidebar için)
-        tabDiv.dataset.haftaNo = haftaNo; // Gerçek hafta numarası (ZIP için)
+        tabDiv.dataset.haftaIndex = i; // Dataset ekle
         tabDiv.onclick = () => switchTab(i);
         
         // Status göstergeleri
@@ -3840,18 +3775,6 @@
           <div style="margin-bottom: 20px; display: none;">
             <h4 style="margin: 0 0 10px 0; color: #6f42c1; font-size: 16px;">🔗 Eşleşen Kartlar</h4>
             <div id="eslesenKartlar_${i}" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; min-height: 80px;"></div>
-          </div>
-          
-          <!-- +Kart Ekle Butonu -->
-          <div style="margin-bottom: 20px; text-align: center;">
-            <button onclick="kartEkleModalAc(${i})" style="padding: 12px 25px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;"
-                    onmouseover="this.style.background='#218838'; this.style.transform='translateY(-2px)'"
-                    onmouseout="this.style.background='#28a745'; this.style.transform='translateY(0)'">
-              ➕ Kart Ekle
-            </button>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-              Tarif kartı arşivinden manuel kart ekleme
-            </div>
           </div>
           
           <!-- GPT Mesajı - Full Width (Eski, Gizli) -->
@@ -4137,69 +4060,83 @@ function duzenleHafta(i) {
       const file = input.files[0];
       if (!file) return;
       console.log('🔍 PDF yükleniyor:', file.name);
+      const haftalar = getHaftaListesi();
+      haftalar[i].pdfFile = file; // Geçici olarak File objesi
+      haftalar[i].pdfOrijinalIsim = file.name; // Sadece orijinal dosya ismi
+      haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+      haftalar[i].kayitTarihi = new Date().toISOString();
 
-      // PDF'i GitHub'a orijinal adıyla yükle
-      (async () => {
-        const haftalar = getHaftaListesi();
-        const pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
-        try {
-
-          // PDF dosyasını oku (binary)
-          const arrayBuffer = await file.arrayBuffer();
-          // GitHub'a yükle (mevcut uploadPDFToGitHub fonksiyonunu binary destekleyecek şekilde güncellenmeli)
-          await ensurePDFDirectoryExists();
-          const finalFileName = await uploadPDFToGitHub(pdfName, arrayBuffer);
-
-          // PDF'in URL'sini oluştur
-          const pdfUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/pdfs/${finalFileName}`;
-          haftalar[i].pdf = pdfUrl;
-          haftalar[i].pdfName = pdfName;
-          haftalar[i].kayitTarihi = new Date().toISOString();
-
-          // Seçili hasta objesini de güncelle
-          if (seciliHasta && seciliHasta.haftalar) {
-            const haftaNo = haftalar[i].haftaNo || (i + 1);
-            const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
-            if (seciliHaftaIndex !== -1) {
-              seciliHasta.haftalar[seciliHaftaIndex].pdf = pdfUrl;
-              seciliHasta.haftalar[seciliHaftaIndex].pdfName = pdfName;
-              seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
-              console.log('🔄 seciliHasta objesi de güncellendi (hafta numarası:', haftaNo, ')');
-            }
-          }
-
-          // PDF dosya adından hafta numarasını otomatik tespit et
-          const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
-          if (dosyaAdindenHaftaNo) {
-            const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
-            haftalar[i].haftaNo = dosyaAdindenHaftaNo;
-            console.log(`🎯 Hafta numarası otomatik güncellendi: ${eskiHaftaNo}. hafta → ${dosyaAdindenHaftaNo}. hafta`);
-            setTimeout(() => {
-              const haftaNoInput = document.getElementById('haftaNo_' + i);
-              if (haftaNoInput) {
-                haftaNoInput.value = dosyaAdindenHaftaNo;
-                haftaNoInput.style.backgroundColor = '#d4edda';
-                haftaNoInput.style.borderColor = '#28a745';
-                setTimeout(() => {
-                  haftaNoInput.style.backgroundColor = '';
-                  haftaNoInput.style.borderColor = '';
-                }, 2000);
-              }
-            }, 100);
-          }
-
-          saveToStorage();
-          renderHastalar();
-          gosterHaftalar();
-
-          // PDF yüklenir yüklenmez otomatik tara ve eşleştir (URL ile)
-          pdfOkuVeEsleHafta(i);
-          alert('✅ PDF başarıyla GitHub\'a yüklendi ve kaydedildi!');
-        } catch (err) {
-          alert('❌ PDF yüklenirken hata oluştu: ' + err.message);
-          console.error('PDF yükleme hatası:', err);
+      // Seçili hasta objesini de güncelle (referans sorunu olabilir)
+      if (seciliHasta && seciliHasta.haftalar) {
+        const haftaNo = haftalar[i].haftaNo || (i + 1);
+        const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
+        if (seciliHaftaIndex !== -1) {
+          seciliHasta.haftalar[seciliHaftaIndex].pdfFile = file;
+          seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
+          seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
         }
-      })();
+      }
+
+      // PDF dosya adından hafta numarasını otomatik tespit et
+      const dosyaAdindenHaftaNo = pdfDosyaAdindenHaftaNoAl(file.name);
+      if (dosyaAdindenHaftaNo) {
+        const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+        haftalar[i].haftaNo = dosyaAdindenHaftaNo;
+        setTimeout(() => {
+          const haftaNoInput = document.getElementById('haftaNo_' + i);
+          if (haftaNoInput) {
+            haftaNoInput.value = dosyaAdindenHaftaNo;
+            haftaNoInput.style.backgroundColor = '#d4edda';
+            haftaNoInput.style.borderColor = '#28a745';
+            setTimeout(() => {
+              haftaNoInput.style.backgroundColor = '';
+              haftaNoInput.style.borderColor = '';
+            }, 2000);
+          }
+        }, 100);
+      }
+
+      saveToStorage();
+      renderHastalar();
+      gosterHaftalar();
+
+      // PDF'i analiz et ve tarifleri çıkar
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const bytes = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join('\n') + '\n';
+        }
+
+        // PDF içeriğinden hafta numarasını kontrol et
+        const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
+        if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(haftalar[i].pdfName)) {
+          const eskiHaftaNo = haftalar[i].haftaNo || (i + 1);
+          haftalar[i].haftaNo = iceriktenHaftaNo;
+          setTimeout(() => {
+            const haftaNoInput = document.getElementById('haftaNo_' + i);
+            if (haftaNoInput) {
+              haftaNoInput.value = iceriktenHaftaNo;
+              haftaNoInput.style.backgroundColor = '#d1ecf1';
+              haftaNoInput.style.borderColor = '#17a2b8';
+              setTimeout(() => {
+                haftaNoInput.style.backgroundColor = '';
+                haftaNoInput.style.borderColor = '';
+              }, 2000);
+            }
+          }, 100);
+        }
+
+        haftalar[i].tarifler = extractTariflerDetay(fullText);
+        saveToStorage();
+        otomatikEsleHafta(i);
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     // PDF'den otomatik tara ve eşleştir
@@ -4379,7 +4316,7 @@ function duzenleHafta(i) {
         // Başlık
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(0, 0, 0);
         
         // Hasta adını Türkçe karakter düzeltme ile hazırla
         const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
@@ -4389,8 +4326,8 @@ function duzenleHafta(i) {
         
         // Alt başlık
         doc.setFontSize(12);
-        doc.setTextColor(51, 102, 153);
-        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        doc.setTextColor(0, 0, 0);
+        const subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
         
@@ -4398,10 +4335,12 @@ function duzenleHafta(i) {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(100, 149, 237);
-        doc.setFillColor(240, 248, 255);
-        doc.roundedRect(15, 32, 180, 10, 2, 2, 'FD');
-        doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi (5. Haftadan Itibaren)', 20, 38);
+        doc.rect(15, 32, 170, 10);
+        doc.text('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi (5. Haftadan itibaren)', 20, 38);
+        
+        // Seçili haftayı al - geçmiş haftalarda soluk renk için
+        const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
+        const seciliHaftaNo = seciliHaftaIndex + 1;
         
         // 5. haftanın pazartesi tarihini hesapla
         const besinciHafta = mevcutHaftalar[4];
@@ -4410,7 +4349,15 @@ function duzenleHafta(i) {
         }
         
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
-        console.log('✅ 5. hafta başlangıcı:', besinciHaftaBaslangic);
+        
+        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        if (haftaGunu !== 1) { // Eğer pazartesi değilse
+          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
+        }
+        
+        console.log('✅ 5. hafta başlangıcı (Pazartesi):', besinciHaftaBaslangic);
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -4421,11 +4368,15 @@ function duzenleHafta(i) {
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
-          doc.setFillColor(0, 51, 102);
-          doc.setTextColor(255, 255, 255);
+          // Seçili haftadan önceki haftalar soluk renkte olsun
+          if (gercekHaftaNo < seciliHaftaNo) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
-          doc.rect(15, currentY, 180, 6, 'F');
+          doc.rect(15, currentY, 170, 6);
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
@@ -4433,28 +4384,27 @@ function duzenleHafta(i) {
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
-          doc.setFillColor(220, 220, 220);
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           
-          const colWidths = [35, 45, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
           let tableStartX = 15;
           
           // Başlık satırı
-          doc.rect(tableStartX, currentY, colWidths[0], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[0], 6);
           doc.text('TARIH', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[0];
           
-          doc.rect(tableStartX, currentY, colWidths[1], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[1], 6);
           doc.text('GUN', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[1];
           
-          doc.rect(tableStartX, currentY, colWidths[2], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[2], 6);
           doc.text('SABAH', tableStartX + 2, currentY + 4);
           tableStartX += colWidths[2];
           
-          doc.rect(tableStartX, currentY, colWidths[3], 6, 'F');
+          doc.rect(tableStartX, currentY, colWidths[3], 6);
           doc.text('AKSAM', tableStartX + 2, currentY + 4);
           currentY += 6;
           
@@ -4472,75 +4422,64 @@ function duzenleHafta(i) {
             let aksamUygulama = '-';
             
             if (lenfHaftaIndex < 2) {
-              // İlk 2 hafta: Günde 2 kez
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = 'Lenf Masaji';
             } else if (lenfHaftaIndex < 4) {
-              // Sonraki 2 hafta: Günde 1 kez (sabah)
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = '-';
             } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta: Günaşırı (Pazartesi, Çarşamba, Cuma, Pazar)
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + sürekli akşam egzersiz
               if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
                 sabahUygulama = 'Lenf Masaji';
+                aksamUygulama = 'Egzersiz-2';
               } else {
-                sabahUygulama = '-';
+                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                sabahUygulama = 'Egzersiz-1';
+                aksamUygulama = 'Egzersiz-2';
               }
-              aksamUygulama = '-';
             } else {
-              // Son 2 hafta: Salı, Cuma
+              // Son 2 hafta (11-12): Salı, Cuma lenf masajı + sürekli akşam egzersiz
               if (gunIndex === 1 || gunIndex === 4) {
+                // Salı, Cuma: Lenf masajı + akşam egzersiz
                 sabahUygulama = 'Lenf Masaji';
+                aksamUygulama = 'Egzersiz-2';
               } else {
-                sabahUygulama = '-';
+                // Diğer günler: Sabah ve akşam egzersiz
+                sabahUygulama = 'Egzersiz-1';
+                aksamUygulama = 'Egzersiz-2';
               }
-              aksamUygulama = '-';
-            }
-            
-            // Satır arkaplanı (hafta sonları farklı)
-            if (gunIndex >= 5) { // Cumartesi, Pazar
-              doc.setFillColor(248, 248, 248);
-            } else {
-              doc.setFillColor(255, 255, 255);
             }
             
             tableStartX = 15;
             
+            // Seçili haftadan önceki haftalar soluk renkte olsun
+            if (gercekHaftaNo < seciliHaftaNo) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
             // Tarih sütunu
-            doc.rect(tableStartX, currentY, colWidths[0], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[0], 5);
-            doc.setTextColor(0, 0, 0);
             doc.text(tarihStr, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[0];
             
             // Gün sütunu
-            doc.rect(tableStartX, currentY, colWidths[1], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[1], 5);
             doc.text(gun, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[1];
             
             // Sabah sütunu
-            doc.rect(tableStartX, currentY, colWidths[2], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[2], 5);
-            if (sabahUygulama !== '-') {
-              doc.setTextColor(0, 128, 0); // Yeşil
-              doc.text(sabahUygulama, tableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', tableStartX + 20, currentY + 3.5);
-            }
+            doc.text(sabahUygulama, tableStartX + 2, currentY + 3.5);
             tableStartX += colWidths[2];
             
             // Akşam sütunu
-            doc.rect(tableStartX, currentY, colWidths[3], 5, 'F');
             doc.rect(tableStartX, currentY, colWidths[3], 5);
-            if (aksamUygulama !== '-') {
-              doc.setTextColor(128, 0, 0); // Kırmızı
-              doc.text(aksamUygulama, tableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', tableStartX + 20, currentY + 3.5);
-            }
+            doc.text(aksamUygulama, tableStartX + 2, currentY + 3.5);
             
             currentY += 5;
           }
@@ -4551,50 +4490,11 @@ function duzenleHafta(i) {
           if (currentY > 240 && lenfHaftaIndex < 7) {
             doc.addPage('p');
             currentY = 20;
-            
-            // Yeni sayfa başlığı
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 51, 102);
-            const devamBaslik = `${temizHastaAdi.toUpperCase()} - LENF DRENAJ PROGRAMI (devam)`;
-            const devamGenislik = doc.getTextWidth(devamBaslik);
-            doc.text(devamBaslik, (210 - devamGenislik) / 2, 15);
-            currentY = 25;
           }
         }
         
-        // Açıklama ve ipuçları
-        currentY += 5;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
         
-        // Sembol açıklamaları
-        doc.setDrawColor(200, 200, 200);
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(15, currentY, 180, 20, 2, 2, 'FD');
-        
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SEMBOL ACIKLAMALARI:', 20, currentY + 4);
-        
-        doc.setFont('helvetica', 'normal');
-        doc.text('✅ LENF MASAJ = Lenf drenaj masajini uygulayin', 20, currentY + 7);
-        doc.text('➖ = Dinlenme gunu (uygulama yok)', 20, currentY + 10);
-        doc.text('🔥 Yogun Donem: Gunde 2 kez    🌿 Hafif Donem: Gunasiri', 20, currentY + 13);
-        doc.text('⚡ Orta Donem: Gunde 1 kez     💎 Bakim: Haftada 2 gun', 20, currentY + 16);
-        
-        // Alt bilgiler
-        currentY += 25;
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(120, 120, 120);
-        doc.text('� Bu tablo mobil cihazlarda kolay okunabilmek icin tasarlanmistir.', 15, currentY);
-        doc.text('📋 Hasta takip sistemi tarafindan otomatik olusturulmustur.', 15, currentY + 4);
-        doc.text(`📅 Olusturulma: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}`, 15, currentY + 8);
-        doc.text('💡 Uygulama sonrasi gunluk notlarinizi tutabilirsiniz.', 15, currentY + 12);
-        
-        console.log('✅ Mobil dostu lenf drenaj tablosu tamamlandı, PDF indiriliyor...');
+        console.log('✅ Basit lenf drenaj tablosu tamamlandı, PDF indiriliyor...');
         
         // PDF'yi indir
         const tarih = new Date().toISOString().slice(0, 10);
@@ -4657,7 +4557,7 @@ function duzenleHafta(i) {
     }
 
     // ZIP için Lenf Drenaj PDF Blob oluşturucu (indirmeden, sadece memory'de)
-    async function generateLenfDrenajPDFBlob() {
+    async function generateLenfDrenajPDFBlob(belirliHaftaNo = null) {
       try {
         console.log('📄 Lenf Drenaj PDF Blob oluşturuluyor...');
         
@@ -4665,6 +4565,18 @@ function duzenleHafta(i) {
         
         const haftalar = getHaftaListesi();
         if (haftalar.length < 5) return null;
+        
+        // Seçili haftayı al - eğer belirli hafta belirtilmişse onu kullan
+        let egzersizDahilMi;
+        if (belirliHaftaNo !== null) {
+          // ZIP için belirli bir hafta belirtilmiş
+          egzersizDahilMi = belirliHaftaNo >= 9; // 9. hafta ve sonrası için egzersiz dahil
+          console.log(`🎯 ZIP için ${belirliHaftaNo}. hafta PDF'i oluşturuluyor, egzersiz dahil: ${egzersizDahilMi}`);
+        } else {
+          // Normal PDF indirme için seçili haftayı kullan
+          const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
+          egzersizDahilMi = seciliHaftaIndex >= 8; // 9. hafta ve sonrası için egzersiz dahil
+        }
         
         // jsPDF kontrolü
         let jsPDFLib;
@@ -4687,15 +4599,25 @@ function duzenleHafta(i) {
         // Başlık - Merkezi
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(0, 0, 0);
         const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
         const title = `${temizHastaAdi.toUpperCase()}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
         doc.setFontSize(12);
-        doc.setTextColor(51, 102, 153);
-        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        doc.setTextColor(0, 0, 0);
+        
+        // Hangi hafta için PDF oluşturulduğuna göre farklı başlık
+        let subtitle, programBasligi;
+        if (egzersizDahilMi) {
+          subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
+          programBasligi = '8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi';
+        } else {
+          subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+          programBasligi = '8 Haftalik Lenf Drenaj Masaji Uygulama Programi';
+        }
+        
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
         
@@ -4703,18 +4625,27 @@ function duzenleHafta(i) {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(100, 149, 237);
-        doc.setFillColor(240, 248, 255);
-        doc.roundedRect(15, 32, 180, 10, 2, 2, 'FD');
-        doc.text('8 Haftalik Lenf Drenaj Masaji Uygulama Programi', 20, 36);
-        doc.text('5. Haftadan Itibaren - Mobil Dostu Takip Takvimi', 20, 40);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        if (egzersizDahilMi) {
+          doc.text('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler', 20, 40);
+        } else {
+          doc.text('(5. Haftadan itibaren)', 20, 40);
+        }
         
         // 5. haftanın başlangıcı
         const besinciHafta = haftalar[4];
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
         
+        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        if (haftaGunu !== 1) { // Eğer pazartesi değilse
+          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
+        }
+        
         let currentY = 50;
-        const gunler = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
@@ -4722,40 +4653,48 @@ function duzenleHafta(i) {
           const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
-          doc.setFillColor(0, 51, 102);
-          doc.setTextColor(255, 255, 255);
+          doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
-          doc.roundedRect(15, currentY, 180, 6, 1, 1, 'F');
+          doc.rect(15, currentY, 170, 6);
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+          if (egzersizDahilMi && gercekHaftaNo <= 8) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
           doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
-          doc.setFillColor(220, 220, 220);
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
           
-          const colWidths = [35, 45, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
           let zipTableStartX = 15;
           
           // Başlık satırı
-          doc.rect(zipTableStartX, currentY, colWidths[0], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
           doc.text('TARIH', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[0];
           
-          doc.rect(zipTableStartX, currentY, colWidths[1], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
           doc.text('GUN', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[1];
           
-          doc.rect(zipTableStartX, currentY, colWidths[2], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
           doc.text('SABAH', zipTableStartX + 2, currentY + 4);
           zipTableStartX += colWidths[2];
           
-          doc.rect(zipTableStartX, currentY, colWidths[3], 6, 'F');
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
           doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
           currentY += 6;
           
@@ -4768,80 +4707,120 @@ function duzenleHafta(i) {
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
             const gun = gunler[gunIndex];
             
-            // Uygulama kontrolü
+            // Uygulama kontrolü - seçili haftaya göre egzersiz dahil edilir
             let sabahUygulama = '-';
             let aksamUygulama = '-';
             
             if (lenfHaftaIndex < 2) {
-              // İlk 2 hafta: Günde 2 kez
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = 'Lenf Masaji';
             } else if (lenfHaftaIndex < 4) {
-              // Sonraki 2 hafta: Günde 1 kez (sabah)
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
               sabahUygulama = 'Lenf Masaji';
               aksamUygulama = '-';
             } else if (lenfHaftaIndex < 6) {
-              // Sonraki 2 hafta: Günaşırı (Pazartesi, Çarşamba, Cuma, Pazar)
-              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
-                sabahUygulama = 'Lenf Masaji';
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı
+              if (egzersizDahilMi) {
+                // Egzersiz dahil versiyonu (9. hafta seçiliyse)
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
+                  sabahUygulama = 'Lenf Masaji';
+                  aksamUygulama = 'Egzersiz-2';
+                } else {
+                  // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                  sabahUygulama = 'Egzersiz-1';
+                  aksamUygulama = 'Egzersiz-2';
+                }
               } else {
-                sabahUygulama = '-';
+                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
+                if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                  sabahUygulama = 'Lenf Masaji';
+                } else {
+                  sabahUygulama = '-';
+                }
+                aksamUygulama = '-';
               }
-              aksamUygulama = '-';
             } else {
-              // Son 2 hafta: Salı, Cuma
-              if (gunIndex === 1 || gunIndex === 4) {
-                sabahUygulama = 'Lenf Masaji';
+              // Son 2 hafta (11-12): Salı, Cuma lenf masajı
+              if (egzersizDahilMi) {
+                // Egzersiz dahil versiyonu (9+ hafta seçiliyse)
+                if (gunIndex === 1 || gunIndex === 4) {
+                  // Salı, Cuma: Lenf masajı + akşam egzersiz
+                  sabahUygulama = 'Lenf Masaji';
+                  aksamUygulama = 'Egzersiz-2';
+                } else {
+                  // Diğer günler: Sabah ve akşam egzersiz
+                  sabahUygulama = 'Egzersiz-1';
+                  aksamUygulama = 'Egzersiz-2';
+                }
               } else {
-                sabahUygulama = '-';
+                // Sadece lenf masajı versiyonu (5-8. hafta seçiliyse)
+                if (gunIndex === 1 || gunIndex === 4) {
+                  sabahUygulama = 'Lenf Masaji';
+                } else {
+                  sabahUygulama = '-';
+                }
+                aksamUygulama = '-';
               }
-              aksamUygulama = '-';
-            }
-            
-            // Satır arkaplanı (hafta sonları farklı)
-            if (gunIndex >= 5) { // Cumartesi, Pazar
-              doc.setFillColor(248, 248, 248);
-            } else {
-              doc.setFillColor(255, 255, 255);
             }
             
             zipTableStartX = 15;
             
+            // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+            if (egzersizDahilMi && gercekHaftaNo <= 8) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
             // Tarih sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[0], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[0], 5);
-            doc.setTextColor(0, 0, 0);
-            doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
+            if (egzersizDahilMi && gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi soluk renkte yaz
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Normal tarih
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
             zipTableStartX += colWidths[0];
             
             // Gün sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[1], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[1], 5);
             doc.text(gun, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[1];
             
             // Sabah sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[2], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[2], 5);
-            if (sabahUygulama !== '-') {
-              doc.setTextColor(0, 128, 0); // Yeşil
-              doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', zipTableStartX + 20, currentY + 3.5);
-            }
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
             zipTableStartX += colWidths[2];
             
             // Akşam sütunu
-            doc.rect(zipTableStartX, currentY, colWidths[3], 5, 'F');
             doc.rect(zipTableStartX, currentY, colWidths[3], 5);
-            if (aksamUygulama !== '-') {
-              doc.setTextColor(128, 0, 0); // Kırmızı
-              doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
-            } else {
-              doc.setTextColor(128, 128, 128); // Gri
-              doc.text('-', zipTableStartX + 20, currentY + 3.5);
-            }
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
             
             currentY += 5;
           }
@@ -4855,164 +4834,13 @@ function duzenleHafta(i) {
           }
         }
         
-        // Alt bilgiler
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(120, 120, 120);
-        doc.text('📱 Mobil dostu tasarim', 15, currentY + 3);
-        doc.text('📋 Otomatik olusturulmustur', 15, currentY + 6);
-        doc.text(`📅 ${new Date().toLocaleDateString('tr-TR')}`, 15, currentY + 9);
-        
         // Blob olarak döndür (indirmeden)
         const pdfBlob = doc.output('blob');
-        console.log('✅ Mobil dostu Lenf Drenaj PDF Blob oluşturuldu');
+        console.log('✅ Basit Lenf Drenaj PDF Blob oluşturuldu');
         return pdfBlob;
         
       } catch (error) {
         console.error('❌ Lenf Drenaj PDF Blob hatası:', error);
-        return null;
-      }
-    }
-
-    // ZIP için Egzersiz Tablosu PDF Blob oluşturucu (indirmeden, sadece memory'de)
-    async function generateEgzersizTablosuPDFBlob() {
-      try {
-        console.log('💪 Egzersiz Tablosu PDF Blob oluşturuluyor...');
-        
-        if (!seciliHasta) return null;
-        
-        const haftalar = getHaftaListesi();
-        if (haftalar.length < 9) return null;
-        
-        // jsPDF kontrolü
-        let jsPDFLib;
-        if (typeof window.jspdf !== 'undefined') {
-          jsPDFLib = window.jspdf.jsPDF;
-        } else if (typeof jsPDF !== 'undefined') {
-          jsPDFLib = jsPDF;
-        } else {
-          console.warn('❌ jsPDF bulunamadı');
-          return null;
-        }
-        
-        const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
-        const doc = new jsPDFLib('p', 'mm', 'a4'); // Portrait - mobil uyumlu
-        
-        // PDF içeriğini oluştur
-        doc.setFont('helvetica');
-        doc.setLanguage('tr');
-        
-        // Başlık - Merkezi
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102);
-        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
-        const title = `${temizHastaAdi.toUpperCase()}`;
-        const titleWidth = doc.getTextWidth(title);
-        doc.text(title, (210 - titleWidth) / 2, 20);
-        
-        doc.setFontSize(12);
-        doc.setTextColor(51, 102, 153);
-        const subtitle = 'EGZERSIZ TABLOSU PROGRAMI';
-        const subtitleWidth = doc.getTextWidth(subtitle);
-        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
-        
-        // Açıklama kutusu
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(100, 149, 237);
-        doc.setFillColor(240, 248, 255);
-        doc.roundedRect(15, 32, 180, 10, 2, 2, 'FD');
-        doc.text('4 Haftalik Egzersiz Programi Uygulama Takvimi', 20, 36);
-        doc.text('9. Haftadan Itibaren - Akşam Egzersiz-2 Uygulamasi', 20, 40);
-        
-        // 9. haftanın başlangıcı
-        const dokuzuncuHafta = haftalar[8];
-        const dokuzuncuHaftaBaslangic = new Date(dokuzuncuHafta.baslangic);
-        
-        let currentY = 50;
-        const gunler = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
-        
-        // Kompakt tablo (Blob için) - 9-12. haftalar için
-        for (let egzersizHaftaIndex = 0; egzersizHaftaIndex < 4; egzersizHaftaIndex++) {
-          const gercekHaftaNo = egzersizHaftaIndex + 9;
-          const haftaBaslangic = new Date(dokuzuncuHaftaBaslangic.getTime() + (egzersizHaftaIndex * 7 * 24 * 60 * 60 * 1000));
-          
-          // Hafta başlığı
-          doc.setFillColor(0, 51, 102);
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(9);
-          doc.roundedRect(15, currentY, 180, 6, 1, 1, 'F');
-          
-          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
-          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
-          doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
-          currentY += 8;
-          
-          // Tablo başlıkları - 4 sütun
-          doc.setFillColor(220, 220, 220);
-          doc.setTextColor(0, 0, 0);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7);
-          doc.rect(15, currentY, 45, 4, 'FD');
-          doc.text('Gun', 17, currentY + 2.5);
-          doc.rect(60, currentY, 45, 4, 'FD');
-          doc.text('Sabah', 62, currentY + 2.5);
-          doc.rect(105, currentY, 45, 4, 'FD');
-          doc.text('Ogle', 107, currentY + 2.5);
-          doc.rect(150, currentY, 45, 4, 'FD');
-          doc.text('Aksam', 152, currentY + 2.5);
-          currentY += 6;
-          
-          // Günlük satırlar
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(6);
-          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
-            const gun = gunler[gunIndex];
-            const gunTarih = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
-            const gunTarihStr = gunTarih.getDate().toString().padStart(2, '0');
-            
-            // Satır çizgisi
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            doc.line(15, currentY + 3, 195, currentY + 3);
-            
-            // Gün
-            doc.setTextColor(0, 0, 0);
-            doc.text(`${gun} ${gunTarihStr}`, 17, currentY + 2);
-            
-            // Sabah - Boş
-            doc.text('-', 62, currentY + 2);
-            
-            // Öğle - Boş  
-            doc.text('-', 107, currentY + 2);
-            
-            // Akşam - Egzersiz-2 (9-12. haftalarda)
-            doc.setTextColor(0, 128, 0);
-            doc.text('Egzersiz-2', 152, currentY + 2);
-            
-            currentY += 4;
-          }
-          
-          currentY += 3; // Haftalar arası boşluk
-        }
-        
-        // Alt bilgi
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(100, 100, 100);
-        doc.text('* 9-12. haftalarda aksam egzersizleri sürekli Egzersiz-2 olarak uygulanacaktir.', 15, currentY + 5);
-        doc.text(`Olusturulma Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 15, currentY + 10);
-        
-        // PDF Blob'u döndür (indirmeden)
-        const pdfBlob = doc.output('blob');
-        console.log('✅ Mobil dostu Egzersiz Tablosu PDF Blob oluşturuldu');
-        return pdfBlob;
-        
-      } catch (error) {
-        console.error('❌ Egzersiz Tablosu PDF Blob hatası:', error);
         return null;
       }
     }
@@ -5040,6 +4868,13 @@ function duzenleHafta(i) {
       }
       
       const baslangicTarihi = new Date(besinciHafta.baslangic);
+      
+      // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+      const haftaGunu = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+      if (haftaGunu !== 1) { // Eğer pazartesi değilse
+        const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
+        baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
+      }
       
       try {
         const doc = new jsPDFLib('p', 'mm', 'a4'); // Portrait format
@@ -5083,10 +4918,10 @@ function duzenleHafta(i) {
         
         // Tablo çerçevesi
         doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.3);
         doc.rect(startX, startY, tableWidth, rowHeight);
         
-        // Sütun ayırıcıları
+        // Sütun ayırıcıları (başlık satırı için)
         let currentX = startX;
         for (let i = 0; i < colWidths.length - 1; i++) {
           currentX += colWidths[i];
@@ -5142,6 +4977,7 @@ function duzenleHafta(i) {
           
           // Satır çerçevesi
           doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
           doc.rect(startX, currentY, tableWidth, rowHeight);
           
           // Sütun ayırıcıları
@@ -5182,6 +5018,168 @@ function duzenleHafta(i) {
         
       } catch (error) {
         console.error('❌ Lenf Drenaj Takvimi PDF hatası:', error);
+        alert('PDF oluştururken hata oluştu: ' + error.message);
+      }
+    }
+
+    // Özelleştirilebilir Lenf Masaj Takvimi
+    async function generateCustomLenfMasajTakvimi() {
+      try {
+        // Default değerleri hazırla
+        let defaultHastaAdi = '';
+        let defaultBaslangicTarihi = '';
+        
+        // Mevcut seçili hasta varsa al
+        if (seciliHasta) {
+          defaultHastaAdi = seciliHasta.isim || '';
+        }
+        
+        // 5. hafta başlangıç tarihini bulmaya çalış
+        try {
+          const haftalar = getHaftaListesi();
+          if (haftalar.length >= 5 && haftalar[4].baslangic) {
+            const besinciHaftaTarihi = new Date(haftalar[4].baslangic);
+            // Pazartesi kontrolü
+            const gunNo = besinciHaftaTarihi.getDay();
+            if (gunNo !== 1) {
+              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
+              besinciHaftaTarihi.setDate(besinciHaftaTarihi.getDate() + gunFarki);
+            }
+            defaultBaslangicTarihi = besinciHaftaTarihi.toISOString().slice(0, 10);
+          } else {
+            // Bugünden itibaren bir sonraki pazartesi
+            const bugun = new Date();
+            const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
+            defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
+          }
+        } catch (e) {
+          // Hata durumunda bir sonraki pazartesi
+          const bugun = new Date();
+          const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
+          defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
+        }
+        
+        // Kullanıcıdan bilgileri al
+        const hastaAdi = prompt('Hasta Adı:', defaultHastaAdi);
+        if (!hastaAdi) {
+          alert('Hasta adı girilmedi, işlem iptal edildi.');
+          return;
+        }
+        
+        const baslangicTarihi = prompt('Başlangıç Tarihi (YYYY-MM-DD):', defaultBaslangicTarihi);
+        if (!baslangicTarihi) {
+          alert('Başlangıç tarihi girilmedi, işlem iptal edildi.');
+          return;
+        }
+        
+        // Tarih kontrolü
+        const tarihObj = new Date(baslangicTarihi);
+        if (isNaN(tarihObj.getTime())) {
+          alert('Geçersiz tarih formatı! YYYY-MM-DD formatında giriniz.');
+          return;
+        }
+        
+        // Pazartesi kontrolü
+        const gunNo = tarihObj.getDay();
+        if (gunNo !== 1) {
+          const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+          const mevcutGun = gunIsimleri[gunNo];
+          if (!confirm(`Seçilen tarih ${mevcutGun} günü. Lenf masaj programı pazartesi günleri başlar.\n\nEn yakın pazartesi gününe otomatik ayarlansın mı?`)) {
+            return;
+          }
+          
+          // En yakın pazartesiye ayarla
+          const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
+          tarihObj.setDate(tarihObj.getDate() + gunFarki);
+        }
+        
+        // Özel lenf masaj PDF'i oluştur (5. hafta benzeri)
+        await generateCustomLenfMasajPDF(hastaAdi, tarihObj);
+        
+      } catch (error) {
+        console.error('❌ Özel Lenf Masaj Takvimi hatası:', error);
+        alert('PDF oluştururken hata oluştu: ' + error.message);
+      }
+    }
+
+    // Özelleştirilebilir Egzersiz Takvimi 
+    async function generateCustomEgzersizTakvimi() {
+      try {
+        // Default değerleri hazırla
+        let defaultHastaAdi = '';
+        let defaultBaslangicTarihi = '';
+        
+        // Mevcut seçili hasta varsa al
+        if (seciliHasta) {
+          defaultHastaAdi = seciliHasta.isim || '';
+        }
+        
+        // 9. hafta başlangıç tarihini bulmaya çalış (5. haftadan 4 hafta sonra)
+        try {
+          const haftalar = getHaftaListesi();
+          if (haftalar.length >= 5 && haftalar[4].baslangic) {
+            const besinciHaftaTarihi = new Date(haftalar[4].baslangic);
+            // Pazartesi kontrolü
+            const gunNo = besinciHaftaTarihi.getDay();
+            if (gunNo !== 1) {
+              const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
+              besinciHaftaTarihi.setDate(besinciHaftaTarihi.getDate() + gunFarki);
+            }
+            // 9. hafta = 5. haftadan 4 hafta (28 gün) sonra
+            const dokuzuncuHaftaTarihi = new Date(besinciHaftaTarihi.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+            defaultBaslangicTarihi = dokuzuncuHaftaTarihi.toISOString().slice(0, 10);
+          } else {
+            // Bugünden itibaren bir sonraki pazartesi
+            const bugun = new Date();
+            const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
+            defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
+          }
+        } catch (e) {
+          // Hata durumunda bir sonraki pazartesi
+          const bugun = new Date();
+          const gelecekPazartesi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 8);
+          defaultBaslangicTarihi = gelecekPazartesi.toISOString().slice(0, 10);
+        }
+        
+        // Kullanıcıdan bilgileri al
+        const hastaAdi = prompt('Hasta Adı:', defaultHastaAdi);
+        if (!hastaAdi) {
+          alert('Hasta adı girilmedi, işlem iptal edildi.');
+          return;
+        }
+        
+        const baslangicTarihi = prompt('Başlangıç Tarihi (YYYY-MM-DD):', defaultBaslangicTarihi);
+        if (!baslangicTarihi) {
+          alert('Başlangıç tarihi girilmedi, işlem iptal edildi.');
+          return;
+        }
+        
+        // Tarih kontrolü
+        const tarihObj = new Date(baslangicTarihi);
+        if (isNaN(tarihObj.getTime())) {
+          alert('Geçersiz tarih formatı! YYYY-MM-DD formatında giriniz.');
+          return;
+        }
+        
+        // Pazartesi kontrolü
+        const gunNo = tarihObj.getDay();
+        if (gunNo !== 1) {
+          const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+          const mevcutGun = gunIsimleri[gunNo];
+          if (!confirm(`Seçilen tarih ${mevcutGun} günü. Egzersiz programı pazartesi günleri başlar.\n\nEn yakın pazartesi gününe otomatik ayarlansın mı?`)) {
+            return;
+          }
+          
+          // En yakın pazartesiye ayarla
+          const gunFarki = gunNo === 0 ? 1 : (1 - gunNo);
+          tarihObj.setDate(tarihObj.getDate() + gunFarki);
+        }
+        
+        // Özel egzersiz + lenf masaj PDF'i oluştur (9. hafta benzeri)
+        await generateCustomEgzersizPDF(hastaAdi, tarihObj);
+        
+      } catch (error) {
+        console.error('❌ Özel Egzersiz Takvimi hatası:', error);
         alert('PDF oluştururken hata oluştu: ' + error.message);
       }
     }
@@ -5594,18 +5592,8 @@ function duzenleHafta(i) {
     zipBtn.style.marginBottom = '10px';
     zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
     zipBtn.onclick = function() { 
-      // Aktif tab'ı bul ve onun gerçek hafta numarasını kullan
-      const activeTab = document.querySelector('.hafta-tab.active');
-      if (!activeTab) {
-        alert('Aktif hafta tab\'ı bulunamadı!');
-        return;
-      }
-      const realActiveIndex = parseInt(activeTab.dataset.haftaIndex); // Sidebar için
-      const realHaftaNo = parseInt(activeTab.dataset.haftaNo); // ZIP için
-      console.log('🔍 ZIP butonuna tıklandı (ana), aktif tab index:', realActiveIndex, 'gerçek hafta no:', realHaftaNo);
-      console.log('🔍 Ana ZIP için seciliHasta.haftalar[' + realActiveIndex + ']:', seciliHasta?.haftalar?.[realActiveIndex]);
-      console.log('🔍 Tüm hafta listesi:', seciliHasta?.haftalar?.map((h, idx) => ({index: idx, haftaNo: h.haftaNo})));
-      zipEslesenGorseller(realActiveIndex); 
+      console.log('🔍 ZIP butonuna tıklandı, hafta index:', i);
+      zipEslesenGorseller(i); 
     };
     
     // PDF Takip Tablosu oluştur butonu
@@ -5629,41 +5617,45 @@ function duzenleHafta(i) {
     comboBtn.style.borderRadius = '5px';
     comboBtn.style.cursor = 'pointer';
     comboBtn.onclick = function() { 
-      // Aktif tab'ı bul ve onun gerçek hafta numarasını kullan
-      const activeTab = document.querySelector('.hafta-tab.active');
-      if (!activeTab) {
-        alert('Aktif hafta tab\'ı bulunamadı!');
-        return;
-      }
-      const realActiveIndex = parseInt(activeTab.dataset.haftaIndex); // Sidebar için
-      const realHaftaNo = parseInt(activeTab.dataset.haftaNo); // ZIP için
-      console.log('🔍 Combo butonuna tıklandı, aktif tab index:', realActiveIndex, 'gerçek hafta no:', realHaftaNo);
-      console.log('🔍 Combo için seciliHasta.haftalar[' + realActiveIndex + ']:', seciliHasta?.haftalar?.[realActiveIndex]);
-      zipEslesenGorseller(realActiveIndex); 
+      zipEslesenGorseller(i); 
       setTimeout(() => generatePatientPDF(), 1000); 
     };
     
     indirDiv.appendChild(zipBtn);
     indirDiv.appendChild(pdfBtn);
     indirDiv.appendChild(comboBtn);
-    eslesenDiv.appendChild(indirDiv);
+    // Ana area'ya buton eklemeyi kaldırdık - sadece sidebar'da olacak
+    // eslesenDiv.appendChild(indirDiv);
     
-    // Yeni sidebar layout için butonları da sidebar'a ekle
-    const currentEslesenDiv = document.getElementById('currentEslesenKartlar');
-    if (currentEslesenDiv) {
+    // Sidebar için butonları ekle
+    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv) {
       // Eski butonları kaldır
-      const eskiIndirDiv = currentEslesenDiv.querySelector('.indir-butonlari');
-      if (eskiIndirDiv) {
-        eskiIndirDiv.remove();
-      }
+      sidebarButtonsDiv.innerHTML = '';
       
-      // Yeni butonları ekle
+      // Sidebar için ZIP butonlarını ekle
       const sidebarIndirDiv = indirDiv.cloneNode(true);
       sidebarIndirDiv.className = 'indir-butonlari';
-      sidebarIndirDiv.style.marginTop = '15px';
-      sidebarIndirDiv.style.borderTop = '1px solid #ddd';
-      sidebarIndirDiv.style.paddingTop = '15px';
-      currentEslesenDiv.appendChild(sidebarIndirDiv);
+      sidebarIndirDiv.style.marginTop = '0px';
+      sidebarIndirDiv.style.borderTop = 'none';
+      sidebarIndirDiv.style.paddingTop = '0px';
+      
+      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
+      const sidebarButtons = sidebarIndirDiv.children;
+      if (sidebarButtons[0]) { // ZIP butonu
+        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+      }
+      if (sidebarButtons[1]) { // PDF butonu  
+        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
+      }
+      if (sidebarButtons[2]) { // COMBO butonu
+        sidebarButtons[2].onclick = function() { 
+          zipEslesenGorseller(i); 
+          setTimeout(() => generatePatientPDF(), 1000); 
+        };
+      }
+      
+      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
     }
   }
 
@@ -5705,8 +5697,43 @@ function duzenleHafta(i) {
       akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
     };
 
-    eslesenDiv.appendChild(akordiyonBaslik);
-    eslesenDiv.appendChild(akordiyonIcerik);
+    // Ana area'ya akordiyon eklemeyi kaldırdık - sadece sidebar'da olacak
+    // eslesenDiv.appendChild(akordiyonBaslik);
+    // eslesenDiv.appendChild(akordiyonIcerik);
+    
+    // Sidebar'a akordiyon ekle
+    const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
+    if (sidebarButtonsDiv2) {
+      // Eski eşleşmeyen tarifler butonunu kaldır
+      const eskiEslesmeyenBtn = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-btn');
+      if (eskiEslesmeyenBtn) {
+        eskiEslesmeyenBtn.remove();
+      }
+      const eskiEslesmeyenIcerik = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-icerik');
+      if (eskiEslesmeyenIcerik) {
+        eskiEslesmeyenIcerik.remove();
+      }
+      
+      // Sidebar için akordiyon butonunu klonla
+      const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
+      const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
+      
+      // Sidebar için class ekle (temizlik için)
+      sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
+      sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
+      sidebarAkordiyonBaslik.style.marginTop = '10px';
+      sidebarAkordiyonBaslik.style.width = '100%';
+      
+      // Sidebar akordiyon için tıklama event'i
+      sidebarAkordiyonBaslik.onclick = function() {
+        const acikMi = sidebarAkordiyonIcerik.style.display === 'block';
+        sidebarAkordiyonIcerik.style.display = acikMi ? 'none' : 'block';
+        sidebarAkordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
+      };
+      
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
+      sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
+    }
   }
 
   // Eşleşen kartları hafta verisine kaydet
@@ -5813,14 +5840,13 @@ function duzenleHafta(i) {
       );
       // Baştaki numara, * işareti ve fazla boşlukları her zaman temizle
       return filtered.map(line =>
-        turkceKarakterDuzelt(
-          line
-            .replace(/^[0-9]+\.\s*/, '') // baştaki numara
-            .replace(/^[*]+\s*/, '') // baştaki yıldız
-            .replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '') // baştaki miktar
-            .replace(/\s+/g, ' ') // fazla boşluk
-            .trim()
-        ).toLowerCase()
+        line
+          .replace(/^[0-9]+\.\s*/, '') // baştaki numara
+          .replace(/^\*+\s*/, '') // baştaki yıldız
+          .replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '') // baştaki miktar
+          .replace(/\s+/g, ' ') // fazla boşluk
+          .trim()
+          .toLowerCase()
       );
     }
 
@@ -5836,9 +5862,527 @@ function duzenleHafta(i) {
     // Sayfa açılışında storage'dan yükle ve listele
     renderHastalar();
 
+    // Özel Lenf Masaj PDF oluşturucu (5. hafta ZIP benzeri)
+    async function generateCustomLenfMasajPDF(hastaAdi, baslangicTarihi) {
+      try {
+        console.log('💆 Özel Lenf Masaj PDF oluşturuluyor...', { hastaAdi, baslangicTarihi });
+        
+        // jsPDF kütüphane kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+          console.log('✅ jsPDF window.jspdf.jsPDF üzerinden yüklendi');
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+          console.log('✅ jsPDF global jsPDF üzerinden yüklendi');
+        } else {
+          console.log('❌ jsPDF bulunamadı, dinamik yükleme yapılıyor...');
+          
+          // Dinamik jsPDF yükleme
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.onload = () => {
+            console.log('✅ jsPDF dinamik olarak yüklendi');
+            setTimeout(() => generateCustomLenfMasajPDF(hastaAdi, baslangicTarihi), 100);
+          };
+          script.onerror = () => {
+            console.log('❌ jsPDF yüklenemedi');
+            alert('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+          };
+          document.head.appendChild(script);
+          return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
+        }
+        
+        const doc = new jsPDFLib();
+        
+        // Hasta adını temizle (aynı ZIP sistemindeki gibi)
+        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
+        
+        // Başlık - ZIP sistemindeki gibi
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        
+        const title = `${temizHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        // Lenf masaj başlığı - Türkçe karakterleri düzelt
+        const subtitle = turkceKarakterDuzelt('LENF DRENAJ MASAJI PROGRAMI');
+        const programBasligi = turkceKarakterDuzelt('8 Haftalik Lenf Drenaj Masaji Uygulama Programi');
+        
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
+        
+        // 5. haftanın başlangıcı
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık lenf masaj programı (ZIP sistemindeki gibi)
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+          }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - ZIP sistemindeki gibi
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - ZIP sistemindeki gibi
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Lenf masaj uygulama kontrolü (ZIP sistemindeki aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else if (lenfHaftaIndex < 6) {
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı
+              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = '-';
+              } else {
+                sabahUygulama = '-';
+                aksamUygulama = '-';
+              }
+            } else {
+              // Son 2 hafta (11-12): Haftada 2 gün (Salı-Cuma)
+              if (gunIndex === 1 || gunIndex === 4) { // Salı, Cuma
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = '-';
+              } else {
+                sabahUygulama = '-';
+                aksamUygulama = '-';
+              }
+            }
+            
+            zipTableStartX = 15;
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            doc.setTextColor(0, 0, 0);
+            doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
+        }
+        
+        // PDF'yi kaydet
+        const tarih = new Date().toISOString().slice(0, 10);
+        const dosyaAdi = `${temizHastaAdi}_Lenf_Masaj_Takvimi_${tarih}.pdf`;
+        doc.save(dosyaAdi);
+        
+        console.log('✅ Özel Lenf Masaj Takvimi PDF oluşturuldu:', dosyaAdi);
+        alert(`✅ Lenf Masaj Takvimi PDF oluşturuldu!\n\nDosya: ${dosyaAdi}\n\nBaşlangıç Tarihi: ${baslangicTarihi.toLocaleDateString('tr-TR')}`);
+        
+      } catch (error) {
+        console.error('❌ Özel Lenf Masaj PDF hatası:', error);
+        throw error;
+      }
+    }
+
+    // Özel Egzersiz + Lenf Masaj PDF oluşturucu (9. hafta ZIP benzeri)
+    async function generateCustomEgzersizPDF(hastaAdi, baslangicTarihi) {
+      try {
+        console.log('🏃 Özel Egzersiz + Lenf Masaj PDF oluşturuluyor...', { hastaAdi, baslangicTarihi });
+        
+        // jsPDF kütüphane kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+          console.log('✅ jsPDF window.jspdf.jsPDF üzerinden yüklendi');
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+          console.log('✅ jsPDF global jsPDF üzerinden yüklendi');
+        } else {
+          console.log('❌ jsPDF bulunamadı, dinamik yükleme yapılıyor...');
+          
+          // Dinamik jsPDF yükleme
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.onload = () => {
+            console.log('✅ jsPDF dinamik olarak yüklendi');
+            setTimeout(() => generateCustomEgzersizPDF(hastaAdi, baslangicTarihi), 100);
+          };
+          script.onerror = () => {
+            console.log('❌ jsPDF yüklenemedi');
+            alert('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+          };
+          document.head.appendChild(script);
+          return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
+        }
+        
+        const doc = new jsPDFLib();
+        
+        // Hasta adını temizle (aynı ZIP sistemindeki gibi)
+        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
+        
+        // Başlık - ZIP sistemindeki gibi
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        
+        const title = `${temizHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        // Egzersiz + lenf masaj başlığı - Türkçe karakterleri düzelt
+        const subtitle = turkceKarakterDuzelt('EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI');
+        const programBasligi = turkceKarakterDuzelt('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi');
+        
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
+        
+        // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık program (5-12. haftalar) - ZIP sistemindeki gibi
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
+          
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+          }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+          if (gercekHaftaNo <= 8) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - ZIP sistemindeki gibi
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - ZIP sistemindeki gibi
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Uygulama kontrolü - egzersiz dahil versiyonu (ZIP sistemindeki aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else if (lenfHaftaIndex < 6) {
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + egzersiz
+              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            } else {
+              // Son 2 hafta (11-12): Haftada 2 gün lenf masajı + sürekli egzersiz
+              if (gunIndex === 1 || gunIndex === 4) { // Salı, Cuma
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            }
+            
+            zipTableStartX = 15;
+            
+            // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+            if (gercekHaftaNo <= 8) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
+            if (gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi soluk renkte yaz
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Normal tarih
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
+        }
+        
+        // PDF'yi kaydet
+        const tarih = new Date().toISOString().slice(0, 10);
+        const dosyaAdi = `${temizHastaAdi}_Egzersiz_Takvimi_${tarih}.pdf`;
+        doc.save(dosyaAdi);
+        
+        console.log('✅ Özel Egzersiz + Lenf Masaj Takvimi PDF oluşturuldu:', dosyaAdi);
+        alert(`✅ Egzersiz + Lenf Masaj Takvimi PDF oluşturuldu!\n\nDosya: ${dosyaAdi}\n\nBaşlangıç Tarihi: ${baslangicTarihi.toLocaleDateString('tr-TR')}`);
+        
+      } catch (error) {
+        console.error('❌ Özel Egzersiz PDF hatası:', error);
+        throw error;
+      }
+    }
+
     async function zipEslesenGorseller(i) {
       try {
-        console.log('🎯 ZIP fonksiyonu başlatıldı, hafta tab indeksi:', i);
+        console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
         // Kütüphane kontrolü
         if (typeof JSZip === 'undefined') {
@@ -5855,28 +6399,8 @@ function duzenleHafta(i) {
         
         console.log('✅ Kütüphaneler yüklü: JSZip:', typeof JSZip, 'saveAs:', typeof saveAs);
         
-        // Parametre olarak gelen hafta index'ini kullan (bu doğru değer)
-        const aktifHaftaIndex = i;
-        console.log('🎯 ZIP için kullanılan hafta index:', aktifHaftaIndex);
-        console.log('🎯 Parametre i değeri:', i);
-        console.log('🎯 seciliHasta.haftalar length:', seciliHasta?.haftalar?.length);
-        console.log('🎯 seciliHasta.haftalar:', seciliHasta?.haftalar?.map((h, idx) => ({index: idx, haftaNo: h.haftaNo})));
-        
-        // Seçili hastanın hafta verilerini kontrol et
-        if (!seciliHasta || !seciliHasta.haftalar) {
-          alert('Hasta verisi bulunamadı!');
-          return;
-        }
-        
-        // Doğru hafta verisini al
-        const hafta = seciliHasta.haftalar[aktifHaftaIndex];
-        if (!hafta) {
-          alert('Seçili hafta verisi bulunamadı! Index: ' + aktifHaftaIndex);
-          return;
-        }
-        
-        console.log('🔍 Seçili hafta verisi:', hafta);
-        console.log('🔍 Seçili hafta numarası:', hafta.haftaNo);
+        const haftalar = getHaftaListesi();
+        const hafta = haftalar[i];
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
       
@@ -5886,13 +6410,13 @@ function duzenleHafta(i) {
         // Hasta adından PDF adı oluştur (Türkçe karakter düzeltme ile)
         const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
         const tarih = new Date().toISOString().slice(0,10);
-        const haftaNo = hafta.haftaNo || (aktifHaftaIndex + 1);
+        const haftaNo = hafta.haftaNo || (i + 1);
         hafta.pdfName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}.pdf`;
         saveToStorage(); // Değişikliği kaydet
         console.log('✅ PDF adı oluşturuldu:', hafta.pdfName);
       }
       
-      const eslesenDiv = document.getElementById('eslesenKartlar_' + aktifHaftaIndex);
+      const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
       const imgs = eslesenDiv.querySelectorAll('img');
       
       // İçerik kontrolü
@@ -5913,8 +6437,8 @@ function duzenleHafta(i) {
       
       console.log('🔍 Debug - hafta objesi:', hafta);
       console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
-      console.log('🔍 Debug - aktif hafta tab index:', aktifHaftaIndex);
-      console.log('🔍 Debug - hafta numarasi:', hafta.haftaNo);
+      console.log('🔍 Debug - hafta indeksi:', i);
+      console.log('🔍 Debug - tüm hafta listesi:', getHaftaListesi().map(h => ({haftaNo: h.haftaNo, pdfName: h.pdfName})));
       
       if (hafta.pdfName && hafta.pdfName.trim()) {
         // Yüklenen PDF dosyasının adını kullan - Türkçe karakterleri düzelt
@@ -5993,42 +6517,40 @@ function duzenleHafta(i) {
         }
       }
       
-      // 6. Gerçek hafta numarasına göre özel PDF'ler ekle
-      const gercekHaftaNo = hafta.haftaNo || (aktifHaftaIndex + 1);
-      console.log('🎯 Gerçek hafta numarası kontrolü:', gercekHaftaNo);
-      
-      if (gercekHaftaNo === 5) {
+      // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
+      const haftaNo = hafta.haftaNo || (i + 1);
+      if (haftaNo === 5) {
         try {
           console.log('🏥 5. hafta tespit edildi, Sadece Masaj Takvim PDF\'i oluşturuluyor...');
           
-          // Lenf drenaj PDF'ini oluştur (memory'de, indirmeden)
-          const lenfPdfBlob = await generateLenfDrenajPDFBlob();
-          if (lenfPdfBlob) {
-            const lenfFileName = `${baseName}_Lenf_Drenaj_Programi.pdf`;
-            zip.file(lenfFileName, lenfPdfBlob);
+          // Sadece masaj içeren takvim PDF'ini oluştur (5. hafta için, egzersiz dahil değil)
+          const masajTakvimBlob = await generateLenfDrenajPDFBlob(5);
+          if (masajTakvimBlob) {
+            const masajTakvimFileName = `${baseName}_Masaj_Takvimi.pdf`;
+            zip.file(masajTakvimFileName, masajTakvimBlob);
             fileCount++;
-            console.log('✅ Lenf Drenaj PDF\'i ZIP\'e eklendi:', lenfFileName);
+            console.log('✅ Masaj Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
           }
         } catch (e) {
-          console.warn('⚠️ Lenf Drenaj PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Masaj Takvim PDF\'i eklenemedi:', e);
         }
       }
       
-      // 7. Sadece 9. hafta numarasında Egzersiz Tablosu PDF'ini ekle
-      if (gercekHaftaNo === 9) {
+      // 7. Sadece 9. haftada "Masaj + Egzersiz" Takvim PDF'ini ekle
+      if (haftaNo === 9) {
         try {
           console.log('🏋️ 9. hafta tespit edildi, Masaj + Egzersiz Takvim PDF\'i oluşturuluyor...');
           
-          // Egzersiz tablosu PDF'ini oluştur (memory'de, indirmeden)
-          const egzersizPdfBlob = await generateEgzersizTablosuPDFBlob();
-          if (egzersizPdfBlob) {
-            const egzersizFileName = `${baseName}_Egzersiz_Tablosu.pdf`;
-            zip.file(egzersizFileName, egzersizPdfBlob);
+          // Masaj + egzersiz içeren takvim PDF'ini oluştur (9. hafta için, egzersiz dahil)
+          const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(9);
+          if (masajEgzersizTakvimBlob) {
+            const masajEgzersizTakvimFileName = `${baseName}_Masaj_Egzersiz_Takvimi.pdf`;
+            zip.file(masajEgzersizTakvimFileName, masajEgzersizTakvimBlob);
             fileCount++;
-            console.log('✅ Egzersiz Tablosu PDF\'i ZIP\'e eklendi:', egzersizFileName);
+            console.log('✅ Masaj + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
           }
         } catch (e) {
-          console.warn('⚠️ Egzersiz Tablosu PDF\'i eklenemedi:', e);
+          console.warn('⚠️ Masaj + Egzersiz Takvim PDF\'i eklenemedi:', e);
         }
       }
       
@@ -6049,11 +6571,12 @@ function duzenleHafta(i) {
         alert('ZIP dosyası oluşturulurken hata oluştu: ' + error.message);
       });
       
-      } catch (error) {
+    } catch (error) {
         console.error('❌ ZIP fonksiyonu genel hatası:', error);
         alert('ZIP oluşturma hatası: ' + error.message);
       }
     }
+    
     window.zipEslesenGorseller = zipEslesenGorseller;
     window.generatePatientPDF = generatePatientPDF;
     
@@ -6291,9 +6814,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
-      // Seçili hastayı güncelle
-      const selectedHasta = hastalar[hastaIndex];
-      
       // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
       const actTab = document.querySelector('.hafta-tab.active');
       if (actTab) {
@@ -6303,27 +6823,11 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           guncelleIstatistikler(hastaIndex);
         }
       }
-      
-      // Eğer hasta için kaydedilmiş aktif tab varsa onu restore et
-      if (selectedHasta && selectedHasta.activeTab !== undefined) {
-        setTimeout(() => {
-          const savedTabElement = document.querySelector(`[data-hafta-index="${selectedHasta.activeTab}"]`);
-          if (savedTabElement) {
-            savedTabElement.click();
-          }
-        }, 100);
-      }
     }
     window.hastaSecildiginde = hastaSecildiginde;
 
     // Hafta tab'ı seçildiğinde sidebar'ları güncelle
     function haftaTabSecildiginde(haftaIndex) {
-      // Aktif tab'ı kaydet
-      if (seciliHasta) {
-        seciliHasta.activeTab = haftaIndex;
-        saveToStorage();
-      }
-      
       gosterEslesenKartlarSidebar(haftaIndex);
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
@@ -6367,17 +6871,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
               console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
               btn.onclick = function(e) { 
                 e.preventDefault();
-                // Aktif tab'ı bul ve onun gerçek hafta numarasını kullan
-                const activeTab = document.querySelector('.hafta-tab.active');
-                if (!activeTab) {
-                  alert('Aktif hafta tab\'ı bulunamadı!');
-                  return;
-                }
-                const realActiveIndex = parseInt(activeTab.dataset.haftaIndex); // Sidebar için
-                const realHaftaNo = parseInt(activeTab.dataset.haftaNo); // ZIP için
-                console.log('🎯 ZIP butonuna tıklandı (sidebar), aktif tab index:', realActiveIndex, 'gerçek hafta no:', realHaftaNo);
-                console.log('🎯 Sidebar için seciliHasta.haftalar[' + realActiveIndex + ']:', seciliHasta?.haftalar?.[realActiveIndex]);
-                zipEslesenGorseller(realActiveIndex); 
+                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
+                zipEslesenGorseller(haftaIndex); 
               };
             }
           }
@@ -6458,6 +6953,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       setTimeout(() => {
         guncelleHastaSayilari();
         renderHastalar();
+        
+        // Tüm hafta verilerinde pazartesi kontrolü yap
+        normalizeHaftaData();
       }, 100);
     }
     
@@ -6467,331 +6965,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     } else {
       sayfaBaslat();
     }
-
-    // ========================
-    // +KART EKLE MODAL FONKSİYONLARI
-    // ========================
-    
-    let aktifHaftaIndex = null;
-    let seciliKartlar = new Set();
-    
-    // Modal açma fonksiyonu
-    function kartEkleModalAc(haftaIndex) {
-      console.log('🎯 Kart Ekle Modal açılıyor, hafta index:', haftaIndex);
-      aktifHaftaIndex = haftaIndex;
-      seciliKartlar.clear();
-      
-      // Modal'ı göster
-      document.getElementById('kartEkleModal').style.display = 'block';
-      
-      // Kartları yükle
-      kartListesiniYukle();
-      
-      // Seçili kartlar özetini güncelle
-      seciliKartlarOzetiniGuncelle();
-    }
-    
-    // Modal kapatma fonksiyonu
-    function kartEkleModalKapat() {
-      document.getElementById('kartEkleModal').style.display = 'none';
-      aktifHaftaIndex = null;
-      seciliKartlar.clear();
-      
-      // Arama kutusunu temizle
-      document.getElementById('kartAramaInput').value = '';
-    }
-    
-    // Kartları yükleme fonksiyonu
-    async function kartListesiniYukle() {
-      const kartListesi = document.getElementById('kartListesi');
-      const kartSayisiGosterge = document.getElementById('kartSayisiGosterge');
-      
-      kartListesi.innerHTML = '<div style="text-align:center; color:#666; padding:40px;">Kartlar yükleniyor...</div>';
-      
-      // Eğer tarifler klasörü henüz yüklenmediyse yükle
-      if (tariflerKlasoruGorselleri.length === 0) {
-        await tariflerKlasoruGorselleriniYukle();
-      }
-      
-      if (tariflerKlasoruGorselleri.length === 0) {
-        kartListesi.innerHTML = `
-          <div style="text-align:center; color:#dc3545; padding:40px;">
-            <h4>❌ Tarif kartları bulunamadı</h4>
-            <p>Tarifler klasöründe kart bulunamadı.</p>
-            <button onclick="tariflerKlasoruGorselleriniYukle().then(() => kartListesiniYukle())"
-                    style="padding:10px 20px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer;">
-              🔄 Yeniden Yükle
-            </button>
-          </div>
-        `;
-        kartSayisiGosterge.textContent = '0 kart';
-        return;
-      }
-      
-      // Kartları listele
-      kartListesiniGoster(tariflerKlasoruGorselleri);
-      kartSayisiGosterge.textContent = `${tariflerKlasoruGorselleri.length} kart`;
-    }
-    
-    // Kart listesini gösterme fonksiyonu
-    function kartListesiniGoster(kartlar) {
-      const kartListesi = document.getElementById('kartListesi');
-      kartListesi.innerHTML = '';
-      
-      if (kartlar.length === 0) {
-        kartListesi.innerHTML = '<div style="text-align:center; color:#666; padding:40px;">Arama kriterine uygun kart bulunamadı.</div>';
-        return;
-      }
-      
-      // Grid layout ile kartları göster
-      const gridDiv = document.createElement('div');
-      gridDiv.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;';
-      
-      kartlar.forEach(kart => {
-        const kartDiv = document.createElement('div');
-        kartDiv.style.cssText = `
-          border: 2px solid #ddd;
-          border-radius: 8px;
-          padding: 10px;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          background: white;
-        `;
-        
-        // Seçili durumda stil değişikliği
-        if (seciliKartlar.has(kart.name)) {
-          kartDiv.style.borderColor = '#28a745';
-          kartDiv.style.backgroundColor = '#f8fff8';
-          kartDiv.style.boxShadow = '0 4px 8px rgba(40, 167, 69, 0.3)';
-        }
-        
-        // Kart adını temizle (Türkçe karakter düzeltme ile)
-        const temizKartAdi = turkceKarakterDuzelt(kart.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' '));
-        
-        kartDiv.innerHTML = `
-          <img src="${kart.url}" alt="${kart.name}"
-               style="width: 100%; height: 120px; object-fit: cover; border-radius: 5px; margin-bottom: 8px;"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <div style="display: none; color: #dc3545; font-size: 12px;">❌ Görsel yüklenemedi</div>
-          <div style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px;">
-            ${temizKartAdi}
-          </div>
-          <div style="font-size: 10px; color: #666; margin-bottom: 8px;">
-            ${kart.name}
-          </div>
-          <div style="font-size: 18px;">
-            ${seciliKartlar.has(kart.name) ? '✅' : '⬜'}
-          </div>
-        `;
-        
-        // Tıklama olayı
-        kartDiv.onclick = function() {
-          kartSecimDegistir(kart.name, kartDiv);
-        };
-        
-        // Hover efekti
-        kartDiv.onmouseenter = function() {
-          if (!seciliKartlar.has(kart.name)) {
-            this.style.borderColor = '#007bff';
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-          }
-        };
-        
-        kartDiv.onmouseleave = function() {
-          if (!seciliKartlar.has(kart.name)) {
-            this.style.borderColor = '#ddd';
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = 'none';
-          }
-        };
-        
-        gridDiv.appendChild(kartDiv);
-      });
-      
-      kartListesi.appendChild(gridDiv);
-    }
-    
-    // Kart seçim durumunu değiştirme
-    function kartSecimDegistir(kartAdi, kartDiv) {
-      if (seciliKartlar.has(kartAdi)) {
-        // Seçimi kaldır
-        seciliKartlar.delete(kartAdi);
-        kartDiv.style.borderColor = '#ddd';
-        kartDiv.style.backgroundColor = 'white';
-        kartDiv.style.boxShadow = 'none';
-        kartDiv.querySelector('div:last-child').textContent = '⬜';
-      } else {
-        // Seç
-        seciliKartlar.add(kartAdi);
-        kartDiv.style.borderColor = '#28a745';
-        kartDiv.style.backgroundColor = '#f8fff8';
-        kartDiv.style.boxShadow = '0 4px 8px rgba(40, 167, 69, 0.3)';
-        kartDiv.querySelector('div:last-child').textContent = '✅';
-      }
-      
-      seciliKartlarOzetiniGuncelle();
-    }
-    
-    // Kart listesini filtreleme
-    function kartListesiniFiltrele(aramaMetni) {
-      if (!aramaMetni.trim()) {
-        kartListesiniGoster(tariflerKlasoruGorselleri);
-        document.getElementById('kartSayisiGosterge').textContent = `${tariflerKlasoruGorselleri.length} kart`;
-        return;
-      }
-      
-      const aramaKelimeleri = aramaMetni.toLowerCase().split(' ').filter(k => k.length > 0);
-      
-      const filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => {
-        const kartAdi = turkceKarakterDuzelt(kart.name.toLowerCase());
-        return aramaKelimeleri.every(kelime => kartAdi.includes(kelime));
-      });
-      
-      kartListesiniGoster(filtrelenmisKartlar);
-      document.getElementById('kartSayisiGosterge').textContent = `${filtrelenmisKartlar.length} kart`;
-    }
-    
-    // Tüm kartları seçme
-    function tumKartlariSec() {
-      const kartDivleri = document.querySelectorAll('#kartListesi > div > div');
-      kartDivleri.forEach(kartDiv => {
-        const kartAdi = kartDiv.querySelector('div:nth-child(4)').textContent; // Dosya adı
-        if (!seciliKartlar.has(kartAdi)) {
-          seciliKartlar.add(kartAdi);
-          kartDiv.style.borderColor = '#28a745';
-          kartDiv.style.backgroundColor = '#f8fff8';
-          kartDiv.style.boxShadow = '0 4px 8px rgba(40, 167, 69, 0.3)';
-          kartDiv.querySelector('div:last-child').textContent = '✅';
-        }
-      });
-      seciliKartlarOzetiniGuncelle();
-    }
-    
-    // Tüm kartları kaldırma
-    function tumKartlariKaldir() {
-      seciliKartlar.clear();
-      const kartDivleri = document.querySelectorAll('#kartListesi > div > div');
-      kartDivleri.forEach(kartDiv => {
-        kartDiv.style.borderColor = '#ddd';
-        kartDiv.style.backgroundColor = 'white';
-        kartDiv.style.boxShadow = 'none';
-        kartDiv.querySelector('div:last-child').textContent = '⬜';
-      });
-      seciliKartlarOzetiniGuncelle();
-    }
-    
-    // Seçili kartlar özetini güncelleme
-    function seciliKartlarOzetiniGuncelle() {
-      const ozetDiv = document.getElementById('seciliKartlarOzeti');
-      
-      if (seciliKartlar.size === 0) {
-        ozetDiv.textContent = 'Henüz kart seçilmedi';
-        ozetDiv.style.color = '#666';
-      } else {
-        const seciliKartAdlari = Array.from(seciliKartlar).map(kartAdi =>
-          turkceKarakterDuzelt(kartAdi.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' '))
-        );
-        
-        ozetDiv.innerHTML = `
-          <strong>${seciliKartlar.size} kart seçildi:</strong><br>
-          <div style="margin-top: 5px; font-size: 12px;">
-            ${seciliKartAdlari.join(', ')}
-          </div>
-        `;
-        ozetDiv.style.color = '#155724';
-      }
-    }
-    
-    // Seçili kartları ekleme fonksiyonu
-    function seciliKartlariEkle() {
-      if (seciliKartlar.size === 0) {
-        alert('❌ Lütfen en az bir kart seçin!');
-        return;
-      }
-      
-      if (aktifHaftaIndex === null) {
-        alert('❌ Hafta bilgisi bulunamadı!');
-        return;
-      }
-      
-      if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[aktifHaftaIndex]) {
-        alert('❌ Hasta veya hafta bilgisi bulunamadı!');
-        return;
-      }
-      
-      const hafta = seciliHasta.haftalar[aktifHaftaIndex];
-      
-      // Seçili kartları hafta verilerine ekle
-      if (!hafta.tarifKartlar) {
-        hafta.tarifKartlar = [];
-      }
-      
-      let eklenenSayisi = 0;
-      seciliKartlar.forEach(kartAdi => {
-        // Aynı kart zaten eklenmişse tekrar ekleme
-        const mevcutKart = hafta.tarifKartlar.find(k => k.name === kartAdi);
-        if (!mevcutKart) {
-          const kart = tariflerKlasoruGorselleri.find(k => k.name === kartAdi);
-          if (kart) {
-            hafta.tarifKartlar.push({
-              name: kart.name,
-              data: kart.url
-            });
-            eklenenSayisi++;
-          }
-        }
-      });
-      
-      // Verileri kaydet
-      saveToStorage();
-      
-      // Eşleşen kartları yeniden göster
-      otomatikEsleHafta(aktifHaftaIndex);
-      
-      // Modal'ı kapat
-      kartEkleModalKapat();
-      
-      // Başarı mesajı
-      alert(`✅ ${eklenenSayisi} kart başarıyla eklendi!\n\nEşleşen kartlar listesi güncellendi.`);
-      
-      console.log(`✅ ${eklenenSayisi} kart hafta ${aktifHaftaIndex + 1}'e eklendi`);
-    }
-    
-    // Global fonksiyonlar
-    window.kartEkleModalAc = kartEkleModalAc;
-    window.kartEkleModalKapat = kartEkleModalKapat;
-    window.kartListesiniFiltrele = kartListesiniFiltrele;
-    window.tumKartlariSec = tumKartlariSec;
-    window.tumKartlariKaldir = tumKartlariKaldir;
-    window.seciliKartlariEkle = seciliKartlariEkle;
-
-    // Ana sayfa kart ekleme fonksiyonu
-    function anaSayfaKartEkle() {
-      if (!seciliHasta) {
-        alert('❌ Önce bir hasta seçin!\n\nSol menüden bir hasta seçtikten sonra kart ekleyebilirsiniz.');
-        return;
-      }
-      
-      // Aktif hafta tab'ını bul
-      const activeTab = document.querySelector('.hafta-tab.active');
-      if (!activeTab) {
-        alert('❌ Aktif hafta bulunamadı!\n\nÖnce bir hafta seçin.');
-        return;
-      }
-      
-      const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
-      if (isNaN(haftaIndex)) {
-        alert('❌ Hafta bilgisi alınamadı!');
-        return;
-      }
-      
-      // Modal'ı aç
-      kartEkleModalAc(haftaIndex);
-    }
-    
-    window.anaSayfaKartEkle = anaSayfaKartEkle;
 
   </script>
 </body>
