@@ -2454,10 +2454,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     }
 
     function manuelEslestirmePaneliGizle() {
-      document.getElementById('manuelEslestirmePanel').style.display = 'none';
-      document.getElementById('manuelTarifAdi').value = '';
-      document.getElementById('manuelKartSecimi').selectedIndex = -1;
-      document.getElementById('manuelEslestirmeStatus').style.display = 'none';
+      const panel = document.getElementById('manuelEslestirmePanel');
+      const tarifAdi = document.getElementById('manuelTarifAdi');
+      const kartSecimi = document.getElementById('manuelKartSecimi');
+      const status = document.getElementById('manuelEslestirmeStatus');
+      
+      if (panel) panel.style.display = 'none';
+      if (tarifAdi) tarifAdi.value = '';
+      if (kartSecimi) kartSecimi.selectedIndex = -1;
+      if (status) status.style.display = 'none';
     }
 
     function manuelEslestirmeStatusGoster(mesaj, tip = 'info') {
@@ -3288,6 +3293,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     // List.json'dan mevcut olmayan dosyaları temizle
     async function listjsonTemizle() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('GitHub token gerekli!');
+        return;
+      }
+      
       if (!confirm('Mevcut olmayan dosyalar list.json\'dan temizlenecek. Emin misiniz?')) {
         return;
       }
@@ -3298,7 +3309,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Önce list.json'u al
         const response = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/tarifler/list.json', {
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Authorization': `token ${token}`,
             'Accept': 'application/vnd.github.v3+json'
           }
         });
@@ -3313,6 +3324,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Her dosyanın varlığını kontrol et
         const validFiles = [];
         let removedCount = 0;
+        
+        statusGoster('Dosyalar kontrol ediliyor...', 'info');
         
         for (const fileName of currentContent) {
           try {
@@ -3333,15 +3346,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         if (removedCount === 0) {
-          alert('Temizlenecek dosya bulunamadı. Tüm dosyalar mevcut.');
+          statusGoster('Temizlenecek dosya bulunamadı. Tüm dosyalar mevcut.', 'success');
           return;
         }
+        
+        statusGoster(`${removedCount} dosya temizleniyor...`, 'info');
         
         // Güncellenmiş list.json'u gönder
         const updateResponse = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/tarifler/list.json', {
           method: 'PUT',
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Authorization': `token ${token}`,
             'Accept': 'application/vnd.github.v3+json',
             'Content-Type': 'application/json'
           },
