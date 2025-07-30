@@ -403,7 +403,9 @@
         <button onclick="document.getElementById('importFile').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Veri Yükle</button>
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
+        <button onclick="yeniSistemHastaSayisiniKontrolEt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Hasta Sayısı Kontrol</button>
         <button onclick="if(seciliHasta) { hastayiAyriKaydet(seciliHasta); } else { alert('Lütfen önce bir hasta seçin!'); }" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
+        <button onclick="tumHastalariYeniSistemeAktar()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6b35; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">🚀 TÜM HASTALARI AKTAR</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Hasta Listesini Yenile</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
@@ -684,95 +686,58 @@
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // Basit karakter eşleştirme tablosu
-      const karakterTablosu = {
-        // Şefike için özel çözümler
-        '^EF0KE': 'ŞEFİKE',
-        'ŞEF0KE': 'ŞEFİKE', 
-        'SEF0KE': 'ŞEFİKE',
-        '^EFIKE': 'ŞEFİKE',
-        '^EF\u0130KE': 'ŞEFİKE',
-        'ÅEFÄ°KE': 'ŞEFİKE',
-        
-        // Yaygın bozuk kodlamalar
-        'Ã§': 'ç',
-        'Ã¼': 'ü', 
-        'Ã¶': 'ö',
-        'ÄŸ': 'ğ',
-        'Ä±': 'ı',
-        'Ä°': 'İ',
-        'Åž': 'Ş',
-        'ÅŸ': 'ş',
-        'Ã‡': 'Ç',
-        'Ãœ': 'Ü',
-        'Ã–': 'Ö',
-        'ÄžÄ': 'Ğ',
-        
-        // Ş harfleri
-        'Ş': ['Ş', 'ÅŸ', 'Åž', 'Å ', 'Ã…Â', 'ÃÂ', 'ÅŠÂŞ', 'Åž', '^', 'Å', '\u015E'],
-        'ş': ['ş', 'ÅŸ', 'Å ', '\u015F'],
-        
-        // İ harfleri  
-        'İ': ['İ', 'Ä°', 'Ä ', 'ÄÂ°', 'ÃÄÂ°', '0', '\u0130'],
-        'i': ['i', 'Ä±', 'Ä '],
-        
-        // I harfi (büyük ı)
-        'I': ['I'],
-        'ı': ['ı', 'Ä±', 'Ä ', '\u0131'],
-        
-        // Ü harfleri
-        'Ü': ['Ü', 'Ãœ', 'Ã ', '\u00DC'],
-        'ü': ['ü', 'Ã¼', 'Ã ', '\u00FC'],
-        
-        // Ö harfleri
-        'Ö': ['Ö', 'Ã–', 'Ã ', '\u00D6'],
-        'ö': ['ö', 'Ã¶', 'Ã ', '\u00F6'],
-        
-        // Ç harfleri
-        'Ç': ['Ç', 'Ã‡', 'Ã ', '\u00C7'],
-        'ç': ['ç', 'Ã§', 'Ã ', '\u00E7'],
-        
-        // Ğ harfleri
-        'Ğ': ['Ğ', 'ÄŸ', 'Ä ', '\u011E'],
-        'ğ': ['ğ', 'ÄŸ', 'Ä ', '\u011F']
-      };
-      
       let duzeltilmisText = text;
       
-      // Özel isim düzeltmeleri önce
-      if (duzeltilmisText.includes('^EF0KE') || duzeltilmisText.includes('ŞEF0KE') || duzeltilmisText.includes('ÅEFÄ°KE')) {
-        duzeltilmisText = 'ŞEFİKE';
-      }
-      
-      // Yaygın bozuk kodlamaları önce düzelt
+      // 1. Yaygın bozuk kodlamalar
       const bozukKodlamalar = {
         'Ã§': 'ç', 'Ã¼': 'ü', 'Ã¶': 'ö', 'ÄŸ': 'ğ', 'Ä±': 'ı', 'Ä°': 'İ',
-        'Åž': 'Ş', 'ÅŸ': 'ş', 'Ã‡': 'Ç', 'Ãœ': 'Ü', 'Ã–': 'Ö', 'ÄžÄ': 'Ğ'
+        'Åž': 'Ş', 'ÅŸ': 'ş', 'Ã‡': 'Ç', 'Ãœ': 'Ü', 'Ã–': 'Ö', 'ÄžÄ': 'Ğ',
+        // Özel bozuk karakterler
+        '^EF0KE': 'ŞEFİKE', 'ŞEF0KE': 'ŞEFİKE', 'SEF0KE': 'ŞEFİKE',
+        '^EFIKE': 'ŞEFİKE', '^EF\u0130KE': 'ŞEFİKE', 'ÅEFÄ°KE': 'ŞEFİKE'
       };
       
-      Object.keys(bozukKodlamalar).forEach(bozuk => {
-        duzeltilmisText = duzeltilmisText.replace(new RegExp(bozuk, 'g'), bozukKodlamalar[bozuk]);
-      });
+      // Bozuk kodlamaları düzelt
+      for (const [bozuk, dogru] of Object.entries(bozukKodlamalar)) {
+        duzeltilmisText = duzeltilmisText.replace(new RegExp(escapeRegex(bozuk), 'g'), dogru);
+      }
       
-      // Her Türkçe karakter için eşleşmeleri kontrol et
-      Object.keys(karakterTablosu).forEach(dogruKarakter => {
-        if (Array.isArray(karakterTablosu[dogruKarakter])) {
-          karakterTablosu[dogruKarakter].forEach(yanlisKarakter => {
-            const regex = new RegExp(yanlisKarakter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-            duzeltilmisText = duzeltilmisText.replace(regex, dogruKarakter);
-          });
-        }
-      });
+      // 2. Yaygın karakter değişimleri
+      const karakterDegisimleri = {
+        // Ş karakteri varyasyonları
+        '0': 'İ',  // Sıfır yerine İ
+        'Å': 'Ş',  // Latin extended karakterler
+        'Ã': 'ç',  // UTF-8 bozukluğu
+        
+        // Unicode normalize
+        '\u015E': 'Ş', '\u015F': 'ş',
+        '\u0130': 'İ', '\u0131': 'ı',
+        '\u011E': 'Ğ', '\u011F': 'ğ',
+        '\u00C7': 'Ç', '\u00E7': 'ç',
+        '\u00DC': 'Ü', '\u00FC': 'ü',
+        '\u00D6': 'Ö', '\u00F6': 'ö'
+      };
       
-      // Garip semboller ve karakterleri temizle
+      // Karakter değişimlerini uygula
+      for (const [eskiKar, yeniKar] of Object.entries(karakterDegisimleri)) {
+        duzeltilmisText = duzeltilmisText.replace(new RegExp(escapeRegex(eskiKar), 'g'), yeniKar);
+      }
+      
+      // 3. Gereksiz semboller ve fazla boşlukları temizle
       duzeltilmisText = duzeltilmisText
-        .replace(/[ÂÃ°º†‡^Å]+/g, '') // Gereksiz semboller
+        .replace(/[ÂÃ°º†‡^Å¦§¨©ª«¬­®¯°±²³´µ¶·¸¹]+/g, '') // Gereksiz semboller
         .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
         .trim();                    // Baştaki ve sondaki boşlukları kaldır
       
       return duzeltilmisText;
     }
+    
+    // Regex escape helper
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
 
+    // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
     // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
     function manuelHastaIsimleriniDuzelt() {
       console.log('🔧 Hasta isimlerini düzeltiliyor...');
@@ -1527,6 +1492,120 @@
       return `hasta_${hastaId}_${temizIsim}.json`;
     }
     
+    // === BULK MİGRATION: TÜM ESKİ HASTALARI YENİ SİSTEME AKTAR ===
+    
+    async function tumHastalariYeniSistemeAktar() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('❌ GitHub token gerekli!');
+        return;
+      }
+      
+      console.log('🚀 TÜM HASTA MİGRATION BAŞLATIYOR...');
+      console.log('📊 Mevcut eski sistem hastaları:', hastalar.length);
+      
+      if (hastalar.length === 0) {
+        alert('⚠️ Eski sistemde hasta bulunamadı!');
+        return;
+      }
+      
+      const onay = confirm(`🔄 TÜM HASTA MİGRATION\n\n${hastalar.length} hasta eski sistemden yeni sisteme aktarılacak.\n\nBu işlem biraz zaman alabilir.\n\nDevam etmek istediğinize emin misiniz?`);
+      if (!onay) return;
+      
+      let basarili = 0;
+      let hatali = 0;
+      const hataliHastalar = [];
+      
+      // Progress div oluştur
+      const progressDiv = document.createElement('div');
+      progressDiv.style.cssText = 'position:fixed; top:20px; right:20px; background:white; border:3px solid #007bff; padding:15px; border-radius:10px; z-index:10000; min-width:300px; box-shadow:0 4px 8px rgba(0,0,0,0.3);';
+      progressDiv.innerHTML = '<h4>🔄 Migration İlerliyor...</h4><div id="migrationProgress">Başlatılıyor...</div>';
+      document.body.appendChild(progressDiv);
+      
+      const progressElement = document.getElementById('migrationProgress');
+      
+      try {
+        for (let i = 0; i < hastalar.length; i++) {
+          const hasta = hastalar[i];
+          progressElement.innerHTML = `📤 ${i + 1}/${hastalar.length}: ${hasta.isim} kaydediliyor...`;
+          
+          try {
+            // Türkçe karakter düzeltmesi
+            hasta.isim = turkceKarakterDuzelt(hasta.isim);
+            if (hasta.not) hasta.not = turkceKarakterDuzelt(hasta.not);
+            
+            const sonuc = await hastayiAyriKaydet(hasta);
+            if (sonuc) {
+              basarili++;
+              console.log(`✅ ${i + 1}/${hastalar.length}: ${hasta.isim} başarıyla kaydedildi`);
+            } else {
+              hatali++;
+              hataliHastalar.push(hasta.isim);
+              console.error(`❌ ${i + 1}/${hastalar.length}: ${hasta.isim} kaydedilemedi`);
+            }
+          } catch (error) {
+            hatali++;
+            hataliHastalar.push(hasta.isim);
+            console.error(`❌ ${i + 1}/${hastalar.length}: ${hasta.isim} hata:`, error);
+          }
+          
+          // Her 5 hastada bir kısa ara (rate limiting için)
+          if (i % 5 === 0 && i > 0) {
+            progressElement.innerHTML = `⏳ Kısa ara... (${i}/${hastalar.length})`;
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+        
+        progressElement.innerHTML = '✅ Migration tamamlandı!';
+        
+        const rapor = `🎉 MIGRATION TAMAMLANDI!\n\n✅ Başarılı: ${basarili} hasta\n❌ Hatalı: ${hatali} hasta\n\n📁 Yeni konumlar:\n- patients/hastalar_listesi.json\n- patients/hasta_[ID]_[isim].json\n\n${hatali > 0 ? '❌ Hatalı hastalar:\n' + hataliHastalar.join('\n') : ''}`;
+        
+        console.log(rapor);
+        alert(rapor);
+        
+        // Yeni sistemi yenile
+        await renderHastalarYeniSistem();
+        
+      } finally {
+        setTimeout(() => {
+          document.body.removeChild(progressDiv);
+        }, 5000);
+      }
+    }
+
+    // === YENİ SİSTEM HASTA SAYISI KONTROL ===
+    
+    async function yeniSistemHastaSayisiniKontrolEt() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('❌ GitHub token gerekli!');
+        return;
+      }
+      
+      try {
+        // Hasta listesini yükle
+        const yeniSistemHastalar = await hastaListesiYukle();
+        const eskiSistemSayisi = hastalar.length;
+        const yeniSistemSayisi = yeniSistemHastalar.length;
+        
+        console.log('📊 Sistem karşılaştırması:');
+        console.log('- Eski sistem:', eskiSistemSayisi, 'hasta');
+        console.log('- Yeni sistem:', yeniSistemSayisi, 'hasta');
+        
+        const mesaj = `📊 HASTA SİSTEM KARŞILAŞTIRMASI\n\n` +
+                      `🔸 Eski sistem: ${eskiSistemSayisi} hasta\n` +
+                      `🔸 Yeni sistem: ${yeniSistemSayisi} hasta\n` +
+                      `🔸 Eksik hasta: ${eskiSistemSayisi - yeniSistemSayisi}\n\n` +
+                      `${yeniSistemSayisi < eskiSistemSayisi ? '⚠️ Yeni sisteme tüm hastalar aktarılmamış!\n\n"🚀 TÜM HASTALARI AKTAR" butonunu kullanın.' : '✅ Tüm hastalar yeni sistemde mevcut!'}`;
+        
+        alert(mesaj);
+        
+      } catch (error) {
+        console.error('❌ Hasta sayısı kontrol hatası:', error);
+        alert('❌ Hasta sayısı kontrol edilemedi: ' + error.message);
+      }
+    }
+
     // Patients klasörünü oluşturma
     async function createPatientsFolder() {
       const token = document.getElementById('githubToken').value.trim();
