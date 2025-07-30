@@ -820,10 +820,14 @@
         console.log(`🎉 RADIKAL DÜZELTMe TAmamlandı: ${degisiklikSayisi} hasta ismi düzeltildi!`);
         alert(`✅ RADIKAL ÇÖZÜM: ${degisiklikSayisi} hasta ismi düzeltildi!\n\nArtık "AYŞÂE" → "AYŞE" gibi düzeltmeler yapıldı.`);
         
-        // GitHub'a kaydetmeyi öner
-        if (confirm('Düzeltmeler GitHub\'a da kaydedilsin mi?')) {
-          uploadToGitHub();
-        }
+        // Düzeltilen hastaları yeni sisteme kaydet
+        console.log('📤 Düzeltilen hastalar yeni sisteme kaydediliyor...');
+        tumHastalariAyriKaydet().then(() => {
+          console.log('✅ Tüm düzeltmeler yeni sisteme kaydedildi');
+        }).catch(error => {
+          console.error('❌ Yeni sisteme kaydetme hatası:', error);
+          alert('⚠️ Düzeltmeler yapıldı ama GitHub kaydı başarısız. Token kontrolü yapın.');
+        });
       } else {
         console.log('✅ Tüm hasta isimleri zaten doğru!');
         alert('✅ Tüm hasta isimleri zaten doğru formatta!');
@@ -1657,104 +1661,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
-      if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
-      
-      // UYARI: Eski sistemi kullan VEYA yeni sisteme geç seçeneği sun
-      const secim = confirm(
-        '🔄 SİSTEM GEÇİŞİ\n\n' +
-        '✅ EVET: Yeni sisteme geç (Her hasta ayrı JSON dosyası)\n' +
-        '❌ HAYIR: Eski sistemi kullan (Tek büyük JSON dosyası)\n\n' +
-        'Yeni sisteme geçmek istiyorsanız EVET\'i seçin.'
-      );
-      
-      if (secim) {
-        // Yeni sisteme geç
-        await tumHastalariAyriKaydet();
-        return;
+      if (!token) { 
+        alert('❌ Lütfen önce GitHub API token girin!'); 
+        return; 
       }
       
-      // Eski sistem devam et
-      console.log('📝 Eski sistem kullanılıyor...');
+      console.log('� Yeni sisteme göre tüm hastalar kaydediliyor...');
       
-      const owner = 'mustafasacar35'; // GitHub kullanıcı adın
-      const repo = 'lipodem-takip-paneli'; // Repo adı
-      const path = 'data/hasta_kayitlari.json'; // Dosya yolu (repo içinde data/ klasörü olmalı)
-      const branch = 'main'; // Branch adı
-
-      // Önce mevcut dosyanın SHA'sını al (güncelleme için gerekli)
-      let sha = undefined;
-      try {
-        const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-          headers: { Authorization: `token ${token}` }
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          sha = data.sha;
-        }
-      } catch (e) {}
-
-      // TÜM hasta verilerini kaydet (hafta detayları dahil, tarifler hariç)
-      const now = new Date().toISOString();
-      const exportData = hastalar.map(hasta => {
-        return {
-          id: hasta.id,
-          isim: hasta.isim,
-          not: hasta.not || '',
-          arsiv: hasta.arsiv || false,
-          haftalar: (hasta.haftalar || []).map((hafta) => {
-            return {
-              haftaNo: hafta.haftaNo || 1,
-              baslangic: hafta.baslangic || '',
-              bitis: hafta.bitis || '',
-              aciklama: hafta.aciklama || '',
-              pdf: hafta.pdf || null,
-              pdfName: hafta.pdfName || null,  // PDF dosya adını da kaydet
-              tarifKartlar: hafta.tarifKartlar || [],
-              // tarifler alanını GitHub'a kaydetme (çok uzun olduğu için)
-              gptMesaj: hafta.gptMesaj || '',
-              kayitTarihi: hafta.kayitTarihi || now  // PDF yükleme tarihini kaydet
-            };
-          })
-        };
-      });
-      
-      console.log('📤 GitHub\'a kaydedilecek veriler (tarifler hariç):', {
-        hastaSayisi: exportData.length,
-        toplamHafta: exportData.reduce((sum, h) => sum + (h.haftalar?.length || 0), 0),
-        toplamKart: exportData.reduce((sum, h) => sum + h.haftalar.reduce((hSum, hf) => hSum + (hf.tarifKartlar?.length || 0), 0), 0)
-      });
-      const content = btoa(unescape(encodeURIComponent(JSON.stringify(exportData, null, 2))));
-
-      // Dosyayı yükle
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: 'Hasta kayıtları güncellendi (eski sistem)',
-          content,
-          branch,
-          sha
-        })
-      });
-      if (res.ok) {
-        // Cache timestamp'ini güncelle
-        localStorage.setItem('lastGithubUpdate', Date.now().toString());
-        alert('✅ GitHub\'a başarıyla kaydedildi! (Eski sistem)');
-        console.log('✅ GitHub upload başarılı');
-      } else {
-        const errorText = await res.text();
-        console.error('❌ GitHub upload hatası:', res.status, errorText);
-        
-        // 409 Conflict hatası durumunda özel mesaj
-        if (res.status === 409) {
-          alert('⚠️ GitHub kaydetme çakışması!\n\nBu genellikle aynı anda birden fazla kaydetme yapıldığında olur.\n\nLütfen birkaç saniye bekleyin ve tekrar deneyin.');
-        } else {
-          alert('❌ GitHub kaydı başarısız: ' + res.status + '\n' + errorText.substring(0, 300));
-        }
-      }
+      // Yeni sistemi kullan
+      await tumHastalariAyriKaydet();
     }
 
     // --- Eşleşme Yasakları Paneli Fonksiyonları ---
@@ -3911,7 +3826,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     }
 
     function yeniHastaFormu() {
-      console.log('Yeni hasta ekleme başlatıldı');
+      console.log('🆕 Yeni hasta ekleme başlatıldı (YENİ SİSTEM)');
       
       // Yeni hasta ismini iste
       const yeniIsim = prompt('Yeni hasta ismini girin:');
@@ -3930,10 +3845,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Türkçe karakter düzeltmesi uygula
       const duzeltilmisIsim = turkceKarakterDuzelt(temizIsim);
       
-      // Aynı isimde hasta var mı kontrol et
-      const mevcutHasta = hastalar.find(h => h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
-      if (mevcutHasta) {
-        alert('Bu isimde bir hasta zaten mevcut!');
+      // Aynı isimde hasta var mı kontrol et (hem eski hem yeni sistemde)
+      const mevcutHastaEski = hastalar.find(h => h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
+      if (mevcutHastaEski) {
+        alert('Bu isimde bir hasta zaten mevcut! (Eski sistem)');
         return;
       }
       
@@ -3943,30 +3858,42 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         isim: duzeltilmisIsim,
         not: yeniNot ? yeniNot.trim() : '',
         arsiv: false,
-        haftalar: []
+        haftalar: [],
+        olusturmaTarihi: new Date().toISOString(),
+        yeniSistem: true
       };
       
-      // Hasta listesine ekle
+      console.log('✅ Yeni hasta oluşturuldu:', duzeltilmisIsim);
+      
+      // YENİ SİSTEME KAYDET
+      // 1. Önce individual hasta dosyası olarak kaydet
+      hastayiAyriKaydet(yeniHasta).then(basarili => {
+        if (basarili) {
+          console.log('✅ Yeni hasta GitHub\'a kaydedildi:', duzeltilmisIsim);
+          
+          // 2. Hasta listesini güncelle
+          renderHastalarYeniSistem();
+          
+          // 3. Yeni hastayı seç
+          seciliHasta = yeniHasta;
+          
+          // 4. Başarı mesajı
+          alert(`✅ Yeni hasta başarıyla eklendi!\n\n👤 ${duzeltilmisIsim}\n📁 Yeni sistem ile kaydedildi`);
+          
+        } else {
+          console.error('❌ GitHub kaydetme başarısız');
+          alert('❌ Hasta oluşturuldu ama GitHub\'a kaydedilemedi!\nLütfen GitHub token kontrolü yapın.');
+        }
+      }).catch(error => {
+        console.error('❌ Hasta kaydetme hatası:', error);
+        alert('❌ Hasta kaydetme hatası: ' + error.message);
+      });
+      
+      // ESKİ SİSTEME EKLEME (sadece local olarak - geriye uyumluluk için)
       hastalar.push(yeniHasta);
-      
-      // Hasta listesini otomatik sırala (isim sırası)
       hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
-      
-      // Verileri kaydet
       saveToStorage();
-      
-      // Hasta listesini yenile
       renderHastalar();
-      
-      console.log('✅ Yeni hasta eklendi:', duzeltilmisIsim);
-      
-      // Yeni eklenen hastayı otomatik seç
-      hastaDetayGoster(yeniHasta.id);
-      
-      // GitHub'a kaydetmeyi öner (opsiyonel)
-      if (confirm('Yeni hasta eklendi. GitHub\'a da kaydetmek ister misiniz?')) {
-        uploadToGitHub();
-      }
     }
 
     function iptalHastaFormu() {
@@ -4068,10 +3995,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       console.log(`✅ Hasta bilgileri güncellendi: ${mevcutIsim} → ${duzeltilmisIsim}`);
       
-      // GitHub'a kaydetmeyi öner (opsiyonel)
-      if (confirm('Değişiklikler kaydedildi. GitHub\'a da kaydetmek ister misiniz?')) {
-        uploadToGitHub();
-      }
+      // YENİ SİSTEME KAYDET
+      hastayiAyriKaydet(seciliHasta).then(basarili => {
+        if (basarili) {
+          console.log('✅ Hasta güncellemesi GitHub\'a kaydedildi:', duzeltilmisIsim);
+          renderHastalarYeniSistem(); // Yeni sistemi güncelle
+        } else {
+          console.warn('⚠️ GitHub kaydı başarısız oldu, ancak yerel değişiklikler kaydedildi');
+        }
+      }).catch(error => {
+        console.error('❌ GitHub kaydetme hatası:', error);
+      });
     }
 
     function arsivleHasta() {
