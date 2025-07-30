@@ -1027,20 +1027,42 @@
       
       try {
         console.log('🔍 GitHub token test ediliyor...');
-        const response = await fetch('https://api.github.com/user', {
+        
+        // 1. Kullanıcı bilgilerini kontrol et
+        const userResponse = await fetch('https://api.github.com/user', {
           headers: { 'Authorization': `token ${token}` }
         });
         
-        if (response.ok) {
-          const user = await response.json();
-          console.log('✅ GitHub token geçerli:', user.login);
-          alert(`✅ GitHub token geçerli!\nKullanıcı: ${user.login}`);
-          return true;
-        } else {
-          console.error('❌ GitHub token geçersiz:', response.status, response.statusText);
-          alert(`❌ GitHub token geçersiz!\nHata: ${response.status} ${response.statusText}`);
+        if (!userResponse.ok) {
+          console.error('❌ GitHub token geçersiz:', userResponse.status, userResponse.statusText);
+          alert(`❌ GitHub token geçersiz!\nHata: ${userResponse.status} ${userResponse.statusText}`);
           return false;
         }
+        
+        const user = await userResponse.json();
+        console.log('✅ GitHub kullanıcı bilgileri alındı:', user.login);
+        
+        // 2. Repository erişimini kontrol et
+        const repoResponse = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli', {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (repoResponse.ok) {
+          const repo = await repoResponse.json();
+          console.log('✅ Repository erişimi başarılı:', repo.name);
+          console.log('🔑 Repository izinleri:', {
+            canPush: repo.permissions?.push || false,
+            canWrite: repo.permissions?.admin || repo.permissions?.push || false
+          });
+          
+          alert(`✅ GitHub token geçerli!\n\n👤 Kullanıcı: ${user.login}\n📁 Repository: ${repo.name}\n✏️ Yazma izni: ${repo.permissions?.push ? 'Var' : 'Yok'}`);
+          return true;
+        } else {
+          console.error('❌ Repository erişim hatası:', repoResponse.status);
+          alert(`❌ Repository erişim hatası!\n\nRepo: mustafasacar35/lipodem-takip-paneli\nHata: ${repoResponse.status}\n\nToken'ın repo izni olduğundan emin olun!`);
+          return false;
+        }
+        
       } catch (error) {
         console.error('❌ GitHub token test hatası:', error);
         alert('❌ GitHub bağlantı hatası: ' + error.message);
@@ -1093,6 +1115,18 @@
             console.log('📋 Eski sistem verileri yüklendi:', eskiVeriler.length, 'hasta');
           } else {
             console.log('⚠️ Eski hasta_kayitlari.json bulunamadı');
+            
+            // Boş hasta listesi oluştur
+            console.log('📝 Yeni boş hasta listesi oluşturuluyor...');
+            const bosListe = [];
+            const bosListeKayit = await hastaListesiKaydet(bosListe);
+            if (bosListeKayit) {
+              console.log('✅ Boş hasta listesi oluşturuldu');
+              alert('📝 Yeni hasta listesi oluşturuldu!\n\nArtık yeni sistemi kullanabilirsiniz.');
+            } else {
+              console.error('❌ Boş hasta listesi oluşturulamadı');
+              alert('❌ Boş hasta listesi oluşturulamadı.\nGithub token ve izinlerinizi kontrol edin.');
+            }
             return;
           }
         } catch (error) {
@@ -1255,11 +1289,35 @@
         
         if (response.ok) {
           const data = await response.json();
-          const content = JSON.parse(atob(data.content));
-          console.log('✅ Hasta listesi GitHub\'dan yüklendi:', content.length, 'hasta');
-          return content;
+          const contentStr = atob(data.content).trim();
+          
+          // Boş dosya kontrolü
+          if (!contentStr || contentStr === '' || contentStr === '{}' || contentStr === 'null') {
+            console.log('📝 Hasta listesi dosyası boş, yeni liste oluşturulacak');
+            hastaListesi = []; // Global değişkeni sıfırla
+            return [];
+          }
+          
+          try {
+            const content = JSON.parse(contentStr);
+            if (Array.isArray(content)) {
+              console.log('✅ Hasta listesi GitHub\'dan yüklendi:', content.length, 'hasta');
+              hastaListesi = content; // Global değişkeni güncelle
+              return content;
+            } else {
+              console.log('⚠️ Hasta listesi array değil, yeni liste oluşturulacak');
+              hastaListesi = []; // Global değişkeni sıfırla
+              return [];
+            }
+          } catch (parseError) {
+            console.error('❌ JSON parse hatası:', parseError);
+            console.log('📝 Bozuk JSON, yeni liste oluşturulacak');
+            hastaListesi = []; // Global değişkeni sıfırla
+            return [];
+          }
         } else if (response.status === 404) {
           console.log('📝 Hasta listesi bulunamadı, yeni liste oluşturulacak');
+          hastaListesi = []; // Global değişkeni sıfırla
           return [];
         } else {
           throw new Error(`GitHub API hatası: ${response.status}`);
@@ -3533,6 +3591,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       { id: 3, isim: "Zeynep Kaya", not: "3. haftada kabızlık yaşandı", arsiv: true }
     ];
     
+    // YENİ SİSTEM: Global hasta listesi
+    let hastaListesi = [];
+    
     // Türkçe karakter düzeltmesi uygula (mevcut veriler için)
     console.log('🔧 Mevcut veriler için Türkçe karakter düzeltmesi uygulanıyor...');
     hastalar.forEach(hasta => {
@@ -3871,13 +3932,24 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (basarili) {
           console.log('✅ Yeni hasta GitHub\'a kaydedildi:', duzeltilmisIsim);
           
-          // 2. Hasta listesini güncelle
+          // 2. Global hasta listesini güncelle
+          const yeniHastaListeItem = {
+            id: yeniHasta.id,
+            isim: yeniHasta.isim,
+            olusturmaTarihi: yeniHasta.olusturmaTarihi,
+            arsiv: yeniHasta.arsiv || false
+          };
+          hastaListesi.push(yeniHastaListeItem);
+          hastaListesi.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+          console.log('✅ Global hasta listesi güncellendi');
+          
+          // 3. Hasta listesini yeniden render et
           renderHastalarYeniSistem();
           
-          // 3. Yeni hastayı seç
+          // 4. Yeni hastayı seç
           seciliHasta = yeniHasta;
           
-          // 4. Başarı mesajı
+          // 5. Başarı mesajı
           alert(`✅ Yeni hasta başarıyla eklendi!\n\n👤 ${duzeltilmisIsim}\n📁 Yeni sistem ile kaydedildi`);
           
         } else {
