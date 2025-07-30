@@ -402,7 +402,8 @@
         <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
         <button onclick="document.getElementById('importFile').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Veri Yükle</button>
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
-        <button onclick="hastayiAyriKaydet(seciliHasta)" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
+        <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
+        <button onclick="if(seciliHasta) { hastayiAyriKaydet(seciliHasta); } else { alert('Lütfen önce bir hasta seçin!'); }" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Hasta Listesini Yenile</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
@@ -1012,6 +1013,37 @@
 
     // === MİGRASYON: ESKİ SİSTEMDEN YENİ SİSTEME GEÇİŞ ===
     
+    // GitHub token test fonksiyonu
+    async function testGitHubToken() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('❌ GitHub token girilmedi!');
+        return false;
+      }
+      
+      try {
+        console.log('🔍 GitHub token test ediliyor...');
+        const response = await fetch('https://api.github.com/user', {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (response.ok) {
+          const user = await response.json();
+          console.log('✅ GitHub token geçerli:', user.login);
+          alert(`✅ GitHub token geçerli!\nKullanıcı: ${user.login}`);
+          return true;
+        } else {
+          console.error('❌ GitHub token geçersiz:', response.status, response.statusText);
+          alert(`❌ GitHub token geçersiz!\nHata: ${response.status} ${response.statusText}`);
+          return false;
+        }
+      } catch (error) {
+        console.error('❌ GitHub token test hatası:', error);
+        alert('❌ GitHub bağlantı hatası: ' + error.message);
+        return false;
+      }
+    }
+
     // Eski hasta_kayitlari.json'dan yeni sisteme migration
     async function eskiSistemdenMigrasyon() {
       try {
@@ -1033,6 +1065,14 @@
             }
             alert('💡 GitHub token girdikten sonra migration butonuna tekrar basın!');
           }
+          return;
+        }
+        
+        // GitHub token geçerliliğini test et
+        console.log('🔍 GitHub token test ediliyor...');
+        const tokenTest = await testGitHubToken();
+        if (!tokenTest) {
+          console.error('❌ Migration iptal edildi: Token geçersiz');
           return;
         }
         
@@ -1197,9 +1237,17 @@
     // Hasta listesini GitHub'dan yükle
     async function hastaListesiYukle() {
       try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+          console.log('⚠️ GitHub token yok, hasta listesi yükleme atlanıyor');
+          return [];
+        }
+        
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/hastalar_listesi.json`);
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/hastalar_listesi.json`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
         
         if (response.ok) {
           const data = await response.json();
@@ -1214,7 +1262,7 @@
         }
       } catch (error) {
         console.error('❌ Hasta listesi yükleme hatası:', error);
-        return [];
+        throw error;
       }
     }
     
@@ -1468,13 +1516,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     // Tek hasta kaydetme fonksiyonu
     async function hastayiAyriKaydet(hasta) {
+      // Güvenlik kontrolü
+      if (!hasta || !hasta.isim) {
+        alert('❌ Geçersiz hasta verisi! Lütfen önce bir hasta seçin.');
+        return false;
+      }
+      
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
-        alert('GitHub token gerekli!');
+        alert('❌ GitHub token gerekli! Lütfen GitHub token girin.');
         return false;
       }
       
       try {
+        console.log(`💾 ${hasta.isim} hastası kaydediliyor...`);
+        
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
         const branch = 'main';
@@ -3604,11 +3660,18 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Yükleniyor...</li>';
       
       try {
+        // Token kontrolü
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+          ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #dc3545;">⚠️ GitHub token gerekli</li>';
+          return;
+        }
+        
         // GitHub'dan hasta listesini al
         const hastaListesi = await hastaListesiYukle();
         
         if (hastaListesi.length === 0) {
-          ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok</li>';
+          ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok - Migration gerekebilir</li>';
           return;
         }
         
@@ -7724,6 +7787,28 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Yeni sistemle hasta listesini yükle
       console.log('📋 Yeni sistemden hasta listesi yükleniyor...');
+      
+      // Token kontrolü
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        console.log('⚠️ GitHub token yok, eski sistem ile devam edilecek');
+        
+        // Migration butonunu ekle
+        setTimeout(migrationButonuEkle, 100);
+        
+        // Kullanıcıya bilgi ver
+        const durum = document.getElementById('githubDurumu');
+        if (durum) {
+          durum.innerHTML = '⚠️ GitHub token girilmeli - Eski sistem aktif';
+        }
+        
+        // Eski sistem verilerini yükle
+        if (typeof loadHastaDataFromStorage === 'function') {
+          loadHastaDataFromStorage();
+        }
+        return;
+      }
+      
       try {
         await renderHastalarYeniSistem();
         
