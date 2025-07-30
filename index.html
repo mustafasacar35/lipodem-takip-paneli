@@ -3,7 +3,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Tarif Eşleştirme Paneli</title>
+  <title>Lipodem Takip Paneli - Ayrı JSON Dosyaları v2.0</title>
   
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -403,6 +403,7 @@
         <button onclick="document.getElementById('importFile').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Veri Yükle</button>
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <button onclick="uploadToGitHub()" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 GitHub'a Kaydet</button>
+        <button onclick="tumHastalariAyriKaydet()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🚀 Yeni Sisteme Geç</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
@@ -422,17 +423,13 @@
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
-        <button onclick="mevcutVerileriYeniSistemeDonustur()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Yeni Sisteme Dönüştür</button>
-<button onclick="yeniSistemdenTumHastalarYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Yeni Sistemden Yükle</button>
-<button onclick="yeniSistemiTestEt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🧪 Yeni Sistemi Test Et</button>
-
-<button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
+        <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">  PDF Analiz</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">� PDF Analiz</button>
         <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -1067,9 +1064,208 @@
       }
     }
 
+    // === YENİ SİSTEM: HER HASTA İÇİN AYRI JSON DOSYASI ===
+    
+    // Dosya adı oluşturma fonksiyonu
+    function generateFileName(hasta) {
+      const temizIsim = hasta.isim
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+        
+      return `hasta_${hasta.id}_${temizIsim}.json`;
+    }
+    
+    // Patients klasörünü oluşturma
+    async function createPatientsFolder() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) return;
+      
+      try {
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        
+        // README.md dosyası ile klasör oluştur
+        const content = btoa(`# Hasta Dosyaları
+
+Bu klasörde her hastanın ayrı JSON dosyası bulunur.
+
+## Dosya Adlandırma
+- Formato: hasta_[ID]_[ISIM].json
+- Örnek: hasta_1_ayse_yilmaz.json
+
+## Dosya Yapısı
+Her hasta dosyası şu bilgileri içerir:
+- Hasta bilgileri (id, isim, not)
+- Hafta takip bilgileri
+- PDF dosyaları (base64)
+- Eşleştirme kartları
+- GPT mesajları
+
+## Arşivleme
+Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
+`);
+        
+        await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/README.md`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Patients klasörü oluşturuldu',
+            content: content
+          })
+        });
+        
+        console.log('✅ Patients klasörü oluşturuldu');
+        
+      } catch (error) {
+        console.warn('Patients klasörü oluşturma hatası:', error);
+      }
+    }
+    
+    // Tek hasta kaydetme fonksiyonu
+    async function hastayiAyriKaydet(hasta) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('GitHub token gerekli!');
+        return false;
+      }
+      
+      try {
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        
+        // Son güncelleme tarihini ekle
+        hasta.sonGuncelleme = new Date().toISOString();
+        hasta.githubKaydedildi = true;
+        
+        const fileName = generateFileName(hasta);
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
+        
+        // Önce dosyanın SHA'sını kontrol et
+        let sha = undefined;
+        try {
+          const checkResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${fileName}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (checkResponse.ok) {
+            const data = await checkResponse.json();
+            sha = data.sha;
+          }
+        } catch (e) {}
+        
+        // Dosyayı kaydet
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${fileName}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Hasta kaydı güncellendi: ${hasta.isim}`,
+            content: content,
+            sha: sha
+          })
+        });
+        
+        if (response.ok) {
+          console.log(`✅ ${hasta.isim} ayrı dosya olarak kaydedildi`);
+          return true;
+        } else {
+          throw new Error(`GitHub API hatası: ${response.status}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ ${hasta.isim} kaydetme hatası:`, error);
+        return false;
+      }
+    }
+    
+    // Tüm hastaları ayrı dosyalar halinde kaydetme
+    async function tumHastalariAyriKaydet() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('GitHub token gerekli!');
+        return;
+      }
+      
+      if (!confirm('Tüm hastaları ayrı JSON dosyaları halinde kaydetmek istediğinize emin misiniz?\n\nBu yeni sisteme geçiş işlemidir.')) {
+        return;
+      }
+      
+      console.log('🚀 Yeni sistem başlatılıyor: Her hasta için ayrı JSON dosyası...');
+      
+      // Önce patients klasörünü oluştur
+      await createPatientsFolder();
+      
+      let basarili = 0;
+      let hatali = 0;
+      
+      const durum = document.getElementById('githubDurumu');
+      if (durum) durum.innerHTML = '💾 Yeni sisteme geçiliyor...';
+      
+      for (const hasta of hastalar) {
+        try {
+          const sonuc = await hastayiAyriKaydet(hasta);
+          if (sonuc) {
+            basarili++;
+          } else {
+            hatali++;
+          }
+          
+          // Rate limiting için bekleme
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // İlerleme göster
+          if (durum) {
+            durum.innerHTML = `💾 İşleniyor: ${basarili + hatali}/${hastalar.length} hasta`;
+          }
+          
+        } catch (error) {
+          console.error(`${hasta.isim} kaydedilemedi:`, error);
+          hatali++;
+        }
+      }
+      
+      if (durum) {
+        durum.innerHTML = `✅ Yeni sistem tamamlandı: ${basarili} başarılı, ${hatali} hatalı`;
+      }
+      
+      alert(`🎉 Yeni sisteme geçiş tamamlandı!\n\n✅ Başarılı: ${basarili}\n❌ Hatalı: ${hatali}\n\nArtık her hasta ayrı JSON dosyasında saklanıyor.`);
+      
+      console.log('🎯 Yeni sistem bilgileri:');
+      console.log('- Her hasta için ayrı JSON dosyası oluşturuldu');
+      console.log('- GitHub patients/ klasöründe saklaniyor');
+      console.log('- 13+ hafta olan hastalar listede en altta görünür');
+      console.log('- Manuel arşivleme sistemi aktif');
+    }
+
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
       if (!token) { alert('Lütfen önce GitHub API token girin!'); return; }
+      
+      // UYARI: Eski sistemi kullan VEYA yeni sisteme geç seçeneği sun
+      const secim = confirm(
+        '🔄 SİSTEM GEÇİŞİ\n\n' +
+        '✅ EVET: Yeni sisteme geç (Her hasta ayrı JSON dosyası)\n' +
+        '❌ HAYIR: Eski sistemi kullan (Tek büyük JSON dosyası)\n\n' +
+        'Yeni sisteme geçmek istiyorsanız EVET\'i seçin.'
+      );
+      
+      if (secim) {
+        // Yeni sisteme geç
+        await tumHastalariAyriKaydet();
+        return;
+      }
+      
+      // Eski sistem devam et
+      console.log('📝 Eski sistem kullanılıyor...');
+      
       const owner = 'mustafasacar35'; // GitHub kullanıcı adın
       const repo = 'lipodem-takip-paneli'; // Repo adı
       const path = 'data/hasta_kayitlari.json'; // Dosya yolu (repo içinde data/ klasörü olmalı)
@@ -1127,7 +1323,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: 'Hasta kayıtları güncellendi',
+          message: 'Hasta kayıtları güncellendi (eski sistem)',
           content,
           branch,
           sha
@@ -1136,7 +1332,7 @@
       if (res.ok) {
         // Cache timestamp'ini güncelle
         localStorage.setItem('lastGithubUpdate', Date.now().toString());
-        alert('✅ GitHub\'a başarıyla kaydedildi!');
+        alert('✅ GitHub\'a başarıyla kaydedildi! (Eski sistem)');
         console.log('✅ GitHub upload başarılı');
       } else {
         const errorText = await res.text();
@@ -3078,17 +3274,20 @@
       // Hasta sayılarını güncelle
       guncelleHastaSayilari();
       
-      // Hasta listesini en son PDF haftasına göre sırala, sonra alfabetik
+      // YENİ SİSTEM: 13+ hafta olanları en alta sırala, sonra alfabetik
       filtrelenenHastalar.sort((a, b) => {
         const aEnSonPdfHafta = getEnSonPdfHafta(a);
         const bEnSonPdfHafta = getEnSonPdfHafta(b);
         
-        // Önce PDF haftasına göre sırala (küçükten büyüğe)
-        if (aEnSonPdfHafta !== bEnSonPdfHafta) {
-          return aEnSonPdfHafta - bEnSonPdfHafta;
-        }
+        // 13+ hafta kontrolü
+        const a13Plus = aEnSonPdfHafta >= 13;
+        const b13Plus = bEnSonPdfHafta >= 13;
         
-        // Aynı hafta ise alfabetik sırala
+        // Eğer biri 13+, diğeri değilse, 13+ olanı en alta gönder
+        if (a13Plus && !b13Plus) return 1;
+        if (!a13Plus && b13Plus) return -1;
+        
+        // İkisi de aynı kategorideyse (ikisi de 13+ veya ikisi de 13-), alfabetik sırala
         return a.isim.localeCompare(b.isim, 'tr');
       });
       
@@ -3098,9 +3297,10 @@
         const enSonPdfHafta = getEnSonPdfHafta(hasta);
         const haftaGosterim = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ' (PDF yok)';
         
-        // HTML içeriği oluştur (hafta bilgisini kırmızı yapmak için)
+        // HTML içeriği oluştur (13+ hafta için özel stil)
+        const haftaStili = enSonPdfHafta >= 13 ? 'color: #dc3545; font-weight: bold;' : 'color: red; font-weight: bold;';
         const haftaKismi = enSonPdfHafta > 0 
-          ? `<span style="color: red; font-weight: bold;"> (${enSonPdfHafta}. Hafta)</span>`
+          ? `<span style="${haftaStili}"> (${enSonPdfHafta}. Hafta)</span>`
           : `<span style="color: #999; font-style: italic;"> (PDF yok)</span>`;
         
         const arsivKismi = hasta.arsiv ? ' <span style="color: #666;">[Arşiv]</span>' : '';
@@ -6969,54 +7169,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     } else {
       sayfaBaslat();
     }
-// === HASTA BAZLI JSON SİSTEMİ ===
-async function mevcutVerileriYeniSistemeDonustur() {
-  const token = document.getElementById('githubToken').value.trim();
-  if (!token) { alert('GitHub token gerekli!'); return; }
-  try {
-    await hastaListesiKaydet();
-    for (const hasta of hastalar) {
-      const hastaData = {
-        id: hasta.id,
-        isim: hasta.isim,
-        not: hasta.not || '',
-        arsiv: hasta.arsiv || false,
-        haftalar: hasta.haftalar || [],
-        sonGuncelleme: new Date().toISOString()
-      };
-      await hastaJsonKaydet(hasta.id, hastaData);
-    }
-    localStorage.setItem('yeni_sistem_aktif', 'true');
-    alert('✅ Tüm veriler yeni sisteme dönüştürüldü!');
-  } catch (error) {
-    alert('❌ Dönüştürme hatası: ' + error.message);
-  }
-}
 
-async function yeniSistemdenTumHastalarYukle() {
-  const hastaListesi = await hastaListesiYukle();
-  if (!hastaListesi) { alert('Yeni sistem aktif değil!'); return; }
-  const yeniHastalar = [];
-  for (const hasta of hastaListesi) {
-    const detay = await hastaJsonYukle(hasta.id);
-    yeniHastalar.push(detay || hasta);
-  }
-  if (yeniHastalar.length > 0) {
-    hastalar = yeniHastalar;
-    localStorage.setItem('yeni_sistem_aktif', 'true');
-    saveToStorage();
-    renderHastalar();
-    alert('✅ Yeni sistemden ' + yeniHastalar.length + ' hasta yüklendi!');
-  }
-}
-
-async function yeniSistemiTestEt() {
-  const token = document.getElementById('githubToken').value.trim();
-  if (!token) { alert('GitHub token gerekli!'); return; }
-  const hastaListesi = await hastaListesiYukle();
-  if (hastaListesi) alert('✅ Hasta listesi yüklendi: ' + hastaListesi.length);
-  else alert('❌ Hasta listesi bulunamadı!');
-}
   </script>
 </body>
 </html>
