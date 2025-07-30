@@ -1139,12 +1139,24 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
+        const branch = 'main';
         
         // Son güncelleme tarihini ekle
         hasta.sonGuncelleme = new Date().toISOString();
         hasta.githubKaydedildi = true;
         
         const fileName = generateFileName(hasta);
+        
+        // Hasta verilerini kaydetmeden önce hafta verilerinde GitHub linklerini güncelle
+        if (hasta.haftalar && hasta.haftalar.length > 0) {
+          hasta.haftalar.forEach(hafta => {
+            if (hafta.pdf) { // PDF varsa link oluştur
+              hafta.githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/patients/${fileName}`;
+              hafta.githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/patients/${fileName}`;
+            }
+          });
+        }
+        
         const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
         
         // Önce dosyanın SHA'sını kontrol et
@@ -3671,6 +3683,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         aciklama: '',
         pdf: null,
         pdfName: null,  // PDF dosya adı
+        pdfOrijinalIsim: null,  // PDF'nin orijinal dosya adı
+        githubLink: null,  // GitHub'daki JSON dosya linki
+        githubRawLink: null,  // GitHub'daki raw indirme linki
         kayitTarihi: null, // PDF yükleme tarihi
         tarifKartlar: [],
         tarifler: [],
@@ -3749,6 +3764,39 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // PDF dosya adı yoksa ekle
         if (hafta.pdfName === undefined) {
           hafta.pdfName = null;
+          dataUpdated = true;
+        }
+        
+        // PDF orijinal isim yoksa ekle
+        if (hafta.pdfOrijinalIsim === undefined) {
+          hafta.pdfOrijinalIsim = hafta.pdfName; // Mevcut pdfName'i kopyala
+          dataUpdated = true;
+        }
+        
+        // GitHub linkleri yoksa ekle - PDF varsa oluştur
+        if (hafta.githubLink === undefined) {
+          if (hafta.pdf && seciliHasta) {
+            const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
+            const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
+            const branch = localStorage.getItem('githubBranch') || 'main';
+            const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+            hafta.githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
+          } else {
+            hafta.githubLink = null;
+          }
+          dataUpdated = true;
+        }
+        
+        if (hafta.githubRawLink === undefined) {
+          if (hafta.pdf && seciliHasta) {
+            const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
+            const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
+            const branch = localStorage.getItem('githubBranch') || 'main';
+            const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+            hafta.githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
+          } else {
+            hafta.githubRawLink = null;
+          }
           dataUpdated = true;
         }
         
@@ -3934,13 +3982,31 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                      style="width: 100%; margin-bottom: 10px; font-size: 12px;">
               ${hafta.pdf ? `
                 <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
-                  ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfName || 'hafta.pdf'}</strong>
+                  ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
+                  ${hafta.pdfOrijinalIsim && hafta.pdfOrijinalIsim !== hafta.pdfName ? `
+                    <div style="color: #6c757d; font-size: 11px; margin-top: 2px;">
+                      📁 Sistem: ${hafta.pdfName}
+                    </div>
+                  ` : ''}
                   <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
                     📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
                   </div>
                   <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
                     📅 Yüklenme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}
                   </div>
+                  ${hafta.githubLink ? `
+                    <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #c3e6cb;">
+                      <a href="${hafta.githubLink}" target="_blank" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                        <span style="font-size: 12px;">🔗</span> GitHub'da Görüntüle
+                      </a>
+                      ${hafta.githubRawLink ? `
+                        <span style="margin: 0 5px; color: #dee2e6;">|</span>
+                        <a href="javascript:void(0)" onclick="pdfIndir('${hafta.githubRawLink}', '${hafta.pdfOrijinalIsim || hafta.pdfName}')" style="color: #28a745; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                          <span style="font-size: 12px;">💾</span> İndir
+                        </a>
+                      ` : ''}
+                    </div>
+                  ` : ''}
                 </div>
               ` : '<div style="color: #666; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px;">📄 PDF henüz yüklenmedi</div>'}
             </div>
@@ -4260,6 +4326,37 @@ function duzenleHafta(i) {
   gosterHaftalar();
 }
 
+    // PDF'i GitHub'dan indirme fonksiyonu
+    async function pdfIndir(githubRawLink, dosyaAdi) {
+      try {
+        console.log('📥 PDF indiriliyor:', dosyaAdi);
+        
+        const response = await fetch(githubRawLink);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = dosyaAdi;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('✅ PDF başarıyla indirildi:', dosyaAdi);
+        
+      } catch (error) {
+        console.error('❌ PDF indirme hatası:', error);
+        alert(`PDF indirilemedi: ${error.message}`);
+      }
+    }
+
     function pdfYukleHafta(i, input) {
       const file = input.files[0];
       if (!file) return;
@@ -4269,6 +4366,16 @@ function duzenleHafta(i) {
       haftalar[i].pdfOrijinalIsim = file.name; // Sadece orijinal dosya ismi
       haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
       haftalar[i].kayitTarihi = new Date().toISOString();
+      
+      // GitHub link bilgisini oluştur
+      const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
+      const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
+      const branch = localStorage.getItem('githubBranch') || 'main';
+      if (seciliHasta) {
+        const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+        haftalar[i].githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
+        haftalar[i].githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
+      }
 
       // Seçili hasta objesini de güncelle (referans sorunu olabilir)
       if (seciliHasta && seciliHasta.haftalar) {
@@ -4276,8 +4383,17 @@ function duzenleHafta(i) {
         const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === haftaNo);
         if (seciliHaftaIndex !== -1) {
           seciliHasta.haftalar[seciliHaftaIndex].pdfFile = file;
+          seciliHasta.haftalar[seciliHaftaIndex].pdfOrijinalIsim = file.name;
           seciliHasta.haftalar[seciliHaftaIndex].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
           seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
+          
+          // GitHub link bilgisini de güncelle
+          const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
+          const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
+          const branch = localStorage.getItem('githubBranch') || 'main';
+          const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+          seciliHasta.haftalar[seciliHaftaIndex].githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
+          seciliHasta.haftalar[seciliHaftaIndex].githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
         }
       }
 
