@@ -404,6 +404,7 @@
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
         <button onclick="yeniSistemHastaSayisiniKontrolEt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Hasta Sayısı Kontrol</button>
+        <button onclick="yeniSistemiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 Yeni Sistemi Temizle</button>
         <button onclick="if(seciliHasta) { hastayiAyriKaydet(seciliHasta); } else { alert('Lütfen önce bir hasta seçin!'); }" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
         <button onclick="tumHastalariYeniSistemeAktar()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6b35; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">🚀 TÜM HASTALARI AKTAR</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Hasta Listesini Yenile</button>
@@ -1347,30 +1348,52 @@
     async function hastaListesineEkle(hasta) {
       const mevcutListe = await hastaListesiYukle();
       
+      // Hasta objesi veya string kontrolü
+      let hastaIsim, hastaId, hastaNot, hastaArsiv;
+      
+      if (typeof hasta === 'string') {
+        // String olarak geçirildiyse (eski kullanım)
+        hastaIsim = hasta;
+        hastaId = generatePatientId(hastaIsim);
+        hastaNot = '';
+        hastaArsiv = false;
+      } else {
+        // Obje olarak geçirildiyse
+        hastaIsim = hasta.isim || hasta.ad || hasta.name;
+        hastaId = hasta.id || generatePatientId(hastaIsim);
+        hastaNot = hasta.not || hasta.notes || '';
+        hastaArsiv = hasta.arsiv || hasta.archived || false;
+      }
+      
+      if (!hastaIsim) {
+        console.error('❌ Hasta ismi bulunamadı:', hasta);
+        return false;
+      }
+      
       // Hasta zaten var mı kontrol et
-      const mevcutIndex = mevcutListe.findIndex(h => h.id === hasta.id);
+      const mevcutIndex = mevcutListe.findIndex(h => h.id === hastaId || h.isim === hastaIsim);
       
       if (mevcutIndex !== -1) {
         // Mevcut hastayı güncelle
         mevcutListe[mevcutIndex] = {
-          id: hasta.id,
-          isim: hasta.isim,
-          not: hasta.not || '',
-          arsiv: hasta.arsiv || false,
+          id: hastaId,
+          isim: hastaIsim,
+          not: hastaNot,
+          arsiv: hastaArsiv,
           sonGuncelleme: new Date().toISOString()
         };
-        console.log('📝 Mevcut hasta güncellendi:', hasta.isim);
+        console.log('📝 Mevcut hasta güncellendi:', hastaIsim);
       } else {
         // Yeni hasta ekle
         mevcutListe.push({
-          id: hasta.id,
-          isim: hasta.isim,
-          not: hasta.not || '',
-          arsiv: hasta.arsiv || false,
+          id: hastaId,
+          isim: hastaIsim,
+          not: hastaNot,
+          arsiv: hastaArsiv,
           olusturma: new Date().toISOString(),
           sonGuncelleme: new Date().toISOString()
         });
-        console.log('➕ Yeni hasta eklendi:', hasta.isim);
+        console.log('➕ Yeni hasta eklendi:', hastaIsim);
       }
       
       // Listeyi sırala (arsiv olmayanlar önce, sonra alfabetik)
@@ -1492,6 +1515,18 @@
       return `hasta_${hastaId}_${temizIsim}.json`;
     }
     
+    function generatePatientId(isim) {
+      if (!isim) return 'hasta_gecersiz';
+      
+      return isim
+        .toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+    }
+    
     // === BULK MİGRATION: TÜM ESKİ HASTALARI YENİ SİSTEME AKTAR ===
     
     async function tumHastalariYeniSistemeAktar() {
@@ -1501,15 +1536,17 @@
         return;
       }
       
+      // Eski sistem verilerini kullan
+      const eskiHastalar = hastaVerileri || [];
       console.log('🚀 TÜM HASTA MİGRATION BAŞLATIYOR...');
-      console.log('📊 Mevcut eski sistem hastaları:', hastalar.length);
+      console.log('📊 Mevcut eski sistem hastaları:', eskiHastalar.length);
       
-      if (hastalar.length === 0) {
+      if (eskiHastalar.length === 0) {
         alert('⚠️ Eski sistemde hasta bulunamadı!');
         return;
       }
       
-      const onay = confirm(`🔄 TÜM HASTA MİGRATION\n\n${hastalar.length} hasta eski sistemden yeni sisteme aktarılacak.\n\nBu işlem biraz zaman alabilir.\n\nDevam etmek istediğinize emin misiniz?`);
+      const onay = confirm(`🔄 TÜM HASTA MİGRATION\n\n${eskiHastalar.length} hasta eski sistemden yeni sisteme aktarılacak.\n\nBu işlem biraz zaman alabilir.\n\nDevam etmek istediğinize emin misiniz?`);
       if (!onay) return;
       
       let basarili = 0;
@@ -1525,46 +1562,57 @@
       const progressElement = document.getElementById('migrationProgress');
       
       try {
-        for (let i = 0; i < hastalar.length; i++) {
-          const hasta = hastalar[i];
-          progressElement.innerHTML = `📤 ${i + 1}/${hastalar.length}: ${hasta.isim} kaydediliyor...`;
+        for (let i = 0; i < eskiHastalar.length; i++) {
+          const hasta = eskiHastalar[i];
+          
+          // Eski sistem 'ad' kullanıyor, yeni sistem 'isim' bekliyor - dönüşüm yap
+          const yeniHasta = {
+            ...hasta,
+            isim: hasta.ad || hasta.isim, // Ad varsa kullan, yoksa isim
+            ad: hasta.ad || hasta.isim    // Her ikisini de tut
+          };
+          
+          progressElement.innerHTML = `📤 ${i + 1}/${eskiHastalar.length}: ${yeniHasta.isim} kaydediliyor...`;
           
           try {
             // Türkçe karakter düzeltmesi
-            hasta.isim = turkceKarakterDuzelt(hasta.isim);
-            if (hasta.not) hasta.not = turkceKarakterDuzelt(hasta.not);
+            yeniHasta.isim = turkceKarakterDuzelt(yeniHasta.isim);
+            yeniHasta.ad = turkceKarakterDuzelt(yeniHasta.ad);
+            if (yeniHasta.not) yeniHasta.not = turkceKarakterDuzelt(yeniHasta.not);
             
-            const sonuc = await hastayiAyriKaydet(hasta);
+            const sonuc = await hastayiAyriKaydet(yeniHasta);
             if (sonuc) {
               basarili++;
-              console.log(`✅ ${i + 1}/${hastalar.length}: ${hasta.isim} başarıyla kaydedildi`);
+              console.log(`✅ ${i + 1}/${eskiHastalar.length}: ${yeniHasta.isim} başarıyla kaydedildi`);
             } else {
               hatali++;
-              hataliHastalar.push(hasta.isim);
-              console.error(`❌ ${i + 1}/${hastalar.length}: ${hasta.isim} kaydedilemedi`);
+              hataliHastalar.push(yeniHasta.isim);
+              console.error(`❌ ${i + 1}/${eskiHastalar.length}: ${yeniHasta.isim} kaydedilemedi`);
             }
           } catch (error) {
             hatali++;
-            hataliHastalar.push(hasta.isim);
-            console.error(`❌ ${i + 1}/${hastalar.length}: ${hasta.isim} hata:`, error);
+            hataliHastalar.push(yeniHasta.isim);
+            console.error(`❌ ${i + 1}/${eskiHastalar.length}: ${yeniHasta.isim} hata:`, error);
           }
           
-          // Her 5 hastada bir kısa ara (rate limiting için)
-          if (i % 5 === 0 && i > 0) {
-            progressElement.innerHTML = `⏳ Kısa ara... (${i}/${hastalar.length})`;
-            await new Promise(resolve => setTimeout(resolve, 2000));
+          // Her 3 hastada bir kısa ara (rate limiting için - daha uzun)
+          if (i % 3 === 0 && i > 0) {
+            progressElement.innerHTML = `⏳ Rate limiting... (${i}/${eskiHastalar.length})`;
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
         
-        progressElement.innerHTML = '✅ Migration tamamlandı!';
+        progressElement.innerHTML = '✅ Migration tamamlandı! Son kontrol yapılıyor...';
+        
+        // Son kontrol - hasta listesini yeniden yükle
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        await hastaListesiYukle();
+        await renderHastalarYeniSistem();
         
         const rapor = `🎉 MIGRATION TAMAMLANDI!\n\n✅ Başarılı: ${basarili} hasta\n❌ Hatalı: ${hatali} hasta\n\n📁 Yeni konumlar:\n- patients/hastalar_listesi.json\n- patients/hasta_[ID]_[isim].json\n\n${hatali > 0 ? '❌ Hatalı hastalar:\n' + hataliHastalar.join('\n') : ''}`;
         
         console.log(rapor);
         alert(rapor);
-        
-        // Yeni sistemi yenile
-        await renderHastalarYeniSistem();
         
       } finally {
         setTimeout(() => {
@@ -1574,6 +1622,106 @@
     }
 
     // === YENİ SİSTEM HASTA SAYISI KONTROL ===
+    
+    async function yeniSistemiTemizle() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('❌ GitHub token gerekli!');
+        return;
+      }
+      
+      const onay = confirm('⚠️ YENİ SİSTEMİ TEMİZLE\n\nBu işlem yeni sistemdeki TÜM hasta verilerini silecek!\n- patients/ klasöründeki tüm hasta dosyaları\n- hastalar_listesi.json dosyası\n\nBu işlem GERİ ALINMAZ!\n\nEmin misiniz?');
+      if (!onay) return;
+      
+      const ikincOnay = confirm('🚨 SON UYARI!\n\nYeni sistemdeki TÜM veriler silinecek!\nEski sistem verileri (hasta_kayitlari.json) korunacak.\n\nGerçekten devam etmek istiyor musunuz?');
+      if (!ikincOnay) return;
+      
+      try {
+        console.log('🧹 Yeni sistem temizleniyor...');
+        
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        
+        // Önce hasta listesi dosyasını sil
+        try {
+          await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/hastalar_listesi.json`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'Yeni sistem temizlendi: hasta listesi silindi',
+              sha: await getFileSha(owner, repo, 'patients/hastalar_listesi.json', token)
+            })
+          });
+          console.log('✅ Hasta listesi silindi');
+        } catch (e) {
+          console.log('ℹ️ Hasta listesi zaten yoktu veya silinemedi');
+        }
+        
+        // patients/ klasörünü oku ve tüm hasta dosyalarını sil
+        try {
+          const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          
+          if (response.ok) {
+            const files = await response.json();
+            let silenenDosya = 0;
+            
+            for (const file of files) {
+              if (file.name.startsWith('hasta_') && file.name.endsWith('.json')) {
+                try {
+                  await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${file.name}`, {
+                    method: 'DELETE',
+                    headers: {
+                      'Authorization': `token ${token}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      message: `Yeni sistem temizlendi: ${file.name} silindi`,
+                      sha: file.sha
+                    })
+                  });
+                  silenenDosya++;
+                  console.log(`✅ ${file.name} silindi`);
+                } catch (e) {
+                  console.error(`❌ ${file.name} silinemedi:`, e);
+                }
+              }
+            }
+            
+            console.log(`✅ ${silenenDosya} hasta dosyası silindi`);
+          }
+        } catch (e) {
+          console.log('ℹ️ patients/ klasörü bulunamadı veya okunamadı');
+        }
+        
+        // Yeni sistem listesini temizle
+        await renderHastalarYeniSistem();
+        
+        alert('✅ Yeni sistem tamamen temizlendi!\n\nArtık tüm hastaları yeniden migrate edebilirsiniz.');
+        
+      } catch (error) {
+        console.error('❌ Temizlik hatası:', error);
+        alert('❌ Temizlik sırasında hata oluştu: ' + error.message);
+      }
+    }
+    
+    // Dosya SHA'sını almak için yardımcı fonksiyon
+    async function getFileSha(owner, repo, path, token) {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          return data.sha;
+        }
+      } catch (e) {}
+      return null;
+    }
     
     async function yeniSistemHastaSayisiniKontrolEt() {
       const token = document.getElementById('githubToken').value.trim();
