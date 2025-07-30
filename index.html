@@ -3991,12 +3991,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const li = document.createElement('li');
           li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
           
-          li.innerHTML = `
-            <div style="font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;">
-              ${hasta.arsiv ? '📦 ' : ''}${hasta.isim}
-            </div>
-            ${hasta.not ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${hasta.not}</div>` : ''}
-          `;
+          // İsim div'ini ayrı oluştur
+          const isimDiv = document.createElement('div');
+          isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;`;
+          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.isim}`; // textContent kullan
+          
+          li.appendChild(isimDiv);
+          
+          // Not varsa ekle
+          if (hasta.not) {
+            const notDiv = document.createElement('div');
+            notDiv.style.cssText = 'font-size: 11px; color: #666; margin-top: 2px;';
+            notDiv.textContent = hasta.not; // textContent kullan
+            li.appendChild(notDiv);
+          }
           
           li.onclick = () => hastaSecYeniSistem(hasta);
           li.dataset.hastaId = hasta.id;
@@ -4133,33 +4141,44 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       filtrelenenHastalar.forEach((hasta, index) => {
         const li = document.createElement('li');
         const enSonPdfHafta = getEnSonPdfHafta(hasta);
-        const haftaGosterim = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ' (PDF yok)';
-        
-        // HTML içeriği oluştur (13+ hafta için özel stil)
-        const haftaStili = enSonPdfHafta >= 13 ? 'color: #dc3545; font-weight: bold;' : 'color: red; font-weight: bold;';
-        const haftaKismi = enSonPdfHafta > 0 
-          ? `<span style="${haftaStili}"> (${enSonPdfHafta}. Hafta)</span>`
-          : `<span style="color: #999; font-style: italic;"> (PDF yok)</span>`;
-        
-        const arsivKismi = hasta.arsiv ? ' <span style="color: #666;">[Arşiv]</span>' : '';
         
         // Türkçe karakter düzeltme uygula
         const duzeltilenIsim = turkceKarakterDuzelt(hasta.isim);
         
-        li.innerHTML = `${index + 1}. ${duzeltilenIsim}${haftaKismi}${arsivKismi}`;
+        // Text içeriği oluştur
+        const hastaNumarasi = `${index + 1}. `;
+        const haftaText = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ` (PDF yok)`;
+        const arsivText = hasta.arsiv ? ' [Arşiv]' : '';
+        
+        // Text content oluştur - innerHTML yerine
+        li.textContent = `${hastaNumarasi}${duzeltilenIsim}${haftaText}${arsivText}`;
+        
+        // Stil özellikleri
         li.style.cursor = 'pointer';
         li.style.padding = '8px';
         li.style.borderBottom = '1px solid #eee';
-        li.dataset.hastaId = hasta.id; // ID'yi data attribute olarak ekle
+        li.dataset.hastaId = hasta.id;
+        
+        // Hafta renklendirmesi için ayrı span ekle
+        if (enSonPdfHafta >= 13) {
+          li.style.color = '#dc3545';
+          li.style.fontWeight = 'bold';
+        } else if (enSonPdfHafta > 0) {
+          li.style.color = 'red';
+          li.style.fontWeight = 'bold';
+        } else {
+          li.style.color = '#999';
+          li.style.fontStyle = 'italic';
+        }
         
         // Aktif hasta ise vurgula
         if (seciliHasta && seciliHasta.id === hasta.id) {
           li.style.backgroundColor = '#007bff';
           li.style.color = 'white';
           li.style.fontWeight = 'bold';
-        } else {
+        } else if (hasta.arsiv) {
           li.style.backgroundColor = '';
-          li.style.color = '';
+          li.style.color = '#666';
           li.style.fontWeight = '';
         }
         
