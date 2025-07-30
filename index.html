@@ -402,9 +402,8 @@
         <input type="file" id="importFile" style="display:none" accept="application/json" onchange="importData(event)">
         <button onclick="document.getElementById('importFile').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Veri Yükle</button>
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
-        <button onclick="uploadToGitHub()" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 GitHub'a Kaydet</button>
-        <button onclick="tumHastalariAyriKaydet()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🚀 Yeni Sisteme Geç</button>
-        <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">📥 GitHub'dan Yükle</button>
+        <button onclick="hastayiAyriKaydet(seciliHasta)" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
+        <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Hasta Listesini Yenile</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
       </div>
@@ -963,7 +962,7 @@
       console.log('- Eşleşme yasakları:', Object.keys(eslesmemeKurallari).length, 'adet');
     }
 
-    // GitHub'dan hasta verilerini yükle
+    // GitHub'dan hasta verilerini yükle (YENİ SİSTEM)
     async function loadHastaDataFromGitHub(sessiz = false) {
       const durumElement = document.getElementById('githubDurumu');
       const token = document.getElementById('githubToken').value.trim();
@@ -974,89 +973,36 @@
         return;
       }
       
-      const owner = 'mustafasacar35';
-      const repo = 'lipodem-takip-paneli';
-      const path = 'data/hasta_kayitlari.json';
-      
       try {
-        if (!sessiz) console.log('📥 GitHub\'dan hasta verileri yükleniyor...');
-        if (durumElement) durumElement.innerHTML = '🔄 GitHub\'dan hasta verileri yükleniyor...';
+        if (!sessiz) console.log('📥 GitHub\'dan hasta listesi yükleniyor (Yeni Sistem)...');
+        if (durumElement) durumElement.innerHTML = '🔄 GitHub\'dan hasta listesi yükleniyor...';
         
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-          headers: { Authorization: `token ${token}` }
-        });
+        // Hasta listesini yükle
+        await hastaListesiYukle();
         
-        if (response.ok) {
-          const data = await response.json();
-          const content = atob(data.content);
-          const hastaData = JSON.parse(content);
+        if (hastaListesi.length > 0) {
+          console.log('✅ GitHub\'dan hasta listesi yüklendi:', hastaListesi.length, 'hasta');
           
-          if (Array.isArray(hastaData) && hastaData.length > 0) {
-            console.log('✅ GitHub\'dan hasta verileri yüklendi:', hastaData.length, 'hasta');
-            
-            // Mevcut hasta verilerindeki tarifler alanını koru (GitHub'da olmayabilir)
-            const mevcutTarifler = {};
-            hastalar.forEach(hasta => {
-              if (hasta.haftalar) {
-                hasta.haftalar.forEach((hafta, haftaIndex) => {
-                  const key = `${hasta.id}_${haftaIndex}`;
-                  if (hafta.tarifler && hafta.tarifler.length > 0) {
-                    mevcutTarifler[key] = hafta.tarifler;
-                  }
-                });
-              }
-            });
-            
-            // GitHub'dan gelen hasta verilerini güncelle
-            hastalar = hastaData;
-            
-            // Tarifler alanını geri ekle (eğer GitHub'da yoksa)
-            hastalar.forEach(hasta => {
-              if (hasta.haftalar) {
-                hasta.haftalar.forEach((hafta, haftaIndex) => {
-                  const key = `${hasta.id}_${haftaIndex}`;
-                  if (!hafta.tarifler && mevcutTarifler[key]) {
-                    hafta.tarifler = mevcutTarifler[key];
-                    console.log('🔄 Tarifler alanı korundu:', hasta.isim, 'hafta:', haftaIndex + 1);
-                  }
-                  // Eksik alanları tamamla
-                  if (!hafta.tarifler) hafta.tarifler = [];
-                });
-              }
-            });
-            
-            // Hasta listesini otomatik sırala (isim sırası)
-            hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
-            
-            // LocalStorage'a kaydet
-            saveToStorage();
-            
-            // UI'ı güncelle
-            renderHastalar();
-            
-            // Hafta istatistikleri
-            const hastaHaftaBilgi = hastalar.map(h => ({
-              isim: h.isim,
-              haftaSayisi: h.haftalar ? h.haftalar.length : 0,
-              kartSayisi: h.haftalar ? h.haftalar.reduce((total, hafta) => total + (hafta.tarifKartlar ? hafta.tarifKartlar.length : 0), 0) : 0
-            }));
-            
-            console.log('📊 GitHub\'dan yüklenen hasta hafta bilgileri:', hastaHaftaBilgi);
-            
-            const toplamHafta = hastaHaftaBilgi.reduce((sum, h) => sum + h.haftaSayisi, 0);
-            const toplamKart = hastaHaftaBilgi.reduce((sum, h) => sum + h.kartSayisi, 0);
-            
-            if (durumElement) {
-              durumElement.innerHTML = `✅ GitHub'dan yüklendi (${hastalar.length} hasta, ${toplamHafta} hafta, ${toplamKart} kart)`;
-            }
-            
-            if (!sessiz) {
-              alert(`GitHub'dan hasta verileri yüklendi!\n${hastalar.length} hasta, ${toplamHafta} hafta, ${toplamKart} tarif kartı`);
-            }
+          // Hastalar listesini yeni sistemden render et
+          renderHastalarYeniSistem();
+          
+          if (durumElement) {
+            durumElement.innerHTML = `✅ GitHub'dan yüklendi (${hastaListesi.length} hasta - Yeni Sistem)`;
+          }
+          
+          if (!sessiz) {
+            alert(`GitHub'dan hasta listesi yüklendi! (Yeni Sistem)\n${hastaListesi.length} hasta`);
           }
         } else {
-          if (!sessiz) console.log('ℹ️ GitHub\'da hasta_kayitlari.json bulunamadı');
-          if (durumElement) durumElement.innerHTML = '⚠️ GitHub\'da hasta_kayitlari.json bulunamadı';
+          console.log('⚠️ Hasta listesi boş, eski sistemden migration gerekebilir');
+          if (durumElement) durumElement.innerHTML = '⚠️ Hasta listesi boş - Migration gerekebilir';
+          
+          if (!sessiz) {
+            const migrationYap = confirm('📋 Hasta listesi boş!\n\nEski sistema ait veriler varsa migration yapılsın mı?\n\n"Tamam" = Migration yap\n"İptal" = Boş liste ile devam et');
+            if (migrationYap) {
+              await eskiSistemdenMigrasyon();
+            }
+          }
         }
       } catch (error) {
         if (!sessiz) console.warn('⚠️ GitHub\'dan hasta verileri yüklenemedi:', error.message);
