@@ -3976,17 +3976,44 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         console.log('👤 Yeni sistemde hasta seçiliyor:', hastaBilgi.isim);
         
-        // GitHub'dan hasta detaylarını yükle
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
-        const dosyaAdi = generateFileName({ id: hastaBilgi.id, isim: hastaBilgi.isim });
         
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${dosyaAdi}`);
+        // Dosya adı alternatifleri dene
+        const dosyaAdlari = [
+          generateFileName({ id: hastaBilgi.id, isim: hastaBilgi.isim }),
+          generateFileName({ id: hastaBilgi.id, isim: turkceKarakterDuzelt(hastaBilgi.isim) }),
+          generateFileName({ isim: hastaBilgi.isim }),
+          generateFileName({ isim: turkceKarakterDuzelt(hastaBilgi.isim) })
+        ];
         
-        if (response.ok) {
-          const data = await response.json();
-          const hastaDetay = JSON.parse(atob(data.content));
-          
+        // Çift entryleri kaldır
+        const benzersizDosyaAdlari = [...new Set(dosyaAdlari)];
+        
+        console.log('🔍 Denenen dosya adları:', benzersizDosyaAdlari);
+        
+        let hastaDetay = null;
+        let bulunanDosya = null;
+        
+        // Her dosya adını sırayla dene
+        for (const dosyaAdi of benzersizDosyaAdlari) {
+          try {
+            console.log(`🔍 Denenen dosya: ${dosyaAdi}`);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${dosyaAdi}`);
+            
+            if (response.ok) {
+              const data = await response.json();
+              hastaDetay = JSON.parse(atob(data.content));
+              bulunanDosya = dosyaAdi;
+              console.log(`✅ Dosya bulundu: ${dosyaAdi}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`❌ Dosya bulunamadı: ${dosyaAdi}`);
+          }
+        }
+        
+        if (hastaDetay) {
           // Global değişkeni güncelle
           seciliHasta = hastaDetay;
           
@@ -4003,7 +4030,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           gosterHaftalar();
           
         } else {
-          throw new Error(`Hasta detayları yüklenemedi: ${response.status}`);
+          throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
         }
         
       } catch (error) {
