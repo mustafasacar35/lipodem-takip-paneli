@@ -407,6 +407,7 @@
         <button onclick="yeniSistemiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 Yeni Sistemi Temizle</button>
         <button onclick="if(seciliHasta) { hastayiAyriKaydet(seciliHasta); } else { alert('Lütfen önce bir hasta seçin!'); }" id="githubSaveBtn" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">💾 Seçili Hastayı Kaydet</button>
         <button onclick="tumHastalariYeniSistemeAktar()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6b35; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">🚀 TÜM HASTALARI AKTAR</button>
+        <button onclick="tumJSONDosyalariniOnar()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">🔧 BOZUK KARAKTERLERİ ONAR</button>
         <button onclick="loadHastaDataFromGitHub(false)" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Hasta Listesini Yenile</button>
         <button onclick="tumCacheyiTemizle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Cache Temizle</button>
         <button onclick="githubdanYenileVeYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Fresh Yükle</button>
@@ -1527,7 +1528,214 @@
         .replace(/^_|_$/g, '');
     }
     
-    // === BULK MİGRATION: TÜM ESKİ HASTALARI YENİ SİSTEME AKTAR ===
+    // === KAPSAMLI VERİ ONARIM ARACI ===
+    
+    async function tumJSONDosyalariniOnar() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        alert('❌ GitHub token gerekli!');
+        return;
+      }
+      
+      const onay = confirm(`🔧 KAPSAMLI VERİ ONARIM\n\nTüm hasta JSON dosyalarındaki bozuk karakterler temizlenecek.\n\nBu işlem:\n- Tüm hasta dosyalarını yükleyecek\n- Bozuk karakterleri düzeltecek\n- Düzeltilmiş dosyaları GitHub'a geri kaydedecek\n\nDevam etmek istediğinize emin misiniz?`);
+      if (!onay) return;
+      
+      // Progress div oluştur
+      const progressDiv = document.createElement('div');
+      progressDiv.style.cssText = 'position:fixed; top:20px; right:20px; background:white; border:3px solid #28a745; padding:15px; border-radius:10px; z-index:10000; min-width:400px; box-shadow:0 4px 8px rgba(0,0,0,0.3);';
+      progressDiv.innerHTML = '<h4>🔧 Veri Onarım İşlemi</h4><div id="onarimProgress">Başlatılıyor...</div><div id="onarimLog" style="max-height:200px; overflow-y:auto; font-family:monospace; font-size:11px; margin-top:10px; background:#f8f9fa; padding:5px;"></div>';
+      document.body.appendChild(progressDiv);
+      
+      const progressElement = document.getElementById('onarimProgress');
+      const logElement = document.getElementById('onarimLog');
+      
+      function logMesaj(mesaj) {
+        logElement.innerHTML += mesaj + '<br>';
+        logElement.scrollTop = logElement.scrollHeight;
+        console.log(mesaj);
+      }
+      
+      try {
+        // 1. Hasta listesini yükle
+        logMesaj('📋 Hasta listesi yükleniyor...');
+        progressElement.innerHTML = '📋 Hasta listesi kontrol ediliyor...';
+        
+        const hastaListesi = await hastaListesiYukle();
+        logMesaj(`✅ ${hastaListesi.length} hasta dosyası bulundu`);
+        
+        let onarilan = 0;
+        let hatali = 0;
+        let zatenTemiz = 0;
+        
+        // 2. Her hasta dosyasını kontrol et ve onar
+        for (let i = 0; i < hastaListesi.length; i++) {
+          const hastaBilgi = hastaListesi[i];
+          progressElement.innerHTML = `🔧 ${i + 1}/${hastaListesi.length}: ${hastaBilgi.isim} kontrol ediliyor...`;
+          
+          try {
+            // Hasta detayını yükle
+            const owner = 'mustafasacar35';
+            const repo = 'lipodem-takip-paneli';
+            
+            // Dosya adı alternatifleri dene
+            const dosyaAdlari = [
+              generateFileName({ id: hastaBilgi.id, isim: hastaBilgi.isim }),
+              generateFileName({ id: hastaBilgi.id, isim: kapsamliKarakterTemizle(hastaBilgi.isim) }),
+              generateFileName({ isim: hastaBilgi.isim }),
+              generateFileName({ isim: kapsamliKarakterTemizle(hastaBilgi.isim) })
+            ];
+            
+            const benzersizDosyaAdlari = [...new Set(dosyaAdlari)];
+            let hastaDetay = null;
+            let bulunanDosya = null;
+            let mevcut_sha = null;
+            
+            // Dosyayı bul
+            for (const dosyaAdi of benzersizDosyaAdlari) {
+              try {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${dosyaAdi}`, {
+                  headers: { 'Authorization': `token ${token}` }
+                });
+                
+                if (response.ok) {
+                  const data = await response.json();
+                  hastaDetay = JSON.parse(atob(data.content));
+                  bulunanDosya = dosyaAdi;
+                  mevcut_sha = data.sha;
+                  break;
+                }
+              } catch (e) { /* dosya bulunamadı */ }
+            }
+            
+            if (!hastaDetay) {
+              logMesaj(`❌ ${hastaBilgi.isim} - Dosya bulunamadı`);
+              hatali++;
+              continue;
+            }
+            
+            // Karakterleri kontrol et ve temizle
+            let degisiklikVar = false;
+            const eskiIsim = hastaDetay.isim;
+            const yeniIsim = kapsamliKarakterTemizle(hastaDetay.isim);
+            
+            if (eskiIsim !== yeniIsim) {
+              hastaDetay.isim = yeniIsim;
+              degisiklikVar = true;
+              logMesaj(`🔧 İsim düzeltildi: "${eskiIsim}" → "${yeniIsim}"`);
+            }
+            
+            // Not alanını da kontrol et
+            if (hastaDetay.not) {
+              const eskiNot = hastaDetay.not;
+              const yeniNot = kapsamliKarakterTemizle(hastaDetay.not);
+              if (eskiNot !== yeniNot) {
+                hastaDetay.not = yeniNot;
+                degisiklikVar = true;
+                logMesaj(`📝 Not düzeltildi: "${eskiNot}" → "${yeniNot}"`);
+              }
+            }
+            
+            // Hafta verilerini kontrol et
+            if (hastaDetay.haftalar) {
+              hastaDetay.haftalar.forEach((hafta, haftaIndex) => {
+                if (hafta.aciklama) {
+                  const eskiAciklama = hafta.aciklama;
+                  const yeniAciklama = kapsamliKarakterTemizle(hafta.aciklama);
+                  if (eskiAciklama !== yeniAciklama) {
+                    hafta.aciklama = yeniAciklama;
+                    degisiklikVar = true;
+                  }
+                }
+                if (hafta.pdfName) {
+                  const eskiPdfName = hafta.pdfName;
+                  const yeniPdfName = kapsamliKarakterTemizle(hafta.pdfName);
+                  if (eskiPdfName !== yeniPdfName) {
+                    hafta.pdfName = yeniPdfName;
+                    degisiklikVar = true;
+                  }
+                }
+                if (hafta.gptMesaj) {
+                  const eskiGptMesaj = hafta.gptMesaj;
+                  const yeniGptMesaj = kapsamliKarakterTemizle(hafta.gptMesaj);
+                  if (eskiGptMesaj !== yeniGptMesaj) {
+                    hafta.gptMesaj = yeniGptMesaj;
+                    degisiklikVar = true;
+                  }
+                }
+              });
+            }
+            
+            if (degisiklikVar) {
+              // Dosyayı güncelle
+              hastaDetay.sonGuncelleme = new Date().toISOString();
+              
+              const guncelIcerik = btoa(unescape(encodeURIComponent(JSON.stringify(hastaDetay, null, 2))));
+              
+              const updateResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${bulunanDosya}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `token ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: `🔧 Karakter onarımı: ${yeniIsim}`,
+                  content: guncelIcerik,
+                  sha: mevcut_sha
+                })
+              });
+              
+              if (updateResponse.ok) {
+                onarilan++;
+                logMesaj(`✅ ${yeniIsim} - Başarıyla onarıldı`);
+              } else {
+                hatali++;
+                logMesaj(`❌ ${yeniIsim} - Güncelleme başarısız: ${updateResponse.status}`);
+              }
+            } else {
+              zatenTemiz++;
+              logMesaj(`✓ ${hastaDetay.isim} - Zaten temiz`);
+            }
+            
+            // Rate limiting
+            if (i % 5 === 0 && i > 0) {
+              logMesaj('⏳ Rate limiting...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+          } catch (error) {
+            hatali++;
+            logMesaj(`❌ ${hastaBilgi.isim} - Hata: ${error.message}`);
+          }
+        }
+        
+        // Sonuç raporu
+        progressElement.innerHTML = '✅ Onarım tamamlandı!';
+        logMesaj('');
+        logMesaj('📊 ONARIM RAPORU:');
+        logMesaj(`✅ Onarılan: ${onarilan} hasta`);
+        logMesaj(`✓ Zaten temiz: ${zatenTemiz} hasta`);
+        logMesaj(`❌ Başarısız: ${hatali} hasta`);
+        logMesaj(`📁 Toplam kontrol edilen: ${hastaListesi.length} hasta`);
+        
+        // Hasta listesini yenile
+        if (onarilan > 0) {
+          logMesaj('🔄 Hasta listesi yenileniyor...');
+          await renderHastalarYeniSistem();
+        }
+        
+        alert(`🎉 VERİ ONARIM TAMAMLANDI!\n\n✅ Onarılan: ${onarilan}\n✓ Zaten temiz: ${zatenTemiz}\n❌ Başarısız: ${hatali}\n📁 Toplam: ${hastaListesi.length}\n\nSayfa yenilenebilir.`);
+        
+      } catch (error) {
+        console.error('❌ Onarım hatası:', error);
+        logMesaj(`❌ GENEL HATA: ${error.message}`);
+        alert('❌ Onarım işlemi başarısız: ' + error.message);
+      } finally {
+        // Progress penceresini 10 saniye sonra kapat
+        setTimeout(() => {
+          document.body.removeChild(progressDiv);
+        }, 10000);
+      }
+    }
     
     async function tumHastalariYeniSistemeAktar() {
       const token = document.getElementById('githubToken').value.trim();
@@ -3914,33 +4122,104 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // YENİ SİSTEM: Global hasta listesi
     let hastaListesi = [];
     
-    // Türkçe karakter düzeltmesi uygula (mevcut veriler için)
-    console.log('🔧 Mevcut veriler için Türkçe karakter düzeltmesi uygulanıyor...');
+    // KAPSAMLI BOZUK KARAKTER TEMİZLEME FONKSİYONU
+    function kapsamliKarakterTemizle(text) {
+      if (!text || typeof text !== 'string') return text;
+      
+      let temizMetin = text;
+      
+      // 1. ÖNCE TÜM BOZUK ÃÂÃÂ KALIPLARINI TEMİZLE
+      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
+      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
+      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
+      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂ/g, '');
+      temizMetin = temizMetin.replace(/ãâãâãâãâãâãâãâãâãâãâãâãâãâãâãâãâ/g, '');
+      temizMetin = temizMetin.replace(/ãâãâãâãâ/g, '');
+      temizMetin = temizMetin.replace(/ãâãâ/g, '');
+      temizMetin = temizMetin.replace(/ãâ/g, '');
+      temizMetin = temizMetin.replace(/Ã/g, '');
+      temizMetin = temizMetin.replace(/Â/g, '');
+      temizMetin = temizMetin.replace(/â/g, '');
+      
+      // 2. ÖZEL KARAKTER DÜZELTMELERİ
+      temizMetin = temizMetin.replace(/°/g, 'İ');
+      temizMetin = temizMetin.replace(/\*/g, 'Ş');
+      
+      // 3. BELİRLİ İSİM DÜZELTMELERİ (JSON'dan gelen örneklere göre)
+      const isimDuzeltmeleri = {
+        'efKE BAY': 'ŞEFİKE BAY',
+        'EF°KE BAY': 'ŞEFİKE BAY',
+        'EFKE BAY': 'ŞEFİKE BAY',
+        'enay UZAKGDER': 'PENAY UZAKGÖDER',
+        'zlem BRNCKALFA': 'ÖZLEM BİRİNCİ KALFA',
+        'zlem B°RNC° KALFA': 'ÖZLEM BİRİNCİ KALFA',
+        'AYÃE ULUDAG': 'AYŞE ULUDAĞ',
+        'AYÃE KOYUNCU': 'AYŞE KOYUNCU',
+        'BAHRYE YE°M DEMR': 'BAHRİYE YEŞİM DEMİR',
+        'BER°N KARADA': 'BERİN KARADAĞ',
+        'BETL GENÃ': 'BETÜL GENÇ',
+        'BETL TAdemR': 'BETÜL TAŞDEMİR',
+        'D°LEK DEerlR °AH°N': 'DİLEK DEĞERLİ ŞAHAN',
+        'DEFNE SER°NKEN': 'DEFNE SERİNKEN',
+        'EM°NE KAVALA': 'EMİNE KAVALA',
+        'ES°N KARAKU*': 'ESİN KARAKUŞ',
+        'F°SUN YANAL': 'FİSUN YANAL',
+        'FAD°ME AKAY': 'FADİME AKKAYA',
+        'FATMA KK KARAG°Z': 'FATMA KÖK KARAGÖZ',
+        'H°LYA KOAR': 'HÜLYAKOŞARr',
+        'HAF°ZE TOK': 'HAFİZE TOK',
+        'HANIM ACA': 'HANIM AĞCA',
+        'HAT°CE AYDIN': 'HATİCE AYDIN',
+        'HAT°CE KESER': 'HATİCE KESER',
+        'HAT°CE OKTA': 'HATİCE OKTAY',
+        'HUR°YE MERCOlu': 'HÜRİYE MERCİOĞLU',
+        'MERYEM KARADA NN': 'MERYEM KARADAĞ ANN',
+        'SEDA ENG°n': 'SEDA ENGİN',
+        'SEV°LAY CEYLAN': 'SEVİLAY CEYLAN',
+        'SEV°LAY COKUN': 'SEVİLAY ÇOŞKUN',
+        'SEVG° DOAN': 'SEVGİ DOĞAN',
+        'TUBA ATA': 'TUBA ATAY',
+        'TUBA GL': 'TUBA GÜL',
+        'V°LDAN APA': 'VİLDAN APA',
+        'ZEYNEP NUR ZKAYA': 'ZEYNEP NUR ÖZKAYA'
+      };
+      
+      // İsim düzeltmelerini uygula
+      for (const [bozuk, dogru] of Object.entries(isimDuzeltmeleri)) {
+        const regex = new RegExp(bozuk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        temizMetin = temizMetin.replace(regex, dogru);
+      }
+      
+      // 4. FAZLA BOŞLUKLARI TEMİZLE
+      temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
+      
+      return temizMetin;
+    }
+    
+    // ESKİ BOZUK FONKSİYON - KULLANILMIYOR ARTIK
+    function temizleTorupcuKarakterler(text) {
+      return kapsamliKarakterTemizle(text);
+    }
+    
+    // Mevcut hasta verilerindeki bozuk karakterleri temizle
+    console.log('🧹 Mevcut hasta verilerindeki bozuk karakterler temizleniyor...');
     hastalar.forEach(hasta => {
       if (hasta.isim) {
         const eskiIsim = hasta.isim;
-        hasta.isim = turkceKarakterDuzelt(hasta.isim);
+        hasta.isim = temizleTorupcuKarakterler(hasta.isim);
         if (eskiIsim !== hasta.isim) {
-          console.log(`✅ Mevcut hasta ismi düzeltildi: "${eskiIsim}" → "${hasta.isim}"`);
+          console.log(`✅ Bozuk karakter temizlendi: "${eskiIsim}" → "${hasta.isim}"`);
         }
       }
       if (hasta.not) {
-        hasta.not = turkceKarakterDuzelt(hasta.not);
-      }
-      // Hafta verilerinde de düzeltme
-      if (hasta.haftalar) {
-        hasta.haftalar.forEach(hafta => {
-          if (hafta.aciklama) hafta.aciklama = turkceKarakterDuzelt(hafta.aciklama);
-          if (hafta.pdfName) hafta.pdfName = turkceKarakterDuzelt(hafta.pdfName);
-          if (hafta.gptMesaj) hafta.gptMesaj = turkceKarakterDuzelt(hafta.gptMesaj);
-        });
+        hasta.not = temizleTorupcuKarakterler(hasta.not);
       }
     });
     
-    // Düzeltilmiş verileri kaydet
+    // Temizlenmiş verileri kaydet
     if (hastalar.length > 0) {
       saveToStorage();
-      console.log('💾 Düzeltilmiş veriler localStorage\'a kaydedildi');
+      console.log('💾 Temizlenmiş veriler localStorage\'a kaydedildi');
     }
     
     // Hasta listesini otomatik sırala (isim sırası)
@@ -4142,16 +4421,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const li = document.createElement('li');
         const enSonPdfHafta = getEnSonPdfHafta(hasta);
         
-        // Türkçe karakter düzeltme uygula
-        const duzeltilenIsim = turkceKarakterDuzelt(hasta.isim);
-        
-        // Text içeriği oluştur
+        // Text içeriği oluştur - Türkçe karakter düzeltmesi KALDIRILDI
         const hastaNumarasi = `${index + 1}. `;
         const haftaText = enSonPdfHafta > 0 ? ` (${enSonPdfHafta}. Hafta)` : ` (PDF yok)`;
         const arsivText = hasta.arsiv ? ' [Arşiv]' : '';
         
-        // Text content oluştur - innerHTML yerine
-        li.textContent = `${hastaNumarasi}${duzeltilenIsim}${haftaText}${arsivText}`;
+        // Text content oluştur - innerHTML yerine, RAW hasta.isim kullan
+        li.textContent = `${hastaNumarasi}${hasta.isim}${haftaText}${arsivText}`;
         
         // Stil özellikleri
         li.style.cursor = 'pointer';
