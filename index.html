@@ -1068,6 +1068,11 @@
     
     // Dosya adı oluşturma fonksiyonu
     function generateFileName(hasta) {
+      if (!hasta || !hasta.isim) {
+        console.error('❌ generateFileName: Geçersiz hasta objesi', hasta);
+        return 'hasta_gecersiz.json';
+      }
+      
       const temizIsim = hasta.isim
         .toLowerCase()
         .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
@@ -1076,7 +1081,10 @@
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '');
         
-      return `hasta_${hasta.id}_${temizIsim}.json`;
+      // ID yoksa isimden oluştur
+      const hastaId = hasta.id || temizIsim;
+      
+      return `hasta_${hastaId}_${temizIsim}.json`;
     }
     
     // Patients klasörünü oluşturma
@@ -3779,7 +3787,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
             const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
             const branch = localStorage.getItem('githubBranch') || 'main';
-            const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+            const dosyaAdi = generateFileName(seciliHasta);
             hafta.githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
           } else {
             hafta.githubLink = null;
@@ -3792,7 +3800,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
             const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
             const branch = localStorage.getItem('githubBranch') || 'main';
-            const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+            const dosyaAdi = generateFileName(seciliHasta);
             hafta.githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
           } else {
             hafta.githubRawLink = null;
@@ -4361,20 +4369,38 @@ function duzenleHafta(i) {
       const file = input.files[0];
       if (!file) return;
       console.log('🔍 PDF yükleniyor:', file.name);
+      console.log('🔍 Seçili hasta:', seciliHasta);
+      
       const haftalar = getHaftaListesi();
       haftalar[i].pdfFile = file; // Geçici olarak File objesi
       haftalar[i].pdfOrijinalIsim = file.name; // Sadece orijinal dosya ismi
       haftalar[i].pdfName = turkceKarakterDuzelt(file.name || 'hafta.pdf');
       haftalar[i].kayitTarihi = new Date().toISOString();
       
+      console.log('🔍 PDF verileri güncellendi:', {
+        pdfOrijinalIsim: haftalar[i].pdfOrijinalIsim,
+        pdfName: haftalar[i].pdfName,
+        kayitTarihi: haftalar[i].kayitTarihi
+      });
+      
       // GitHub link bilgisini oluştur
       const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
       const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
       const branch = localStorage.getItem('githubBranch') || 'main';
       if (seciliHasta) {
-        const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
-        haftalar[i].githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
-        haftalar[i].githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
+        try {
+          const dosyaAdi = generateFileName(seciliHasta);
+          haftalar[i].githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
+          haftalar[i].githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
+          console.log('✅ GitHub linkleri oluşturuldu:', {
+            githubLink: haftalar[i].githubLink,
+            githubRawLink: haftalar[i].githubRawLink
+          });
+        } catch (error) {
+          console.error('❌ GitHub linki oluşturma hatası:', error);
+        }
+      } else {
+        console.warn('⚠️ Seçili hasta yok, GitHub linkleri oluşturulamadı');
       }
 
       // Seçili hasta objesini de güncelle (referans sorunu olabilir)
@@ -4391,7 +4417,7 @@ function duzenleHafta(i) {
           const owner = localStorage.getItem('githubOwner') || 'mustafasacar35';
           const repo = localStorage.getItem('githubRepo') || 'lipodem-takip-paneli';
           const branch = localStorage.getItem('githubBranch') || 'main';
-          const dosyaAdi = generateFileName(seciliHasta.ad, seciliHasta.soyad, seciliHasta.tc);
+          const dosyaAdi = generateFileName(seciliHasta);
           seciliHasta.haftalar[seciliHaftaIndex].githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/data/${dosyaAdi}`;
           seciliHasta.haftalar[seciliHaftaIndex].githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/data/${dosyaAdi}`;
         }
