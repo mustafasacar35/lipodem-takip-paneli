@@ -1604,11 +1604,11 @@
         
         progressElement.innerHTML = '✅ Migration tamamlandı! Son kontrol yapılıyor...';
         
-        // Son kontrol - hasta listesini yeniden yükle ve DÜZELTİLMİŞ LİSTEYİ TOPLU KAYDET
+        // Son kontrol - SAYFALAMA SİSTEMİ İLE hasta listesini oluştur
         await new Promise(resolve => setTimeout(resolve, 3000));
         
-        // Tüm hasta verilerini topla ve listeyi tek seferde oluştur
-        console.log('📝 Hasta listesi toplu olarak güncelleniyor...');
+        // Tüm hasta verilerini topla
+        console.log('📝 Hasta listesi sayfalama sistemi ile güncelleniyor...');
         const tumHastaListesi = [];
         for (let i = 0; i < eskiHastalar.length; i++) {
           const hasta = eskiHastalar[i];
@@ -1638,8 +1638,28 @@
           return a.isim.localeCompare(b.isim, 'tr');
         });
         
-        // Tek seferde kaydet
-        await hastaListesiKaydet(tumHastaListesi);
+        // KÜÇÜK GRUPLARDA KAYDET - File size limitini aşmasın
+        console.log('💾 Hasta listesi parçalar halinde kaydediliyor...');
+        
+        // Önce boş liste ile başla
+        await hastaListesiKaydet([]);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 10'ar hasta gruplarında ekle
+        const grupBoyutu = 10;
+        for (let i = 0; i < tumHastaListesi.length; i += grupBoyutu) {
+          const grup = tumHastaListesi.slice(0, i + grupBoyutu); // 0'dan i+grupBoyutu'na kadar
+          
+          console.log(`📝 ${grup.length}/${tumHastaListesi.length} hasta kaydediliyor...`);
+          await hastaListesiKaydet(grup);
+          
+          // Rate limiting için bekle
+          if (i + grupBoyutu < tumHastaListesi.length) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+        }
+        
+        console.log(`✅ Toplam ${tumHastaListesi.length} hasta listesi kaydedildi`);
         await renderHastalarYeniSistem();
         
         const rapor = `🎉 MIGRATION TAMAMLANDI!\n\n✅ Başarılı: ${basarili} hasta\n❌ Hatalı: ${hatali} hasta\n\n📁 Yeni konumlar:\n- patients/hastalar_listesi.json\n- patients/hasta_[ID]_[isim].json\n\n${hatali > 0 ? '❌ Hatalı hastalar:\n' + hataliHastalar.join('\n') : ''}`;
