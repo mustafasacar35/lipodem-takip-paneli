@@ -422,7 +422,11 @@
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
-        <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
+        <button onclick="mevcutVerileriYeniSistemeDonustur()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">🔄 Yeni Sisteme Dönüştür</button>
+<button onclick="yeniSistemdenTumHastalarYukle()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">📥 Yeni Sistemden Yükle</button>
+<button onclick="yeniSistemiTestEt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🧪 Yeni Sistemi Test Et</button>
+
+<button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
         <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
@@ -6965,7 +6969,54 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     } else {
       sayfaBaslat();
     }
+// === HASTA BAZLI JSON SİSTEMİ ===
+async function mevcutVerileriYeniSistemeDonustur() {
+  const token = document.getElementById('githubToken').value.trim();
+  if (!token) { alert('GitHub token gerekli!'); return; }
+  try {
+    await hastaListesiKaydet();
+    for (const hasta of hastalar) {
+      const hastaData = {
+        id: hasta.id,
+        isim: hasta.isim,
+        not: hasta.not || '',
+        arsiv: hasta.arsiv || false,
+        haftalar: hasta.haftalar || [],
+        sonGuncelleme: new Date().toISOString()
+      };
+      await hastaJsonKaydet(hasta.id, hastaData);
+    }
+    localStorage.setItem('yeni_sistem_aktif', 'true');
+    alert('✅ Tüm veriler yeni sisteme dönüştürüldü!');
+  } catch (error) {
+    alert('❌ Dönüştürme hatası: ' + error.message);
+  }
+}
 
+async function yeniSistemdenTumHastalarYukle() {
+  const hastaListesi = await hastaListesiYukle();
+  if (!hastaListesi) { alert('Yeni sistem aktif değil!'); return; }
+  const yeniHastalar = [];
+  for (const hasta of hastaListesi) {
+    const detay = await hastaJsonYukle(hasta.id);
+    yeniHastalar.push(detay || hasta);
+  }
+  if (yeniHastalar.length > 0) {
+    hastalar = yeniHastalar;
+    localStorage.setItem('yeni_sistem_aktif', 'true');
+    saveToStorage();
+    renderHastalar();
+    alert('✅ Yeni sistemden ' + yeniHastalar.length + ' hasta yüklendi!');
+  }
+}
+
+async function yeniSistemiTestEt() {
+  const token = document.getElementById('githubToken').value.trim();
+  if (!token) { alert('GitHub token gerekli!'); return; }
+  const hastaListesi = await hastaListesiYukle();
+  if (hastaListesi) alert('✅ Hasta listesi yüklendi: ' + hastaListesi.length);
+  else alert('❌ Hasta listesi bulunamadı!');
+}
   </script>
 </body>
 </html>
