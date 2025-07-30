@@ -1536,8 +1536,8 @@
         return;
       }
       
-      // Eski sistem verilerini kullan
-      const eskiHastalar = hastaVerileri || [];
+      // Eski sistem verilerini kullan - GLOBAL DEĞIŞKEN
+      const eskiHastalar = hastalar || [];
       console.log('🚀 TÜM HASTA MİGRATION BAŞLATIYOR...');
       console.log('📊 Mevcut eski sistem hastaları:', eskiHastalar.length);
       
@@ -1565,11 +1565,11 @@
         for (let i = 0; i < eskiHastalar.length; i++) {
           const hasta = eskiHastalar[i];
           
-          // Eski sistem 'ad' kullanıyor, yeni sistem 'isim' bekliyor - dönüşüm yap
+          // Veri yapısını kontrol et - eski sistemde `isim` var
           const yeniHasta = {
             ...hasta,
-            isim: hasta.ad || hasta.isim, // Ad varsa kullan, yoksa isim
-            ad: hasta.ad || hasta.isim    // Her ikisini de tut
+            isim: hasta.isim || hasta.ad || hasta.name, // İsim varsa kullan
+            ad: hasta.isim || hasta.ad || hasta.name    // Yedek alan
           };
           
           progressElement.innerHTML = `📤 ${i + 1}/${eskiHastalar.length}: ${yeniHasta.isim} kaydediliyor...`;
