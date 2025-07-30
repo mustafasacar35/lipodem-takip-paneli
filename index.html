@@ -1073,7 +1073,20 @@
         
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
-          alert('Migration için GitHub token gerekli!');
+          const tokenGir = confirm('❌ GITHUB TOKEN GEREKLI!\n\nMigration çalışması için GitHub API token gerekli.\n\n"Tamam" basarsanız token giriş alanına yönlendirileceksiniz.\n\nCancel basarsanız migration iptal edilir.');
+          if (tokenGir) {
+            const tokenInput = document.getElementById('githubToken');
+            if (tokenInput) {
+              tokenInput.focus();
+              tokenInput.style.backgroundColor = '#fff3cd';
+              tokenInput.style.borderColor = '#ffc107';
+              setTimeout(() => {
+                tokenInput.style.backgroundColor = '';
+                tokenInput.style.borderColor = '';
+              }, 3000);
+            }
+            alert('💡 GitHub token girdikten sonra migration butonuna tekrar basın!');
+          }
           return;
         }
         
@@ -1201,12 +1214,29 @@
         const btn = document.createElement('button');
         btn.id = 'migrationBtn';
         btn.onclick = eskiSistemdenMigrasyon;
-        btn.style.cssText = 'width:100%; margin:10px 0; padding:10px; font-size:12px; background:#ff6b35; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);';
-        btn.innerHTML = '🔄 ESKİ SİSTEMDEN MİGRATION BAŞLAT';
+        
+        // Token durumunu kontrol et
+        const tokenVar = document.getElementById('githubToken')?.value?.trim();
+        const tokenDurumu = tokenVar ? '🟢' : '🔴';
+        const tokenMesaj = tokenVar ? 'Hazır' : 'Token Gerekli';
+        
+        btn.style.cssText = 'width:100%; margin:10px 0; padding:12px; font-size:13px; background:#ff6b35; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);';
+        btn.innerHTML = `🔄 ESKİ SİSTEMDEN MİGRATION<br><small>${tokenDurumu} ${tokenMesaj}</small>`;
         btn.title = 'Eski hasta_kayitlari.json dosyasındaki hastaları yeni sisteme aktarır';
         githubContainer.appendChild(btn);
         
         console.log('✅ Migration butonu eklendi');
+        
+        // Token değişikliklerini dinle
+        const tokenInput = document.getElementById('githubToken');
+        if (tokenInput) {
+          tokenInput.addEventListener('input', () => {
+            const yeniToken = tokenInput.value.trim();
+            const yeniDurum = yeniToken ? '🟢 Hazır' : '🔴 Token Gerekli';
+            btn.innerHTML = `🔄 ESKİ SİSTEMDEN MİGRATION<br><small>${yeniDurum}</small>`;
+          });
+        }
+        
       } else {
         console.log('⚠️ Migration butonu eklenemedi - container bulunamadı');
       }
