@@ -1604,9 +1604,42 @@
         
         progressElement.innerHTML = '✅ Migration tamamlandı! Son kontrol yapılıyor...';
         
-        // Son kontrol - hasta listesini yeniden yükle
+        // Son kontrol - hasta listesini yeniden yükle ve DÜZELTİLMİŞ LİSTEYİ TOPLU KAYDET
         await new Promise(resolve => setTimeout(resolve, 3000));
-        await hastaListesiYukle();
+        
+        // Tüm hasta verilerini topla ve listeyi tek seferde oluştur
+        console.log('📝 Hasta listesi toplu olarak güncelleniyor...');
+        const tumHastaListesi = [];
+        for (let i = 0; i < eskiHastalar.length; i++) {
+          const hasta = eskiHastalar[i];
+          const yeniHasta = {
+            ...hasta,
+            isim: hasta.isim || hasta.ad || hasta.name,
+            ad: hasta.isim || hasta.ad || hasta.name
+          };
+          
+          // Türkçe karakter düzeltmesi
+          yeniHasta.isim = turkceKarakterDuzelt(yeniHasta.isim);
+          yeniHasta.ad = turkceKarakterDuzelt(yeniHasta.ad);
+          
+          tumHastaListesi.push({
+            id: yeniHasta.id || generatePatientId(yeniHasta.isim),
+            isim: yeniHasta.isim,
+            not: yeniHasta.not || '',
+            arsiv: yeniHasta.arsiv || false,
+            olusturma: new Date().toISOString(),
+            sonGuncelleme: new Date().toISOString()
+          });
+        }
+        
+        // Listeyi sırala
+        tumHastaListesi.sort((a, b) => {
+          if (a.arsiv !== b.arsiv) return a.arsiv ? 1 : -1;
+          return a.isim.localeCompare(b.isim, 'tr');
+        });
+        
+        // Tek seferde kaydet
+        await hastaListesiKaydet(tumHastaListesi);
         await renderHastalarYeniSistem();
         
         const rapor = `🎉 MIGRATION TAMAMLANDI!\n\n✅ Başarılı: ${basarili} hasta\n❌ Hatalı: ${hatali} hasta\n\n📁 Yeni konumlar:\n- patients/hastalar_listesi.json\n- patients/hasta_[ID]_[isim].json\n\n${hatali > 0 ? '❌ Hatalı hastalar:\n' + hataliHastalar.join('\n') : ''}`;
