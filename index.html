@@ -1179,18 +1179,42 @@
     // Migration için buton ekle (geçici)
     function migrationButonuEkle() {
       const githubPanel = document.querySelector('.github-panel');
-      if (githubPanel && !document.getElementById('migrationBtn')) {
+      let githubContainer = githubPanel;
+      
+      // Eğer github-panel yoksa, github durumu divinin parent'ını kullan
+      if (!githubContainer) {
+        const githubDurumu = document.getElementById('githubDurumu');
+        if (githubDurumu) {
+          githubContainer = githubDurumu.parentElement;
+        }
+      }
+      
+      // Son çare: herhangi bir container bul
+      if (!githubContainer) {
+        const containers = document.querySelectorAll('div[style*="padding"]');
+        if (containers.length > 0) {
+          githubContainer = containers[0];
+        }
+      }
+      
+      if (githubContainer && !document.getElementById('migrationBtn')) {
         const btn = document.createElement('button');
         btn.id = 'migrationBtn';
         btn.onclick = eskiSistemdenMigrasyon;
-        btn.style.cssText = 'width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ff6b35; color:white; border:none; border-radius:3px; cursor:pointer;';
-        btn.innerHTML = '🔄 Eski Sistemden Migration';
-        githubPanel.appendChild(btn);
+        btn.style.cssText = 'width:100%; margin:10px 0; padding:10px; font-size:12px; background:#ff6b35; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);';
+        btn.innerHTML = '🔄 ESKİ SİSTEMDEN MİGRATION BAŞLAT';
+        btn.title = 'Eski hasta_kayitlari.json dosyasındaki hastaları yeni sisteme aktarır';
+        githubContainer.appendChild(btn);
+        
+        console.log('✅ Migration butonu eklendi');
+      } else {
+        console.log('⚠️ Migration butonu eklenemedi - container bulunamadı');
       }
     }
     
     // Sayfa yüklendiğinde migration butonunu ekle
-    setTimeout(migrationButonuEkle, 1000);
+    setTimeout(migrationButonuEkle, 500);
+    setTimeout(migrationButonuEkle, 2000); // Backup için tekrar dene
 
     // === YENİ SİSTEM: HASTA LİSTESİ YÖNETİMİ ===
     
@@ -7736,6 +7760,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       } catch (error) {
         console.error('❌ Yeni sistem başlatma hatası:', error);
         console.log('🔄 Eski sisteme geri dönülüyor...');
+        
+        // Migration butonunu ekle
+        setTimeout(migrationButonuEkle, 100);
+        
+        // Kullanıcıya bilgi ver
+        const durum = document.getElementById('githubDurumu');
+        if (durum) {
+          durum.innerHTML = '⚠️ Yeni sistem için GitHub token ve migration gerekli';
+        }
         
         // Hata durumunda eski sistemi kullan
         setTimeout(() => {
