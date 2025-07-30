@@ -3687,23 +3687,48 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
         statusGoster('Görsel GitHub\'a yükleniyor...', 'info');
 
-        // 1. Önce görseli tarifler klasörüne yükle
+        // 1. Önce dosya var mı kontrol et
         const gorselPath = `tarifler/${dosyaAdi}`;
+        let mevcutSha = null;
+        
+        try {
+          const mevcutRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${gorselPath}?ref=${branch}`, {
+            headers: { Authorization: `token ${token}` }
+          });
+          
+          if (mevcutRes.ok) {
+            const mevcutData = await mevcutRes.json();
+            mevcutSha = mevcutData.sha;
+            console.log('📁 Mevcut dosya SHA bulundu:', mevcutSha);
+          }
+        } catch (e) {
+          console.log('📁 Dosya mevcut değil, yeni dosya oluşturulacak');
+        }
+
+        // 2. Görseli tarifler klasörüne yükle
+        const gorselPayload = {
+          message: `Yeni tarif kartı eklendi: ${dosyaAdi}`,
+          content: dosyaBase64,
+          branch
+        };
+        
+        // SHA varsa ekle
+        if (mevcutSha) {
+          gorselPayload.sha = mevcutSha;
+        }
+        
         const gorselRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${gorselPath}`, {
           method: 'PUT',
           headers: {
             'Authorization': `token ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            message: `Yeni tarif kartı eklendi: ${dosyaAdi}`,
-            content: dosyaBase64,
-            branch
-          })
+          body: JSON.stringify(gorselPayload)
         });
 
         if (!gorselRes.ok) {
-          throw new Error('Görsel yükleme başarısız: ' + (await gorselRes.text()));
+          const errorText = await gorselRes.text();
+          throw new Error('Görsel yükleme başarısız: ' + errorText);
         }
 
         statusGoster('list.json güncelleniyor...', 'info');
