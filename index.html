@@ -937,21 +937,21 @@
         if (!sessiz) console.log('📥 GitHub\'dan hasta listesi yükleniyor (Yeni Sistem)...');
         if (durumElement) durumElement.innerHTML = '🔄 GitHub\'dan hasta listesi yükleniyor...';
         
-        // Hasta listesini yükle
-        await hastaListesiYukle();
+        // Hasta listesini yükle ve sonucu al
+        const yuklenmisList = await hastaListesiYukle();
         
-        if (hastaListesi.length > 0) {
-          console.log('✅ GitHub\'dan hasta listesi yüklendi:', hastaListesi.length, 'hasta');
+        if (yuklenmisList.length > 0) {
+          console.log('✅ GitHub\'dan hasta listesi yüklendi:', yuklenmisList.length, 'hasta');
           
           // Hastalar listesini yeni sistemden render et
           renderHastalarYeniSistem();
           
           if (durumElement) {
-            durumElement.innerHTML = `✅ GitHub'dan yüklendi (${hastaListesi.length} hasta - Yeni Sistem)`;
+            durumElement.innerHTML = `✅ GitHub'dan yüklendi (${yuklenmisList.length} hasta - Yeni Sistem)`;
           }
           
           if (!sessiz) {
-            alert(`GitHub'dan hasta listesi yüklendi! (Yeni Sistem)\n${hastaListesi.length} hasta`);
+            alert(`GitHub'dan hasta listesi yüklendi! (Yeni Sistem)\n${yuklenmisList.length} hasta`);
           }
         } else {
           console.log('⚠️ Hasta listesi boş');
@@ -3518,18 +3518,18 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           return;
         }
         
-        // GitHub'dan hasta listesini al
-        const hastaListesi = await hastaListesiYukle();
+        // GitHub'dan hasta listesini al ve global değişkeni güncelle
+        const yuklenmisList = await hastaListesiYukle();
         
-        if (hastaListesi.length === 0) {
+        if (yuklenmisList.length === 0) {
           ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok - Yeni hasta ekleyebilirsiniz</li>';
           return;
         }
         
         ul.innerHTML = '';
         
-        // Filtreleme ve sıralama
-        const filtreliHastalar = hastaListesi.filter(hasta => {
+        // Filtreleme ve sıralama - yüklenen listeyi kullan
+        const filtreliHastalar = yuklenmisList.filter(hasta => {
           const aramaUygun = hasta.isim.toLowerCase().includes(ara);
           const filtreUygun = filtre === 'hepsi' || 
                              (filtre === 'aktif' && !hasta.arsiv) || 
@@ -3537,10 +3537,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           return aramaUygun && filtreUygun;
         });
         
-        // Hasta sayılarını güncelle
-        const aktifSayisi = hastaListesi.filter(h => !h.arsiv).length;
-        const arsivSayisi = hastaListesi.filter(h => h.arsiv).length;
-        console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${hastaListesi.length}`);
+        // Hasta sayılarını güncelle - yüklenen listeyi kullan
+        const aktifSayisi = yuklenmisList.filter(h => !h.arsiv).length;
+        const arsivSayisi = yuklenmisList.filter(h => h.arsiv).length;
+        console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${yuklenmisList.length}`);
         
         filtreliHastalar.forEach(hasta => {
           const li = document.createElement('li');
