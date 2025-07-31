@@ -5851,10 +5851,13 @@ function duzenleHafta(i) {
         
         // Seçili haftayı al - eğer belirli hafta belirtilmişse onu kullan
         let egzersizDahilMi;
+        let dokuzuncuHaftaOzelModu = false; // 9. hafta için özel mod
+        
         if (belirliHaftaNo !== null) {
           // ZIP için belirli bir hafta belirtilmiş
           egzersizDahilMi = belirliHaftaNo >= 9; // 9. hafta ve sonrası için egzersiz dahil
-          console.log(`🎯 ZIP için ${belirliHaftaNo}. hafta PDF'i oluşturuluyor, egzersiz dahil: ${egzersizDahilMi}`);
+          dokuzuncuHaftaOzelModu = belirliHaftaNo === 9; // 9. hafta özel modu
+          console.log(`🎯 ZIP için ${belirliHaftaNo}. hafta PDF'i oluşturuluyor, egzersiz dahil: ${egzersizDahilMi}, 9. hafta özel mod: ${dokuzuncuHaftaOzelModu}`);
         } else {
           // Normal PDF indirme için seçili haftayı kullan
           const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
@@ -5925,9 +5928,18 @@ function duzenleHafta(i) {
         }
         
         console.log('🔍 Hafta verilerini belirleniyor...');
-        // Başlangıç haftasını belirle - belirli hafta belirtilmişse onu kullan
-        let baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
+        // Başlangıç haftasını belirle
+        let baslangicHaftaIndex;
         let baslangicHafta;
+        
+        if (dokuzuncuHaftaOzelModu) {
+          // 9. hafta özel modu: 4 hafta geriden başla (5. haftadan başla)
+          baslangicHaftaIndex = 4; // 5. hafta = index 4
+          console.log('🎯 9. hafta özel modu: 5. haftadan başlayacak (4 hafta geri)');
+        } else {
+          // Normal mod
+          baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
+        }
         
         if (baslangicHaftaIndex < haftalar.length) {
           // Belirtilen hafta mevcut
@@ -5954,7 +5966,8 @@ function duzenleHafta(i) {
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
-        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+        const haftaSayisi = dokuzuncuHaftaOzelModu ? 5 : 8; // 9. hafta özel modunda 5 hafta (5-9), normal modda 8 hafta
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < haftaSayisi; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + (belirliHaftaNo || 5); // Belirtilen hafta numarasından başla
           const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
@@ -5968,13 +5981,23 @@ function duzenleHafta(i) {
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
           
           // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-          if (egzersizDahilMi && gercekHaftaNo <= 8) {
+          const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo <= 8;
+          if (eskiHaftaMi) {
             doc.setTextColor(150, 150, 150); // Soluk gri renk
           } else {
             doc.setTextColor(0, 0, 0); // Normal siyah renk
           }
           
           doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
+          
+          // 9. hafta özel modunda ilk 4 hafta için tamamlandı işareti
+          if (eskiHaftaMi) {
+            doc.setTextColor(0, 128, 0); // Yeşil renk
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text('✓ TAMAMLANDI', 120, currentY + 4);
+            doc.setFont('helvetica', 'normal');
+          }
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
@@ -6074,7 +6097,8 @@ function duzenleHafta(i) {
             zipTableStartX = 15;
             
             // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-            if (egzersizDahilMi && gercekHaftaNo <= 8) {
+            const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo <= 8;
+            if (eskiHaftaMi) {
               doc.setTextColor(150, 150, 150); // Soluk gri renk
             } else {
               doc.setTextColor(0, 0, 0); // Normal siyah renk
