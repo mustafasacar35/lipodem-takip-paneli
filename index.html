@@ -4975,52 +4975,14 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
             zip.file('GPT_MESAJI.txt', hafta.gptMesaj.trim());
           }
 
-          // Lenf masaj plan tablosu PDF'si (varsa)
-          if (hafta.aciklama && hafta.aciklama.includes('lenf') || hafta.aciklama && hafta.aciklama.includes('masaj')) {
-            const lenfPlanIcerik = `
-LENF MASAJ PLANI - ${haftaNo}. HAFTA
-==================================
-
-Tarih Aralığı: ${hafta.baslangic} - ${hafta.bitis}
-
-PLAN DETAYLARI:
-${hafta.aciklama || 'Plan detayları henüz eklenmemiş'}
-
-NOTLAR:
-${hafta.gptMesaj || 'Ek not bulunmuyor'}
-            `.trim();
-            
-            zip.file('LENF_MASAJ_PLANI.txt', lenfPlanIcerik);
-          }
+          // 5. hafta için otomatik masaj planı PDF'si ekle
+          await createAndAddLenfMasajPDF(zip, hasta, haftalar);
         }
         
         // 9. hafta için özel içerik
         if (haftaNo === 9) {
-          // Masaj + Egzersiz planı
-          const masajEgzersizPlan = `
-MASAJ + EGZERSİZ PLANI - ${haftaNo}. HAFTA
-========================================
-
-Tarih Aralığı: ${hafta.baslangic} - ${hafta.bitis}
-
-MASAJ PLANI:
-${hafta.aciklama && hafta.aciklama.includes('masaj') ? hafta.aciklama : 'Masaj planı henüz eklenmemiş'}
-
-EGZERSİZ PLANI:
-${hafta.aciklama && hafta.aciklama.includes('egzersiz') ? hafta.aciklama : 'Egzersiz planı henüz eklenmemiş'}
-
-GENEL AÇIKLAMA:
-${hafta.aciklama || 'Plan detayları henüz eklenmemiş'}
-
-GPT MESAJI VE NOTLAR:
-${hafta.gptMesaj || 'Ek not bulunmuyor'}
-
-HASTA BİLGİLERİ:
-Hasta Adı: ${hasta.isim}
-Hasta ID: ${hasta.id}
-          `.trim();
-          
-          zip.file('MASAJ_EGZERSIZ_PLANI.txt', masajEgzersizPlan);
+          // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
+          await createAndAddEgzersizPDF(zip, hasta, haftalar);
 
           // Hafta PDF'si varsa ekle
           if (hafta.pdf) {
@@ -5059,6 +5021,165 @@ Hasta ID: ${hasta.id}
       } catch (error) {
         console.error('❌ ZIP indirme hatası:', error);
         alert(`ZIP dosyası oluşturulamadı: ${error.message}`);
+      }
+    }
+
+    // 5. hafta için Lenf Masaj PDF'si oluştur ve ZIP'e ekle
+    async function createAndAddLenfMasajPDF(zip, hasta, haftalar) {
+      try {
+        // 5. hafta başlangıç tarihini bul
+        let baslangicTarihi = new Date();
+        if (haftalar.length >= 5 && haftalar[4].baslangic) {
+          baslangicTarihi = new Date(haftalar[4].baslangic);
+        }
+
+        // PDF oluştur
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Türkçe font desteği
+        doc.addFont('https://fonts.googleapis.com/css?family=Roboto', 'Roboto', 'normal');
+        doc.setFont('helvetica');
+        
+        // Başlık
+        doc.setFontSize(16);
+        doc.setTextColor(40, 44, 52);
+        doc.text('LENF DRENAJ MASAJI TAKVIMI', 20, 35);
+        
+        // Hasta bilgileri
+        doc.setFontSize(12);
+        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
+        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        
+        // Haftalık program oluştur (5. haftadan başlayarak 8 hafta)
+        let yPos = 90;
+        doc.setFontSize(10);
+        
+        for (let hafta = 5; hafta <= 12; hafta++) {
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 5) * 7 * 24 * 60 * 60 * 1000));
+          
+          doc.setFontSize(12);
+          doc.setTextColor(0, 123, 255);
+          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
+          yPos += 15;
+          
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          
+          // Hafta programı
+          if (hafta >= 5 && hafta <= 6) {
+            // İlk 2 hafta: Günde 2 kez
+            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
+            yPos += 10;
+            doc.text('• Akşam: Lenf masajı (20 dk)', 25, yPos);
+            yPos += 15;
+          } else if (hafta >= 7 && hafta <= 8) {
+            // Sonraki 2 hafta: Günde 1 kez
+            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
+            yPos += 15;
+          } else if (hafta >= 9 && hafta <= 10) {
+            // 9-10. hafta: Günaşırı
+            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
+            yPos += 10;
+            doc.text('  Lenf masajı (20 dk)', 30, yPos);
+            yPos += 15;
+          } else if (hafta >= 11 && hafta <= 12) {
+            // Son 2 hafta: Salı, Cuma
+            doc.text('• Salı, Cuma: Lenf masajı (20 dk)', 25, yPos);
+            yPos += 15;
+          }
+          
+          if (yPos > 250) {
+            doc.addPage();
+            yPos = 30;
+          }
+        }
+        
+        // PDF'i blob olarak al ve ZIP'e ekle
+        const pdfBlob = doc.output('blob');
+        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Lenf_Masaj_Takvimi.pdf`;
+        zip.file(dosyaAdi, pdfBlob);
+        
+      } catch (error) {
+        console.error('Lenf masaj PDF oluşturma hatası:', error);
+      }
+    }
+
+    // 9. hafta için Egzersiz PDF'si oluştur ve ZIP'e ekle
+    async function createAndAddEgzersizPDF(zip, hasta, haftalar) {
+      try {
+        // 9. hafta başlangıç tarihini bul
+        let baslangicTarihi = new Date();
+        if (haftalar.length >= 9 && haftalar[8].baslangic) {
+          baslangicTarihi = new Date(haftalar[8].baslangic);
+        } else if (haftalar.length >= 5 && haftalar[4].baslangic) {
+          // 5. haftadan 4 hafta sonra
+          const besinciHafta = new Date(haftalar[4].baslangic);
+          baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+        }
+
+        // PDF oluştur
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFont('helvetica');
+        
+        // Başlık
+        doc.setFontSize(16);
+        doc.setTextColor(40, 44, 52);
+        doc.text('EGZERSIZ TAKVIMI', 20, 35);
+        
+        // Hasta bilgileri
+        doc.setFontSize(12);
+        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
+        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        
+        // Haftalık program oluştur (9. haftadan başlayarak 4 hafta)
+        let yPos = 90;
+        doc.setFontSize(10);
+        
+        for (let hafta = 9; hafta <= 12; hafta++) {
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 9) * 7 * 24 * 60 * 60 * 1000));
+          
+          doc.setFontSize(12);
+          doc.setTextColor(0, 123, 255);
+          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
+          yPos += 15;
+          
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          
+          if (hafta >= 9 && hafta <= 10) {
+            // 9-10. hafta
+            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
+            yPos += 10;
+            doc.text('  Sabah: Lenf masajı + Akşam: Egzersiz', 30, yPos);
+            yPos += 10;
+            doc.text('• Salı, Perşembe, Cumartesi:', 25, yPos);
+            yPos += 10;
+            doc.text('  Sadece akşam egzersiz', 30, yPos);
+            yPos += 15;
+          } else if (hafta >= 11 && hafta <= 12) {
+            // 11-12. hafta
+            doc.text('• Salı, Cuma: Lenf masajı + Akşam egzersiz', 25, yPos);
+            yPos += 10;
+            doc.text('• Diğer günler: Sadece akşam egzersiz', 25, yPos);
+            yPos += 15;
+          }
+          
+          if (yPos > 250) {
+            doc.addPage();
+            yPos = 30;
+          }
+        }
+        
+        // PDF'i blob olarak al ve ZIP'e ekle
+        const pdfBlob = doc.output('blob');
+        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Egzersiz_Takvimi.pdf`;
+        zip.file(dosyaAdi, pdfBlob);
+        
+      } catch (error) {
+        console.error('Egzersiz PDF oluşturma hatası:', error);
       }
     }
 
