@@ -5924,24 +5924,39 @@ function duzenleHafta(i) {
           doc.text('(5. Haftadan itibaren)', 20, 40);
         }
         
-        // 5. haftanın başlangıcı
-        const besinciHafta = haftalar[4];
-        const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
+        console.log('🔍 Hafta verilerini belirleniyor...');
+        // Başlangıç haftasını belirle - belirli hafta belirtilmişse onu kullan
+        let baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
+        let baslangicHafta;
         
-        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
-        const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        if (baslangicHaftaIndex < haftalar.length) {
+          // Belirtilen hafta mevcut
+          baslangicHafta = haftalar[baslangicHaftaIndex];
+          console.log('✅ Belirtilen hafta bulundu:', baslangicHafta);
+        } else {
+          // Belirtilen hafta yok, mevcut ilk haftayı kullan
+          baslangicHafta = haftalar[0];
+          console.log('⚠️ Belirtilen hafta yok, ilk hafta kullanılıyor:', baslangicHafta);
+        }
+        
+        console.log('🔍 Başlangıç tarihi hesaplanıyor...');
+        const baslangicTarihi = new Date(baslangicHafta.baslangic);
+        
+        // Başlangıç tarihinin pazartesi olmasını garanti altına al
+        const haftaGunu = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
         if (haftaGunu !== 1) { // Eğer pazartesi değilse
           const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
-          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
+          baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
         }
+        console.log('✅ Başlangıç tarihi (Pazartesi):', baslangicTarihi);
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
-          const gercekHaftaNo = lenfHaftaIndex + 5;
-          const haftaBaslangic = new Date(besinciHaftaBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const gercekHaftaNo = lenfHaftaIndex + (belirliHaftaNo || 5); // Belirtilen hafta numarasından başla
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
           doc.setTextColor(0, 0, 0);
