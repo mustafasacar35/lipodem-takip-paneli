@@ -820,6 +820,19 @@
       return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    // PDF için Türkçe karakterleri ASCII'ye çevir
+    function pdfIcinASCII(text) {
+      if (!text || typeof text !== 'string') return text;
+      
+      return text
+        .replace(/Ş/g, 'S').replace(/ş/g, 's')
+        .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+        .replace(/İ/g, 'I').replace(/ı/g, 'i')
+        .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+        .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+        .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+    }
+
     // ACIL DURUM: LocalStorage'daki bozuk verileri temizle
     function localStorageTemizle() {
       console.log('🧹 LocalStorage bozuk veri temizliği başlatılıyor...');
@@ -6271,20 +6284,13 @@ function duzenleHafta(i) {
         const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
         console.log('🎯 PDF için hasta adı düzeltmesi:', seciliHasta.isim, ' → ', hastaAdi);
         
-        // jsPDF için Türkçe karakterleri ASCII'ye çevir
-        const pdfUygunHastaAdi = hastaAdi
-          .replace(/Ş/g, 'S').replace(/ş/g, 's')
-          .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
-          .replace(/İ/g, 'I').replace(/ı/g, 'i')
-          .replace(/Ç/g, 'C').replace(/ç/g, 'c')
-          .replace(/Ö/g, 'O').replace(/ö/g, 'o')
-          .replace(/Ü/g, 'U').replace(/ü/g, 'u');
-        
+        // jsPDF için ASCII dönüşüm
+        const pdfUygunHastaAdi = pdfIcinASCII(hastaAdi);
         console.log('📄 PDF için ASCII dönüşüm:', hastaAdi, ' → ', pdfUygunHastaAdi);
         doc.text(pdfUygunHastaAdi.toUpperCase(), 20, 20);
         
         doc.setFontSize(14);
-        doc.text('LENF DRENAJ MASAJI TAKVIMI', 20, 35);
+        doc.text(pdfIcinASCII('LENF DRENAJ MASAJI TAKVIMI'), 20, 35);
         
         // Açıklama
         doc.setFontSize(10);
