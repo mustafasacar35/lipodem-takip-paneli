@@ -4900,10 +4900,17 @@ function duzenleHafta(i) {
 
     async function haftaZipIndir(haftaIndex, haftaNo) {
       try {
+        console.log('🚀 ZIP fonksiyonu başlatıldı, hafta:', haftaNo);
+        
         if (!seciliHasta) {
           alert('Lütfen önce bir hasta seçin!');
           return;
         }
+
+        // GitHub değişkenlerini kontrol et
+        console.log('🔍 GITHUB_REPO:', GITHUB_REPO);
+        console.log('🔍 GITHUB_TOKEN var mı:', !!GITHUB_TOKEN);
+        console.log('🔍 Seçili hasta:', seciliHasta.id);
 
         const haftalar = getHaftaListesi();
         if (!haftalar[haftaIndex]) {
@@ -4912,6 +4919,8 @@ function duzenleHafta(i) {
         }
 
         const hafta = haftalar[haftaIndex];
+        console.log('🔍 Hafta bilgileri:', hafta);
+        
         const hasta = await getHastaData(seciliHasta.id);
         
         // ZIP dosya adını oluştur
@@ -4927,13 +4936,25 @@ function duzenleHafta(i) {
 
         // 5. hafta için özel içerik
         if (haftaNo === 5) {
-          // Menü PDF'si
+          // Menü PDF'si (5. hafta)
           if (hafta.pdfName || hafta.pdfOrijinalIsim) {
             try {
+              if (!GITHUB_TOKEN) {
+                console.warn('⚠️ GitHub token bulunamadı, PDF eklenemeyecek');
+                return;
+              }
+              
               const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
-              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`, {
+              const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
+              
+              console.log('🔍 5. hafta PDF URL:', pdfUrl);
+              console.log('🔍 PDF dosya adı:', pdfFileName);
+              
+              const pdfResponse = await fetch(pdfUrl, {
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
               });
+              
+              console.log('🔍 PDF response status:', pdfResponse.status);
               
               if (pdfResponse.ok) {
                 const pdfData = await pdfResponse.json();
@@ -4941,7 +4962,8 @@ function duzenleHafta(i) {
                 zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
                 console.log('✅ 5. hafta Menü PDF eklendi:', pdfFileName);
               } else {
-                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status);
+                const errorText = await pdfResponse.text();
+                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status, errorText);
               }
             } catch (error) {
               console.warn('❌ Menü PDF eklenemedi:', error);
@@ -4979,18 +5001,31 @@ function duzenleHafta(i) {
           }
 
           // 5. hafta için otomatik masaj planı PDF'si ekle
+          console.log('🏥 5. hafta masaj PDF fonksiyonu çağrılıyor...');
           await createAndAddLenfMasajPDF(zip, hasta, haftalar);
         }
         
         // 9. hafta için özel içerik
         if (haftaNo === 9) {
-          // Menü PDF'si
+          // Menü PDF'si (9. hafta)
           if (hafta.pdfName || hafta.pdfOrijinalIsim) {
             try {
+              if (!GITHUB_TOKEN) {
+                console.warn('⚠️ GitHub token bulunamadı, PDF eklenemeyecek');
+                return;
+              }
+              
               const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
-              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`, {
+              const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
+              
+              console.log('🔍 9. hafta PDF URL:', pdfUrl);
+              console.log('🔍 PDF dosya adı:', pdfFileName);
+              
+              const pdfResponse = await fetch(pdfUrl, {
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
               });
+              
+              console.log('🔍 PDF response status:', pdfResponse.status);
               
               if (pdfResponse.ok) {
                 const pdfData = await pdfResponse.json();
@@ -4998,7 +5033,8 @@ function duzenleHafta(i) {
                 zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
                 console.log('✅ 9. hafta Menü PDF eklendi:', pdfFileName);
               } else {
-                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status);
+                const errorText = await pdfResponse.text();
+                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status, errorText);
               }
             } catch (error) {
               console.warn('❌ Menü PDF eklenemedi:', error);
@@ -5036,6 +5072,7 @@ function duzenleHafta(i) {
           }
 
           // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
+          console.log('🏃 9. hafta egzersiz PDF fonksiyonu çağrılıyor...');
           await createAndAddEgzersizPDF(zip, hasta, haftalar);
         }
 
@@ -5066,6 +5103,14 @@ function duzenleHafta(i) {
       try {
         console.log('🏥 5. hafta Lenf Masaj PDF oluşturuluyor...');
         
+        // Kütüphane kontrolü
+        if (!window.jspdf) {
+          console.error('❌ jsPDF kütüphanesi yüklenmemiş');
+          return;
+        }
+        
+        console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
+        
         // 5. hafta başlangıç tarihini bul
         let baslangicTarihi = new Date();
         if (haftalar.length >= 5 && haftalar[4].baslangic) {
@@ -5075,8 +5120,11 @@ function duzenleHafta(i) {
         // PDF oluştur
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
-          throw new Error('jsPDF kütüphanesi yüklenmemiş');
+          console.error('❌ jsPDF constructor bulunamadı');
+          return;
         }
+        
+        console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
         const doc = new jsPDF();
         
@@ -5155,6 +5203,14 @@ function duzenleHafta(i) {
       try {
         console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...');
         
+        // Kütüphane kontrolü
+        if (!window.jspdf) {
+          console.error('❌ jsPDF kütüphanesi yüklenmemiş');
+          return;
+        }
+        
+        console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
+        
         // 9. hafta başlangıç tarihini bul
         let baslangicTarihi = new Date();
         if (haftalar.length >= 9 && haftalar[8].baslangic) {
@@ -5168,8 +5224,11 @@ function duzenleHafta(i) {
         // PDF oluştur
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
-          throw new Error('jsPDF kütüphanesi yüklenmemiş');
+          console.error('❌ jsPDF constructor bulunamadı');
+          return;
         }
+        
+        console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
         const doc = new jsPDF();
         
