@@ -736,6 +736,8 @@
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
+      console.log('🔧 Türkçe düzeltme başlıyor:', text);
+      
       // SADECE BOZUK KARAKTERLERI TEMİZLE, YENİ BOZUKLUK YARATMA!
       let temizMetin = text;
       
@@ -809,6 +811,7 @@
       // 4. Fazla boşlukları temizle
       temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
       
+      console.log('✅ Türkçe düzeltme tamamlandı:', text, ' → ', temizMetin);
       return temizMetin;
     }
     
@@ -6256,6 +6259,7 @@ function duzenleHafta(i) {
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
+        console.log('🎯 PDF için hasta adı düzeltmesi:', seciliHasta.isim, ' → ', hastaAdi);
         doc.text(hastaAdi.toUpperCase(), 20, 20);
         
         doc.setFontSize(14);
