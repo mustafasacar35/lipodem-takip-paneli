@@ -399,6 +399,7 @@
       <div class="sidebar-section">
         <h3>⚡ İşlemler</h3>
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
+        <input type="text" id="githubRepo" placeholder="GitHub Repo (owner/repo)" value="mustafasacar35/lipodem-takip-paneli" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
       </div>
 
@@ -7671,9 +7672,12 @@ function duzenleHafta(i) {
       try {
         console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
-        // GitHub değişkenlerini input'lardan al
-        const GITHUB_TOKEN = document.getElementById('githubToken').value.trim();
-        const GITHUB_REPO = document.getElementById('githubRepo').value.trim() || 'mustafasacar35/lipodem-takip-paneli';
+        // GitHub değişkenlerini input'lardan al - null check ile
+        const tokenElement = document.getElementById('githubToken');
+        const repoElement = document.getElementById('githubRepo');
+        
+        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
+        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
         
         if (!GITHUB_TOKEN) {
           console.warn('⚠️ GitHub token bulunamadı');
