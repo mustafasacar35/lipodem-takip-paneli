@@ -5968,7 +5968,8 @@ function duzenleHafta(i) {
         // Kompakt tablo (Blob için)
         const haftaSayisi = dokuzuncuHaftaOzelModu ? 5 : 8; // 9. hafta özel modunda 5 hafta (5-9), normal modda 8 hafta
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < haftaSayisi; lenfHaftaIndex++) {
-          const gercekHaftaNo = lenfHaftaIndex + (belirliHaftaNo || 5); // Belirtilen hafta numarasından başla
+          // 9. hafta özel modunda 5. haftadan başla (5,6,7,8,9), normal modda belirtilen haftadan
+          const gercekHaftaNo = dokuzuncuHaftaOzelModu ? (lenfHaftaIndex + 5) : (lenfHaftaIndex + (belirliHaftaNo || 5));
           const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Hafta başlığı
@@ -5981,7 +5982,7 @@ function duzenleHafta(i) {
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
           
           // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-          const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo <= 8;
+          const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo < 9; // 9. haftadan önceki haftalar
           if (eskiHaftaMi) {
             doc.setTextColor(150, 150, 150); // Soluk gri renk
           } else {
@@ -6097,7 +6098,7 @@ function duzenleHafta(i) {
             zipTableStartX = 15;
             
             // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
-            const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo <= 8;
+            const eskiHaftaMi = dokuzuncuHaftaOzelModu && gercekHaftaNo < 9; // 9. haftadan önceki haftalar
             if (eskiHaftaMi) {
               doc.setTextColor(150, 150, 150); // Soluk gri renk
             } else {
