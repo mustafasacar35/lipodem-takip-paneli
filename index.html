@@ -655,6 +655,48 @@
       }
     }
     
+    // Base64'ü blob'a çevir
+    function base64ToBlob(base64Content, mimeType = 'application/octet-stream') {
+      try {
+        // Base64 string'den yeni satırları temizle
+        const cleanedBase64 = base64Content.replace(/\s/g, '');
+        const byteCharacters = atob(cleanedBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+      } catch (error) {
+        console.error('Base64 to blob conversion error:', error);
+        throw new Error('Base64 dosya dönüştürme hatası');
+      }
+    }
+    
+    // Hasta verisini GitHub'dan al
+    async function getHastaData(hastaId) {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hastaId}/hasta_data.json`, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const content = decodeBase64UTF8(data.content);
+          return JSON.parse(content);
+        }
+        
+        throw new Error('Hasta verisi bulunamadı');
+      } catch (error) {
+        console.error('Hasta verisi alma hatası:', error);
+        throw error;
+      }
+    }
+    
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
@@ -4453,6 +4495,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             <div style="display: flex; gap: 5px;">
               <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
               <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+              ${haftaNo === 5 ? `<button onclick="haftaZipIndir(${i}, 5)" style="padding: 5px 10px; font-size: 12px; background: #17a2b8; color: white; border: none; border-radius: 4px;" title="5. hafta özel ZIP">📦 ZIP</button>` : ''}
+              ${haftaNo === 9 ? `<button onclick="haftaZipIndir(${i}, 9)" style="padding: 5px 10px; font-size: 12px; background: #6f42c1; color: white; border: none; border-radius: 4px;" title="9. hafta özel ZIP">📦 ZIP</button>` : ''}
             </div>
           </div>
           
@@ -4851,6 +4895,170 @@ function duzenleHafta(i) {
       } catch (error) {
         console.error('❌ PDF indirme hatası:', error);
         alert(`PDF indirilemedi: ${error.message}`);
+      }
+    }
+
+    async function haftaZipIndir(haftaIndex, haftaNo) {
+      try {
+        if (!seciliHasta) {
+          alert('Lütfen önce bir hasta seçin!');
+          return;
+        }
+
+        const haftalar = getHaftaListesi();
+        if (!haftalar[haftaIndex]) {
+          alert('Hafta bulunamadı!');
+          return;
+        }
+
+        const hafta = haftalar[haftaIndex];
+        const hasta = await getHastaData(seciliHasta.id);
+        
+        // ZIP dosya adını oluştur
+        const tarihAraligi = `${hafta.baslangic}_${hafta.bitis}`.replace(/\./g, '_').replace(/\s/g, '_');
+        const hastaAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+          const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
+          return trMap[match] || match;
+        });
+        const zipAdi = `${hastaAdi}_${tarihAraligi}_${haftaNo}_HAFTA.ZIP`;
+
+        // JSZip instance oluştur
+        const zip = new JSZip();
+
+        // 5. hafta için özel içerik
+        if (haftaNo === 5) {
+          // Menü PDF'si
+          if (hafta.pdf) {
+            try {
+              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${hafta.pdfName}`, {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+              });
+              
+              if (pdfResponse.ok) {
+                const pdfData = await pdfResponse.json();
+                const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
+              }
+            } catch (error) {
+              console.warn('Menü PDF eklenemedi:', error);
+            }
+          }
+
+          // Eşleşen tarif kartları
+          if (hafta.tarifler && hafta.tarifler.length > 0) {
+            hafta.tarifler.forEach((tarif, index) => {
+              const tarifIcerik = `
+TARIF KARTI ${index + 1}
+================
+
+Tarif Adı: ${tarif.name || 'Bilinmiyor'}
+Kategori: ${tarif.category || 'Bilinmiyor'}
+Süre: ${tarif.time || 'Bilinmiyor'}
+Porsiyon: ${tarif.servings || 'Bilinmiyor'}
+
+MALZEMELER:
+${tarif.ingredients ? tarif.ingredients.map(ing => `- ${ing}`).join('\n') : 'Malzeme bilgisi yok'}
+
+TALİMATLAR:
+${tarif.instructions ? tarif.instructions.map((inst, i) => `${i + 1}. ${inst}`).join('\n') : 'Talimat bilgisi yok'}
+
+BESİN DEĞERLERİ:
+${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key}: ${value}`).join('\n') : 'Besin değeri bilgisi yok'}
+              `.trim();
+              
+              zip.file(`TARIF_KARTI_${index + 1}_${(tarif.name || 'tarif').replace(/[^a-zA-Z0-9]/g, '_')}.txt`, tarifIcerik);
+            });
+          }
+
+          // GPT Mesajı
+          if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
+            zip.file('GPT_MESAJI.txt', hafta.gptMesaj.trim());
+          }
+
+          // Lenf masaj plan tablosu PDF'si (varsa)
+          if (hafta.aciklama && hafta.aciklama.includes('lenf') || hafta.aciklama && hafta.aciklama.includes('masaj')) {
+            const lenfPlanIcerik = `
+LENF MASAJ PLANI - ${haftaNo}. HAFTA
+==================================
+
+Tarih Aralığı: ${hafta.baslangic} - ${hafta.bitis}
+
+PLAN DETAYLARI:
+${hafta.aciklama || 'Plan detayları henüz eklenmemiş'}
+
+NOTLAR:
+${hafta.gptMesaj || 'Ek not bulunmuyor'}
+            `.trim();
+            
+            zip.file('LENF_MASAJ_PLANI.txt', lenfPlanIcerik);
+          }
+        }
+        
+        // 9. hafta için özel içerik
+        if (haftaNo === 9) {
+          // Masaj + Egzersiz planı
+          const masajEgzersizPlan = `
+MASAJ + EGZERSİZ PLANI - ${haftaNo}. HAFTA
+========================================
+
+Tarih Aralığı: ${hafta.baslangic} - ${hafta.bitis}
+
+MASAJ PLANI:
+${hafta.aciklama && hafta.aciklama.includes('masaj') ? hafta.aciklama : 'Masaj planı henüz eklenmemiş'}
+
+EGZERSİZ PLANI:
+${hafta.aciklama && hafta.aciklama.includes('egzersiz') ? hafta.aciklama : 'Egzersiz planı henüz eklenmemiş'}
+
+GENEL AÇIKLAMA:
+${hafta.aciklama || 'Plan detayları henüz eklenmemiş'}
+
+GPT MESAJI VE NOTLAR:
+${hafta.gptMesaj || 'Ek not bulunmuyor'}
+
+HASTA BİLGİLERİ:
+Hasta Adı: ${hasta.isim}
+Hasta ID: ${hasta.id}
+          `.trim();
+          
+          zip.file('MASAJ_EGZERSIZ_PLANI.txt', masajEgzersizPlan);
+
+          // Hafta PDF'si varsa ekle
+          if (hafta.pdf) {
+            try {
+              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${hafta.pdfName}`, {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+              });
+              
+              if (pdfResponse.ok) {
+                const pdfData = await pdfResponse.json();
+                const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                zip.file(`HAFTA_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}`, pdfBlob);
+              }
+            } catch (error) {
+              console.warn('Hafta PDF eklenemedi:', error);
+            }
+          }
+        }
+
+        // ZIP dosyasını oluştur ve indir
+        const zipBlob = await zip.generateAsync({type: 'blob'});
+        
+        const url = window.URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = zipAdi;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        console.log(`✅ ${haftaNo}. hafta ZIP dosyası başarıyla indirildi:`, zipAdi);
+        
+      } catch (error) {
+        console.error('❌ ZIP indirme hatası:', error);
+        alert(`ZIP dosyası oluşturulamadı: ${error.message}`);
       }
     }
 
