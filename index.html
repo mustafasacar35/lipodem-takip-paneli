@@ -7672,6 +7672,9 @@ function duzenleHafta(i) {
       try {
         console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
+        // Hemen scope test edelim
+        console.log('🔍 Scope test - i değeri:', i);
+        
         // GitHub değişkenlerini input'lardan al - null check ile
         const tokenElement = document.getElementById('githubToken');
         const repoElement = document.getElementById('githubRepo');
@@ -7703,10 +7706,28 @@ function duzenleHafta(i) {
         
         console.log('✅ Kütüphaneler yüklü: JSZip:', typeof JSZip, 'saveAs:', typeof saveAs);
         
-        const haftalar = getHaftaListesi();
-        const hafta = haftalar[i];
+      const haftalar = getHaftaListesi();
+      console.log('🔍 Hafta listesi alındı, uzunluk:', haftalar ? haftalar.length : 'null');
+      
+      const hafta = haftalar[i];
+      console.log('� Hafta objesi alındı:', hafta);
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
+      
+      // haftaNo tanımından önce hafta objesi kontrolü
+      if (!hafta) {
+        console.error('❌ Hafta objesi bulunamadı, index:', i);
+        alert('Hafta bilgisi bulunamadı!');
+        return;
+      }
+      
+      console.log('🔍 hafta.haftaNo değeri:', hafta.haftaNo);
+      console.log('🔍 i + 1 değeri:', i + 1);
+      
+      // Hafta numarasını önce tanımla - DEBUG ile
+      console.log('🔍 haftaNo tanımlanmadan önce...');
+      const haftaNo = hafta.haftaNo || (i + 1);
+      console.log('🔍 haftaNo tanımlandı:', haftaNo);
       
       // Eğer PDF varsa ama pdfName yoksa, bunu düzelt
       if (hafta.pdf && !hafta.pdfName) {
@@ -7714,7 +7735,6 @@ function duzenleHafta(i) {
         // Hasta adından PDF adı oluştur (Türkçe karakter düzeltme ile)
         const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
         const tarih = new Date().toISOString().slice(0,10);
-        const haftaNo = hafta.haftaNo || (i + 1);
         hafta.pdfName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}.pdf`;
         saveToStorage(); // Değişikliği kaydet
         console.log('✅ PDF adı oluşturuldu:', hafta.pdfName);
@@ -7734,13 +7754,7 @@ function duzenleHafta(i) {
       }
       
       const zip = new JSZip();
-      let fileCount = 0;
-      
-      // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
-      // Hafta numarasını önce tanımla
-      const haftaNo = hafta.haftaNo || (i + 1);
-      
-      let baseName, zipName, pdfFileName, txtFileName;
+      let fileCount = 0;      let baseName, zipName, pdfFileName, txtFileName;
       
       console.log('🔍 Debug - hafta objesi:', hafta);
       console.log('🔍 Debug - hafta.pdfName:', hafta.pdfName);
