@@ -684,60 +684,125 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
-    // Türkçe karakter düzeltme fonksiyonu - BASİT VE ETKİLİ ÇÖZÜM
+    // Türkçe karakter düzeltme fonksiyonu - YENİ VE GÜVENLİ VERSİYON
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      let duzeltilmisText = text;
+      // SADECE BOZUK KARAKTERLERI TEMİZLE, YENİ BOZUKLUK YARATMA!
+      let temizMetin = text;
       
-      // 1. Yaygın bozuk kodlamalar
-      const bozukKodlamalar = {
-        'Ã§': 'ç', 'Ã¼': 'ü', 'Ã¶': 'ö', 'ÄŸ': 'ğ', 'Ä±': 'ı', 'Ä°': 'İ',
-        'Åž': 'Ş', 'ÅŸ': 'ş', 'Ã‡': 'Ç', 'Ãœ': 'Ü', 'Ã–': 'Ö', 'ÄžÄ': 'Ğ',
-        // Özel bozuk karakterler
-        '^EF0KE': 'ŞEFİKE', 'ŞEF0KE': 'ŞEFİKE', 'SEF0KE': 'ŞEFİKE',
-        '^EFIKE': 'ŞEFİKE', '^EF\u0130KE': 'ŞEFİKE', 'ÅEFÄ°KE': 'ŞEFİKE'
-      };
+      // 1. Sadece gerçekten bozuk olan ÃÂÃÂ kalıplarını temizle
+      const bozukKaliplar = [
+        /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
+        /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
+        /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
+        /ÃÂÃÂÃÂÃÂ/g,
+        /ãâãâ/g,
+        /ãâ/g
+      ];
       
-      // Bozuk kodlamaları düzelt
-      for (const [bozuk, dogru] of Object.entries(bozukKodlamalar)) {
-        duzeltilmisText = duzeltilmisText.replace(new RegExp(escapeRegex(bozuk), 'g'), dogru);
+      // Bozuk kalıpları kaldır
+      bozukKaliplar.forEach(kalip => {
+        temizMetin = temizMetin.replace(kalip, '');
+      });
+      
+      // 2. Sadece kesin bozuk karakterleri düzelt (DİKKATLİ!)
+      if (temizMetin.includes('°')) {
+        temizMetin = temizMetin.replace(/°/g, 'İ');
+      }
+      if (temizMetin.includes('*')) {
+        temizMetin = temizMetin.replace(/\*/g, 'Ş');
       }
       
-      // 2. Yaygın karakter değişimleri
-      const karakterDegisimleri = {
-        // Ş karakteri varyasyonları
-        '0': 'İ',  // Sıfır yerine İ
-        'Å': 'Ş',  // Latin extended karakterler
-        'Ã': 'ç',  // UTF-8 bozukluğu
-        
-        // Unicode normalize
-        '\u015E': 'Ş', '\u015F': 'ş',
-        '\u0130': 'İ', '\u0131': 'ı',
-        '\u011E': 'Ğ', '\u011F': 'ğ',
-        '\u00C7': 'Ç', '\u00E7': 'ç',
-        '\u00DC': 'Ü', '\u00FC': 'ü',
-        '\u00D6': 'Ö', '\u00F6': 'ö'
+      // 3. Bilinen bozuk isimleri düzelt
+      const isimDuzeltmeleri = {
+        'efKE BAY': 'ŞEFİKE BAY',
+        'EF°KE BAY': 'ŞEFİKE BAY',
+        'EFKE BAY': 'ŞEFİKE BAY',
+        'ATAYŞ': 'ATAYŞ', // Doğru halini koru
+        'ATAYYŞ': 'ATAYŞ', // Çifte Ş'yi düzelt
+        'KK': 'KÖK',
+        'KARAGZ': 'KARAGÖZ',
+        'FSUN': 'FİSUN',
+        'F°SUN': 'FİSUN'
       };
       
-      // Karakter değişimlerini uygula
-      for (const [eskiKar, yeniKar] of Object.entries(karakterDegisimleri)) {
-        duzeltilmisText = duzeltilmisText.replace(new RegExp(escapeRegex(eskiKar), 'g'), yeniKar);
+      // Sadece kesin bozuk isimleri düzelt
+      for (const [bozuk, dogru] of Object.entries(isimDuzeltmeleri)) {
+        if (temizMetin.includes(bozuk)) {
+          temizMetin = temizMetin.replace(new RegExp(bozuk, 'gi'), dogru);
+        }
       }
       
-      // 3. Gereksiz semboller ve fazla boşlukları temizle
-      duzeltilmisText = duzeltilmisText
-        .replace(/[ÂÃ°º†‡^Å¦§¨©ª«¬­®¯°±²³´µ¶·¸¹]+/g, '') // Gereksiz semboller
-        .replace(/\s+/g, ' ')       // Fazla boşlukları tek yap
-        .trim();                    // Baştaki ve sondaki boşlukları kaldır
+      // 4. Fazla boşlukları temizle
+      temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
       
-      return duzeltilmisText;
+      return temizMetin;
     }
     
     // Regex escape helper
     function escapeRegex(str) {
       return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
+
+    // ACIL DURUM: LocalStorage'daki bozuk verileri temizle
+    function localStorageTemizle() {
+      console.log('🧹 LocalStorage bozuk veri temizliği başlatılıyor...');
+      
+      try {
+        const hastaDataKey = 'hastaData';
+        const hastalarKey = 'hastalar';
+        
+        // Her iki key'i de kontrol et
+        const keys = [hastaDataKey, hastalarKey];
+        let temizlenen = 0;
+        
+        keys.forEach(key => {
+          const data = localStorage.getItem(key);
+          if (data) {
+            try {
+              const hastalar = JSON.parse(data);
+              let degisiklik = false;
+              
+              hastalar.forEach(hasta => {
+                const eskiIsim = hasta.isim;
+                hasta.isim = turkceKarakterDuzelt(hasta.isim);
+                if (eskiIsim !== hasta.isim) {
+                  console.log(`✅ "${eskiIsim}" → "${hasta.isim}"`);
+                  degisiklik = true;
+                  temizlenen++;
+                }
+                if (hasta.not) {
+                  hasta.not = turkceKarakterDuzelt(hasta.not);
+                }
+              });
+              
+              if (degisiklik) {
+                localStorage.setItem(key, JSON.stringify(hastalar));
+                console.log(`💾 ${key} güncellendi`);
+              }
+            } catch (e) {
+              console.error(`❌ ${key} parse hatası:`, e);
+            }
+          }
+        });
+        
+        if (temizlenen > 0) {
+          console.log(`🎉 ${temizlenen} hasta ismi temizlendi! Sayfa yenileniyor...`);
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          console.log('✅ Veri zaten temiz!');
+        }
+        
+      } catch (error) {
+        console.error('❌ LocalStorage temizleme hatası:', error);
+      }
+    }
+    
+    // Sayfa yüklendiğinde otomatik temizleme yap
+    setTimeout(() => {
+      localStorageTemizle();
+    }, 2000);
 
     // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
     // Manuel olarak mevcut hasta verilerini düzeltme fonksiyonu
@@ -4545,8 +4610,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const yeniNot = prompt('Hasta notu (opsiyonel):');
       if (yeniNot === null) return; // İptal edildi
       
-      // Türkçe karakter düzeltmesi uygula
-      const duzeltilmisIsim = turkceKarakterDuzelt(temizIsim);
+      // ARTIK KARİKATER DÜZELTMESİ YAPMA - OLDUĞU GİBİ KULLAN
+      const duzeltilmisIsim = temizIsim;
       
       // Aynı isimde hasta var mı kontrol et (hem eski hem yeni sistemde)
       const mevcutHastaEski = hastalar.find(h => h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
@@ -4682,8 +4747,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const yeniNot = prompt('Hasta notunu düzenleyin:', mevcutNot);
       if (yeniNot === null) return; // İptal edildi
       
-      // Türkçe karakter düzeltmesi uygula
-      const duzeltilmisIsim = turkceKarakterDuzelt(temizIsim);
+      // ARTIK KARİKATER DÜZELTMESİ YAPMA - OLDUĞU GİBİ KULLAN
+      const duzeltilmisIsim = temizIsim;
       
       // Değişiklikleri kaydet
       seciliHasta.isim = duzeltilmisIsim;
