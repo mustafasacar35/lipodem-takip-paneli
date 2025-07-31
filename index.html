@@ -648,22 +648,15 @@
     function saveTokenToStorage() {
       const val = document.getElementById('githubToken').value;
       localStorage.setItem(TOKEN_KEY, val);
-      updateGithubSaveBtn();
     }
     function loadTokenFromStorage() {
       return localStorage.getItem(TOKEN_KEY) || '';
-    }
-    function updateGithubSaveBtn() {
-      const btn = document.getElementById('githubSaveBtn');
-      const token = document.getElementById('githubToken').value;
-      btn.disabled = !token;
     }
     // Sayfa açılışında token input'u doldur ve SADECE YENİ SİSTEMİ YÜKLİ
     window.addEventListener('DOMContentLoaded', function() {
       const token = loadTokenFromStorage();
       const input = document.getElementById('githubToken');
       if (input) input.value = token;
-      updateGithubSaveBtn();
       
       // ESKİ SİSTEM DEVRE DIŞI - Sadece yeni JSON sistemi kullan
       console.log('🚀 Yeni sistem başlatılıyor...');
