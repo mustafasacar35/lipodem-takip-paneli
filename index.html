@@ -4928,9 +4928,10 @@ function duzenleHafta(i) {
         // 5. hafta için özel içerik
         if (haftaNo === 5) {
           // Menü PDF'si
-          if (hafta.pdf) {
+          if (hafta.pdfName || hafta.pdfOrijinalIsim) {
             try {
-              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${hafta.pdfName}`, {
+              const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
+              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`, {
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
               });
               
@@ -4938,41 +4939,43 @@ function duzenleHafta(i) {
                 const pdfData = await pdfResponse.json();
                 const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
                 zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
+                console.log('✅ 5. hafta Menü PDF eklendi:', pdfFileName);
+              } else {
+                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status);
               }
             } catch (error) {
-              console.warn('Menü PDF eklenemedi:', error);
+              console.warn('❌ Menü PDF eklenemedi:', error);
             }
+          } else {
+            console.warn('⚠️ 5. hafta PDF bilgisi bulunamadı');
           }
 
-          // Eşleşen tarif kartları
-          if (hafta.tarifler && hafta.tarifler.length > 0) {
-            hafta.tarifler.forEach((tarif, index) => {
-              const tarifIcerik = `
-TARIF KARTI ${index + 1}
-================
-
-Tarif Adı: ${tarif.name || 'Bilinmiyor'}
-Kategori: ${tarif.category || 'Bilinmiyor'}
-Süre: ${tarif.time || 'Bilinmiyor'}
-Porsiyon: ${tarif.servings || 'Bilinmiyor'}
-
-MALZEMELER:
-${tarif.ingredients ? tarif.ingredients.map(ing => `- ${ing}`).join('\n') : 'Malzeme bilgisi yok'}
-
-TALİMATLAR:
-${tarif.instructions ? tarif.instructions.map((inst, i) => `${i + 1}. ${inst}`).join('\n') : 'Talimat bilgisi yok'}
-
-BESİN DEĞERLERİ:
-${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key}: ${value}`).join('\n') : 'Besin değeri bilgisi yok'}
-              `.trim();
-              
-              zip.file(`TARIF_KARTI_${index + 1}_${(tarif.name || 'tarif').replace(/[^a-zA-Z0-9]/g, '_')}.txt`, tarifIcerik);
-            });
+          // Eşleşen tarif kartları (5. hafta) - JPG dosyaları
+          if (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) {
+            for (const kart of hafta.tarifKartlar) {
+              try {
+                const response = await fetch(kart.data);
+                if (response.ok) {
+                  const blob = await response.blob();
+                  zip.file(`TARIF_KARTI_${kart.name}`, blob);
+                  console.log(`✅ 5. hafta tarif kartı eklendi: ${kart.name}`);
+                } else {
+                  console.warn(`❌ Tarif kartı indirilemedi: ${kart.name}`);
+                }
+              } catch (error) {
+                console.warn(`❌ Tarif kartı hatası: ${kart.name}`, error);
+              }
+            }
+          } else {
+            console.warn('⚠️ 5. hafta tarif kartı bulunamadı');
           }
 
-          // GPT Mesajı
+          // GPT Mesajı (5. hafta)
           if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
             zip.file('GPT_MESAJI.txt', hafta.gptMesaj.trim());
+            console.log('✅ 5. hafta GPT mesajı eklendi');
+          } else {
+            console.warn('⚠️ 5. hafta GPT mesajı bulunamadı');
           }
 
           // 5. hafta için otomatik masaj planı PDF'si ekle
@@ -4982,9 +4985,10 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
         // 9. hafta için özel içerik
         if (haftaNo === 9) {
           // Menü PDF'si
-          if (hafta.pdf) {
+          if (hafta.pdfName || hafta.pdfOrijinalIsim) {
             try {
-              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${hafta.pdfName}`, {
+              const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
+              const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`, {
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
               });
               
@@ -4992,41 +4996,43 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
                 const pdfData = await pdfResponse.json();
                 const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
                 zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
+                console.log('✅ 9. hafta Menü PDF eklendi:', pdfFileName);
+              } else {
+                console.warn('❌ PDF yanıtı başarısız:', pdfResponse.status);
               }
             } catch (error) {
-              console.warn('Menü PDF eklenemedi:', error);
+              console.warn('❌ Menü PDF eklenemedi:', error);
             }
+          } else {
+            console.warn('⚠️ 9. hafta PDF bilgisi bulunamadı');
           }
 
-          // Eşleşen tarif kartları
-          if (hafta.tarifler && hafta.tarifler.length > 0) {
-            hafta.tarifler.forEach((tarif, index) => {
-              const tarifIcerik = `
-TARIF KARTI ${index + 1}
-================
-
-Tarif Adı: ${tarif.name || 'Bilinmiyor'}
-Kategori: ${tarif.category || 'Bilinmiyor'}
-Süre: ${tarif.time || 'Bilinmiyor'}
-Porsiyon: ${tarif.servings || 'Bilinmiyor'}
-
-MALZEMELER:
-${tarif.ingredients ? tarif.ingredients.map(ing => `- ${ing}`).join('\n') : 'Malzeme bilgisi yok'}
-
-TALİMATLAR:
-${tarif.instructions ? tarif.instructions.map((inst, i) => `${i + 1}. ${inst}`).join('\n') : 'Talimat bilgisi yok'}
-
-BESİN DEĞERLERİ:
-${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key}: ${value}`).join('\n') : 'Besin değeri bilgisi yok'}
-              `.trim();
-              
-              zip.file(`TARIF_KARTI_${index + 1}_${(tarif.name || 'tarif').replace(/[^a-zA-Z0-9]/g, '_')}.txt`, tarifIcerik);
-            });
+          // Eşleşen tarif kartları (9. hafta) - JPG dosyaları
+          if (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) {
+            for (const kart of hafta.tarifKartlar) {
+              try {
+                const response = await fetch(kart.data);
+                if (response.ok) {
+                  const blob = await response.blob();
+                  zip.file(`TARIF_KARTI_${kart.name}`, blob);
+                  console.log(`✅ 9. hafta tarif kartı eklendi: ${kart.name}`);
+                } else {
+                  console.warn(`❌ Tarif kartı indirilemedi: ${kart.name}`);
+                }
+              } catch (error) {
+                console.warn(`❌ Tarif kartı hatası: ${kart.name}`, error);
+              }
+            }
+          } else {
+            console.warn('⚠️ 9. hafta tarif kartı bulunamadı');
           }
 
-          // GPT Mesajı
+          // GPT Mesajı (9. hafta)
           if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
             zip.file('GPT_MESAJI.txt', hafta.gptMesaj.trim());
+            console.log('✅ 9. hafta GPT mesajı eklendi');
+          } else {
+            console.warn('⚠️ 9. hafta GPT mesajı bulunamadı');
           }
 
           // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
@@ -5058,6 +5064,8 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
     // 5. hafta için Lenf Masaj PDF'si oluştur ve ZIP'e ekle
     async function createAndAddLenfMasajPDF(zip, hasta, haftalar) {
       try {
+        console.log('🏥 5. hafta Lenf Masaj PDF oluşturuluyor...');
+        
         // 5. hafta başlangıç tarihini bul
         let baslangicTarihi = new Date();
         if (haftalar.length >= 5 && haftalar[4].baslangic) {
@@ -5066,6 +5074,10 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
 
         // PDF oluştur
         const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+          throw new Error('jsPDF kütüphanesi yüklenmemiş');
+        }
+        
         const doc = new jsPDF();
         
         // Türkçe font desteği
@@ -5131,14 +5143,18 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
         const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Lenf_Masaj_Takvimi.pdf`;
         zip.file(dosyaAdi, pdfBlob);
         
+        console.log('✅ 5. hafta Lenf Masaj PDF ZIP\'e eklendi:', dosyaAdi);
+        
       } catch (error) {
-        console.error('Lenf masaj PDF oluşturma hatası:', error);
+        console.error('❌ Lenf masaj PDF oluşturma hatası:', error);
       }
     }
 
     // 9. hafta için Egzersiz PDF'si oluştur ve ZIP'e ekle
     async function createAndAddEgzersizPDF(zip, hasta, haftalar) {
       try {
+        console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...');
+        
         // 9. hafta başlangıç tarihini bul
         let baslangicTarihi = new Date();
         if (haftalar.length >= 9 && haftalar[8].baslangic) {
@@ -5151,6 +5167,10 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
 
         // PDF oluştur
         const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+          throw new Error('jsPDF kütüphanesi yüklenmemiş');
+        }
+        
         const doc = new jsPDF();
         
         doc.setFont('helvetica');
@@ -5209,8 +5229,10 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
         const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Egzersiz_Takvimi.pdf`;
         zip.file(dosyaAdi, pdfBlob);
         
+        console.log('✅ 9. hafta Egzersiz PDF ZIP\'e eklendi:', dosyaAdi);
+        
       } catch (error) {
-        console.error('Egzersiz PDF oluşturma hatası:', error);
+        console.error('❌ Egzersiz PDF oluşturma hatası:', error);
       }
     }
 
