@@ -7671,6 +7671,14 @@ function duzenleHafta(i) {
       try {
         console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
+        // GitHub token kontrolü ekle
+        if (!GITHUB_TOKEN) {
+          console.warn('⚠️ GitHub token bulunamadı');
+          alert('GitHub token ayarlanmamış. PDF dosyaları eklenemeyecek.');
+        } else {
+          console.log('✅ GitHub token mevcut');
+        }
+        
         // Kütüphane kontrolü
         if (typeof JSZip === 'undefined') {
           console.error('❌ JSZip kütüphanesi yüklenmemiş!');
@@ -7804,6 +7812,40 @@ function duzenleHafta(i) {
         }
       }
       
+      // MENÜ PDF'Si EKLEME (5. ve 9. hafta için)
+      if ((haftaNo === 5 || haftaNo === 9) && (hafta.pdfName || hafta.pdfOrijinalIsim) && GITHUB_TOKEN) {
+        try {
+          console.log(`🔍 ${haftaNo}. hafta Menü PDF ekleniyor...`);
+          
+          const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
+          const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
+          
+          console.log('🔍 PDF URL:', pdfUrl);
+          
+          const pdfResponse = await fetch(pdfUrl, {
+            headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+          });
+          
+          console.log('🔍 PDF response status:', pdfResponse.status);
+          
+          if (pdfResponse.ok) {
+            const pdfData = await pdfResponse.json();
+            const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+            const menuPdfName = `MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`;
+            zip.file(menuPdfName, pdfBlob);
+            fileCount++;
+            console.log(`✅ ${haftaNo}. hafta Menü PDF eklendi:`, menuPdfName);
+          } else {
+            const errorText = await pdfResponse.text();
+            console.warn(`❌ ${haftaNo}. hafta PDF yanıtı başarısız:`, pdfResponse.status, errorText);
+          }
+        } catch (error) {
+          console.warn(`❌ ${haftaNo}. hafta Menü PDF eklenemedi:`, error);
+        }
+      } else if (haftaNo === 5 || haftaNo === 9) {
+        console.warn(`⚠️ ${haftaNo}. hafta PDF bilgisi bulunamadı veya GitHub token yok`);
+      }
+
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
       const haftaNo = hafta.haftaNo || (i + 1);
       if (haftaNo === 5) {
