@@ -7737,6 +7737,9 @@ function duzenleHafta(i) {
       let fileCount = 0;
       
       // 1. Dosya isimlerini belirle (yüklenen PDF adına göre)
+      // Hafta numarasını önce tanımla
+      const haftaNo = hafta.haftaNo || (i + 1);
+      
       let baseName, zipName, pdfFileName, txtFileName;
       
       console.log('🔍 Debug - hafta objesi:', hafta);
@@ -7759,7 +7762,6 @@ function duzenleHafta(i) {
         // Hasta adından ve hafta numarasından dosya adı oluştur (Türkçe karakter düzeltme ile)
         const hastaAdi = seciliHasta && seciliHasta.isim ? turkceKarakterDuzelt(seciliHasta.isim).replace(/\s+/g, '_') : 'Hasta';
         const tarih = new Date().toISOString().slice(0,10);
-        const haftaNo = hafta.haftaNo || (i + 1);
         
         baseName = `${hastaAdi}_Hafta_${haftaNo}_${tarih}`;
         zipName = baseName + '.zip';
@@ -7856,7 +7858,6 @@ function duzenleHafta(i) {
       }
 
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
-      const haftaNo = hafta.haftaNo || (i + 1);
       if (haftaNo === 5) {
         try {
           console.log('🏥 5. hafta tespit edildi, Sadece Masaj Takvim PDF\'i oluşturuluyor...');
