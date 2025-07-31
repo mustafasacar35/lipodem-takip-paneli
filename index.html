@@ -6276,7 +6276,10 @@ function duzenleHafta(i) {
       
       try {
         const doc = new jsPDFLib('p', 'mm', 'a4'); // Portrait format
+        
+        // Türkçe karakter desteği için font encoding ayarla
         doc.setFont('helvetica');
+        doc.setLanguage('tr-TR');
         
         // Başlık
         doc.setFontSize(16);
@@ -6284,10 +6287,21 @@ function duzenleHafta(i) {
         const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
         console.log('🎯 PDF için hasta adı düzeltmesi:', seciliHasta.isim, ' → ', hastaAdi);
         
-        // jsPDF için ASCII dönüşüm
+        // Debug: Hem orijinal hem ASCII versiyonu deneyelim
+        console.log('🔍 Debug - orijinal isim:', hastaAdi);
         const pdfUygunHastaAdi = pdfIcinASCII(hastaAdi);
-        console.log('📄 PDF için ASCII dönüşüm:', hastaAdi, ' → ', pdfUygunHastaAdi);
-        doc.text(pdfUygunHastaAdi.toUpperCase(), 20, 20);
+        console.log('� Debug - ASCII isim:', pdfUygunHastaAdi);
+        
+        // İki versiyon da deneyelim
+        try {
+          // Önce ASCII versiyonu dene
+          doc.text(pdfUygunHastaAdi.toUpperCase(), 20, 20);
+          console.log('✅ ASCII versiyon kullanıldı');
+        } catch (e) {
+          // ASCII başarısız olursa orijinali dene
+          doc.text(hastaAdi.toUpperCase(), 20, 20);
+          console.log('⚠️ Orijinal versiyon kullanıldı');
+        }
         
         doc.setFontSize(14);
         doc.text(pdfIcinASCII('LENF DRENAJ MASAJI TAKVIMI'), 20, 35);
