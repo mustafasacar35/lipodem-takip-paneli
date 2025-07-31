@@ -5861,20 +5861,28 @@ function duzenleHafta(i) {
           egzersizDahilMi = seciliHaftaIndex >= 8; // 9. hafta ve sonrası için egzersiz dahil
         }
         
+        console.log('🔍 jsPDF kontrolü başlıyor...');
         // jsPDF kontrolü
         let jsPDFLib;
         if (typeof window.jspdf !== 'undefined') {
           jsPDFLib = window.jspdf.jsPDF;
+          console.log('✅ window.jspdf bulundu');
         } else if (typeof jsPDF !== 'undefined') {
           jsPDFLib = jsPDF;
+          console.log('✅ global jsPDF bulundu');
         } else {
           console.warn('❌ jsPDF bulunamadı');
           return null;
         }
         
+        console.log('🔍 Hasta adı alınıyor...');
         const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
+        console.log('🔍 Hasta adı:', hastaAdi);
+        
+        console.log('🔍 PDF dokümanı oluşturuluyor...');
         const doc = new jsPDFLib('p', 'mm', 'a4'); // Portrait - mobil uyumlu
         
+        console.log('🔍 PDF ayarları yapılıyor...');
         // PDF içeriğini oluştur (yeni mobil dostu stil ile)
         doc.setFont('helvetica');
         doc.setLanguage('tr');
@@ -6124,6 +6132,12 @@ function duzenleHafta(i) {
         
       } catch (error) {
         console.error('❌ Lenf Drenaj PDF Blob hatası:', error);
+        console.error('❌ Hata detayları:', {
+          message: error.message,
+          stack: error.stack,
+          belirliHaftaNo: belirliHaftaNo,
+          seciliHasta: seciliHasta ? seciliHasta.isim : 'null'
+        });
         return null;
       }
     }
