@@ -7157,12 +7157,14 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   
   // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
-  const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif);
+  const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
   hafta.tarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
-    eslesenTarifIsimleri.includes(tarif)
+    eslesenTarifIsimleri.includes(tarif.toLowerCase())
   ) : [];
   
-  console.log('📝 Sadece eşleşen tarifler kaydedildi:', hafta.tarifler.length, 'tarif');
+  console.log('📝 Eşleştirme öncesi toplam tarif:', hafta.tarifler ? hafta.tarifler.length : 0);
+  console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
+  console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
   saveToStorage();
 }
 
