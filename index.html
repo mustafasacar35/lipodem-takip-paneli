@@ -642,6 +642,19 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+    // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
+    function decodeBase64UTF8(base64Content) {
+      try {
+        // Modern tarayıcılarda TextDecoder kullan
+        const bytes = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+        return new TextDecoder('utf-8').decode(bytes);
+      } catch (decodeError) {
+        // Fallback: Normal atob kullan
+        console.warn('UTF-8 decode başarısız, normal decode deneniyor:', decodeError);
+        return atob(base64Content);
+      }
+    }
+    
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
@@ -1012,7 +1025,9 @@
         
         if (response.ok) {
           const data = await response.json();
-          const contentStr = atob(data.content).trim();
+          
+          // Base64'ü UTF-8 olarak decode et (Türkçe karakterler için)
+          const contentStr = decodeBase64UTF8(data.content).trim();
           
           // Boş dosya kontrolü
           if (!contentStr || contentStr === '' || contentStr === '{}' || contentStr === 'null') {
@@ -1775,7 +1790,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
         if (resp.ok) {
           const data = await resp.json();
-          const jsonContent = atob(data.content);
+          const jsonContent = decodeBase64UTF8(data.content);
           const kayitVerisi = JSON.parse(jsonContent);
           
           // Eski format kontrolü
@@ -2196,7 +2211,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
         if (resp.ok) {
           const data = await resp.json();
-          const jsonContent = atob(data.content);
+          const jsonContent = decodeBase64UTF8(data.content);
           const kayitVerisi = JSON.parse(jsonContent);
           
           // Eski format kontrolü
@@ -2478,7 +2493,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
 
         const listData = await listRes.json();
-        const mevcutListe = JSON.parse(atob(listData.content));
+        const mevcutListe = JSON.parse(decodeBase64UTF8(listData.content));
         
         // Silinen dosyayı listeden çıkar
         const guncelListe = mevcutListe.filter(kart => kart !== silinecekKart);
@@ -2581,7 +2596,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (!response.ok) throw new Error('Kart listesi alınamadı');
         
         const data = await response.json();
-        const content = JSON.parse(atob(data.content));
+        const content = JSON.parse(decodeBase64UTF8(data.content));
         
         kartListesiniGosterForDuzenleme(content);
         
@@ -2796,7 +2811,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         const fileData = await response.json();
-        const currentContent = JSON.parse(atob(fileData.content));
+        const currentContent = JSON.parse(decodeBase64UTF8(fileData.content));
         
         // Her dosyanın varlığını kontrol et
         const validFiles = [];
@@ -3236,7 +3251,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
 
         const listData = await listRes.json();
-        const mevcutListe = JSON.parse(atob(listData.content));
+        const mevcutListe = JSON.parse(decodeBase64UTF8(listData.content));
         
         // Yeni dosyayı listeye ekle (eğer yoksa)
         if (!mevcutListe.includes(dosyaAdi)) {
@@ -3599,7 +3614,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             
             if (response.ok) {
               const data = await response.json();
-              hastaDetay = JSON.parse(atob(data.content));
+              hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
               bulunanDosya = dosyaAdi;
               console.log(`✅ Dosya bulundu: ${dosyaAdi}`);
               break;
