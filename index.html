@@ -754,6 +754,26 @@
         temizMetin = temizMetin.replace(kalip, '');
       });
       
+      // 2. PDF'de yaygın bozuk karakterleri düzelt
+      const karakterDuzeltmeleri = {
+        '^': 'Ş',    // PDF'de Ş karakteri ^ olarak görünüyor
+        '0^': 'İ',   // PDF'de İ karakteri 0^ olarak görünüyor  
+        'Ç^': 'Ç',   // PDF'de Ç karakteri Ç^ olarak görünüyor
+        '°': 'İ',    // Alternatif İ gösterimi
+        '*': 'Ş',    // Alternatif Ş gösterimi
+        '§': 'Ş'     // Başka bir Ş gösterimi
+      };
+      
+      // Karakter düzeltmelerini uygula
+      for (const [bozuk, dogru] of Object.entries(karakterDuzeltmeleri)) {
+        temizMetin = temizMetin.replace(new RegExp(escapeRegex(bozuk), 'g'), dogru);
+      }
+      
+      // 2.5. Özel bozuk karakter kalıplarını düzelt
+      temizMetin = temizMetin.replace(/\^EYDA/g, 'ŞEYDA');
+      temizMetin = temizMetin.replace(/E EÇ0\^Ç/g, 'EĞEÇİŞ');
+      temizMetin = temizMetin.replace(/EGEÇ0\^/g, 'EĞEÇİŞ');
+      
       // 2. Sadece kesin bozuk karakterleri düzelt (DİKKATLİ!)
       if (temizMetin.includes('°')) {
         temizMetin = temizMetin.replace(/°/g, 'İ');
@@ -767,6 +787,10 @@
         'efKE BAY': 'ŞEFİKE BAY',
         'EF°KE BAY': 'ŞEFİKE BAY',
         'EFKE BAY': 'ŞEFİKE BAY',
+        '^EYDA': 'ŞEYDA',
+        'E EÇ0^Ç': 'EĞEÇİŞ',
+        'EGEÇ0^': 'EĞEÇİŞ',
+        '^EYDA E EÇ0^Ç': 'ŞEYDA EĞEÇİŞ',
         'ATAYŞ': 'ATAYŞ', // Doğru halini koru
         'ATAYYŞ': 'ATAYŞ', // Çifte Ş'yi düzelt
         'KK': 'KÖK',
@@ -5797,7 +5821,8 @@ function duzenleHafta(i) {
         doc.setFont('helvetica');
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${hastaAdi.toUpperCase()} - GENEL TAKİP`, 20, 20);
+        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
+        doc.text(`${temizHastaAdi.toUpperCase()} - GENEL TAKİP`, 20, 20);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
