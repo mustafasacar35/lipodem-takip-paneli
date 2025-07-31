@@ -7671,13 +7671,18 @@ function duzenleHafta(i) {
       try {
         console.log('🎯 ZIP fonksiyonu başlatıldı, hafta indeksi:', i);
         
-        // GitHub token kontrolü ekle
+        // GitHub değişkenlerini input'lardan al
+        const GITHUB_TOKEN = document.getElementById('githubToken').value.trim();
+        const GITHUB_REPO = document.getElementById('githubRepo').value.trim() || 'mustafasacar35/lipodem-takip-paneli';
+        
         if (!GITHUB_TOKEN) {
           console.warn('⚠️ GitHub token bulunamadı');
           alert('GitHub token ayarlanmamış. PDF dosyaları eklenemeyecek.');
         } else {
           console.log('✅ GitHub token mevcut');
         }
+        
+        console.log('🔍 GITHUB_REPO:', GITHUB_REPO);
         
         // Kütüphane kontrolü
         if (typeof JSZip === 'undefined') {
