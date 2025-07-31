@@ -7841,17 +7841,39 @@ function duzenleHafta(i) {
       if ((haftaNo === 5 || haftaNo === 9) && (hafta.pdfName || hafta.pdfOrijinalIsim) && GITHUB_TOKEN) {
         try {
           console.log(`🔍 ${haftaNo}. hafta Menü PDF ekleniyor...`);
+          console.log('🔍 PDF bilgileri:', {
+            pdfName: hafta.pdfName,
+            pdfOrijinalIsim: hafta.pdfOrijinalIsim,
+            hastaId: seciliHasta.id,
+            haftaNo: haftaNo
+          });
           
           const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
-          const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
           
-          console.log('🔍 PDF URL:', pdfUrl);
+          // Önce patients klasöründe dene
+          let pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
           
-          const pdfResponse = await fetch(pdfUrl, {
+          console.log('🔍 İlk denenen PDF URL (patients):', pdfUrl);
+          
+          let pdfResponse = await fetch(pdfUrl, {
             headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
           });
           
-          console.log('🔍 PDF response status:', pdfResponse.status);
+          console.log('🔍 İlk PDF response status:', pdfResponse.status);
+          
+          // Eğer patients klasöründe bulunamazsa pdfs klasörünü dene
+          if (!pdfResponse.ok) {
+            console.log('🔍 patients klasöründe bulunamadı, pdfs klasörünü deniyor...');
+            pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/pdfs/${pdfFileName}`;
+            
+            console.log('🔍 İkinci denenen PDF URL (pdfs):', pdfUrl);
+            
+            pdfResponse = await fetch(pdfUrl, {
+              headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+            });
+            
+            console.log('🔍 İkinci PDF response status:', pdfResponse.status);
+          }
           
           if (pdfResponse.ok) {
             const pdfData = await pdfResponse.json();
@@ -7863,12 +7885,30 @@ function duzenleHafta(i) {
           } else {
             const errorText = await pdfResponse.text();
             console.warn(`❌ ${haftaNo}. hafta PDF yanıtı başarısız:`, pdfResponse.status, errorText);
+            
+            // API yanıtını detaylı logla
+            console.warn('❌ PDF API yanıt detayları:', {
+              url: pdfUrl,
+              status: pdfResponse.status,
+              statusText: pdfResponse.statusText,
+              errorText: errorText
+            });
           }
         } catch (error) {
           console.warn(`❌ ${haftaNo}. hafta Menü PDF eklenemedi:`, error);
+          console.warn('❌ PDF ekleme hatası detayları:', {
+            errorMessage: error.message,
+            errorStack: error.stack,
+            pdfUrl: pdfUrl
+          });
         }
       } else if (haftaNo === 5 || haftaNo === 9) {
-        console.warn(`⚠️ ${haftaNo}. hafta PDF bilgisi bulunamadı veya GitHub token yok`);
+        console.warn(`⚠️ ${haftaNo}. hafta PDF bilgisi bulunamadı veya GitHub token yok`, {
+          haftaNo: haftaNo,
+          pdfName: hafta.pdfName,
+          pdfOrijinalIsim: hafta.pdfOrijinalIsim,
+          hasToken: !!GITHUB_TOKEN
+        });
       }
 
       // 6. Sadece 5. haftada "Sadece Masaj" Takvim PDF'ini ekle
