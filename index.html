@@ -950,7 +950,7 @@
           console.log('✅ GitHub\'dan hasta listesi yüklendi:', yuklenmisList.length, 'hasta');
           
           // Hastalar listesini yeni sistemden render et
-          renderHastalarYeniSistem();
+          await renderHastalarYeniSistem();
           
           if (durumElement) {
             durumElement.innerHTML = `✅ GitHub'dan yüklendi (${yuklenmisList.length} hasta - Yeni Sistem)`;
@@ -3378,9 +3378,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     function saveToStorage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
-        // Hasta sayılarını güncelle
+        // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
-          guncelleHastaSayilari();
+          guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
     }
@@ -3572,6 +3572,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         console.log(`✅ Yeni sistem hasta listesi güncellendi: ${filtreliHastalar.length} hasta gösteriliyor`);
         
+        // Sidebar'daki hasta sayılarını güncelle
+        await guncelleHastaSayilari();
+        
       } catch (error) {
         console.error('❌ Yeni sistem hasta listesi yükleme hatası:', error);
         ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #dc3545;">Hasta listesi yüklenemedi</li>';
@@ -3678,17 +3681,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
-    function guncelleHastaSayilari() {
+    async function guncelleHastaSayilari() {
       try {
-        // Global hastalar değişkenini kullan
-        const hastaData = hastalar || [];
+        // Yeni sistemden hasta listesini al
+        const hastaData = await hastaListesiYukle();
         
         let aktifSayisi = 0;
         let arsivSayisi = 0;
         
         hastaData.forEach(hasta => {
-          // arsiv veya arsivlendi property'lerini kontrol et
-          if (hasta.arsiv || hasta.arsivlendi) {
+          // arsiv property'sini kontrol et
+          if (hasta.arsiv) {
             arsivSayisi++;
           } else {
             aktifSayisi++;
@@ -3697,7 +3700,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         const tumSayisi = hastaData.length;
         
-        console.log(`📊 Hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${tumSayisi}`);
+        console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${tumSayisi}`);
         
         // Select option'larını güncelle
         const arsivFiltre = document.getElementById('arsivFiltre');
