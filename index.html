@@ -13,6 +13,20 @@
   
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Türkçe karakter desteği için font ekle -->
+  <script>
+    // jsPDF font encoding düzeltmesi
+    window.fixTurkishChars = function(text) {
+      if (!text || typeof text !== 'string') return text;
+      return text
+        .replace(/Ş/g, 'S').replace(/ş/g, 's')
+        .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+        .replace(/İ/g, 'I').replace(/ı/g, 'i')
+        .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+        .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+        .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+    };
+  </script>
   
   <style>
     body { 
@@ -5653,7 +5667,7 @@ function duzenleHafta(i) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         doc.rect(15, 32, 170, 10);
-        doc.text('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi (5. Haftadan itibaren)', 20, 38);
+        doc.text(window.fixTurkishChars('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi (5. Haftadan itibaren)'), 20, 38);
         
         // Seçili haftayı al - geçmiş haftalarda soluk renk için
         const seciliHaftaIndex = parseInt(document.getElementById('haftaSelect').value);
@@ -5697,7 +5711,7 @@ function duzenleHafta(i) {
           
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
-          doc.text(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`, 20, currentY + 4);
+          doc.text(window.fixTurkishChars(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
           currentY += 8;
           
           // Tablo başlıkları - 4 sütun
@@ -6289,7 +6303,7 @@ function duzenleHafta(i) {
         
         // Debug: Hem orijinal hem ASCII versiyonu deneyelim
         console.log('🔍 Debug - orijinal isim:', hastaAdi);
-        const pdfUygunHastaAdi = pdfIcinASCII(hastaAdi);
+        const pdfUygunHastaAdi = window.fixTurkishChars(hastaAdi);
         console.log('� Debug - ASCII isim:', pdfUygunHastaAdi);
         
         // İki versiyon da deneyelim
@@ -6304,7 +6318,7 @@ function duzenleHafta(i) {
         }
         
         doc.setFontSize(14);
-        doc.text(pdfIcinASCII('LENF DRENAJ MASAJI TAKVIMI'), 20, 35);
+        doc.text(window.fixTurkishChars('LENF DRENAJ MASAJI TAKVIMI'), 20, 35);
         
         // Açıklama
         doc.setFontSize(10);
