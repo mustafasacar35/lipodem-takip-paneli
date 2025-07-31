@@ -7850,10 +7850,16 @@ function duzenleHafta(i) {
           
           const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
           
-          // Önce patients klasöründe dene
-          let pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
-          
-          console.log('🔍 İlk denenen PDF URL (patients):', pdfUrl);
+          // pdfYolu varsa önce onu dene
+          let pdfUrl;
+          if (hafta.pdfYolu) {
+            pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${hafta.pdfYolu}`;
+            console.log('🔍 İlk denenen PDF URL (pdfYolu):', pdfUrl);
+          } else {
+            // Önce patients klasöründe dene
+            pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${pdfFileName}`;
+            console.log('🔍 İlk denenen PDF URL (patients):', pdfUrl);
+          }
           
           let pdfResponse = await fetch(pdfUrl, {
             headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
@@ -7861,8 +7867,8 @@ function duzenleHafta(i) {
           
           console.log('🔍 İlk PDF response status:', pdfResponse.status);
           
-          // Eğer patients klasöründe bulunamazsa pdfs klasörünü dene
-          if (!pdfResponse.ok) {
+          // Eğer bulunamazsa pdfs klasörünü dene
+          if (!pdfResponse.ok && !hafta.pdfYolu) {
             console.log('🔍 patients klasöründe bulunamadı, pdfs klasörünü deniyor...');
             pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/pdfs/${pdfFileName}`;
             
