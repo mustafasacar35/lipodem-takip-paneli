@@ -7155,6 +7155,14 @@ function duzenleHafta(i) {
 
   // Eşleşen kartları hafta verisine kaydet
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
+  
+  // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
+  const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif);
+  hafta.tarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
+    eslesenTarifIsimleri.includes(tarif)
+  ) : [];
+  
+  console.log('📝 Sadece eşleşen tarifler kaydedildi:', hafta.tarifler.length, 'tarif');
   saveToStorage();
 }
 
