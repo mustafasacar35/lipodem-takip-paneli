@@ -4981,10 +4981,7 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
         
         // 9. hafta için özel içerik
         if (haftaNo === 9) {
-          // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
-          await createAndAddEgzersizPDF(zip, hasta, haftalar);
-
-          // Hafta PDF'si varsa ekle
+          // Menü PDF'si
           if (hafta.pdf) {
             try {
               const pdfResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${seciliHasta.id}/hafta_${haftaNo}_${hafta.pdfName}`, {
@@ -4994,12 +4991,46 @@ ${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key
               if (pdfResponse.ok) {
                 const pdfData = await pdfResponse.json();
                 const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
-                zip.file(`HAFTA_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}`, pdfBlob);
+                zip.file(`MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`, pdfBlob);
               }
             } catch (error) {
-              console.warn('Hafta PDF eklenemedi:', error);
+              console.warn('Menü PDF eklenemedi:', error);
             }
           }
+
+          // Eşleşen tarif kartları
+          if (hafta.tarifler && hafta.tarifler.length > 0) {
+            hafta.tarifler.forEach((tarif, index) => {
+              const tarifIcerik = `
+TARIF KARTI ${index + 1}
+================
+
+Tarif Adı: ${tarif.name || 'Bilinmiyor'}
+Kategori: ${tarif.category || 'Bilinmiyor'}
+Süre: ${tarif.time || 'Bilinmiyor'}
+Porsiyon: ${tarif.servings || 'Bilinmiyor'}
+
+MALZEMELER:
+${tarif.ingredients ? tarif.ingredients.map(ing => `- ${ing}`).join('\n') : 'Malzeme bilgisi yok'}
+
+TALİMATLAR:
+${tarif.instructions ? tarif.instructions.map((inst, i) => `${i + 1}. ${inst}`).join('\n') : 'Talimat bilgisi yok'}
+
+BESİN DEĞERLERİ:
+${tarif.nutrition ? Object.entries(tarif.nutrition).map(([key, value]) => `${key}: ${value}`).join('\n') : 'Besin değeri bilgisi yok'}
+              `.trim();
+              
+              zip.file(`TARIF_KARTI_${index + 1}_${(tarif.name || 'tarif').replace(/[^a-zA-Z0-9]/g, '_')}.txt`, tarifIcerik);
+            });
+          }
+
+          // GPT Mesajı
+          if (hafta.gptMesaj && hafta.gptMesaj.trim()) {
+            zip.file('GPT_MESAJI.txt', hafta.gptMesaj.trim());
+          }
+
+          // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
+          await createAndAddEgzersizPDF(zip, hasta, haftalar);
         }
 
         // ZIP dosyasını oluştur ve indir
