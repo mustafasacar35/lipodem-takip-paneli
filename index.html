@@ -5637,6 +5637,26 @@ function duzenleHafta(i) {
         }
         
         saveToStorage();
+        
+        // Eğer bu hafta şu anda aktif hafta ise, kartları hemen göster
+        const aktifTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : null;
+        
+        console.log('🔍 PDF analizi sonrası kart güncelleme kontrolü:', {
+          pdfYuklenenHaftaIndex: i,
+          aktifHaftaIndex: aktifHaftaIndex,
+          aktifTabVar: !!aktifTab,
+          eslestirmeSonucu: eslestirmeSonucu ? 'var' : 'yok'
+        });
+        
+        if (aktifTab && aktifHaftaIndex === i) {
+          console.log('🎯 PDF yüklenen hafta aktif hafta, kartları güncelleniyor...');
+          setTimeout(() => {
+            gosterEslesenKartlarSidebar(i);
+          }, 500); // Kısa bir gecikme ile güncelle
+        } else {
+          console.log('🔍 PDF yüklenen hafta aktif hafta değil, kart güncelleme yapılmıyor');
+        }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -7387,10 +7407,18 @@ function duzenleHafta(i) {
   saveToStorage();
   
   // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
-  return {
+  const sonuc = {
     eslesenKartlar: hafta.tarifKartlar,
     eslesmeyenTarifler: eslesmeyenTarifler // UI için döndür ama JSON'a kaydetme
   };
+  
+  console.log('✅ otomatikEsleHafta tamamlandı:', {
+    haftaIndex: i,
+    eslesenKartSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
+    eslesmeyenTarifSayisi: eslesmeyenTarifler.length
+  });
+  
+  return sonuc;
 }
 
     function gptMesajKaydet(i) {
