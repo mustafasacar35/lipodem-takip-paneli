@@ -7459,24 +7459,33 @@ function duzenleHafta(i) {
         
         const doc = new jsPDFLib();
         
-        // Hasta adını temizle (aynı ZIP sistemindeki gibi)
-        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
+        // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
+        console.log('🔍 Orijinal hasta adı:', hastaAdi);
+        const asciiHastaAdi = hastaAdi
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
         // Başlık - ZIP sistemindeki gibi
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
         
-        const title = `${temizHastaAdi.toUpperCase()}`;
+        const title = `${asciiHastaAdi.toUpperCase()}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
         
-        // Lenf masaj başlığı - Türkçe karakterleri düzelt
-        const subtitle = turkceKarakterDuzelt('LENF DRENAJ MASAJI PROGRAMI');
-        const programBasligi = turkceKarakterDuzelt('8 Haftalik Lenf Drenaj Masaji Uygulama Programi');
+        // Lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Lenf Drenaj Masaji Uygulama Programi';
         
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
@@ -7698,24 +7707,33 @@ function duzenleHafta(i) {
         
         const doc = new jsPDFLib();
         
-        // Hasta adını temizle (aynı ZIP sistemindeki gibi)
-        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
+        // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
+        console.log('🔍 Orijinal hasta adı:', hastaAdi);
+        const asciiHastaAdi = hastaAdi
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
         // Başlık - ZIP sistemindeki gibi
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
         
-        const title = `${temizHastaAdi.toUpperCase()}`;
+        const title = `${asciiHastaAdi.toUpperCase()}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
         
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
         
-        // Egzersiz + lenf masaj başlığı - Türkçe karakterleri düzelt
-        const subtitle = turkceKarakterDuzelt('EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI');
-        const programBasligi = turkceKarakterDuzelt('8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi');
+        // Egzersiz + lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi';
         
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
