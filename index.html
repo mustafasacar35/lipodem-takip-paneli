@@ -5464,8 +5464,32 @@ function duzenleHafta(i) {
         }
 
         haftalar[i].tarifler = extractTariflerDetay(fullText);
+        
+        // Eşleştirme yap ve sonuçları kaydet
+        const eslestirmeSonucu = await otomatikEsleHafta(i);
+        
+        // Eşleştirme sonuçlarını hafta verilerine kaydet
+        if (eslestirmeSonucu) {
+          console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
+          haftalar[i].tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
+          haftalar[i].eslesmeyenTarifler = eslestirmeSonucu.eslesmeyenTarifler || [];
+        }
+        
+        // Hasta JSON dosyasını güncelle
+        if (seciliHasta) {
+          const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === (haftalar[i].haftaNo || (i + 1)));
+          if (seciliHaftaIndex !== -1) {
+            seciliHasta.haftalar[seciliHaftaIndex].tarifler = haftalar[i].tarifler;
+            seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
+            seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
+          }
+          
+          // Hasta verilerini GitHub'a kaydet
+          await hastayiAyriKaydet(seciliHasta);
+          console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi');
+        }
+        
         saveToStorage();
-        otomatikEsleHafta(i);
       };
       reader.readAsArrayBuffer(file);
     }
@@ -7213,6 +7237,12 @@ function duzenleHafta(i) {
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
   console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
   saveToStorage();
+  
+  // Eşleştirme sonuçlarını döndür (JSON'a kaydetmek için)
+  return {
+    eslesenKartlar: hafta.tarifKartlar,
+    eslesmeyenTarifler: eslesmeyenTarifler
+  };
 }
 
     function gptMesajKaydet(i) {
