@@ -40,7 +40,7 @@
     /* Main Layout */
     .main-container {
       display: grid;
-      grid-template-columns: 280px 4px 1fr 4px 300px;
+      grid-template-columns: 280px 4px 1fr 4px 200px;
       grid-template-rows: 60px 1fr;
       height: 100vh;
       gap: 0;
@@ -3699,9 +3699,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // En büyük hafta sayısını bul
           let maxHafta = 0;
+          console.log('🔍 Hasta hafta verileri debug:', {
+            isim: hasta.isim,
+            haftalar: hasta.haftalar,
+            haftalarLength: hasta.haftalar ? hasta.haftalar.length : 'undefined'
+          });
+          
           if (hasta.haftalar && hasta.haftalar.length > 0) {
-            maxHafta = Math.max(...hasta.haftalar.map(h => h.haftaNo || 0));
+            // Hafta numaralarını topla
+            const haftaNumaralari = hasta.haftalar.map(h => {
+              console.log('🔍 Hafta objesi:', h);
+              return h.haftaNo || h.hafta || 0;
+            });
+            console.log('🔍 Hafta numaraları:', haftaNumaralari);
+            maxHafta = Math.max(...haftaNumaralari);
           }
+          
+          console.log('🔍 En büyük hafta:', maxHafta);
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
@@ -8669,7 +8683,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         if (currentHandle === 'left') {
           // Sol sidebar genişliğini ayarla (min: 200px, max: 400px)
           const newLeftWidth = Math.max(200, Math.min(400, mouseX));
-          container.style.gridTemplateColumns = `${newLeftWidth}px 4px 1fr 4px 300px`;
+          container.style.gridTemplateColumns = `${newLeftWidth}px 4px 1fr 4px 200px`;
         } else if (currentHandle === 'right') {
           // Sağ sidebar genişliğini ayarla (min: 200px, max: 500px)
           const newRightWidth = Math.max(200, Math.min(500, containerRect.width - mouseX));
