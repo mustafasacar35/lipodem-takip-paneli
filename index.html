@@ -8814,6 +8814,23 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function manuelKartEklePaneliAc() {
       console.log('➕ Manuel kart ekleme paneli açılıyor...');
       
+      // Tarif kartlarının yüklenip yüklenmediğini kontrol et
+      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
+        console.log('⚠️ Tarif kartları henüz yüklenmedi, yükleme bekleniyor...');
+        // Kartlar yüklenene kadar bekle
+        setTimeout(() => {
+          if (window.tarifKartlari && window.tarifKartlari.length > 0) {
+            console.log('✅ Kartlar yüklendi, modal açılıyor...');
+            manuelKartEklePaneliAc();
+          } else {
+            alert('❌ Tarif kartları yüklenemedi. Lütfen sayfa yenileyip tekrar deneyin.');
+          }
+        }, 1000);
+        return;
+      }
+      
+      console.log('📋 Mevcut tarif kartı sayısı:', window.tarifKartlari.length);
+      
       // Aktif hafta kontrolü
       const activeTab = document.querySelector('.hafta-tab.active');
       if (!activeTab) {
@@ -8888,25 +8905,104 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Arama kutusuna focus
       setTimeout(() => {
         document.getElementById('manuelKartArama').focus();
+        // Başlangıçta tüm kartları göster
+        tumKartlariGoster();
       }, 100);
     }
     
     let secilenManuelKartlar = [];
     
-    function manuelKartAramaSonuclari() {
-      const aramaMetni = document.getElementById('manuelKartArama').value.toLowerCase().trim();
+    function tumKartlariGoster() {
       const sonuclarDiv = document.getElementById('manuelKartSonuclar');
       
-      if (!aramaMetni) {
+      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
         sonuclarDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Aramak için yukarıdaki kutucuğa yazın...
+          <div style="text-align: center; color: #dc3545; padding: 40px;">
+            ❌ Tarif kartları henüz yüklenmedi
           </div>
         `;
         return;
       }
       
+      console.log('📋 Tüm kartlar gösteriliyor, toplam:', window.tarifKartlari.length);
+      
+      // Tüm kartları göster
+      sonuclarDiv.innerHTML = '';
+      window.tarifKartlari.forEach(kart => {
+        const kartDiv = document.createElement('div');
+        kartDiv.style.cssText = `
+          display: flex;
+          align-items: center;
+          padding: 10px;
+          margin: 5px 0;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          cursor: pointer;
+          transition: all 0.2s;
+        `;
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `manuel_${kart}`;
+        checkbox.style.marginRight = '10px';
+        checkbox.onchange = function() {
+          manuelKartSecimDegisti(kart, this.checked);
+        };
+        
+        const img = document.createElement('img');
+        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}`;
+        img.style.cssText = `
+          width: 60px;
+          height: 60px;
+          object-fit: cover;
+          border-radius: 6px;
+          margin-right: 15px;
+        `;
+        
+        // Resim yüklenemezse placeholder göster
+        img.onerror = function() {
+          this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjBmMGYwIi8+CjxwYXRoIGQ9Ik0zMCAyNUM2IDI1IDYgMzUgMzAgMzVTNTQgMjUgMzAgMjVaIiBmaWxsPSIjY2NjIi8+CjwvcXZnPgo=';
+        };
+        
+        const isimSpan = document.createElement('span');
+        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+        isimSpan.style.cssText = `
+          font-size: 14px;
+          color: #333;
+          flex: 1;
+        `;
+        
+        kartDiv.appendChild(checkbox);
+        kartDiv.appendChild(img);
+        kartDiv.appendChild(isimSpan);
+        
+        kartDiv.onclick = function(e) {
+          if (e.target !== checkbox) {
+            checkbox.checked = !checkbox.checked;
+            manuelKartSecimDegisti(kart, checkbox.checked);
+          }
+        };
+        
+        sonuclarDiv.appendChild(kartDiv);
+      });
+    }
+    
+    function manuelKartAramaSonuclari() {
+      const aramaMetni = document.getElementById('manuelKartArama').value.toLowerCase().trim();
+      const sonuclarDiv = document.getElementById('manuelKartSonuclar');
+      
+      console.log('🔍 Arama yapılıyor:', aramaMetni);
+      console.log('📊 window.tarifKartlari durumu:', window.tarifKartlari ? window.tarifKartlari.length + ' kart mevcut' : 'tanımsız');
+      
+      if (!aramaMetni) {
+        // Boş arama durumunda tüm kartları göster
+        tumKartlariGoster();
+        return;
+      }
+      
       if (!window.tarifKartlari) {
+        console.error('❌ window.tarifKartlari tanımsız!');
         sonuclarDiv.innerHTML = `
           <div style="text-align: center; color: #dc3545; padding: 40px;">
             ❌ Tarif kartları henüz yüklenmedi
@@ -8920,6 +9016,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const kartAdi = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ').toLowerCase();
         return kartAdi.includes(aramaMetni);
       });
+      
+      console.log('📋 Filtrelenmiş kart sayısı:', filtreliKartlar.length);
       
       if (filtreliKartlar.length === 0) {
         sonuclarDiv.innerHTML = `
