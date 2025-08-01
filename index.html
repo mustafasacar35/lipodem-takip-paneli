@@ -447,42 +447,123 @@
             ➕ Manuel Kart Ekle
           </button>
         </div>
-        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Önce bir hasta seçin...
+        <!-- 📁 ACCORDION PANEL SİSTEMİ -->
+        <div id="accordionContainer" style="margin-top: 10px;">
+          
+          <!-- 1️⃣ EŞLEŞEN KARTLAR ACCORDION -->
+          <div class="accordion-section" style="margin-bottom: 8px;">
+            <button class="accordion-header" onclick="toggleAccordion('eslesen')" style="
+              width: 100%;
+              padding: 12px 15px;
+              background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: bold;
+              cursor: pointer;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 14px;
+            ">
+              <span id="eslesenBaslik">📋 Eşleşen Kartlar</span>
+              <span id="eslesenIcon">▼</span>
+            </button>
+            <div id="eslesenContent" class="accordion-content" style="
+              display: block;
+              background: white;
+              border: 1px solid #ddd;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              padding: 15px;
+              min-height: 200px;
+              max-height: 400px;
+              overflow-y: auto;
+            ">
+              <div style="text-align: center; color: #666; padding: 40px;">
+                Önce bir hasta seçin...
+              </div>
+            </div>
           </div>
-        </div>
-        <!-- Butonlar için sabit alan -->
-        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
-        </div>
-        
-        <!-- Yemek Kullanım Analizi - Hafta Tab Tarzı -->
-        <div id="yemekAnaliziPanel" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
-          <div style="
-            padding: 12px 15px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            border-radius: 8px 8px 0 0;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <span>📊 Yemek Kullanım Analizi</span>
-            <span id="analizToplamBilgi" style="font-size: 12px; opacity: 0.9;">239 tarif kartı</span>
+
+          <!-- 2️⃣ EŞLEŞMEYEN TARİFLER ACCORDION -->
+          <div class="accordion-section" style="margin-bottom: 8px;">
+            <button class="accordion-header" onclick="toggleAccordion('eslesmeyenler')" style="
+              width: 100%;
+              padding: 12px 15px;
+              background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: bold;
+              cursor: pointer;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 14px;
+            ">
+              <span id="eslesmeyenlerBaslik">🚫 Eşleşmeyen Tarifler</span>
+              <span id="eslesmeyenlerIcon">▶</span>
+            </button>
+            <div id="eslesmeyenlerContent" class="accordion-content" style="
+              display: none;
+              background: white;
+              border: 1px solid #ddd;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              padding: 15px;
+              min-height: 100px;
+              max-height: 300px;
+              overflow-y: auto;
+            ">
+              <div style="text-align: center; color: #666; padding: 20px;">
+                Eşleşmeyen tarif bulunamadı
+              </div>
+            </div>
+          </div>
+
+          <!-- 3️⃣ YEMEK KULLANIM ANALİZİ ACCORDION -->
+          <div class="accordion-section" style="margin-bottom: 8px;">
+            <button class="accordion-header" onclick="toggleAccordion('analiz')" style="
+              width: 100%;
+              padding: 12px 15px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: bold;
+              cursor: pointer;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 14px;
+            ">
+              <span id="analizBaslik">📊 Yemek Kullanım Analizi</span>
+              <span id="analizIcon">▶</span>
+            </button>
+            <div id="analizContent" class="accordion-content" style="
+              display: none;
+              background: white;
+              border: 1px solid #ddd;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              padding: 15px;
+            ">
+              <div style="margin-bottom: 10px; text-align: center;">
+                <button onclick="siralaYemekAnalizi('cok')" id="btnCok" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer; font-size: 11px;">🔺 En Çok Kullanılan</button>
+                <button onclick="siralaYemekAnalizi('az')" id="btnAz" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #dc3545; color: white; cursor: pointer; font-size: 11px;">🔻 En Az Kullanılan</button>
+                <button onclick="siralaYemekAnalizi('hic')" id="btnHic" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #6c757d; color: white; cursor: pointer; font-size: 11px;">❌ Hiç Kullanılmayan</button>
+                <button onclick="siralaYemekAnalizi('alfabetik')" id="btnAlfabetik" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #17a2b8; color: white; cursor: pointer; font-size: 11px;">📝 Alfabetik</button>
+              </div>
+              
+              <div id="yemekAnaliziListe" style="max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.4; border: 1px solid #eee; border-radius: 4px; background: #fafafa;">
+                <div style="text-align: center; color: #666; padding: 20px;">Hasta ve hafta seçin...</div>
+              </div>
+            </div>
           </div>
           
-          <div style="padding: 15px;">
-            <div style="margin-bottom: 10px; text-align: center;">
-              <button onclick="siralaYemekAnalizi('cok')" id="btnCok" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer; font-size: 11px;">🔺 En Çok Kullanılan</button>
-              <button onclick="siralaYemekAnalizi('az')" id="btnAz" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #dc3545; color: white; cursor: pointer; font-size: 11px;">🔻 En Az Kullanılan</button>
-              <button onclick="siralaYemekAnalizi('hic')" id="btnHic" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #6c757d; color: white; cursor: pointer; font-size: 11px;">❌ Hiç Kullanılmayan</button>
-              <button onclick="siralaYemekAnalizi('alfabetik')" id="btnAlfabetik" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #17a2b8; color: white; cursor: pointer; font-size: 11px;">📝 Alfabetik</button>
-            </div>
-            
-            <div id="yemekAnaliziListe" style="max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.4; border: 1px solid #eee; border-radius: 4px; background: #fafafa;">
-              <div style="text-align: center; color: #666; padding: 20px;">Hasta ve hafta seçin...</div>
-            </div>
+          <!-- BUTONLAR İÇİN SABİT ALAN (İndirme butonları vs) -->
+          <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
           </div>
         </div>
       </div>
@@ -5635,7 +5716,7 @@ function duzenleHafta(i) {
       
       if (aktifTab && aktifHaftaIndex === i) {
         console.log('🧹 Aktif haftada PDF yenileniyor, ekrandaki kartlar temizleniyor...');
-        const currentDiv = document.getElementById('currentEslesenKartlar');
+        const currentDiv = document.getElementById('eslesenContent');
         if (currentDiv) {
           currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">PDF analiz ediliyor...</div>';
         }
@@ -7396,80 +7477,40 @@ function duzenleHafta(i) {
     }
   }
 
-  // Eşleşmeyen tarifleri akordiyon başlık altında göster
+  // Eşleşmeyen tarifleri yeni accordion sistemine ekle
   if (eslesmeyenTarifler.length > 0) {
-    // Akordiyon başlık
-    const akordiyonBaslik = document.createElement('button');
-    akordiyonBaslik.textContent = `Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-    akordiyonBaslik.style.background = '#f8d7da';
-    akordiyonBaslik.style.color = 'darkred';
-    akordiyonBaslik.style.border = '1px solid #d9534f';
-    akordiyonBaslik.style.padding = '8px 16px';
-    akordiyonBaslik.style.marginTop = '12px';
-    akordiyonBaslik.style.cursor = 'pointer';
-    akordiyonBaslik.style.fontWeight = 'bold';
-    akordiyonBaslik.style.borderRadius = '6px';
-    akordiyonBaslik.setAttribute('aria-expanded', 'false');
-
-    // Akordiyon içerik
-    const akordiyonIcerik = document.createElement('div');
-    akordiyonIcerik.style.display = 'none';
-    akordiyonIcerik.style.background = '#fff0f0';
-    akordiyonIcerik.style.border = '1px solid #d9534f';
-    akordiyonIcerik.style.padding = '10px 16px';
-    akordiyonIcerik.style.marginTop = '4px';
-    akordiyonIcerik.style.borderRadius = '6px';
-
-    eslesmeyenTarifler.forEach(tarif => {
-      const p = document.createElement('p');
-      p.textContent = tarif;
-      p.style.color = 'red';
-      p.style.margin = '6px 0';
-      akordiyonIcerik.appendChild(p);
-    });
-
-    akordiyonBaslik.onclick = function() {
-      const acikMi = akordiyonIcerik.style.display === 'block';
-      akordiyonIcerik.style.display = acikMi ? 'none' : 'block';
-      akordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
-    };
-
-    // Ana area'ya akordiyon eklemeyi kaldırdık - sadece sidebar'da olacak
-    // eslesenDiv.appendChild(akordiyonBaslik);
-    // eslesenDiv.appendChild(akordiyonIcerik);
+    const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
+    const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     
-    // Sidebar'a akordiyon ekle
-    const sidebarButtonsDiv2 = document.getElementById('sidebarButtons');
-    if (sidebarButtonsDiv2) {
-      // Eski eşleşmeyen tarifler butonunu kaldır
-      const eskiEslesmeyenBtn = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-btn');
-      if (eskiEslesmeyenBtn) {
-        eskiEslesmeyenBtn.remove();
-      }
-      const eskiEslesmeyenIcerik = sidebarButtonsDiv2.querySelector('.eslesmeyenTarifler-icerik');
-      if (eskiEslesmeyenIcerik) {
-        eskiEslesmeyenIcerik.remove();
-      }
+    if (eslesmeyenlerContent && eslesmeyenlerBaslik) {
+      // Başlığı güncelle
+      eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
       
-      // Sidebar için akordiyon butonunu klonla
-      const sidebarAkordiyonBaslik = akordiyonBaslik.cloneNode(true);
-      const sidebarAkordiyonIcerik = akordiyonIcerik.cloneNode(true);
+      // İçeriği temizle ve yeniden doldur
+      eslesmeyenlerContent.innerHTML = '';
       
-      // Sidebar için class ekle (temizlik için)
-      sidebarAkordiyonBaslik.className = 'eslesmeyenTarifler-btn';
-      sidebarAkordiyonIcerik.className = 'eslesmeyenTarifler-icerik';
-      sidebarAkordiyonBaslik.style.marginTop = '10px';
-      sidebarAkordiyonBaslik.style.width = '100%';
-      
-      // Sidebar akordiyon için tıklama event'i
-      sidebarAkordiyonBaslik.onclick = function() {
-        const acikMi = sidebarAkordiyonIcerik.style.display === 'block';
-        sidebarAkordiyonIcerik.style.display = acikMi ? 'none' : 'block';
-        sidebarAkordiyonBaslik.setAttribute('aria-expanded', acikMi ? 'false' : 'true');
-      };
-      
-      sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
-      sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
+      eslesmeyenTarifler.forEach(tarif => {
+        const p = document.createElement('p');
+        p.textContent = tarif;
+        p.style.color = '#dc3545';
+        p.style.margin = '6px 0';
+        p.style.padding = '4px 8px';
+        p.style.background = '#fff5f5';
+        p.style.borderLeft = '3px solid #dc3545';
+        p.style.borderRadius = '4px';
+        eslesmeyenlerContent.appendChild(p);
+      });
+    }
+  } else {
+    // Eşleşmeyen tarif yoksa başlığı sıfırla
+    const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
+    const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
+    
+    if (eslesmeyenlerBaslik) {
+      eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
+    }
+    if (eslesmeyenlerContent) {
+      eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Eşleşmeyen tarif bulunamadı</div>';
     }
   }
 
@@ -8767,9 +8808,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function gosterEslesenKartlarSidebar(haftaIndex) {
       console.log(`🔍 gosterEslesenKartlarSidebar çağrıldı, hafta index: ${haftaIndex}`);
       
-      const currentDiv = document.getElementById('currentEslesenKartlar');
+      const currentDiv = document.getElementById('eslesenContent');
       if (!currentDiv) {
-        console.log('❌ currentEslesenKartlar div bulunamadı!');
+        console.log('❌ eslesenContent div bulunamadı!');
         return;
       }
       
@@ -8779,6 +8820,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Önce temizle
       currentDiv.innerHTML = '';
+      
+      // Eşleşen kartlar başlığını güncelle
+      const eslesenBaslik = document.getElementById('eslesenBaslik');
       
       let kartVarMi = false;
       
@@ -8842,8 +8886,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (!kartVarMi) {
         console.log('❌ Hiç kart bulunamadı');
         currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
+        if (eslesenBaslik) {
+          eslesenBaslik.textContent = '📋 Eşleşen Kartlar';
+        }
       } else {
         console.log('✅ Kartlar sidebar\'a başarıyla eklendi');
+        
+        // Başlık güncelle
+        const kartSayisi = currentDiv.children.length;
+        if (eslesenBaslik) {
+          eslesenBaslik.textContent = `📋 Eşleşen Kartlar (${kartSayisi})`;
+        }
         
         // Sadece güvenlik için onclick'leri yeniden ata (otomatik kartlar için)
         const tumButonlar = currentDiv.querySelectorAll('button:not(.manuel-kart-silme-btn)');
@@ -9489,6 +9542,30 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     
     // Analiz fonksiyonunu da global yap
     window.updateYemekAnalizi = updateYemekAnalizi;
+
+    // 🎯 ACCORDION SİSTEMİ
+    function toggleAccordion(section) {
+      const sections = ['eslesen', 'eslesmeyenler', 'analiz'];
+      
+      sections.forEach(s => {
+        const content = document.getElementById(s + 'Content');
+        const icon = document.getElementById(s + 'Icon');
+        
+        if (s === section) {
+          // Seçilen bölümü aç/kapat
+          const isOpen = content.style.display === 'block';
+          content.style.display = isOpen ? 'none' : 'block';
+          icon.textContent = isOpen ? '▶' : '▼';
+        } else {
+          // Diğer bölümleri kapat
+          content.style.display = 'none';
+          icon.textContent = '▶';
+        }
+      });
+    }
+    
+    // Global accordion fonksiyonu
+    window.toggleAccordion = toggleAccordion;
 
         sayfaBaslat();
         initResizableSidebars();
