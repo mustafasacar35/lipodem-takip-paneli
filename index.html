@@ -362,6 +362,44 @@
         gap: 4px !important;
       }
     }
+
+    /* Resize Handle Stilleri */
+    .resize-handle {
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    
+    .resize-handle:hover {
+      opacity: 1;
+    }
+    
+    /* GPT ve Açıklama Alanları için Özel Stiller */
+    .gpt-container {
+      position: relative;
+    }
+    
+    .gpt-container textarea {
+      transition: height 0.3s ease;
+    }
+    
+    /* Buton grupları için kompakt stil */
+    .button-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    
+    .button-group button {
+      border: 1px solid #ddd;
+      background: white;
+      transition: all 0.2s;
+    }
+    
+    .button-group button:hover {
+      background: #f8f9fa;
+      border-color: #007bff;
+      color: #007bff;
+    }
   </style>
 </head>
 <body>
@@ -4628,72 +4666,59 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             </div>
           </div>
           
-          <!-- Ana İçerik - Kompakt Horizontal Layout -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-            
-            <!-- PDF Bölümü - Kompakt -->
-            <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #28a745;">
-              <h4 style="margin: 0 0 8px 0; color: #28a745; font-size: 13px;">📄 PDF</h4>
+          <!-- Ana İçerik - Yeni Optimize Düzen -->
+          
+          <!-- PDF Bölümü - Yatay ve Kompakt -->
+          <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #28a745; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h4 style="margin: 0; color: #28a745; font-size: 11px; min-width: 50px;">📄 PDF</h4>
               <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
-                     style="width: 100%; margin-bottom: 8px; font-size: 11px; padding: 4px;">
+                     style="flex: 1; font-size: 10px; padding: 2px 4px;">
               ${hafta.pdf || hafta.pdfYolu ? `
-                <div style="color: green; font-weight: bold; font-size: 11px; background: #d4edda; padding: 6px; border-radius: 4px; border-left: 3px solid #28a745;">
-                  ✅ <strong style="color: #155724; font-size: 12px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
-                  ${hafta.pdfOrijinalIsim && hafta.pdfName && hafta.pdfOrijinalIsim !== hafta.pdfName ? `
-                    <div style="color: #6c757d; font-size: 11px; margin-top: 2px;">
-                      📁 Güvenli ad: ${hafta.pdfName}
-                    </div>
-                  ` : ''}
-                  <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
-                    📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
-                  </div>
-                  <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
-                    📅 Yüklenme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}
-                  </div>
-                  ${hafta.githubUrl || hafta.githubLink ? `
-                    <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #c3e6cb;">
-                      <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                        <span style="font-size: 12px;">🔗</span> GitHub'da Görüntüle
-                      </a>
-                      ${hafta.indirmeUrl || hafta.githubRawLink ? `
-                        <span style="margin: 0 5px; color: #dee2e6;">|</span>
-                        <a href="javascript:void(0)" onclick="pdfIndir('${hafta.indirmeUrl || hafta.githubRawLink}', '${hafta.pdfOrijinalIsim || hafta.pdfName}')" style="color: #28a745; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                          <span style="font-size: 12px;">💾</span> İndir
-                        </a>
-                      ` : ''}
-                    </div>
+                <div style="color: green; font-weight: bold; font-size: 10px; background: #d4edda; padding: 3px 6px; border-radius: 3px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ✅ ${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}
+                </div>
+              ` : '<span style="color: #666; font-size: 10px;">PDF henüz yüklenmedi</span>'}
+            </div>
+            ${hafta.pdf || hafta.pdfYolu ? `
+              ${hafta.githubUrl || hafta.githubLink ? `
+                <div style="margin-top: 4px; display: flex; gap: 8px; font-size: 10px;">
+                  <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #0066cc; text-decoration: none;">🔗 GitHub</a>
+                  ${hafta.indirmeUrl || hafta.githubRawLink ? `
+                    <a href="javascript:void(0)" onclick="pdfIndir('${hafta.indirmeUrl || hafta.githubRawLink}', '${hafta.pdfOrijinalIsim || hafta.pdfName}')" style="color: #28a745; text-decoration: none;">💾 İndir</a>
                   ` : ''}
                 </div>
-              ` : '<div style="color: #666; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px;">📄 PDF henüz yüklenmedi</div>'}
-            </div>
-            
-            <!-- Tarif Kartları Bölümü - GİZLENDİ -->
-            <div style="display: none; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-              <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
-              <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
-                     onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
-              <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
-            </div>
-            
-            <!-- Açıklama Bölümü - Kompakt -->
-            <div style="padding: 10px; background: #d1ecf1; border-radius: 6px; border-left: 3px solid #17a2b8;">
-              <h4 style="margin: 0 0 8px 0; color: #0c5460; font-size: 13px;">📝 Açıklama</h4>
-              <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
-                     placeholder="Bu hafta hakkında kısa not..." 
-                     style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
-                     onchange="aciklamaKaydet(${i})">>
-            </div>
+              ` : ''}
+            ` : ''}
           </div>
-          
-          <!-- GPT Mesajı - Kompakt -->
-          <div style="margin-bottom: 15px;">
-            <h4 style="margin: 0 0 8px 0; color: #dc3545; font-size: 13px;">💬 GPT Mesajı</h4>
-            <textarea id="gptMesaj_${i}" rows="2" 
-                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; resize: vertical; font-size: 12px;"
-                      placeholder="Bu hafta için GPT mesajı...">${hafta.gptMesaj||''}</textarea>
-            <div style="margin-top: 8px;">
-              <button onclick="gptMesajKaydet(${i})" style="padding: 6px 12px; font-size: 11px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${i})" style="padding: 6px 12px; margin-left: 8px; font-size: 11px;">📋 Kopyala</button>
+
+          <!-- GPT ve Açıklama - Sol-Sağ Düzen -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+            
+            <!-- GPT Mesajı - Sol taraf, Resize özellikli -->
+            <div style="background: #fff3cd; border-radius: 4px; border-left: 3px solid #dc3545; position: relative;">
+              <div style="padding: 6px 6px 4px 6px;">
+                <h4 style="margin: 0 0 4px 0; color: #dc3545; font-size: 11px;">� GPT Mesajı</h4>
+                <textarea id="gptMesaj_${i}" rows="3" 
+                          style="width: 100%; padding: 4px; border-radius: 3px; border: 1px solid #ddd; font-size: 10px; resize: none; min-height: 60px;"
+                          placeholder="Bu hafta için GPT mesajı...">${hafta.gptMesaj||''}</textarea>
+                <div style="margin-top: 4px; display: flex; gap: 4px;">
+                  <button onclick="gptMesajKaydet(${i})" style="padding: 2px 6px; font-size: 9px; border-radius: 2px;">💾</button>
+                  <button onclick="kopyalaGptMesaj(${i})" style="padding: 2px 6px; font-size: 9px; border-radius: 2px;">�</button>
+                  <button onclick="toggleGptResize(${i})" style="padding: 2px 6px; font-size: 9px; border-radius: 2px; margin-left: auto;">⤢</button>
+                </div>
+              </div>
+              <!-- Resize Handle -->
+              <div class="resize-handle" data-target="gptMesaj_${i}" style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; cursor: nw-resize; background: linear-gradient(-45deg, transparent 30%, #999 30%, #999 40%, transparent 40%, transparent 60%, #999 60%, #999 70%, transparent 70%);"></div>
+            </div>
+
+            <!-- Açıklama - Sağ taraf -->
+            <div style="padding: 6px; background: #d1ecf1; border-radius: 4px; border-left: 3px solid #17a2b8;">
+              <h4 style="margin: 0 0 4px 0; color: #0c5460; font-size: 11px;">� Açıklama</h4>
+              <textarea id="aciklama_${i}" rows="3" 
+                        style="width: 100%; padding: 4px; border-radius: 3px; border: 1px solid #bee5eb; font-size: 10px; resize: vertical; min-height: 60px;"
+                        placeholder="Bu hafta hakkında kısa not..."
+                        onchange="aciklamaKaydet(${i})">${hafta.aciklama||''}</textarea>
             </div>
           </div>
           
@@ -4819,7 +4844,7 @@ function aciklamaKaydet(i) {
   haftalar[i].aciklama = aciklamaInput.value;
   saveToStorage();
   
-  // Visual feedback
+  // Visual feedback - textarea için uyarlandı
   aciklamaInput.style.backgroundColor = '#d4edda';
   aciklamaInput.style.borderColor = '#28a745';
   setTimeout(() => {
@@ -7350,6 +7375,54 @@ function duzenleHafta(i) {
       
       alert('GPT mesajı kaydedildi.');
     }
+
+    // --- Resize Fonksiyonları ---
+    function toggleGptResize(i) {
+      const textarea = document.getElementById('gptMesaj_' + i);
+      const currentRows = parseInt(textarea.getAttribute('rows') || '3');
+      
+      if (currentRows <= 3) {
+        textarea.setAttribute('rows', '8');
+        textarea.style.minHeight = '120px';
+      } else {
+        textarea.setAttribute('rows', '3');
+        textarea.style.minHeight = '60px';
+      }
+    }
+
+    // Resize handle için mouse event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      let isResizing = false;
+      let currentHandle = null;
+      
+      document.addEventListener('mousedown', function(e) {
+        if (e.target.classList.contains('resize-handle')) {
+          isResizing = true;
+          currentHandle = e.target;
+          document.body.style.cursor = 'nw-resize';
+          e.preventDefault();
+        }
+      });
+      
+      document.addEventListener('mousemove', function(e) {
+        if (isResizing && currentHandle) {
+          const textarea = document.getElementById(currentHandle.getAttribute('data-target'));
+          const rect = textarea.getBoundingClientRect();
+          const newHeight = Math.max(60, e.clientY - rect.top);
+          textarea.style.height = newHeight + 'px';
+          textarea.style.minHeight = newHeight + 'px';
+        }
+      });
+      
+      document.addEventListener('mouseup', function() {
+        if (isResizing) {
+          isResizing = false;
+          currentHandle = null;
+          document.body.style.cursor = '';
+        }
+      });
+    });
+    
     // --- JSON dışa aktar/yükle fonksiyonları ---
     function exportData() {
       // Kullanıcıya seçenek sun
