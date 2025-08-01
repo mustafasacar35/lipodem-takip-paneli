@@ -6829,7 +6829,7 @@ function duzenleHafta(i) {
           ${kart.manuelKart ? 'border: 3px solid #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);' : 'border: 2px solid #007bff;'}
         `;
         
-        // Manuel kart etiketi
+        // Manuel kart etiketi ve silme butonu
         if (kart.manuelKart) {
           const manuelEtiket = document.createElement('div');
           manuelEtiket.textContent = 'MANUEL';
@@ -6846,11 +6846,92 @@ function duzenleHafta(i) {
             z-index: 10;
           `;
           kartDiv.appendChild(manuelEtiket);
+          
+          // Silme butonu
+          const silButon = document.createElement('div');
+          silButon.textContent = '✕';
+          silButon.title = 'Manuel kartı sil';
+          silButon.style.cssText = `
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            background: #dc3545;
+            color: white;
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 15;
+            transition: all 0.2s;
+          `;
+          
+          silButon.onmouseenter = function() {
+            this.style.transform = 'scale(1.2)';
+            this.style.backgroundColor = '#c82333';
+          };
+          silButon.onmouseleave = function() {
+            this.style.transform = 'scale(1)';
+            this.style.backgroundColor = '#dc3545';
+          };
+          
+          silButon.onclick = function(e) {
+            e.stopPropagation();
+            if (confirm(`"${(kart.name || kart).replace(/\.[^.]+$/, '').replace(/_/g, ' ')}" kartını silmek istediğinizden emin misiniz?`)) {
+              manuelKartSil(i, kart.name || kart);
+            }
+          };
+          
+          kartDiv.appendChild(silButon);
         }
         
         kartDiv.appendChild(img);
         gorselDiv.appendChild(kartDiv);
       });
+    }
+    
+    function manuelKartSil(haftaIndex, kartName) {
+      console.log(`🗑️ Manuel kart siliniyor: ${kartName}, hafta: ${haftaIndex}`);
+      
+      if (!seciliHasta || !seciliHasta.haftalar) {
+        alert('❌ Hasta verisi bulunamadı!');
+        return;
+      }
+      
+      const hafta = seciliHasta.haftalar[haftaIndex];
+      if (!hafta || !hafta.tarifKartlar) {
+        alert('❌ Hafta verisi bulunamadı!');
+        return;
+      }
+      
+      // Manuel kartı hafta verilerinden sil
+      hafta.tarifKartlar = hafta.tarifKartlar.filter(kart => {
+        const name = kart.name || kart;
+        return !(name === kartName && kart.manuelKart);
+      });
+      
+      console.log('🗑️ Kart verilerden silindi, görünüm güncelleniyor...');
+      
+      // Görünümü güncelle
+      gosterKartlarHafta(haftaIndex);
+      
+      // GitHub'a kaydet
+      hastayiAyriKaydet(seciliHasta).then(basarili => {
+        if (basarili) {
+          console.log('✅ Kart silme işlemi GitHub\'a kaydedildi');
+        } else {
+          console.warn('⚠️ Kart silindi ama GitHub\'a kaydedilemedi');
+        }
+      }).catch(error => {
+        console.error('❌ GitHub kaydetme hatası:', error);
+      });
+      
+      // Sidebar'ı da güncelle
+      gosterEslesenKartlarSidebar(haftaIndex);
     }
 
     async function otomatikEsleHafta(i) {
@@ -8876,7 +8957,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         </div>
         
         <div style="margin-bottom: 20px;">
-          <input type="text" id="manuelKartArama" placeholder="Tarif kartı ara..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" oninput="manuelKartAramaSonuclari()">
+          <input type="text" id="manuelKartArama" placeholder="Tarif kartı ara..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
         </div>
         
         <div style="margin-bottom: 15px;">
@@ -8934,39 +9015,56 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       console.log('📋 Tüm kartlar gösteriliyor, toplam:', window.tarifKartlari.length);
       
+      // Aktif hafta için zaten eklenmiş kartları al
+      const activeTab = document.querySelector('.hafta-tab.active');
+      let mevcutKartlar = [];
+      if (activeTab) {
+        const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
+        const hafta = getHaftaListesi()[haftaIndex];
+        if (hafta && hafta.tarifKartlar) {
+          mevcutKartlar = hafta.tarifKartlar.map(k => k.name || k);
+        }
+      }
+      
       // Tüm kartları göster - resimsiz, sade görünüm
       sonuclarDiv.innerHTML = '';
       window.tarifKartlari.forEach(kart => {
+        const zatenEklenmis = mevcutKartlar.includes(kart);
+        
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
           display: flex;
           align-items: center;
           padding: 8px 12px;
           margin: 2px 0;
-          border: 1px solid #ddd;
+          border: 1px solid ${zatenEklenmis ? '#ffc107' : '#ddd'};
           border-radius: 6px;
-          background: white;
-          cursor: pointer;
+          background: ${zatenEklenmis ? '#fff9db' : 'white'};
+          cursor: ${zatenEklenmis ? 'not-allowed' : 'pointer'};
           transition: all 0.2s;
+          opacity: ${zatenEklenmis ? '0.7' : '1'};
         `;
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `manuel_${kart}`;
+        checkbox.disabled = zatenEklenmis;
         checkbox.style.cssText = `
           margin-right: 12px;
           margin-left: 4px;
           transform: scale(1.2);
         `;
         checkbox.onchange = function() {
-          manuelKartSecimDegisti(kart, this.checked);
+          if (!zatenEklenmis) {
+            manuelKartSecimDegisti(kart, this.checked);
+          }
         };
         
         const isimSpan = document.createElement('span');
-        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
         isimSpan.style.cssText = `
           font-size: 14px;
-          color: #333;
+          color: ${zatenEklenmis ? '#996515' : '#333'};
           flex: 1;
           user-select: none;
         `;
@@ -8974,22 +9072,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         kartDiv.appendChild(checkbox);
         kartDiv.appendChild(isimSpan);
         
-        // Hover efekti
-        kartDiv.onmouseenter = function() {
-          this.style.backgroundColor = '#f8f9fa';
-          this.style.borderColor = '#007bff';
-        };
-        kartDiv.onmouseleave = function() {
-          this.style.backgroundColor = 'white';
-          this.style.borderColor = '#ddd';
-        };
-        
-        kartDiv.onclick = function(e) {
-          if (e.target !== checkbox) {
-            checkbox.checked = !checkbox.checked;
-            manuelKartSecimDegisti(kart, checkbox.checked);
-          }
-        };
+        if (!zatenEklenmis) {
+          // Hover efekti sadece eklenebilir kartlar için
+          kartDiv.onmouseenter = function() {
+            this.style.backgroundColor = '#f8f9fa';
+            this.style.borderColor = '#007bff';
+          };
+          kartDiv.onmouseleave = function() {
+            this.style.backgroundColor = 'white';
+            this.style.borderColor = '#ddd';
+          };
+          
+          kartDiv.onclick = function(e) {
+            if (e.target !== checkbox) {
+              checkbox.checked = !checkbox.checked;
+              manuelKartSecimDegisti(kart, checkbox.checked);
+            }
+          };
+        }
         
         sonuclarDiv.appendChild(kartDiv);
       });
@@ -9038,40 +9138,56 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
+      // Aktif hafta için zaten eklenmiş kartları al
+      const activeTab = document.querySelector('.hafta-tab.active');
+      let mevcutKartlar = [];
+      if (activeTab) {
+        const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
+        const hafta = getHaftaListesi()[haftaIndex];
+        if (hafta && hafta.tarifKartlar) {
+          mevcutKartlar = hafta.tarifKartlar.map(k => k.name || k);
+        }
+      }
+      
       // Sonuçları göster - resimsiz, sade görünüm
       sonuclarDiv.innerHTML = '';
       filtreliKartlar.forEach(kart => {
+        const zatenEklenmis = mevcutKartlar.includes(kart);
+        
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
           display: flex;
           align-items: center;
           padding: 8px 12px;
           margin: 2px 0;
-          border: 1px solid #ddd;
+          border: 1px solid ${zatenEklenmis ? '#ffc107' : '#ddd'};
           border-radius: 6px;
-          background: white;
-          cursor: pointer;
+          background: ${zatenEklenmis ? '#fff9db' : 'white'};
+          cursor: ${zatenEklenmis ? 'not-allowed' : 'pointer'};
           transition: all 0.2s;
-          hover: background-color: #f8f9fa;
+          opacity: ${zatenEklenmis ? '0.7' : '1'};
         `;
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `manuel_${kart}`;
+        checkbox.disabled = zatenEklenmis;
         checkbox.style.cssText = `
           margin-right: 12px;
           margin-left: 4px;
           transform: scale(1.2);
         `;
         checkbox.onchange = function() {
-          manuelKartSecimDegisti(kart, this.checked);
+          if (!zatenEklenmis) {
+            manuelKartSecimDegisti(kart, this.checked);
+          }
         };
         
         const isimSpan = document.createElement('span');
-        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
         isimSpan.style.cssText = `
           font-size: 14px;
-          color: #333;
+          color: ${zatenEklenmis ? '#996515' : '#333'};
           flex: 1;
           user-select: none;
         `;
@@ -9079,22 +9195,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         kartDiv.appendChild(checkbox);
         kartDiv.appendChild(isimSpan);
         
-        // Hover efekti
-        kartDiv.onmouseenter = function() {
-          this.style.backgroundColor = '#f8f9fa';
-          this.style.borderColor = '#007bff';
-        };
-        kartDiv.onmouseleave = function() {
-          this.style.backgroundColor = 'white';
-          this.style.borderColor = '#ddd';
-        };
-        
-        kartDiv.onclick = function(e) {
-          if (e.target !== checkbox) {
-            checkbox.checked = !checkbox.checked;
-            manuelKartSecimDegisti(kart, checkbox.checked);
-          }
-        };
+        if (!zatenEklenmis) {
+          // Hover efekti sadece eklenebilir kartlar için
+          kartDiv.onmouseenter = function() {
+            this.style.backgroundColor = '#f8f9fa';
+            this.style.borderColor = '#007bff';
+          };
+          kartDiv.onmouseleave = function() {
+            this.style.backgroundColor = 'white';
+            this.style.borderColor = '#ddd';
+          };
+          
+          kartDiv.onclick = function(e) {
+            if (e.target !== checkbox) {
+              checkbox.checked = !checkbox.checked;
+              manuelKartSecimDegisti(kart, checkbox.checked);
+            }
+          };
+        }
         
         sonuclarDiv.appendChild(kartDiv);
       });
