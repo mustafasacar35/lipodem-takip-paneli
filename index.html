@@ -455,6 +455,36 @@
         <!-- Butonlar için sabit alan -->
         <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
+        
+        <!-- Yemek Kullanım Analizi Accordion -->
+        <div id="yemekAnaliziAccordion" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+          <div id="yemekAnaliziBaslik" onclick="toggleYemekAnalizi()" style="
+            padding: 12px 15px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            cursor: pointer; 
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+          ">
+            <span>📊 Yemek Kullanım Analizi</span>
+            <span id="yemekAnaliziOk">▼</span>
+          </div>
+          
+          <div id="yemekAnaliziIcerik" style="display: none; padding: 15px; max-height: 300px; overflow-y: auto;">
+            <div style="margin-bottom: 10px; text-align: center;">
+              <button onclick="siralaYemekAnalizi('cok')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer; font-size: 11px;">🔺 En Çok</button>
+              <button onclick="siralaYemekAnalizi('az')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #dc3545; color: white; cursor: pointer; font-size: 11px;">🔻 En Az</button>
+              <button onclick="siralaYemekAnalizi('alfabetik')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #6c757d; color: white; cursor: pointer; font-size: 11px;">📝 Alfabetik</button>
+            </div>
+            <div id="yemekAnaliziListe" style="font-size: 13px; line-height: 1.6;">
+              <div style="text-align: center; color: #666; padding: 20px;">Henüz analiz yapılacak veri yok</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -8724,7 +8754,14 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Hafta tab'ı seçildiğinde sidebar'ları güncelle
     function haftaTabSecildiginde(haftaIndex) {
+      console.log(`🔄 Hafta tab'ı seçildi: ${haftaIndex}`);
+      aktifHaftaIndex = haftaIndex;
       gosterEslesenKartlarSidebar(haftaIndex);
+      
+      // Yemek analizi açıksa güncelle
+      if (yemekAnaliziAcikMi) {
+        updateYemekAnalizi();
+      }
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
 
@@ -9277,6 +9314,143 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+    // === YEMEK KULLANIM ANALİZİ FONKSIYONLARI ===
+    
+    let yemekAnaliziAcikMi = false;
+    let yemekAnaliziSiralama = 'cok'; // 'cok', 'az', 'alfabetik'
+    
+    function toggleYemekAnalizi() {
+      yemekAnaliziAcikMi = !yemekAnaliziAcikMi;
+      const icerik = document.getElementById('yemekAnaliziIcerik');
+      const ok = document.getElementById('yemekAnaliziOk');
+      
+      if (yemekAnaliziAcikMi) {
+        icerik.style.display = 'block';
+        ok.textContent = '▲';
+        // Açıldığında analizi güncelle
+        updateYemekAnalizi();
+      } else {
+        icerik.style.display = 'none';
+        ok.textContent = '▼';
+      }
+    }
+    
+    function siralaYemekAnalizi(tip) {
+      yemekAnaliziSiralama = tip;
+      updateYemekAnalizi();
+    }
+    
+    function updateYemekAnalizi() {
+      if (!seciliHasta || !seciliHasta.haftalar || aktifHaftaIndex === null) {
+        document.getElementById('yemekAnaliziListe').innerHTML = 
+          '<div style="text-align: center; color: #666; padding: 20px;">Hasta veya hafta seçilmemiş</div>';
+        return;
+      }
+      
+      const aktifHafta = seciliHasta.haftalar[aktifHaftaIndex];
+      const aktifHaftaNo = aktifHafta.haftaNo || (aktifHaftaIndex + 1);
+      
+      console.log('📊 Yemek analizi başlatılıyor:', {
+        hastaId: seciliHasta.id,
+        aktifHaftaIndex,
+        aktifHaftaNo,
+        toplamHaftaSayisi: seciliHasta.haftalar.length
+      });
+      
+      // Yemek kullanım sayacı: { yemekAdi: { sayac: 3, haftalar: [1,3,5] } }
+      const yemekKullanimlari = {};
+      
+      // Seçili haftaya kadar olan tüm haftaları kontrol et
+      seciliHasta.haftalar.forEach((hafta, index) => {
+        const haftaNo = hafta.haftaNo || (index + 1);
+        
+        // Sadece seçili haftaya kadar olan haftaları say
+        if (haftaNo <= aktifHaftaNo) {
+          const haftaninYemekleri = new Set(); // Aynı hafta içinde tekrar saymaması için Set kullan
+          
+          // Otomatik eşleşen kartlar
+          if (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) {
+            hafta.tarifKartlar.forEach(kart => {
+              if (kart.name) {
+                const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+                haftaninYemekleri.add(yemekAdi);
+              }
+            });
+          }
+          
+          // Manuel eklenen kartlar
+          if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
+            hafta.manuelKartlar.forEach(kart => {
+              if (kart.name) {
+                const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+                haftaninYemekleri.add(yemekAdi);
+              }
+            });
+          }
+          
+          // Bu haftada kullanılan her benzersiz yemeği kaydet
+          haftaninYemekleri.forEach(yemekAdi => {
+            if (!yemekKullanimlari[yemekAdi]) {
+              yemekKullanimlari[yemekAdi] = { sayac: 0, haftalar: [] };
+            }
+            yemekKullanimlari[yemekAdi].sayac++;
+            yemekKullanimlari[yemekAdi].haftalar.push(haftaNo);
+          });
+        }
+      });
+      
+      console.log('📊 Yemek kullanım verileri:', yemekKullanimlari);
+      
+      // Sonuçları diziye çevir ve sırala
+      let yemekListesi = Object.keys(yemekKullanimlari).map(yemekAdi => ({
+        ad: yemekAdi,
+        sayac: yemekKullanimlari[yemekAdi].sayac,
+        haftalar: yemekKullanimlari[yemekAdi].haftalar.sort((a,b) => a-b)
+      }));
+      
+      // Sıralama yap
+      if (yemekAnaliziSiralama === 'cok') {
+        yemekListesi.sort((a, b) => b.sayac - a.sayac || a.ad.localeCompare(b.ad));
+      } else if (yemekAnaliziSiralama === 'az') {
+        yemekListesi.sort((a, b) => a.sayac - b.sayac || a.ad.localeCompare(b.ad));
+      } else { // alfabetik
+        yemekListesi.sort((a, b) => a.ad.localeCompare(b.ad));
+      }
+      
+      // HTML oluştur
+      const listeDiv = document.getElementById('yemekAnaliziListe');
+      
+      if (yemekListesi.length === 0) {
+        listeDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Henüz yemek kartı eklenmemiş</div>';
+        return;
+      }
+      
+      let html = `<div style="margin-bottom: 10px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+        ${aktifHaftaNo}. haftaya kadar kullanılan yemekler (${yemekListesi.length} çeşit)
+      </div>`;
+      
+      yemekListesi.forEach(yemek => {
+        const renkKodu = yemek.sayac >= 5 ? '#28a745' : yemek.sayac >= 3 ? '#ffc107' : '#dc3545';
+        const haftalarStr = yemek.haftalar.join('-');
+        
+        html += `
+          <div style="display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #f8f9fa;">
+            <span style="background: ${renkKodu}; color: white; border-radius: 50%; width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; margin-right: 10px;">
+              ${yemek.sayac}
+            </span>
+            <span style="flex: 1; font-weight: 500; color: #333;">
+              ${yemek.ad}
+            </span>
+            <span style="font-size: 11px; color: #666; background: #f8f9fa; padding: 2px 6px; border-radius: 10px;">
+              (${haftalarStr})
+            </span>
+          </div>
+        `;
+      });
+      
+      listeDiv.innerHTML = html;
+    }
+
         sayfaBaslat();
         initResizableSidebars();
       });
