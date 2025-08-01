@@ -717,10 +717,10 @@
       </div>
       
       <div style="padding: 20px;">
-        <input type="text" id="manuelKartArama" placeholder="Tarif kartlarında ara..." style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" oninput="manuelKartAramaYap(this.value)">
+        <input type="text" id="manuelKartArama" placeholder="Tarif ara (boş bırakın tümünü görmek için)..." style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" oninput="manuelKartAramaYap(this.value)">
         
         <div id="manuelKartListe" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
-          <div style="text-align: center; color: #666; padding: 20px;">Arama yapın...</div>
+          <div style="text-align: center; color: #666; padding: 20px;">Yükleniyor...</div>
         </div>
       </div>
       
@@ -8844,8 +8844,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Modal'ı aç
       document.getElementById('manuelKartModal').style.display = 'block';
       document.getElementById('manuelKartArama').value = '';
-      document.getElementById('manuelKartListe').innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Arama yapın...</div>';
       secilenManuelKartlar = [];
+      
+      // Tüm kartları yükle (arama boş bırakılmış gibi)
+      manuelKartAramaYap('');
       
       // Modal başlığını güncelle
       const modalBaslik = document.querySelector('#manuelKartModal h3');
@@ -8879,11 +8881,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         tarifKartlariLength: window.tarifKartlari ? window.tarifKartlari.length : 'undefined'
       });
       
-      if (!aramaMetni || aramaMetni.length < 2) {
-        liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">En az 2 karakter girin...</div>';
-        return;
-      }
-      
       // Tarif kartları listesinden ara
       if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
         console.log('❌ Tarif kartları yüklenmemiş veya boş!');
@@ -8894,20 +8891,27 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Şu anda bu haftada bulunan kartları bul (hem otomatik hem manuel)
       const mevcutKartlar = getMevcutHaftaKartlari();
       
-      // Arama yap
-      const sonuclar = window.tarifKartlari.filter(kart => {
-        const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
-        return kartAdi.toLowerCase().includes(aramaMetni.toLowerCase()) && 
-               !mevcutKartlar.includes(kart); // Zaten eklenmişleri hariç tut
-      });
+      // Eğer arama metni boşsa tüm kartları göster
+      let sonuclar = window.tarifKartlari.filter(kart => !mevcutKartlar.includes(kart));
+      
+      // Arama metni varsa filtreleme yap
+      if (aramaMetni && aramaMetni.trim().length > 0) {
+        const aramaKelimeler = aramaMetni.toLowerCase().trim().split(/\s+/);
+        
+        sonuclar = sonuclar.filter(kart => {
+          const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+          // Tüm arama kelimelerinin kart adında bulunması gerekiyor
+          return aramaKelimeler.every(kelime => kartAdi.includes(kelime));
+        });
+      }
       
       if (sonuclar.length === 0) {
         liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Sonuç bulunamadı</div>';
         return;
       }
       
-      // Sonuçları göster
-      let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+      // Sonuçları liste olarak göster (sadece isimler ve checkbox)
+      let html = '<div style="max-height: 300px; overflow-y: auto;">';
       
       sonuclar.forEach(kart => {
         const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
@@ -8916,16 +8920,16 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         html += `
           <div onclick="manuelKartToggle('${kart}')" style="
             cursor: pointer; 
-            padding: 10px; 
-            border: 2px solid ${seciliMi ? '#28a745' : '#ddd'}; 
-            border-radius: 4px; 
-            background: ${seciliMi ? '#d4edda' : 'white'};
-            text-align: center;
-            transition: all 0.2s;
-          ">
-            <img src="https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 5px;">
-            <div style="font-size: 11px; color: #333;">${kartAdi}</div>
-            ${seciliMi ? '<div style="color: #28a745; font-size: 10px; margin-top: 2px;">✓ Seçildi</div>' : ''}
+            padding: 8px 12px; 
+            border-bottom: 1px solid #eee;
+            background: ${seciliMi ? '#e8f5e8' : 'white'};
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+          " onmouseover="this.style.background='${seciliMi ? '#d4edda' : '#f8f9fa'}'" 
+             onmouseout="this.style.background='${seciliMi ? '#e8f5e8' : 'white'}'">
+            <input type="checkbox" ${seciliMi ? 'checked' : ''} style="margin-right: 10px; pointer-events: none;" />
+            <span style="font-size: 14px; color: #333; flex: 1;">${kartAdi}</span>
           </div>
         `;
       });
