@@ -4867,9 +4867,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             <textarea id="gptMesaj_${i}" rows="3" 
                       style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
                       placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
-            <div style="margin-top: 10px;">
-              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
+                <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+              </div>
+              <div>
+                <button onclick="zipEslesenGorseller(${i})" style="
+                  padding: 8px 12px; 
+                  font-size: 12px; 
+                  background: #17a2b8; 
+                  color: white; 
+                  border: none; 
+                  border-radius: 4px; 
+                  cursor: pointer;
+                  font-weight: bold;
+                " title="Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir">🗜️ ZIP İndir</button>
+              </div>
             </div>
           </div>
           
@@ -7429,49 +7443,7 @@ function duzenleHafta(i) {
       setTimeout(() => generatePatientPDF(), 1000); 
     };
     
-    indirDiv.appendChild(zipBtn);
-    // PDF ve Combo butonlarını kaldırdık
-    // indirDiv.appendChild(pdfBtn);
-    // indirDiv.appendChild(comboBtn);
-    
-    // Sidebar için butonları ekle
-    const sidebarButtonsDiv = document.getElementById('sidebarButtons');
-    if (sidebarButtonsDiv) {
-      // Eski butonları kaldır
-      sidebarButtonsDiv.innerHTML = '';
-      
-      // Sadece ZIP butonu için özel container
-      const sidebarIndirDiv = document.createElement('div');
-      sidebarIndirDiv.style.display = 'flex';
-      sidebarIndirDiv.style.justifyContent = 'flex-end'; // Sağa yasla
-      sidebarIndirDiv.style.alignItems = 'center';
-      sidebarIndirDiv.style.padding = '0px';
-      sidebarIndirDiv.style.margin = '0px';
-      
-      // ZIP butonunu klonla ve stilini ayarla
-      const sidebarZipBtn = zipBtn.cloneNode(true);
-      sidebarZipBtn.style.margin = '0px';
-      sidebarZipBtn.style.padding = '8px 12px';
-      sidebarZipBtn.style.fontSize = '13px';
-      sidebarZipBtn.style.borderRadius = '4px';
-      sidebarZipBtn.onclick = function() { 
-        console.log('🔍 Sidebar ZIP butonuna tıklandı, hafta index:', i);
-        zipEslesenGorseller(i); 
-      };
-      
-      sidebarIndirDiv.appendChild(sidebarZipBtn);
-      
-      // Event listener'ı yeniden ekle (sadece ZIP butonu için)
-      sidebarZipBtn.onclick = function() { 
-        // Aktif hafta indeksini dinamik olarak al
-        const aktifTab = document.querySelector('.hafta-tab.active');
-        const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
-        console.log('🎯 ZIP butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
-        zipEslesenGorseller(aktifHaftaIndex); 
-      };
-      
-      sidebarButtonsDiv.appendChild(sidebarIndirDiv);
-    }
+    // Sidebar butonları artık GPT alanında olduğu için kaldırıldı
   }
 
   // Eşleşmeyen tarifleri yeni accordion sistemine ekle
@@ -8889,10 +8861,38 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       } else {
         console.log('✅ Kartlar sidebar\'a başarıyla eklendi');
         
-        // Başlık güncelle
-        const kartSayisi = currentDiv.children.length;
+        // Benzersiz yemek çeşidi sayısını hesapla
+        const benzersizYemekler = new Set();
+        
+        // Tüm kartlardaki yemek isimlerini topla
+        const tumKartlar = currentDiv.querySelectorAll('[data-kart-name]');
+        tumKartlar.forEach(kart => {
+          const kartName = kart.getAttribute('data-kart-name');
+          if (kartName) {
+            // .jpg uzantısını kaldır ve normalize et
+            const yemekAdi = kartName.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+            benzersizYemekler.add(yemekAdi);
+          }
+        });
+        
+        // Eğer data-kart-name yoksa, görsel isimlerden çıkar
+        if (benzersizYemekler.size === 0) {
+          const gorselKartlari = currentDiv.querySelectorAll('img');
+          gorselKartlari.forEach(img => {
+            if (img.src && img.src.includes('/')) {
+              const dosyaAdi = img.src.split('/').pop();
+              const yemekAdi = dosyaAdi.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+              benzersizYemekler.add(yemekAdi);
+            }
+          });
+        }
+        
+        const benzersizSayisi = benzersizYemekler.size;
+        console.log('🍽️ Benzersiz yemek çeşidi sayısı:', benzersizSayisi, 'Toplam kart:', currentDiv.children.length);
+        
+        // Başlık güncelle - benzersiz yemek çeşidi sayısı ile
         if (eslesenBaslik) {
-          eslesenBaslik.textContent = `📋 Eşleşen Kartlar (${kartSayisi})`;
+          eslesenBaslik.textContent = `📋 Eşleşen Kartlar (${benzersizSayisi})`;
         }
         
         // Sadece güvenlik için onclick'leri yeniden ata (otomatik kartlar için)
