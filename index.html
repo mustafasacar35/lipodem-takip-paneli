@@ -3503,12 +3503,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           url: tariflerPath + name
         }));
         
+        // Manuel kart ekleme için global değişkene ata
+        window.tarifKartlari = tariflerKlasoruGorselleri.map(item => item.name);
+        
         console.log(`✅ Tarifler klasöründen ${tariflerKlasoruGorselleri.length} görsel yüklendi`);
         
       } catch (e) {
         console.warn('⚠️ Tarifler klasörü yüklenemedi:', e.message);
         console.log('💡 Çözüm: Ana dizinde "tarifler/" klasörü oluşturun ve içine list.json dosyası ekleyin');
         tariflerKlasoruGorselleri = [];
+        window.tarifKartlari = []; // Manuel kart ekleme için boş array
       }
       
       durumGuncelle();
