@@ -5468,11 +5468,13 @@ function duzenleHafta(i) {
         // Eşleştirme yap ve sonuçları kaydet
         const eslestirmeSonucu = await otomatikEsleHafta(i);
         
-        // Eşleştirme sonuçlarını hafta verilerine kaydet
+        // JSON'a sadece eşleşen kartları kaydet (eşleşmeyenleri kaydetme)
         if (eslestirmeSonucu) {
           console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
           haftalar[i].tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
-          haftalar[i].eslesmeyenTarifler = eslestirmeSonucu.eslesmeyenTarifler || [];
+          // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - sadece UI'da göstereceğiz
+          console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
+          console.log('📝 Eşleşmeyen tarifler JSON\'a kaydedilmiyor (sadece UI\'da görünür)');
         }
         
         // Hasta JSON dosyasını güncelle
@@ -5481,12 +5483,13 @@ function duzenleHafta(i) {
           if (seciliHaftaIndex !== -1) {
             seciliHasta.haftalar[seciliHaftaIndex].tarifler = haftalar[i].tarifler;
             seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
-            seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
+            // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - JSON boyutunu küçük tutmak için
+            // seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
           }
           
           // Hasta verilerini GitHub'a kaydet
           await hastayiAyriKaydet(seciliHasta);
-          console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi');
+          console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi (sadece eşleşenler)');
         }
         
         saveToStorage();
@@ -7236,12 +7239,13 @@ function duzenleHafta(i) {
   console.log('📝 Eşleştirme öncesi toplam tarif:', hafta.tarifler ? hafta.tarifler.length : 0);
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
   console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
+  console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
   saveToStorage();
   
-  // Eşleştirme sonuçlarını döndür (JSON'a kaydetmek için)
+  // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
   return {
     eslesenKartlar: hafta.tarifKartlar,
-    eslesmeyenTarifler: eslesmeyenTarifler
+    eslesmeyenTarifler: eslesmeyenTarifler // UI için döndür ama JSON'a kaydetme
   };
 }
 
