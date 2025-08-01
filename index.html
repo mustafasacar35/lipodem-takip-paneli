@@ -467,10 +467,10 @@
               font-size: 14px;
             ">
               <span id="eslesenBaslik">📋 Eşleşen Kartlar</span>
-              <span id="eslesenIcon">▼</span>
+              <span id="eslesenIcon">▶</span>
             </button>
             <div id="eslesenContent" class="accordion-content" style="
-              display: block;
+              display: none;
               background: white;
               border: 1px solid #ddd;
               border-top: none;
@@ -482,42 +482,6 @@
             ">
               <div style="text-align: center; color: #666; padding: 40px;">
                 Önce bir hasta seçin...
-              </div>
-            </div>
-          </div>
-
-          <!-- 2️⃣ EŞLEŞMEYEN TARİFLER ACCORDION -->
-          <div class="accordion-section" style="margin-bottom: 8px;">
-            <button class="accordion-header" onclick="toggleAccordion('eslesmeyenler')" style="
-              width: 100%;
-              padding: 12px 15px;
-              background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-weight: bold;
-              cursor: pointer;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              font-size: 14px;
-            ">
-              <span id="eslesmeyenlerBaslik">🚫 Eşleşmeyen Tarifler</span>
-              <span id="eslesmeyenlerIcon">▶</span>
-            </button>
-            <div id="eslesmeyenlerContent" class="accordion-content" style="
-              display: none;
-              background: white;
-              border: 1px solid #ddd;
-              border-top: none;
-              border-radius: 0 0 8px 8px;
-              padding: 15px;
-              min-height: 100px;
-              max-height: 300px;
-              overflow-y: auto;
-            ">
-              <div style="text-align: center; color: #666; padding: 20px;">
-                Eşleşmeyen tarif bulunamadı
               </div>
             </div>
           </div>
@@ -538,7 +502,7 @@
               align-items: center;
               font-size: 14px;
             ">
-              <span id="analizBaslik">📊 Yemek Kullanım Analizi (0/239)</span>
+              <span id="analizBaslik">� Yemek Kullanım Analizi (0/239)</span>
               <span id="analizIcon">▶</span>
             </button>
             <div id="analizContent" class="accordion-content" style="
@@ -558,6 +522,42 @@
               
               <div id="yemekAnaliziListe" style="max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.4; border: 1px solid #eee; border-radius: 4px; background: #fafafa;">
                 <div style="text-align: center; color: #666; padding: 20px;">Hasta ve hafta seçin...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2️⃣ EŞLEŞMEYEN TARİFLER ACCORDION (EN ALTTA) -->
+          <div class="accordion-section" style="margin-bottom: 8px;">
+            <button class="accordion-header" onclick="toggleAccordion('eslesmeyenler')" style="
+              width: 100%;
+              padding: 12px 15px;
+              background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: bold;
+              cursor: pointer;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 14px;
+            ">
+              <span id="eslesmeyenlerBaslik">� Eşleşmeyen Tarifler</span>
+              <span id="eslesmeyenlerIcon">▶</span>
+            </button>
+            <div id="eslesmeyenlerContent" class="accordion-content" style="
+              display: none;
+              background: white;
+              border: 1px solid #ddd;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              padding: 15px;
+              min-height: 100px;
+              max-height: 300px;
+              overflow-y: auto;
+            ">
+              <div style="text-align: center; color: #666; padding: 20px;">
+                Eşleşmeyen tarif bulunamadı
               </div>
             </div>
           </div>
@@ -7430,10 +7430,9 @@ function duzenleHafta(i) {
     };
     
     indirDiv.appendChild(zipBtn);
-    indirDiv.appendChild(pdfBtn);
-    indirDiv.appendChild(comboBtn);
-    // Ana area'ya buton eklemeyi kaldırdık - sadece sidebar'da olacak
-    // eslesenDiv.appendChild(indirDiv);
+    // PDF ve Combo butonlarını kaldırdık
+    // indirDiv.appendChild(pdfBtn);
+    // indirDiv.appendChild(comboBtn);
     
     // Sidebar için butonları ekle
     const sidebarButtonsDiv = document.getElementById('sidebarButtons');
@@ -7441,37 +7440,35 @@ function duzenleHafta(i) {
       // Eski butonları kaldır
       sidebarButtonsDiv.innerHTML = '';
       
-      // Sidebar için ZIP butonlarını ekle
-      const sidebarIndirDiv = indirDiv.cloneNode(true);
-      sidebarIndirDiv.className = 'indir-butonlari';
-      sidebarIndirDiv.style.marginTop = '0px';
-      sidebarIndirDiv.style.borderTop = 'none';
-      sidebarIndirDiv.style.paddingTop = '0px';
+      // Sadece ZIP butonu için özel container
+      const sidebarIndirDiv = document.createElement('div');
+      sidebarIndirDiv.style.display = 'flex';
+      sidebarIndirDiv.style.justifyContent = 'flex-end'; // Sağa yasla
+      sidebarIndirDiv.style.alignItems = 'center';
+      sidebarIndirDiv.style.padding = '0px';
+      sidebarIndirDiv.style.margin = '0px';
       
-      // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
-      const sidebarButtons = sidebarIndirDiv.children;
-      if (sidebarButtons[0]) { // ZIP butonu
-        sidebarButtons[0].onclick = function() { 
-          // Aktif hafta indeksini dinamik olarak al
-          const aktifTab = document.querySelector('.hafta-tab.active');
-          const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
-          console.log('🎯 ZIP butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
-          zipEslesenGorseller(aktifHaftaIndex); 
-        };
-      }
-      if (sidebarButtons[1]) { // PDF butonu  
-        sidebarButtons[1].onclick = function() { generatePatientPDF(); };
-      }
-      if (sidebarButtons[2]) { // COMBO butonu
-        sidebarButtons[2].onclick = function() { 
-          // Aktif hafta indeksini dinamik olarak al
-          const aktifTab = document.querySelector('.hafta-tab.active');
-          const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
-          console.log('🎯 COMBO butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
-          zipEslesenGorseller(aktifHaftaIndex); 
-          setTimeout(() => generatePatientPDF(), 1000); 
-        };
-      }
+      // ZIP butonunu klonla ve stilini ayarla
+      const sidebarZipBtn = zipBtn.cloneNode(true);
+      sidebarZipBtn.style.margin = '0px';
+      sidebarZipBtn.style.padding = '8px 12px';
+      sidebarZipBtn.style.fontSize = '13px';
+      sidebarZipBtn.style.borderRadius = '4px';
+      sidebarZipBtn.onclick = function() { 
+        console.log('🔍 Sidebar ZIP butonuna tıklandı, hafta index:', i);
+        zipEslesenGorseller(i); 
+      };
+      
+      sidebarIndirDiv.appendChild(sidebarZipBtn);
+      
+      // Event listener'ı yeniden ekle (sadece ZIP butonu için)
+      sidebarZipBtn.onclick = function() { 
+        // Aktif hafta indeksini dinamik olarak al
+        const aktifTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+        console.log('🎯 ZIP butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
+        zipEslesenGorseller(aktifHaftaIndex); 
+      };
       
       sidebarButtonsDiv.appendChild(sidebarIndirDiv);
     }
