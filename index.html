@@ -3699,23 +3699,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // En büyük hafta sayısını bul
           let maxHafta = 0;
-          console.log('🔍 Hasta hafta verileri debug:', {
-            isim: hasta.isim,
-            haftalar: hasta.haftalar,
-            haftalarLength: hasta.haftalar ? hasta.haftalar.length : 'undefined'
-          });
           
           if (hasta.haftalar && hasta.haftalar.length > 0) {
             // Hafta numaralarını topla
             const haftaNumaralari = hasta.haftalar.map(h => {
-              console.log('🔍 Hafta objesi:', h);
               return h.haftaNo || h.hafta || 0;
             });
-            console.log('🔍 Hafta numaraları:', haftaNumaralari);
             maxHafta = Math.max(...haftaNumaralari);
           }
-          
-          console.log('🔍 En büyük hafta:', maxHafta);
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
@@ -3753,6 +3744,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     async function hastaSecYeniSistem(hastaBilgi) {
       try {
         console.log('👤 Yeni sistemde hasta seçiliyor:', hastaBilgi.isim);
+        
+        // Sidebar'ı temizle - önceki hastanın verilerini kaldır
+        const sidebarDiv = document.getElementById('eslesenKartlarSidebar');
+        if (sidebarDiv) {
+          sidebarDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Hasta yükleniyor...</div>';
+        }
         
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
@@ -3808,6 +3805,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Hafta tablarını göster
           gosterHaftalar();
+          
+          // Hafta bilgileri yüklendikten sonra hasta listesini güncelle (hafta numaraları için)
+          setTimeout(() => {
+            renderHastalarYeniSistem();
+          }, 100);
           
         } else {
           throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
