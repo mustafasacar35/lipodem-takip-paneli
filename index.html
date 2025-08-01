@@ -5952,6 +5952,26 @@ function duzenleHafta(i) {
         
         console.log('🔍 PDF ayarları yapılıyor...');
         // PDF içeriğini oluştur (yeni mobil dostu stil ile)
+        
+        // 🔧 Türkçe karakter sorunu için özel encoding
+        console.log('🔧 Türkçe karakter encoding ayarları...');
+        
+        // Ham hasta adını al (türkce düzeltme yapmadan)
+        const rawHastaAdi = seciliHasta.isim;
+        console.log('🔍 Ham hasta adı:', rawHastaAdi);
+        
+        // Türkçe karakterleri ASCII'ye çevir - KEKesin çözüm
+        const asciiHastaAdi = rawHastaAdi
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e'); // Azerbaijan karakteri de varsa
+            
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
+        
         doc.setFont('helvetica');
         doc.setLanguage('tr');
         
@@ -5959,10 +5979,10 @@ function duzenleHafta(i) {
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        const temizHastaAdi = turkceKarakterDuzelt(hastaAdi);
-        const title = `${temizHastaAdi.toUpperCase()}`;
+        const title = `${asciiHastaAdi.toUpperCase()}`;
         const titleWidth = doc.getTextWidth(title);
         doc.text(title, (210 - titleWidth) / 2, 20);
+        console.log('✅ PDF başlığında ASCII kullanıldı:', title);
         
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
