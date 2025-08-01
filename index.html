@@ -8902,9 +8902,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       modalOverlay.appendChild(modalContent);
       document.body.appendChild(modalOverlay);
       
-      // Arama kutusuna focus
+      // Arama kutusuna focus ve event listener
       setTimeout(() => {
-        document.getElementById('manuelKartArama').focus();
+        const aramaKutusu = document.getElementById('manuelKartArama');
+        aramaKutusu.focus();
+        
+        // Event listener ekle
+        aramaKutusu.addEventListener('input', function() {
+          console.log('🔍 Arama input eventi tetiklendi:', this.value);
+          manuelKartAramaSonuclari();
+        });
+        
         // Başlangıçta tüm kartları göster
         tumKartlariGoster();
       }, 100);
@@ -9159,63 +9167,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         }
       });
       
-      // Seçilen kartları DOM'a ekle (görsel)
-      secilenManuelKartlar.forEach(kart => {
-        const kartDiv = document.createElement('div');
-        kartDiv.style.cssText = `
-          display: inline-block;
-          margin: 5px;
-          text-align: center;
-          position: relative;
-        `;
-        
-        const img = document.createElement('img');
-        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}`;
-        img.title = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
-        img.alt = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
-        img.style.cssText = `
-          width: 100px;
-          height: 100px;
-          object-fit: cover;
-          border-radius: 8px;
-          border: 3px solid #ffc107;
-          box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-        `;
-        
-        const isimDiv = document.createElement('div');
-        isimDiv.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
-        isimDiv.style.cssText = `
-          font-size: 10px;
-          margin-top: 5px;
-          background: #ffc107;
-          color: #000;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-weight: bold;
-        `;
-        
-        // Manuel eklenen etiket
-        const manuelEtiket = document.createElement('div');
-        manuelEtiket.textContent = 'MANUEL';
-        manuelEtiket.style.cssText = `
-          position: absolute;
-          top: -5px;
-          right: -5px;
-          background: #28a745;
-          color: white;
-          font-size: 8px;
-          padding: 2px 4px;
-          border-radius: 3px;
-          font-weight: bold;
-          z-index: 10;
-        `;
-        
-        kartDiv.appendChild(img);
-        kartDiv.appendChild(isimDiv);
-        kartDiv.appendChild(manuelEtiket);
-        
-        eslesenDiv.appendChild(kartDiv);
-      });
+      // Kartları hafta verilerine ekledikten sonra görünümü güncelle
+      gosterKartlarHafta(haftaIndex);
       
       // Hasta verilerini GitHub'a kaydet
       hastayiAyriKaydet(seciliHasta).then(basarili => {
