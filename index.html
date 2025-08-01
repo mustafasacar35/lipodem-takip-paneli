@@ -8923,6 +8923,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     let aktifHaftaIndex = null;
     let secilenManuelKartlar = [];
     
+    // YEMEK ANALİZİ DEĞİŞKENLERİ
+    let yemekAnaliziAcikMi = false;
+    let yemekAnaliziSiralama = 'cok'; // 'cok', 'az', 'alfabetik'
+    
     function manuelKartEklemeModalAc() {
       // Hasta kontrolü
       if (!seciliHasta) {
@@ -9316,9 +9320,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       document.addEventListener('DOMContentLoaded', () => {
     // === YEMEK KULLANIM ANALİZİ FONKSIYONLARI ===
     
-    let yemekAnaliziAcikMi = false;
-    let yemekAnaliziSiralama = 'cok'; // 'cok', 'az', 'alfabetik'
-    
     function toggleYemekAnalizi() {
       yemekAnaliziAcikMi = !yemekAnaliziAcikMi;
       const icerik = document.getElementById('yemekAnaliziIcerik');
@@ -9335,10 +9336,16 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     }
     
+    // Fonksiyonları global yap
+    window.toggleYemekAnalizi = toggleYemekAnalizi;
+    
     function siralaYemekAnalizi(tip) {
       yemekAnaliziSiralama = tip;
       updateYemekAnalizi();
     }
+    
+    // Sıralama fonksiyonunu da global yap
+    window.siralaYemekAnalizi = siralaYemekAnalizi;
     
     function updateYemekAnalizi() {
       if (!seciliHasta || !seciliHasta.haftalar || aktifHaftaIndex === null) {
