@@ -361,6 +361,70 @@
         gap: 4px !important;
       }
     }
+
+    /* Manuel Kart Stilleri */
+    .manuel-kart {
+      border: 3px solid #ffd700 !important;
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.5) !important;
+      position: relative;
+    }
+    
+    .manuel-kart-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #ffd700;
+      color: #333;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+      z-index: 10;
+    }
+    
+    .manuel-kart-silme-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .manuel-kart:hover .manuel-kart-silme-btn {
+      opacity: 1;
+    }
+    
+    .manuel-kart-ekleme-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin: 10px 0;
+    }
+    
+    .manuel-kart-ekleme-btn:hover {
+      background: #218838;
+    }
   </style>
 </head>
 <body>
@@ -418,7 +482,12 @@
       
       <!-- Eşleşen Kartlar (Alt Panel) -->
       <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
-        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h4 style="margin: 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
+          <button id="manuelKartEkleBtn" onclick="manuelKartEklemeModalAc()" class="manuel-kart-ekleme-btn" style="font-size: 11px; padding: 5px 10px;">
+            ➕ Manuel Kart Ekle
+          </button>
+        </div>
         <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
           <div style="text-align: center; color: #666; padding: 40px;">
             Önce bir hasta seçin...
@@ -678,6 +747,29 @@
     </div>
     
     <div id="duzenlemeStatus" style="margin-top:15px; padding:10px; border-radius:5px; display:none;"></div>
+  </div>
+
+  <!-- Manuel Kart Ekleme Modal -->
+  <div id="manuelKartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;" onclick="manuelKartModalKapat(event)">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80%; overflow: hidden;" onclick="event.stopPropagation()">
+      <div style="padding: 20px; border-bottom: 1px solid #ddd;">
+        <h3 style="margin: 0; color: #333;">Manuel Kart Ekleme</h3>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Seçili haftaya eklemek istediğiniz tarif kartlarını seçin</p>
+      </div>
+      
+      <div style="padding: 20px;">
+        <input type="text" id="manuelKartArama" placeholder="Tarif kartlarında ara..." style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" oninput="manuelKartAramaYap(this.value)">
+        
+        <div id="manuelKartListe" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+          <div style="text-align: center; color: #666; padding: 20px;">Arama yapın...</div>
+        </div>
+      </div>
+      
+      <div style="padding: 20px; border-top: 1px solid #ddd; text-align: right;">
+        <button onclick="manuelKartModalKapat()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">İptal</button>
+        <button onclick="secilenManuelKartlariEkle()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Seçilen Kartları Ekle</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -3503,16 +3595,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           url: tariflerPath + name
         }));
         
-        // Manuel kart ekleme için global değişkene ata
-        window.tarifKartlari = tariflerKlasoruGorselleri.map(item => item.name);
-        
         console.log(`✅ Tarifler klasöründen ${tariflerKlasoruGorselleri.length} görsel yüklendi`);
         
       } catch (e) {
         console.warn('⚠️ Tarifler klasörü yüklenemedi:', e.message);
         console.log('💡 Çözüm: Ana dizinde "tarifler/" klasörü oluşturun ve içine list.json dosyası ekleyin');
         tariflerKlasoruGorselleri = [];
-        window.tarifKartlari = []; // Manuel kart ekleme için boş array
       }
       
       durumGuncelle();
@@ -6806,167 +6894,17 @@ function duzenleHafta(i) {
 
     function gosterKartlarHafta(i) {
       const hafta = getHaftaListesi()[i];
-      
-      // Hem hafta görsel div'i hem de eşleşen kartlar div'ini güncelle
       const gorselDiv = document.getElementById('haftaKartGorsel_' + i);
-      const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
-      
-      if (gorselDiv) {
-        gorselDiv.innerHTML = '';
-      }
-      if (eslesenDiv) {
-        eslesenDiv.innerHTML = '';
-      }
-      
+      if (!gorselDiv) return;
+      gorselDiv.innerHTML = '';
       (hafta.tarifKartlar||[]).forEach(kart => {
-        const kartDiv = document.createElement('div');
-        kartDiv.style.cssText = `
-          display: inline-block;
-          margin: 4px;
-          position: relative;
-          text-align: center;
-        `;
-        
         const img = document.createElement('img');
-        img.src = kart.data || kart;  // kart.data veya sadece string
-        img.alt = kart.name || kart;
-        img.style.cssText = `
-          width: 100px;
-          height: 100px;
-          object-fit: cover;
-          border-radius: 8px;
-          ${kart.manuelKart ? 'border: 3px solid #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);' : 'border: 2px solid #007bff;'}
-        `;
-        
-        // Manuel kart etiketi ve silme butonu
-        if (kart.manuelKart) {
-          const manuelEtiket = document.createElement('div');
-          manuelEtiket.textContent = 'MANUEL';
-          manuelEtiket.style.cssText = `
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #28a745;
-            color: white;
-            font-size: 8px;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-            z-index: 10;
-          `;
-          kartDiv.appendChild(manuelEtiket);
-          
-          // Silme butonu
-          const silButon = document.createElement('div');
-          silButon.textContent = '✕';
-          silButon.title = 'Manuel kartı sil';
-          silButon.style.cssText = `
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            background: #dc3545;
-            color: white;
-            font-size: 12px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-weight: bold;
-            z-index: 15;
-            transition: all 0.2s;
-          `;
-          
-          silButon.onmouseenter = function() {
-            this.style.transform = 'scale(1.2)';
-            this.style.backgroundColor = '#c82333';
-          };
-          silButon.onmouseleave = function() {
-            this.style.transform = 'scale(1)';
-            this.style.backgroundColor = '#dc3545';
-          };
-          
-          silButon.onclick = function(e) {
-            e.stopPropagation();
-            if (confirm(`"${(kart.name || kart).replace(/\.[^.]+$/, '').replace(/_/g, ' ')}" kartını silmek istediğinizden emin misiniz?`)) {
-              manuelKartSil(i, kart.name || kart);
-            }
-          };
-          
-          kartDiv.appendChild(silButon);
-        }
-        
-        kartDiv.appendChild(img);
-        
-        // Her iki div'e de ekle (event listener'lar korunmalı)
-        if (gorselDiv) {
-          const gorselKlon = kartDiv.cloneNode(true);
-          // Event listener'ları yeniden ekle
-          const silButonu = gorselKlon.querySelector('div[title="Manuel kartı sil"]');
-          if (silButonu) {
-            silButonu.onmouseenter = function() {
-              this.style.transform = 'scale(1.2)';
-              this.style.backgroundColor = '#c82333';
-            };
-            silButonu.onmouseleave = function() {
-              this.style.transform = 'scale(1)';
-              this.style.backgroundColor = '#dc3545';
-            };
-            silButonu.onclick = function(e) {
-              e.stopPropagation();
-              if (confirm(`"${(kart.name || kart).replace(/\.[^.]+$/, '').replace(/_/g, ' ')}" kartını silmek istediğinizden emin misiniz?`)) {
-                manuelKartSil(i, kart.name || kart);
-              }
-            };
-          }
-          gorselDiv.appendChild(gorselKlon);
-        }
-        if (eslesenDiv) {
-          eslesenDiv.appendChild(kartDiv);
-        }
+        img.src = kart.data;
+        img.alt = kart.name;
+        img.style.width = '100px';
+        img.style.margin = '4px';
+        gorselDiv.appendChild(img);
       });
-    }
-    
-    function manuelKartSil(haftaIndex, kartName) {
-      console.log(`🗑️ Manuel kart siliniyor: ${kartName}, hafta: ${haftaIndex}`);
-      
-      if (!seciliHasta || !seciliHasta.haftalar) {
-        alert('❌ Hasta verisi bulunamadı!');
-        return;
-      }
-      
-      const hafta = seciliHasta.haftalar[haftaIndex];
-      if (!hafta || !hafta.tarifKartlar) {
-        alert('❌ Hafta verisi bulunamadı!');
-        return;
-      }
-      
-      // Manuel kartı hafta verilerinden sil
-      hafta.tarifKartlar = hafta.tarifKartlar.filter(kart => {
-        const name = kart.name || kart;
-        return !(name === kartName && kart.manuelKart);
-      });
-      
-      console.log('🗑️ Kart verilerden silindi, görünüm güncelleniyor...');
-      
-      // Görünümü güncelle
-      gosterKartlarHafta(haftaIndex);
-      
-      // GitHub'a kaydet
-      hastayiAyriKaydet(seciliHasta).then(basarili => {
-        if (basarili) {
-          console.log('✅ Kart silme işlemi GitHub\'a kaydedildi');
-        } else {
-          console.warn('⚠️ Kart silindi ama GitHub\'a kaydedilemedi');
-        }
-      }).catch(error => {
-        console.error('❌ GitHub kaydetme hatası:', error);
-      });
-      
-      // Sidebar'ı da güncelle
-      gosterEslesenKartlarSidebar(haftaIndex);
     }
 
     async function otomatikEsleHafta(i) {
@@ -7465,43 +7403,11 @@ function duzenleHafta(i) {
       
       sidebarButtonsDiv2.appendChild(sidebarAkordiyonBaslik);
       sidebarButtonsDiv2.appendChild(sidebarAkordiyonIcerik);
-      
-      // Manuel kart ekleme butonu ekle
-      const manuelEklemeBtn = document.createElement('button');
-      manuelEklemeBtn.innerHTML = '➕ Manuel Kart Ekle';
-      manuelEklemeBtn.style.cssText = `
-        width: 100%; 
-        padding: 8px; 
-        margin-top: 10px; 
-        background: #28a745; 
-        color: white; 
-        border: none; 
-        border-radius: 4px; 
-        cursor: pointer; 
-        font-size: 12px;
-      `;
-      manuelEklemeBtn.onclick = function() { 
-        manuelKartEklePaneliAc(); 
-      };
-      
-      sidebarButtonsDiv2.appendChild(manuelEklemeBtn);
     }
   }
 
   // Eşleşen kartları hafta verisine kaydet
-  // Mevcut manuel kartları koru
-  const mevcutManuelKartlar = hafta.tarifKartlar ? hafta.tarifKartlar.filter(k => k.manuelKart) : [];
-  const otomatikKartlar = eslesenKartlarListesi.map(e => e.kart);
-  
-  // Otomatik kartlar + manuel kartları birleştir
-  hafta.tarifKartlar = [
-    ...otomatikKartlar,
-    ...mevcutManuelKartlar
-  ];
-  
-  console.log('📝 Otomatik kartlar:', otomatikKartlar.length);
-  console.log('📝 Manuel kartlar:', mevcutManuelKartlar.length);
-  console.log('📝 Toplam kartlar:', hafta.tarifKartlar.length);
+  hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   
   // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
   const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
@@ -8370,8 +8276,22 @@ function duzenleHafta(i) {
         }
       }
       
-      // 2. Manuel yüklenen kartları da ana dizine ekle (sadece eşleşenler)
-      // Not: Manuel kartlar zaten eşleşen kartlar ile aynı olduğu için ayrı eklenmeyecek
+      // 2b. Manuel eklenen kartları da ana dizine ekle
+      if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
+        console.log('📝 Manuel kartlar ZIP\'e ekleniyor...', hafta.manuelKartlar);
+        for (let manuelKart of hafta.manuelKartlar) {
+          try {
+            const response = await fetch(manuelKart.data);
+            const blob = await response.blob();
+            const manuelName = `MANUEL_${manuelKart.name}`;
+            zip.file(manuelName, blob);  // Ana dizine ekle, MANUEL_ prefix ile
+            fileCount++;
+            console.log('✅ Manuel kart eklendi:', manuelName);
+          } catch (e) {
+            console.warn('⚠️ Manuel kart eklenemedi:', manuelKart.name, e);
+          }
+        }
+      }
       
       // 3. PDF dosyasını ekle
       if (hasPdf) {
@@ -8777,11 +8697,14 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       console.log(`🔍 eslesenKartlar_${haftaIndex} div:`, eskiDiv);
       console.log(`🔍 eskiDiv children count:`, eskiDiv ? eskiDiv.children.length : 'div null');
       
+      // Önce temizle
+      currentDiv.innerHTML = '';
+      
+      let kartVarMi = false;
+      
+      // 1. Otomatik eşleşen kartları ekle
       if (eskiDiv && eskiDiv.children.length > 0) {
-        console.log('✅ Eşleşen kartlar bulundu, sidebar\'a klonlanıyor...');
-        
-        // Önce temizle
-        currentDiv.innerHTML = '';
+        console.log('✅ Otomatik eşleşen kartlar bulundu, sidebar\'a klonlanıyor...');
         
         // Her child elementi klonla (onclick eventleri korunur)
         Array.from(eskiDiv.children).forEach(child => {
@@ -8789,10 +8712,45 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           currentDiv.appendChild(clonedChild);
         });
         
-        console.log('✅ Eşleşen kartlar sidebar\'a başarıyla klonlandı');
+        kartVarMi = true;
+      }
+      
+      // 2. Manuel eklenen kartları ekle
+      if (seciliHasta && seciliHasta.haftalar && seciliHasta.haftalar[haftaIndex]) {
+        const hafta = seciliHasta.haftalar[haftaIndex];
+        if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
+          console.log('✅ Manuel kartlar bulundu, ekleniyor...', hafta.manuelKartlar);
+          
+          hafta.manuelKartlar.forEach(kart => {
+            const kartDiv = document.createElement('div');
+            kartDiv.style.cssText = 'display: inline-block; margin: 5px; position: relative;';
+            kartDiv.className = 'manuel-kart';
+            
+            kartDiv.innerHTML = `
+              <img src="${kart.data}" alt="${kart.name}" title="${kart.name.replace('.jpg', '').replace(/_/g, ' ')}" 
+                   style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer;">
+              <div class="manuel-kart-badge">M</div>
+              <button class="manuel-kart-silme-btn" onclick="manuelKartSil('${kart.name}', ${haftaIndex})" title="Manuel kartı sil">
+                ×
+              </button>
+            `;
+            
+            currentDiv.appendChild(kartDiv);
+          });
+          
+          kartVarMi = true;
+        }
+      }
+      
+      // 3. Eğer hiç kart yoksa mesaj göster
+      if (!kartVarMi) {
+        console.log('❌ Hiç kart bulunamadı');
+        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
+      } else {
+        console.log('✅ Kartlar sidebar\'a başarıyla eklendi');
         
-        // Sadece güvenlik için onclick'leri yeniden ata
-        const tumButonlar = currentDiv.querySelectorAll('button');
+        // Sadece güvenlik için onclick'leri yeniden ata (otomatik kartlar için)
+        const tumButonlar = currentDiv.querySelectorAll('button:not(.manuel-kart-silme-btn)');
         console.log('🔍 Sidebar\'da bulunan buton sayısı:', tumButonlar.length);
         
         tumButonlar.forEach((btn, index) => {
@@ -8808,10 +8766,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             }
           }
         });
-        
-      } else {
-        console.log('❌ Eşleşen kartlar bulunamadı veya henüz yüklenmedi');
-        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
       }
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
@@ -8864,6 +8818,216 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // - Hasta listesi patients/hastalar_listesi.json dosyasında
     // - Eski sistem fonksiyonları yeni sisteme yönlendiriliyor
     
+    // ========================
+    // MANUEL KART EKLEME SİSTEMİ
+    // ========================
+    
+    let aktifHaftaIndex = null;
+    let secilenManuelKartlar = [];
+    
+    function manuelKartEklemeModalAc() {
+      // Önce aktif hafta tab'ını bul
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      if (!aktifTab) {
+        alert('Önce bir hafta seçin!');
+        return;
+      }
+      
+      aktifHaftaIndex = parseInt(aktifTab.dataset.haftaIndex);
+      if (isNaN(aktifHaftaIndex)) {
+        alert('Hafta bilgisi alınamadı!');
+        return;
+      }
+      
+      console.log('🔍 Manuel kart ekleme başlatıldı, hafta index:', aktifHaftaIndex);
+      
+      // Modal'ı aç
+      document.getElementById('manuelKartModal').style.display = 'block';
+      document.getElementById('manuelKartArama').value = '';
+      document.getElementById('manuelKartListe').innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Arama yapın...</div>';
+      secilenManuelKartlar = [];
+    }
+    
+    function manuelKartModalKapat(event) {
+      if (event && event.target !== document.getElementById('manuelKartModal')) return;
+      document.getElementById('manuelKartModal').style.display = 'none';
+      secilenManuelKartlar = [];
+    }
+    
+    function manuelKartAramaYap(aramaMetni) {
+      const liste = document.getElementById('manuelKartListe');
+      
+      if (!aramaMetni || aramaMetni.length < 2) {
+        liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">En az 2 karakter girin...</div>';
+        return;
+      }
+      
+      // Tarif kartları listesinden ara
+      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
+        liste.innerHTML = '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmemiş!</div>';
+        return;
+      }
+      
+      // Şu anda bu haftada bulunan kartları bul (hem otomatik hem manuel)
+      const mevcutKartlar = getMevcutHaftaKartlari();
+      
+      // Arama yap
+      const sonuclar = window.tarifKartlari.filter(kart => {
+        const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
+        return kartAdi.toLowerCase().includes(aramaMetni.toLowerCase()) && 
+               !mevcutKartlar.includes(kart); // Zaten eklenmişleri hariç tut
+      });
+      
+      if (sonuclar.length === 0) {
+        liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Sonuç bulunamadı</div>';
+        return;
+      }
+      
+      // Sonuçları göster
+      let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+      
+      sonuclar.forEach(kart => {
+        const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
+        const seciliMi = secilenManuelKartlar.includes(kart);
+        
+        html += `
+          <div onclick="manuelKartToggle('${kart}')" style="
+            cursor: pointer; 
+            padding: 10px; 
+            border: 2px solid ${seciliMi ? '#28a745' : '#ddd'}; 
+            border-radius: 4px; 
+            background: ${seciliMi ? '#d4edda' : 'white'};
+            text-align: center;
+            transition: all 0.2s;
+          ">
+            <img src="https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 5px;">
+            <div style="font-size: 11px; color: #333;">${kartAdi}</div>
+            ${seciliMi ? '<div style="color: #28a745; font-size: 10px; margin-top: 2px;">✓ Seçildi</div>' : ''}
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      liste.innerHTML = html;
+    }
+    
+    function manuelKartToggle(kartAdi) {
+      const index = secilenManuelKartlar.indexOf(kartAdi);
+      if (index > -1) {
+        secilenManuelKartlar.splice(index, 1);
+      } else {
+        secilenManuelKartlar.push(kartAdi);
+      }
+      
+      // Listeyi güncelle (mevcut arama metnini koru)
+      const aramaMetni = document.getElementById('manuelKartArama').value;
+      manuelKartAramaYap(aramaMetni);
+    }
+    
+    function getMevcutHaftaKartlari() {
+      if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[aktifHaftaIndex]) {
+        return [];
+      }
+      
+      const hafta = seciliHasta.haftalar[aktifHaftaIndex];
+      const kartlar = [];
+      
+      // Otomatik eşleşen kartlar
+      if (hafta.tarifKartlar) {
+        hafta.tarifKartlar.forEach(kart => {
+          if (kart.name) kartlar.push(kart.name);
+        });
+      }
+      
+      // Manuel eklenen kartlar
+      if (hafta.manuelKartlar) {
+        hafta.manuelKartlar.forEach(kart => {
+          if (kart.name) kartlar.push(kart.name);
+        });
+      }
+      
+      return kartlar;
+    }
+    
+    function secilenManuelKartlariEkle() {
+      if (secilenManuelKartlar.length === 0) {
+        alert('Hiç kart seçilmedi!');
+        return;
+      }
+      
+      if (!seciliHasta) {
+        alert('Hasta seçilmemiş!');
+        return;
+      }
+      
+      console.log('📝 Manuel kartlar ekleniyor:', secilenManuelKartlar);
+      
+      // Hasta verilerine manuel kartları ekle
+      if (!seciliHasta.haftalar[aktifHaftaIndex]) {
+        alert('Hafta verisi bulunamadı!');
+        return;
+      }
+      
+      const hafta = seciliHasta.haftalar[aktifHaftaIndex];
+      if (!hafta.manuelKartlar) {
+        hafta.manuelKartlar = [];
+      }
+      
+      // Yeni kartları ekle
+      secilenManuelKartlar.forEach(kartAdi => {
+        hafta.manuelKartlar.push({
+          name: kartAdi,
+          data: `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`,
+          eklenmeTarihi: new Date().toISOString()
+        });
+      });
+      
+      console.log('✅ Manuel kartlar hafta verisine eklendi');
+      
+      // Verileri kaydet
+      saveToStorage();
+      hastayiAyriKaydet(seciliHasta);
+      
+      // Sidebar'ı güncelle
+      haftaTabSecildiginde(aktifHaftaIndex);
+      
+      // Modal'ı kapat
+      manuelKartModalKapat();
+      
+      alert(`✅ ${secilenManuelKartlar.length} kart başarıyla eklendi!`);
+    }
+    
+    // Manuel kart silme fonksiyonu
+    function manuelKartSil(kartAdi, haftaIndex) {
+      if (!seciliHasta || !seciliHasta.haftalar[haftaIndex]) {
+        alert('Hasta veya hafta verisi bulunamadı!');
+        return;
+      }
+      
+      const hafta = seciliHasta.haftalar[haftaIndex];
+      if (!hafta.manuelKartlar) return;
+      
+      // Kartı listeden çıkar
+      hafta.manuelKartlar = hafta.manuelKartlar.filter(kart => kart.name !== kartAdi);
+      
+      console.log('🗑️ Manuel kart silindi:', kartAdi);
+      
+      // Verileri kaydet
+      saveToStorage();
+      hastayiAyriKaydet(seciliHasta);
+      
+      // Sidebar'ı güncelle
+      haftaTabSecildiginde(haftaIndex);
+    }
+    
+    // Global olarak erişilebilir yap
+    window.manuelKartEklemeModalAc = manuelKartEklemeModalAc;
+    window.manuelKartModalKapat = manuelKartModalKapat;
+    window.manuelKartAramaYap = manuelKartAramaYap;
+    window.manuelKartToggle = manuelKartToggle;
+    window.secilenManuelKartlariEkle = secilenManuelKartlariEkle;
+    window.manuelKartSil = manuelKartSil;
+
     // ========================
     // SÜRÜKLENEBİLİR SIDEBAR
     // ========================
@@ -8923,488 +9087,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       });
     }
     
-    // ========================
-    // MANUEL KART EKLEME PANELİ
-    // ========================
-    
-    function manuelKartEklePaneliAc() {
-      console.log('➕ Manuel kart ekleme paneli açılıyor...');
-      
-      // Tarif kartlarının yüklenip yüklenmediğini kontrol et
-      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
-        console.log('⚠️ Tarif kartları henüz yüklenmedi, yükleme bekleniyor...');
-        // Kartlar yüklenene kadar bekle
-        setTimeout(() => {
-          if (window.tarifKartlari && window.tarifKartlari.length > 0) {
-            console.log('✅ Kartlar yüklendi, modal açılıyor...');
-            manuelKartEklePaneliAc();
-          } else {
-            alert('❌ Tarif kartları yüklenemedi. Lütfen sayfa yenileyip tekrar deneyin.');
-          }
-        }, 1000);
-        return;
-      }
-      
-      console.log('📋 Mevcut tarif kartı sayısı:', window.tarifKartlari.length);
-      
-      // Aktif hafta kontrolü
-      const activeTab = document.querySelector('.hafta-tab.active');
-      if (!activeTab) {
-        alert('❌ Önce bir hafta seçin!');
-        return;
-      }
-      
-      const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
-      console.log('🔍 Aktif hafta index:', haftaIndex);
-      
-      // Modal panel oluştur
-      const modalOverlay = document.createElement('div');
-      modalOverlay.id = 'manuelKartModal';
-      modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        z-index: 10000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      `;
-      
-      const modalContent = document.createElement('div');
-      modalContent.style.cssText = `
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        width: 80%;
-        max-width: 900px;
-        max-height: 80%;
-        overflow-y: auto;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      `;
-      
-      modalContent.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #28a745; padding-bottom: 15px;">
-          <h3 style="margin: 0; color: #28a745;">➕ Manuel Kart Ekleme</h3>
-          <button onclick="manuelKartModalKapat()" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;">✕ Kapat</button>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-          <input type="text" id="manuelKartAramaModal" placeholder="Tarif kartı ara..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: bold; color: #333;">📋 Arama Sonuçları:</label>
-        </div>
-        
-        <div id="manuelKartSonuclar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 2px solid #ddd; border-radius: 8px; padding: 15px; background: #f8f9fa;">
-          <div style="text-align: center; color: #666; padding: 40px;">
-            Aramak için yukarıdaki kutucuğa yazın...
-          </div>
-        </div>
-        
-        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-          <button id="manuelKartEkleBtn" onclick="secilenKartlariEkle(${haftaIndex})" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;" disabled>
-            ✅ Seçilen Kartları Ekle (<span id="secilenKartSayisi">0</span>)
-          </button>
-          <button onclick="manuelKartModalKapat()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
-            ❌ İptal
-          </button>
-        </div>
-      `;
-      
-      modalOverlay.appendChild(modalContent);
-      document.body.appendChild(modalOverlay);
-      
-      // Arama kutusuna focus ve event listener (mevcut kodun çalışan yöntemi)
-      setTimeout(() => {
-        const aramaKutusu = document.getElementById('manuelKartAramaModal');
-        if (!aramaKutusu) {
-          console.error('❌ Arama kutusu bulunamadı!');
-          return;
-        }
-        
-        aramaKutusu.focus();
-        
-        // Mevcut kodla aynı yöntem: oninput
-        aramaKutusu.oninput = function() {
-          console.log('🔍 Modal arama input eventi (oninput):', this.value);
-          manuelKartAramaSonuclari();
-        };
-        
-        console.log('✅ Modal oninput event listener başarıyla eklendi');
-        
-        // Başlangıçta tüm kartları göster
-        tumKartlariGoster();
-      }, 100);
-    }
-    
-    let secilenManuelKartlar = [];
-    
-    function tumKartlariGoster() {
-      const sonuclarDiv = document.getElementById('manuelKartSonuclar');
-      
-      if (!tariflerKlasoruGorselleri || tariflerKlasoruGorselleri.length === 0) {
-        sonuclarDiv.innerHTML = `
-          <div style="text-align: center; color: #dc3545; padding: 40px;">
-            ❌ Tarif kartları henüz yüklenmedi
-          </div>
-        `;
-        return;
-      }
-      
-      console.log('📋 Tüm kartlar gösteriliyor, toplam:', tariflerKlasoruGorselleri.length);
-      
-      // Karakter düzeltme fonksiyonu
-      function karakterDuzelt(text) {
-        if (!text) return text;
-        return text
-          .replace(/Ä±/g, 'ı')
-          .replace(/Ä/g, 'ğ') 
-          .replace(/Å/g, 'ş')
-          .replace(/Ğ/g, 'ğ')
-          .replace(/Ã¼/g, 'ü')
-          .replace(/Ã¶/g, 'ö')
-          .replace(/Ã§/g, 'ç')
-          .replace(/â/g, 'a')
-          .replace(/î/g, 'i')
-          .replace(/û/g, 'u')
-          .replace(/ô/g, 'o');
-      }
-      
-      // Aktif hafta için zaten eklenmiş kartları al
-      const activeTab = document.querySelector('.hafta-tab.active');
-      let mevcutKartlar = [];
-      if (activeTab) {
-        const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
-        const hafta = getHaftaListesi()[haftaIndex];
-        if (hafta && hafta.tarifKartlar) {
-          mevcutKartlar = hafta.tarifKartlar.map(k => k.name || k);
-        }
-      }
-      
-      // Tüm kartları göster - resimsiz, sade görünüm
-      sonuclarDiv.innerHTML = '';
-      tariflerKlasoruGorselleri.forEach(kart => {
-        const kartName = kart.name;
-        const zatenEklenmis = mevcutKartlar.includes(kartName);
-        
-        const kartDiv = document.createElement('div');
-        kartDiv.style.cssText = `
-          display: flex;
-          align-items: center;
-          padding: 8px 12px;
-          margin: 2px 0;
-          border: 1px solid ${zatenEklenmis ? '#ffc107' : '#ddd'};
-          border-radius: 6px;
-          background: ${zatenEklenmis ? '#fff9db' : 'white'};
-          cursor: ${zatenEklenmis ? 'not-allowed' : 'pointer'};
-          transition: all 0.2s;
-          opacity: ${zatenEklenmis ? '0.7' : '1'};
-        `;
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `manuel_${kartName}`;
-        checkbox.disabled = zatenEklenmis;
-        checkbox.style.cssText = `
-          margin-right: 12px;
-          margin-left: 4px;
-          transform: scale(1.2);
-        `;
-        checkbox.onchange = function() {
-          if (!zatenEklenmis) {
-            manuelKartSecimDegisti(kartName, this.checked);
-          }
-        };
-        
-        const isimSpan = document.createElement('span');
-        const duzeltilmisKartAdi = karakterDuzelt(kartName);
-        isimSpan.textContent = duzeltilmisKartAdi.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
-        isimSpan.style.cssText = `
-          font-size: 14px;
-          color: ${zatenEklenmis ? '#996515' : '#333'};
-          flex: 1;
-          user-select: none;
-        `;
-        
-        kartDiv.appendChild(checkbox);
-        kartDiv.appendChild(isimSpan);
-        
-        if (!zatenEklenmis) {
-          // Hover efekti sadece eklenebilir kartlar için
-          kartDiv.onmouseenter = function() {
-            this.style.backgroundColor = '#f8f9fa';
-            this.style.borderColor = '#007bff';
-          };
-          kartDiv.onmouseleave = function() {
-            this.style.backgroundColor = 'white';
-            this.style.borderColor = '#ddd';
-          };
-          
-          kartDiv.onclick = function(e) {
-            if (e.target !== checkbox) {
-              checkbox.checked = !checkbox.checked;
-              manuelKartSecimDegisti(kartName, checkbox.checked);
-            }
-          };
-        }
-        
-        sonuclarDiv.appendChild(kartDiv);
-      });
-    }
-    
-    function manuelKartAramaSonuclari() {
-      const aramaMetni = document.getElementById('manuelKartAramaModal').value.toLowerCase().trim();
-      const sonuclarDiv = document.getElementById('manuelKartSonuclar');
-      
-      console.log('🔍 Modal arama yapılıyor:', aramaMetni);
-      console.log('📊 tariflerKlasoruGorselleri durumu:', tariflerKlasoruGorselleri ? tariflerKlasoruGorselleri.length + ' kart mevcut' : 'tanımsız');
-      
-      // Boş arama durumunda tüm kartları göster
-      if (!aramaMetni) {
-        tumKartlariGoster();
-        return;
-      }
-      
-      // window.tarifKartlari yerine doğrudan tariflerKlasoruGorselleri kullan
-      if (!tariflerKlasoruGorselleri || tariflerKlasoruGorselleri.length === 0) {
-        console.error('❌ tariflerKlasoruGorselleri tanımsız veya boş!');
-        sonuclarDiv.innerHTML = `
-          <div style="text-align: center; color: #dc3545; padding: 40px;">
-            ❌ Tarif kartları henüz yüklenmedi
-          </div>
-        `;
-        return;
-      }
-      
-      // Karakter düzeltme fonksiyonu (mevcut koddan kopyalandı)
-      function karakterDuzelt(text) {
-        if (!text) return text;
-        return text
-          .replace(/Ä±/g, 'ı')
-          .replace(/Ä/g, 'ğ') 
-          .replace(/Å/g, 'ş')
-          .replace(/Ğ/g, 'ğ')
-          .replace(/Ã¼/g, 'ü')
-          .replace(/Ã¶/g, 'ö')
-          .replace(/Ã§/g, 'ç')
-          .replace(/â/g, 'a')
-          .replace(/î/g, 'i')
-          .replace(/û/g, 'u')
-          .replace(/ô/g, 'o');
-      }
-      
-      // Aktif hafta için zaten eklenmiş kartları al
-      const activeTab = document.querySelector('.hafta-tab.active');
-      let mevcutKartlar = [];
-      if (activeTab) {
-        const haftaIndex = parseInt(activeTab.dataset.haftaIndex);
-        const hafta = getHaftaListesi()[haftaIndex];
-        if (hafta && hafta.tarifKartlar) {
-          mevcutKartlar = hafta.tarifKartlar.map(k => k.name || k);
-        }
-      }
-      
-      // Filtreleme (mevcut kodun mantığı)
-      const filtreliKartlar = tariflerKlasoruGorselleri.filter(kart => {
-        if (!aramaMetni) return true;
-        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
-        const duzeltilmisArama = karakterDuzelt(aramaMetni);
-        return duzeltilmisKartAdi.toLowerCase().includes(duzeltilmisArama.toLowerCase());
-      });
-      
-      console.log('📋 Filtrelenmiş kart sayısı:', filtreliKartlar.length);
-      
-      if (filtreliKartlar.length === 0 && aramaMetni) {
-        sonuclarDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px;">
-            🔍 "${aramaMetni}" için sonuç bulunamadı
-          </div>
-        `;
-        return;
-      }
-      
-      // Sonuçları göster
-      sonuclarDiv.innerHTML = '';
-      filtreliKartlar.forEach(kart => {
-        const kartName = kart.name;
-        const zatenEklenmis = mevcutKartlar.includes(kartName);
-        
-        const kartDiv = document.createElement('div');
-        kartDiv.style.cssText = `
-          display: flex;
-          align-items: center;
-          padding: 8px 12px;
-          margin: 2px 0;
-          border: 1px solid ${zatenEklenmis ? '#ffc107' : '#ddd'};
-          border-radius: 6px;
-          background: ${zatenEklenmis ? '#fff9db' : 'white'};
-          cursor: ${zatenEklenmis ? 'not-allowed' : 'pointer'};
-          transition: all 0.2s;
-          opacity: ${zatenEklenmis ? '0.7' : '1'};
-        `;
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `manuel_${kartName}`;
-        checkbox.disabled = zatenEklenmis;
-        checkbox.style.cssText = `
-          margin-right: 12px;
-          margin-left: 4px;
-          transform: scale(1.2);
-        `;
-        checkbox.onchange = function() {
-          if (!zatenEklenmis) {
-            manuelKartSecimDegisti(kartName, this.checked);
-          }
-        };
-        
-        const isimSpan = document.createElement('span');
-        const duzeltilmisKartAdi = karakterDuzelt(kartName);
-        isimSpan.textContent = duzeltilmisKartAdi.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
-        isimSpan.style.cssText = `
-          font-size: 14px;
-          color: ${zatenEklenmis ? '#996515' : '#333'};
-          flex: 1;
-          user-select: none;
-        `;
-        
-        kartDiv.appendChild(checkbox);
-        kartDiv.appendChild(isimSpan);
-        
-        if (!zatenEklenmis) {
-          // Hover efekti sadece eklenebilir kartlar için
-          kartDiv.onmouseenter = function() {
-            this.style.backgroundColor = '#f8f9fa';
-            this.style.borderColor = '#007bff';
-          };
-          kartDiv.onmouseleave = function() {
-            this.style.backgroundColor = 'white';
-            this.style.borderColor = '#ddd';
-          };
-          
-          kartDiv.onclick = function(e) {
-            if (e.target !== checkbox) {
-              checkbox.checked = !checkbox.checked;
-              manuelKartSecimDegisti(kartName, checkbox.checked);
-            }
-          };
-        }
-        
-        sonuclarDiv.appendChild(kartDiv);
-      });
-    }
-    
-    function manuelKartSecimDegisti(kart, secili) {
-      if (secili && !secilenManuelKartlar.includes(kart)) {
-        secilenManuelKartlar.push(kart);
-      } else if (!secili && secilenManuelKartlar.includes(kart)) {
-        secilenManuelKartlar = secilenManuelKartlar.filter(k => k !== kart);
-      }
-      
-      // Sayacı güncelle
-      const sayiSpan = document.getElementById('secilenKartSayisi');
-      const ekleBtn = document.getElementById('manuelKartEkleBtn');
-      
-      if (sayiSpan) sayiSpan.textContent = secilenManuelKartlar.length;
-      if (ekleBtn) ekleBtn.disabled = secilenManuelKartlar.length === 0;
-      
-      console.log('🔍 Seçilen manuel kartlar:', secilenManuelKartlar);
-    }
-    
-    function secilenKartlariEkle(haftaIndex) {
-      if (secilenManuelKartlar.length === 0) {
-        alert('❌ Önce eklemek istediğiniz kartları seçin!');
-        return;
-      }
-      
-      console.log(`➕ ${secilenManuelKartlar.length} manuel kart ekleniyor, hafta index: ${haftaIndex}`);
-      
-      // Aktif hafta div'ini bul
-      const eslesenDiv = document.getElementById('eslesenKartlar_' + haftaIndex);
-      if (!eslesenDiv) {
-        alert('❌ Eşleşen kartlar div\'i bulunamadı!');
-        return;
-      }
-      
-      // Hasta verilerinden hafta bilgisini al
-      if (!seciliHasta || !seciliHasta.haftalar) {
-        alert('❌ Hasta verisi bulunamadı!');
-        return;
-      }
-      
-      const hafta = seciliHasta.haftalar[haftaIndex];
-      if (!hafta) {
-        alert('❌ Hafta verisi bulunamadı!');
-        return;
-      }
-      
-      // tarifKartlar alanını başlat
-      if (!hafta.tarifKartlar) {
-        hafta.tarifKartlar = [];
-      }
-      
-      // Seçilen kartları hafta verilerine ekle (manuel işaretli)
-      secilenManuelKartlar.forEach(kart => {
-        const kartData = {
-          name: kart,
-          data: `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}`,
-          manuelKart: true  // Manuel eklenen kartları işaretle
-        };
-        
-        // Aynı kart zaten var mı kontrol et
-        const mevcutKart = hafta.tarifKartlar.find(k => k.name === kart);
-        if (!mevcutKart) {
-          hafta.tarifKartlar.push(kartData);
-          console.log('💾 Manuel kart hafta verilerine eklendi:', kart);
-        } else {
-          console.log('⚠️ Kart zaten mevcut:', kart);
-        }
-      });
-      
-      // Kartları hafta verilerine ekledikten sonra görünümü güncelle
-      gosterKartlarHafta(haftaIndex);
-      
-      // Hasta verilerini GitHub'a kaydet
-      hastayiAyriKaydet(seciliHasta).then(basarili => {
-        if (basarili) {
-          console.log('✅ Manuel kartlar GitHub\'a kaydedildi');
-        } else {
-          console.warn('⚠️ Manuel kartlar eklendi ama GitHub\'a kaydedilemedi');
-        }
-      }).catch(error => {
-        console.error('❌ GitHub kaydetme hatası:', error);
-      });
-      
-      // Başarı mesajı
-      alert(`✅ ${secilenManuelKartlar.length} kart başarıyla eklendi ve kaydedildi!\n\nManuel eklenen kartlar sarı çerçeve ile işaretlenmiştir.`);
-      
-      // Modal'ı kapat ve temizle
-      manuelKartModalKapat();
-      
-      // Sidebar'ı güncelle
-      gosterEslesenKartlarSidebar(haftaIndex);
-    }
-    
-    function manuelKartModalKapat() {
-      const modal = document.getElementById('manuelKartModal');
-      if (modal) {
-        modal.remove();
-      }
-      
-      // Seçimleri temizle
-      secilenManuelKartlar = [];
-    }
-    
-    // Global olarak erişilebilir yap
-    window.manuelKartEklePaneliAc = manuelKartEklePaneliAc;
-    window.manuelKartModalKapat = manuelKartModalKapat;
-    window.manuelKartAramaSonuclari = manuelKartAramaSonuclari;
-    window.secilenKartlariEkle = secilenKartlariEkle;
-
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
