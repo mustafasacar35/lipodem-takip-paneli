@@ -417,17 +417,6 @@
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
       </div>
 
-      <!-- İstatistikler -->
-      <div class="sidebar-section">
-        <h3>📈 İstatistikler</h3>
-        <div id="istatistikler" style="font-size: 12px; line-height: 1.4;">
-          <div>📄 PDF Sayısı: <span id="statPdfCount">-</span></div>
-          <div>🍽️ Tarif Sayısı: <span id="statTarifCount">-</span></div>
-          <div>🖼️ Kart Sayısı: <span id="statKartCount">-</span></div>
-          <div>🔗 Eşleşme Sayısı: <span id="statEslesmeCount">-</span></div>
-        </div>
-      </div>
-
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
@@ -8485,7 +8474,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const haftaIndex = parseInt(actTab.dataset.haftaIndex);
         if (!isNaN(haftaIndex)) {
           gosterEslesenKartlarSidebar(haftaIndex);
-          guncelleIstatistikler(hastaIndex);
         }
       }
     }
@@ -8550,42 +8538,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
 
-    // İstatistikleri güncelle
-    function guncelleIstatistikler(hastaIndex) {
-      if (hastaIndex === undefined || !hastalar[hastaIndex]) return;
-      
-      const hasta = hastalar[hastaIndex];
-      const haftalar = hasta.haftalar || [];
-      
-      let pdfCount = 0;
-      let tarifCount = 0;
-      let kartCount = 0;
-      let eslesmeCount = 0;
-      
-      haftalar.forEach(hafta => {
-        if (hafta.pdf && hafta.pdf.name) pdfCount++;
-        if (hafta.tarifler) tarifCount += hafta.tarifler.length;
-        if (hafta.eslesenKartlar) eslesmeCount += hafta.eslesenKartlar.length;
-      });
-      
-      // Tarif kartları sayısı (global)
-      if (window.tarifKartlari) {
-        kartCount = tarifKartlari.length;
-      }
-      
-      // Güncelle
-      const statPdf = document.getElementById('statPdfCount');
-      const statTarif = document.getElementById('statTarifCount');
-      const statKart = document.getElementById('statKartCount');
-      const statEslesme = document.getElementById('statEslesmeCount');
-      
-      if (statPdf) statPdf.textContent = pdfCount;
-      if (statTarif) statTarif.textContent = tarifCount;
-      if (statKart) statKart.textContent = kartCount;
-      if (statEslesme) statEslesme.textContent = eslesmeCount;
-    }
-    window.guncelleIstatistikler = guncelleIstatistikler;
-
     // ========================
     // SAYFA BAŞLATMA
     // ========================
@@ -8593,22 +8545,6 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // Sayfa yüklendiğinde çalışacak başlatma fonksiyonu - SADECE YENİ SİSTEM
     async function sayfaBaslat() {
       console.log('🚀 YENİ SİSTEM BAŞLATILIYOR - Eski sistem devre dışı');
-      
-      // İstatistikleri başlat
-      const statPdf = document.getElementById('statPdfCount');
-      const statTarif = document.getElementById('statTarifCount');
-      const statKart = document.getElementById('statKartCount');
-      const statEslesme = document.getElementById('statEslesmeCount');
-      
-      if (statPdf) statPdf.textContent = '0';
-      if (statTarif) statTarif.textContent = '0';
-      if (statKart) statKart.textContent = '0';
-      if (statEslesme) statEslesme.textContent = '0';
-      
-      // Eğer tarif kartları varsa sayıyı güncelle
-      if (window.tarifKartlari && statKart) {
-        statKart.textContent = tarifKartlari.length;
-      }
       
       // Sadece yeni sistemi yükle
       console.log('📋 SADECE YENİ SİSTEM: hasta listesi yükleniyor...');
