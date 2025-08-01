@@ -103,7 +103,7 @@
     
     .sidebar-section {
       border-bottom: 1px solid #eee;
-      padding: 15px;
+      padding: 10px; /* 15px'den 10px'e düşürüldü */
     }
     
     .sidebar-section h3 {
@@ -141,99 +141,6 @@
       flex-direction: column;
       background: white;
       overflow-y: auto;
-    }
-    
-    /* İki Sütunlu İçerik Alanı */
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      padding: 15px;
-      min-height: calc(100vh - 200px);
-    }
-    
-    .left-column {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    .right-column {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    /* Kompakt Form Alanları */
-    .compact-section {
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      padding: 12px;
-      background: #f8f9fa;
-    }
-    
-    .compact-section h4 {
-      margin: 0 0 8px 0;
-      font-size: 13px;
-      color: #495057;
-      font-weight: 600;
-    }
-    
-    .compact-section textarea,
-    .compact-section input {
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      font-size: 12px;
-      resize: vertical;
-    }
-    
-    .compact-section textarea {
-      min-height: 60px;
-      max-height: 120px;
-    }
-    
-    /* Tab Butonları */
-    .tool-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-bottom: 12px;
-    }
-    
-    .tool-tab {
-      padding: 6px 10px;
-      background: #e9ecef;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 11px;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    
-    .tool-tab:hover {
-      background: #dee2e6;
-    }
-    
-    .tool-tab.active {
-      background: #007bff;
-      color: white;
-      border-color: #007bff;
-    }
-    
-    /* Tab İçeriği */
-    .tool-content {
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      padding: 12px;
-      background: white;
-      display: none;
-    }
-    
-    .tool-content.active {
-      display: block;
     }
     
     /* Sağ Sidebar */
@@ -469,14 +376,14 @@
       <!-- Hasta Listesi -->
       <div class="sidebar-section">
         <h3>👥 Hastalar</h3>
-        <input type="text" id="hastaAra" placeholder="Hasta ara..." style="width:100%; padding:6px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; font-size:12px;" oninput="filtreleHastalar()">
-        <select id="arsivFiltre" style="width:100%; padding:6px; margin-bottom:10px; border:1px solid #ddd; border-radius:4px; font-size:12px;" onchange="filtreleHastalar()">
+        <input type="text" id="hastaAra" placeholder="Hasta ara..." style="width:100%; padding:4px; margin-bottom:6px; border:1px solid #ddd; border-radius:4px; font-size:11px;" oninput="filtreleHastalar()">
+        <select id="arsivFiltre" style="width:100%; padding:4px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; font-size:11px;" onchange="filtreleHastalar()">
           <option value="aktif">Aktif Hastalar (0)</option>
           <option value="arsiv">Arşiv (0)</option>
           <option value="tum">Tümü (0)</option>
         </select>
         <ul id="hastaListesi"></ul>
-        <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
+        <button onclick="yeniHastaFormu()" style="width:100%; padding:6px; margin-top:8px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px;">+ Yeni Hasta</button>
       </div>
     </div>
 
@@ -509,95 +416,16 @@
       <!-- Hafta İçeriği -->
       <div id="haftaTabContent"></div>
       
-      <!-- İki Sütunlu İçerik Alanı -->
-      <div class="content-grid">
-        <!-- Sol Sütun: PDF, GPT Mesajı, Açıklama -->
-        <div class="left-column">
-          <!-- PDF Yükleme -->
-          <div class="compact-section">
-            <h4>📄 PDF Yükleme</h4>
-            <input type="file" id="pdfFile" accept="application/pdf" style="margin-bottom: 8px;">
-            <div style="display: flex; gap: 6px;">
-              <button onclick="yukleHafta()" style="flex: 1; padding: 6px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">💾 Kaydet</button>
-              <button onclick="zipEslesenGorseller(getActiveHaftaIndex())" style="flex: 1; padding: 6px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">📦 ZIP İndir</button>
-            </div>
-          </div>
-          
-          <!-- GPT Mesajı -->
-          <div class="compact-section">
-            <h4>🤖 GPT Mesajı</h4>
-            <textarea id="gptMesaj" placeholder="GPT mesajınızı buraya yazın..."></textarea>
-            <button onclick="kaydetGptMesaj()" style="width: 100%; margin-top: 6px; padding: 6px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">💾 Mesajı Kaydet</button>
-          </div>
-          
-          <!-- Açıklama -->
-          <div class="compact-section">
-            <h4>📝 Açıklama</h4>
-            <textarea id="aciklama" placeholder="Hafta açıklamasını buraya yazın..."></textarea>
-            <button onclick="kaydetAciklama()" style="width: 100%; margin-top: 6px; padding: 6px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">� Açıklamayı Kaydet</button>
-          </div>
-          
-          <!-- Eşleşen Kartlar -->
-          <div class="compact-section">
-            <h4>�🔗 Eşleşen Kartlar</h4>
-            <div id="currentEslesenKartlar" style="min-height: 150px; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: white;">
-              <div style="text-align: center; color: #666; padding: 20px; font-size: 12px;">
-                Önce bir hasta seçin...
-              </div>
-            </div>
-            <!-- Sidebar butonları -->
-            <div id="sidebarButtons" style="margin-top: 8px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa; min-height: 40px;">
-            </div>
+      <!-- Eşleşen Kartlar (Alt Panel) -->
+      <div style="border-top: 1px solid #ddd; background: #f8f9fa; padding: 15px;">
+        <h4 style="margin: 0 0 15px 0; color: #6f42c1;">🔗 Eşleşen Kartlar</h4>
+        <div id="currentEslesenKartlar" style="min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white;">
+          <div style="text-align: center; color: #666; padding: 40px;">
+            Önce bir hasta seçin...
           </div>
         </div>
-        
-        <!-- Sağ Sütun: Araçlar -->
-        <div class="right-column">
-          <!-- Araç Tab'ları -->
-          <div class="tool-tabs">
-            <div class="tool-tab active" data-tab="yeni-kart">🆕 Yeni Kart</div>
-            <div class="tool-tab" data-tab="duzenle-kart">✏️ Düzenle</div>
-            <div class="tool-tab" data-tab="sil-kart">🗑️ Sil</div>
-            <div class="tool-tab" data-tab="manuel-eslestirme">🔗 Manuel</div>
-            <div class="tool-tab" data-tab="esleme-yasaklari">🚫 Yasaklar</div>
-          </div>
-          
-          <!-- Araç İçerikleri -->
-          <div id="yeni-kart" class="tool-content active">
-            <h4 style="margin: 0 0 8px 0; font-size: 13px;">🆕 Yeni Kart Ekle</h4>
-            <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Yeni tarif kartı ekleyin</p>
-            <!-- Yeni kart formu buraya gelecek -->
-            <div id="yeniKartForm" style="display: none;"></div>
-            <button onclick="yeniKartFormGoster()" style="width: 100%; padding: 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">+ Form Göster</button>
-          </div>
-          
-          <div id="duzenle-kart" class="tool-content">
-            <h4 style="margin: 0 0 8px 0; font-size: 13px;">✏️ Kart Düzenle</h4>
-            <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Mevcut kartları düzenleyin</p>
-            <div id="kartDuzenleForm" style="display: none;"></div>
-            <button onclick="kartDuzenleFormGoster()" style="width: 100%; padding: 8px; background: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ Form Göster</button>
-          </div>
-          
-          <div id="sil-kart" class="tool-content">
-            <h4 style="margin: 0 0 8px 0; font-size: 13px;">🗑️ Kart Sil</h4>
-            <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Kartları silin</p>
-            <div id="kartSilForm" style="display: none;"></div>
-            <button onclick="kartSilFormGoster()" style="width: 100%; padding: 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">🗑️ Form Göster</button>
-          </div>
-          
-          <div id="manuel-eslestirme" class="tool-content">
-            <h4 style="margin: 0 0 8px 0; font-size: 13px;">🔗 Manuel Eşleştirme</h4>
-            <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Kartları manuel olarak eşleştirin</p>
-            <div id="manuelEslestirmePanel" style="display: none;"></div>
-            <button onclick="manuelEslestirmePaneliGoster()" style="width: 100%; padding: 8px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">🔗 Panel Göster</button>
-          </div>
-          
-          <div id="esleme-yasaklari" class="tool-content">
-            <h4 style="margin: 0 0 8px 0; font-size: 13px;">🚫 Eşleşme Yasakları</h4>
-            <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Eşleşme kurallarını yönetin</p>
-            <div id="eslesmemeKurallarPanel" style="display: none;"></div>
-            <button onclick="eslesmemeRegeleriPaneliGoster()" style="width: 100%; padding: 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">🚫 Panel Göster</button>
-          </div>
+        <!-- Butonlar için sabit alan -->
+        <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
       </div>
     </div>
@@ -620,21 +448,26 @@
       <!-- Hızlı İşlemler -->
       <div class="sidebar-section">
         <h3>⚡ İşlemler</h3>
-        <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
-        <input type="text" id="githubRepo" placeholder="GitHub Repo (owner/repo)" value="mustafasacar35/lipodem-takip-paneli" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;">
-        <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
+        <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
+        <input type="text" id="githubRepo" placeholder="GitHub Repo (owner/repo)" value="mustafasacar35/lipodem-takip-paneli" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; border:1px solid #ddd; border-radius:3px;">
+        <button onclick="testGitHubToken()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
       </div>
 
-      <!-- Hızlı PDF Butonları -->
+      <!-- Araçlar -->
       <div class="sidebar-section">
-        <h3>� PDF Araçları</h3>
-        <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
-        <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">� Lenf Masaj Takvimi</button>
-        <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
-        <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">� Debug Tarifler</button>
+        <h3>🛠️ Araçlar</h3>
+        <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
+        <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
+        <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 Manuel Eşleştirme</button>
+        <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <input type="file" id="testPdfInput" accept="application/pdf" style="display:none" onchange="testPdfAnalyze(this)">
-        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">📊 PDF Analiz</button>
-        <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
+        <button onclick="document.getElementById('testPdfInput').click()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 PDF Analiz</button>
+        <button onclick="generatePatientPDF()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">📋 Takip PDF</button>
+        <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
+        <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
+        <button onclick="debugTariflerKlasoru()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Debug Tarifler</button>
+        <button onclick="manuelHastaIsimleriniDuzelt()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">🔧 İsim Düzelt</button>
       </div>
     </div>
   </div>
@@ -3866,23 +3699,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // En büyük hafta sayısını bul
           let maxHafta = 0;
-          console.log('🔍 Hasta hafta verileri debug:', {
-            isim: hasta.isim,
-            haftalar: hasta.haftalar,
-            haftalarLength: hasta.haftalar ? hasta.haftalar.length : 'undefined'
-          });
           
           if (hasta.haftalar && hasta.haftalar.length > 0) {
             // Hafta numaralarını topla
             const haftaNumaralari = hasta.haftalar.map(h => {
-              console.log('🔍 Hafta objesi:', h);
               return h.haftaNo || h.hafta || 0;
             });
-            console.log('🔍 Hafta numaraları:', haftaNumaralari);
             maxHafta = Math.max(...haftaNumaralari);
           }
-          
-          console.log('🔍 En büyük hafta:', maxHafta);
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
@@ -4803,17 +4627,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             </div>
           </div>
           
-          <!-- Ana İçerik - Horizontal Layout (2 kolon: PDF ve Açıklama) -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+          <!-- Ana İçerik - Kompakt Horizontal Layout -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
             
-            <!-- PDF Bölümü -->
-            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
-              <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
+            <!-- PDF Bölümü - Kompakt -->
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #28a745;">
+              <h4 style="margin: 0 0 8px 0; color: #28a745; font-size: 13px;">📄 PDF</h4>
               <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
-                     style="width: 100%; margin-bottom: 10px; font-size: 12px;">
+                     style="width: 100%; margin-bottom: 8px; font-size: 11px; padding: 4px;">
               ${hafta.pdf || hafta.pdfYolu ? `
-                <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
-                  ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
+                <div style="color: green; font-weight: bold; font-size: 11px; background: #d4edda; padding: 6px; border-radius: 4px; border-left: 3px solid #28a745;">
+                  ✅ <strong style="color: #155724; font-size: 12px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
                   ${hafta.pdfOrijinalIsim && hafta.pdfName && hafta.pdfOrijinalIsim !== hafta.pdfName ? `
                     <div style="color: #6c757d; font-size: 11px; margin-top: 2px;">
                       📁 Güvenli ad: ${hafta.pdfName}
@@ -4850,25 +4674,25 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
             </div>
             
-            <!-- Açıklama Bölümü -->
-            <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;">
-              <h4 style="margin: 0 0 10px 0; color: #0c5460; font-size: 14px;">📝 Açıklama</h4>
+            <!-- Açıklama Bölümü - Kompakt -->
+            <div style="padding: 10px; background: #d1ecf1; border-radius: 6px; border-left: 3px solid #17a2b8;">
+              <h4 style="margin: 0 0 8px 0; color: #0c5460; font-size: 13px;">📝 Açıklama</h4>
               <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
-                     placeholder="Bu hafta hakkında not..." 
-                     style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
-                     onchange="aciklamaKaydet(${i})">
+                     placeholder="Bu hafta hakkında kısa not..." 
+                     style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
+                     onchange="aciklamaKaydet(${i})">>
             </div>
           </div>
           
-          <!-- GPT Mesajı - Grid'in Altında -->
-          <div style="margin-bottom: 20px;">
-            <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 GPT Mesajı</h4>
-            <textarea id="gptMesaj_${i}" rows="3" 
-                      style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
-                      placeholder="Bu hafta için GPT mesajı veya not...">${hafta.gptMesaj||''}</textarea>
-            <div style="margin-top: 10px;">
-              <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;">💾 Kaydet</button>
-              <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+          <!-- GPT Mesajı - Kompakt -->
+          <div style="margin-bottom: 15px;">
+            <h4 style="margin: 0 0 8px 0; color: #dc3545; font-size: 13px;">💬 GPT Mesajı</h4>
+            <textarea id="gptMesaj_${i}" rows="2" 
+                      style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; resize: vertical; font-size: 12px;"
+                      placeholder="Bu hafta için GPT mesajı...">${hafta.gptMesaj||''}</textarea>
+            <div style="margin-top: 8px;">
+              <button onclick="gptMesajKaydet(${i})" style="padding: 6px 12px; font-size: 11px;">💾 Kaydet</button>
+              <button onclick="kopyalaGptMesaj(${i})" style="padding: 6px 12px; margin-left: 8px; font-size: 11px;">📋 Kopyala</button>
             </div>
           </div>
           
@@ -8909,73 +8733,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       document.addEventListener('DOMContentLoaded', () => {
         sayfaBaslat();
         initResizableSidebars();
-        initToolTabs();
       });
     } else {
       sayfaBaslat();
       initResizableSidebars();
-      initToolTabs();
-    }
-    
-    // ========================
-    // ARAÇ TAB'LARI YÖNETİMİ
-    // ========================
-    
-    function initToolTabs() {
-      const tabs = document.querySelectorAll('.tool-tab');
-      const contents = document.querySelectorAll('.tool-content');
-      
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          // Tüm tab'ları pasif yap
-          tabs.forEach(t => t.classList.remove('active'));
-          contents.forEach(c => c.classList.remove('active'));
-          
-          // Seçilen tab'ı aktif yap
-          tab.classList.add('active');
-          const targetId = tab.dataset.tab;
-          const targetContent = document.getElementById(targetId);
-          if (targetContent) {
-            targetContent.classList.add('active');
-          }
-        });
-      });
-    }
-    
-    // Aktif hafta index'ini al
-    function getActiveHaftaIndex() {
-      const activeTab = document.querySelector('.hafta-tab.active');
-      return activeTab ? parseInt(activeTab.dataset.haftaIndex) || 0 : 0;
-    }
-    
-    // GPT mesajı kaydet
-    function kaydetGptMesaj() {
-      const mesaj = document.getElementById('gptMesaj').value.trim();
-      const haftaIndex = getActiveHaftaIndex();
-      
-      if (!seciliHasta || !seciliHasta.haftalar[haftaIndex]) {
-        alert('❌ Önce bir hasta ve hafta seçin!');
-        return;
-      }
-      
-      seciliHasta.haftalar[haftaIndex].gptMesaj = mesaj;
-      saveToStorage();
-      alert('✅ GPT mesajı kaydedildi!');
-    }
-    
-    // Açıklama kaydet
-    function kaydetAciklama() {
-      const aciklama = document.getElementById('aciklama').value.trim();
-      const haftaIndex = getActiveHaftaIndex();
-      
-      if (!seciliHasta || !seciliHasta.haftalar[haftaIndex]) {
-        alert('❌ Önce bir hasta ve hafta seçin!');
-        return;
-      }
-      
-      seciliHasta.haftalar[haftaIndex].aciklama = aciklama;
-      saveToStorage();
-      alert('✅ Açıklama kaydedildi!');
     }
 
   </script>
