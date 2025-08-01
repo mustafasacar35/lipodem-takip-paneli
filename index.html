@@ -5520,6 +5520,14 @@ function duzenleHafta(i) {
       haftalar[i].indirmeUrl = pdfSonuc.indirmeUrl;
       haftalar[i].kayitTarihi = new Date().toISOString();
       
+      // YENİ PDF YÜKLENINCE ESKİ KARTLARI TEMİZLE
+      console.log('🧹 Yeni PDF yükleniyor, eski kartlar temizleniyor...');
+      
+      // 1. LocalStorage'daki hafta verilerinden eski kartları temizle
+      haftalar[i].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
+      haftalar[i].manuelKartlar = []; // Manuel eklenen kartları sıfırla
+      haftalar[i].tarifler = []; // Eski tarifleri sıfırla
+      
       console.log('✅ PDF verileri güncellendi:', {
         pdfOrijinalIsim: haftalar[i].pdfOrijinalIsim,
         pdfYolu: haftalar[i].pdfYolu,
@@ -5538,6 +5546,13 @@ function duzenleHafta(i) {
           seciliHasta.haftalar[seciliHaftaIndex].githubUrl = pdfSonuc.githubUrl;
           seciliHasta.haftalar[seciliHaftaIndex].indirmeUrl = pdfSonuc.indirmeUrl;
           seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
+          
+          // YENİ PDF YÜKLENINCE ESKİ KARTLARI HASTA JSON'UNDAN DA TEMİZLE
+          seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
+          seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar = []; // Manuel eklenen kartları sıfırla
+          seciliHasta.haftalar[seciliHaftaIndex].tarifler = []; // Eski tarifleri sıfırla
+          
+          console.log('🧹 Hasta JSON\'undan da eski kartlar temizlendi');
         }
       }
 
@@ -5568,6 +5583,18 @@ function duzenleHafta(i) {
       saveToStorage();
       renderHastalar();
       gosterHaftalar();
+
+      // Eğer bu hafta şu anda aktif hafta ise, ekrandan da eski kartları temizle
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : null;
+      
+      if (aktifTab && aktifHaftaIndex === i) {
+        console.log('🧹 Aktif haftada PDF yenileniyor, ekrandaki kartlar temizleniyor...');
+        const currentDiv = document.getElementById('currentEslesenKartlar');
+        if (currentDiv) {
+          currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">PDF analiz ediliyor...</div>';
+        }
+      }
 
       // PDF'i analiz et ve tarifleri çıkar
       const reader = new FileReader();
