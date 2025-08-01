@@ -5522,11 +5522,19 @@ function duzenleHafta(i) {
       
       // YENİ PDF YÜKLENINCE ESKİ KARTLARI TEMİZLE
       console.log('🧹 Yeni PDF yükleniyor, eski kartlar temizleniyor...');
+      console.log('🔍 Temizleme öncesi hafta verileri:', {
+        haftaIndex: i,
+        eskiTarifKartlar: haftalar[i].tarifKartlar?.length || 0,
+        eskiManuelKartlar: haftalar[i].manuelKartlar?.length || 0,
+        eskiTarifler: haftalar[i].tarifler?.length || 0
+      });
       
       // 1. LocalStorage'daki hafta verilerinden eski kartları temizle
       haftalar[i].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
       haftalar[i].manuelKartlar = []; // Manuel eklenen kartları sıfırla
       haftalar[i].tarifler = []; // Eski tarifleri sıfırla
+      
+      console.log('✅ LocalStorage hafta verileri temizlendi');
       
       console.log('✅ PDF verileri güncellendi:', {
         pdfOrijinalIsim: haftalar[i].pdfOrijinalIsim,
@@ -5548,6 +5556,13 @@ function duzenleHafta(i) {
           seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
           
           // YENİ PDF YÜKLENINCE ESKİ KARTLARI HASTA JSON'UNDAN DA TEMİZLE
+          console.log('🔍 Hasta JSON temizleme öncesi:', {
+            haftaIndex: seciliHaftaIndex,
+            eskiTarifKartlar: seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar?.length || 0,
+            eskiManuelKartlar: seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar?.length || 0,
+            eskiTarifler: seciliHasta.haftalar[seciliHaftaIndex].tarifler?.length || 0
+          });
+          
           seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
           seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar = []; // Manuel eklenen kartları sıfırla
           seciliHasta.haftalar[seciliHaftaIndex].tarifler = []; // Eski tarifleri sıfırla
@@ -7325,14 +7340,24 @@ function duzenleHafta(i) {
       // Event listener'ları yeniden ekle (clone sonrası kayboluyorlar)
       const sidebarButtons = sidebarIndirDiv.children;
       if (sidebarButtons[0]) { // ZIP butonu
-        sidebarButtons[0].onclick = function() { zipEslesenGorseller(i); };
+        sidebarButtons[0].onclick = function() { 
+          // Aktif hafta indeksini dinamik olarak al
+          const aktifTab = document.querySelector('.hafta-tab.active');
+          const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+          console.log('🎯 ZIP butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
+          zipEslesenGorseller(aktifHaftaIndex); 
+        };
       }
       if (sidebarButtons[1]) { // PDF butonu  
         sidebarButtons[1].onclick = function() { generatePatientPDF(); };
       }
       if (sidebarButtons[2]) { // COMBO butonu
         sidebarButtons[2].onclick = function() { 
-          zipEslesenGorseller(i); 
+          // Aktif hafta indeksini dinamik olarak al
+          const aktifTab = document.querySelector('.hafta-tab.active');
+          const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : 0;
+          console.log('🎯 COMBO butonu tıklandı - Aktif hafta indeksi:', aktifHaftaIndex);
+          zipEslesenGorseller(aktifHaftaIndex); 
           setTimeout(() => generatePatientPDF(), 1000); 
         };
       }
