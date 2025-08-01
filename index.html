@@ -40,10 +40,40 @@
     /* Main Layout */
     .main-container {
       display: grid;
-      grid-template-columns: 280px 1fr 300px;
+      grid-template-columns: 280px 4px 1fr 4px 300px;
       grid-template-rows: 60px 1fr;
       height: 100vh;
       gap: 0;
+    }
+    
+    /* Resizable handles */
+    .resize-handle {
+      background: #e9ecef;
+      cursor: ew-resize;
+      border-left: 1px solid #dee2e6;
+      border-right: 1px solid #dee2e6;
+      position: relative;
+      transition: background-color 0.2s;
+    }
+    
+    .resize-handle:hover {
+      background: #6c757d;
+    }
+    
+    .resize-handle:before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 20px;
+      background: #6c757d;
+      border-radius: 1px;
+    }
+    
+    .resize-handle:hover:before {
+      background: white;
     }
     
     /* Header */
@@ -357,6 +387,9 @@
       </div>
     </div>
 
+    <!-- Sol Ayırıcı -->
+    <div class="resize-handle" id="leftHandle"></div>
+
     <!-- Orta Panel -->
     <div class="center-panel">
       <!-- Hasta Bilgi Paneli (Sabit) -->
@@ -396,6 +429,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Sağ Ayırıcı -->
+    <div class="resize-handle" id="rightHandle"></div>
 
     <!-- Sağ Sidebar -->
     <div class="right-sidebar">
@@ -3661,10 +3697,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const li = document.createElement('li');
           li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
           
-          // İsim div'ini ayrı oluştur
+          // En büyük hafta sayısını bul
+          let maxHafta = 0;
+          if (hasta.haftalar && hasta.haftalar.length > 0) {
+            maxHafta = Math.max(...hasta.haftalar.map(h => h.haftaNo || 0));
+          }
+          
+          // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
           isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;`;
-          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.isim}`; // textContent kullan
+          const haftaBilgisi = maxHafta > 0 ? ` (${maxHafta}. hafta)` : '';
+          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.isim}${haftaBilgisi}`; // textContent kullan
           
           li.appendChild(isimDiv);
           
@@ -8586,11 +8629,74 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // - Hasta listesi patients/hastalar_listesi.json dosyasında
     // - Eski sistem fonksiyonları yeni sisteme yönlendiriliyor
     
+    // ========================
+    // SÜRÜKLENEBİLİR SIDEBAR
+    // ========================
+    
+    function initResizableSidebars() {
+      const container = document.querySelector('.main-container');
+      const leftHandle = document.getElementById('leftHandle');
+      const rightHandle = document.getElementById('rightHandle');
+      
+      let isResizing = false;
+      let currentHandle = null;
+      
+      // Sol ayırıcı için
+      leftHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        currentHandle = 'left';
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+      
+      // Sağ ayırıcı için
+      rightHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        currentHandle = 'right';
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+      
+      // Mouse move
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const mouseX = e.clientX - containerRect.left;
+        
+        if (currentHandle === 'left') {
+          // Sol sidebar genişliğini ayarla (min: 200px, max: 400px)
+          const newLeftWidth = Math.max(200, Math.min(400, mouseX));
+          container.style.gridTemplateColumns = `${newLeftWidth}px 4px 1fr 4px 300px`;
+        } else if (currentHandle === 'right') {
+          // Sağ sidebar genişliğini ayarla (min: 200px, max: 500px)
+          const newRightWidth = Math.max(200, Math.min(500, containerRect.width - mouseX));
+          container.style.gridTemplateColumns = `280px 4px 1fr 4px ${newRightWidth}px`;
+        }
+      });
+      
+      // Mouse up
+      document.addEventListener('mouseup', () => {
+        if (isResizing) {
+          isResizing = false;
+          currentHandle = null;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      });
+    }
+    
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', sayfaBaslat);
+      document.addEventListener('DOMContentLoaded', () => {
+        sayfaBaslat();
+        initResizableSidebars();
+      });
     } else {
       sayfaBaslat();
+      initResizableSidebars();
     }
 
   </script>
