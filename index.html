@@ -8926,17 +8926,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       console.log('📋 Tüm kartlar gösteriliyor, toplam:', window.tarifKartlari.length);
       
-      // Tüm kartları göster
+      // Tüm kartları göster - resimsiz, sade görünüm
       sonuclarDiv.innerHTML = '';
       window.tarifKartlari.forEach(kart => {
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
           display: flex;
           align-items: center;
-          padding: 10px;
-          margin: 5px 0;
-          border: 2px solid #ddd;
-          border-radius: 8px;
+          padding: 8px 12px;
+          margin: 2px 0;
+          border: 1px solid #ddd;
+          border-radius: 6px;
           background: white;
           cursor: pointer;
           transition: all 0.2s;
@@ -8945,24 +8945,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `manuel_${kart}`;
-        checkbox.style.marginRight = '10px';
+        checkbox.style.cssText = `
+          margin-right: 12px;
+          margin-left: 4px;
+          transform: scale(1.2);
+        `;
         checkbox.onchange = function() {
           manuelKartSecimDegisti(kart, this.checked);
-        };
-        
-        const img = document.createElement('img');
-        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}`;
-        img.style.cssText = `
-          width: 60px;
-          height: 60px;
-          object-fit: cover;
-          border-radius: 6px;
-          margin-right: 15px;
-        `;
-        
-        // Resim yüklenemezse placeholder göster
-        img.onerror = function() {
-          this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjBmMGYwIi8+CjxwYXRoIGQ9Ik0zMCAyNUM2IDI1IDYgMzUgMzAgMzVTNTQgMjUgMzAgMjVaIiBmaWxsPSIjY2NjIi8+CjwvcXZnPgo=';
         };
         
         const isimSpan = document.createElement('span');
@@ -8971,11 +8960,21 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           font-size: 14px;
           color: #333;
           flex: 1;
+          user-select: none;
         `;
         
         kartDiv.appendChild(checkbox);
-        kartDiv.appendChild(img);
         kartDiv.appendChild(isimSpan);
+        
+        // Hover efekti
+        kartDiv.onmouseenter = function() {
+          this.style.backgroundColor = '#f8f9fa';
+          this.style.borderColor = '#007bff';
+        };
+        kartDiv.onmouseleave = function() {
+          this.style.backgroundColor = 'white';
+          this.style.borderColor = '#ddd';
+        };
         
         kartDiv.onclick = function(e) {
           if (e.target !== checkbox) {
@@ -9011,12 +9010,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      // Arama sonuçlarını filtrele
+      // Arama sonuçlarını filtrele - çoklu kelime desteği
+      const aramaKelimeleri = aramaMetni.split(' ').filter(kelime => kelime.length > 0);
       const filtreliKartlar = window.tarifKartlari.filter(kart => {
         const kartAdi = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ').toLowerCase();
-        return kartAdi.includes(aramaMetni);
+        // Tüm arama kelimelerinin kart adında bulunması gerekir
+        return aramaKelimeleri.every(kelime => kartAdi.includes(kelime));
       });
       
+      console.log('📋 Arama kelimeleri:', aramaKelimeleri);
       console.log('📋 Filtrelenmiş kart sayısı:', filtreliKartlar.length);
       
       if (filtreliKartlar.length === 0) {
@@ -9028,39 +9030,34 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      // Sonuçları göster
+      // Sonuçları göster - resimsiz, sade görünüm
       sonuclarDiv.innerHTML = '';
       filtreliKartlar.forEach(kart => {
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
           display: flex;
           align-items: center;
-          padding: 10px;
-          margin: 5px 0;
-          border: 2px solid #ddd;
-          border-radius: 8px;
+          padding: 8px 12px;
+          margin: 2px 0;
+          border: 1px solid #ddd;
+          border-radius: 6px;
           background: white;
           cursor: pointer;
           transition: all 0.2s;
+          hover: background-color: #f8f9fa;
         `;
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `manuel_${kart}`;
-        checkbox.style.marginRight = '10px';
+        checkbox.style.cssText = `
+          margin-right: 12px;
+          margin-left: 4px;
+          transform: scale(1.2);
+        `;
         checkbox.onchange = function() {
           manuelKartSecimDegisti(kart, this.checked);
         };
-        
-        const img = document.createElement('img');
-        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart}`;
-        img.style.cssText = `
-          width: 60px;
-          height: 60px;
-          object-fit: cover;
-          border-radius: 6px;
-          margin-right: 15px;
-        `;
         
         const isimSpan = document.createElement('span');
         isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
@@ -9068,11 +9065,21 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           font-size: 14px;
           color: #333;
           flex: 1;
+          user-select: none;
         `;
         
         kartDiv.appendChild(checkbox);
-        kartDiv.appendChild(img);
         kartDiv.appendChild(isimSpan);
+        
+        // Hover efekti
+        kartDiv.onmouseenter = function() {
+          this.style.backgroundColor = '#f8f9fa';
+          this.style.borderColor = '#007bff';
+        };
+        kartDiv.onmouseleave = function() {
+          this.style.backgroundColor = 'white';
+          this.style.borderColor = '#ddd';
+        };
         
         kartDiv.onclick = function(e) {
           if (e.target !== checkbox) {
