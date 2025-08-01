@@ -456,32 +456,32 @@
         <div id="sidebarButtons" style="margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; min-height: 60px;">
         </div>
         
-        <!-- Yemek Kullanım Analizi Accordion -->
-        <div id="yemekAnaliziAccordion" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
-          <div id="yemekAnaliziBaslik" onclick="toggleYemekAnalizi()" style="
+        <!-- Yemek Kullanım Analizi - Hafta Tab Tarzı -->
+        <div id="yemekAnaliziPanel" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+          <div style="
             padding: 12px 15px; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
-            cursor: pointer; 
             border-radius: 8px 8px 0 0;
             font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.3s ease;
           ">
             <span>📊 Yemek Kullanım Analizi</span>
-            <span id="yemekAnaliziOk">▼</span>
+            <span id="analizToplamBilgi" style="font-size: 12px; opacity: 0.9;">239 tarif kartı</span>
           </div>
           
-          <div id="yemekAnaliziIcerik" style="display: none; padding: 15px; max-height: 300px; overflow-y: auto;">
+          <div style="padding: 15px;">
             <div style="margin-bottom: 10px; text-align: center;">
-              <button onclick="siralaYemekAnalizi('cok')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer; font-size: 11px;">🔺 En Çok</button>
-              <button onclick="siralaYemekAnalizi('az')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #dc3545; color: white; cursor: pointer; font-size: 11px;">🔻 En Az</button>
-              <button onclick="siralaYemekAnalizi('alfabetik')" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #6c757d; color: white; cursor: pointer; font-size: 11px;">📝 Alfabetik</button>
+              <button onclick="siralaYemekAnalizi('cok')" id="btnCok" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer; font-size: 11px;">🔺 En Çok Kullanılan</button>
+              <button onclick="siralaYemekAnalizi('az')" id="btnAz" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #dc3545; color: white; cursor: pointer; font-size: 11px;">🔻 En Az Kullanılan</button>
+              <button onclick="siralaYemekAnalizi('hic')" id="btnHic" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #6c757d; color: white; cursor: pointer; font-size: 11px;">❌ Hiç Kullanılmayan</button>
+              <button onclick="siralaYemekAnalizi('alfabetik')" id="btnAlfabetik" style="margin: 2px; padding: 5px 10px; border: none; border-radius: 4px; background: #17a2b8; color: white; cursor: pointer; font-size: 11px;">📝 Alfabetik</button>
             </div>
-            <div id="yemekAnaliziListe" style="font-size: 13px; line-height: 1.6;">
-              <div style="text-align: center; color: #666; padding: 20px;">Henüz analiz yapılacak veri yok</div>
+            
+            <div id="yemekAnaliziListe" style="max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.4; border: 1px solid #eee; border-radius: 4px; background: #fafafa;">
+              <div style="text-align: center; color: #666; padding: 20px;">Hasta ve hafta seçin...</div>
             </div>
           </div>
         </div>
@@ -8758,10 +8758,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       aktifHaftaIndex = haftaIndex;
       gosterEslesenKartlarSidebar(haftaIndex);
       
-      // Yemek analizi açıksa güncelle
-      if (yemekAnaliziAcikMi) {
-        updateYemekAnalizi();
-      }
+      // Yemek analizini her hafta değişiminde otomatik güncelle
+      updateYemekAnalizi();
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
 
@@ -9320,37 +9318,25 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       document.addEventListener('DOMContentLoaded', () => {
     // === YEMEK KULLANIM ANALİZİ FONKSIYONLARI ===
     
-    function toggleYemekAnalizi() {
-      yemekAnaliziAcikMi = !yemekAnaliziAcikMi;
-      const icerik = document.getElementById('yemekAnaliziIcerik');
-      const ok = document.getElementById('yemekAnaliziOk');
-      
-      if (yemekAnaliziAcikMi) {
-        icerik.style.display = 'block';
-        ok.textContent = '▲';
-        // Açıldığında analizi güncelle
-        updateYemekAnalizi();
-      } else {
-        icerik.style.display = 'none';
-        ok.textContent = '▼';
-      }
-    }
-    
-    // Fonksiyonları global yap
-    window.toggleYemekAnalizi = toggleYemekAnalizi;
-    
     function siralaYemekAnalizi(tip) {
       yemekAnaliziSiralama = tip;
       updateYemekAnalizi();
     }
     
-    // Sıralama fonksiyonunu da global yap
+    // Sıralama fonksiyonunu global yap
     window.siralaYemekAnalizi = siralaYemekAnalizi;
     
     function updateYemekAnalizi() {
       if (!seciliHasta || !seciliHasta.haftalar || aktifHaftaIndex === null) {
         document.getElementById('yemekAnaliziListe').innerHTML = 
           '<div style="text-align: center; color: #666; padding: 20px;">Hasta veya hafta seçilmemiş</div>';
+        return;
+      }
+      
+      // Tüm tarif kartları yoksa bekle
+      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
+        document.getElementById('yemekAnaliziListe').innerHTML = 
+          '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmeyi bekliyor...</div>';
         return;
       }
       
@@ -9361,11 +9347,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         hastaId: seciliHasta.id,
         aktifHaftaIndex,
         aktifHaftaNo,
-        toplamHaftaSayisi: seciliHasta.haftalar.length
+        toplamTarifKartSayisi: window.tarifKartlari.length
       });
       
-      // Yemek kullanım sayacı: { yemekAdi: { sayac: 3, haftalar: [1,3,5] } }
+      // TÜM tarif kartları için kullanım sayacı başlat
       const yemekKullanimlari = {};
+      
+      // Önce tüm tarif kartlarını 0 ile başlat
+      window.tarifKartlari.forEach(kart => {
+        const yemekAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
+        yemekKullanimlari[yemekAdi] = { sayac: 0, haftalar: [] };
+      });
       
       // Seçili haftaya kadar olan tüm haftaları kontrol et
       seciliHasta.haftalar.forEach((hafta, index) => {
@@ -9397,16 +9389,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           
           // Bu haftada kullanılan her benzersiz yemeği kaydet
           haftaninYemekleri.forEach(yemekAdi => {
-            if (!yemekKullanimlari[yemekAdi]) {
-              yemekKullanimlari[yemekAdi] = { sayac: 0, haftalar: [] };
+            if (yemekKullanimlari[yemekAdi]) {
+              yemekKullanimlari[yemekAdi].sayac++;
+              yemekKullanimlari[yemekAdi].haftalar.push(haftaNo);
             }
-            yemekKullanimlari[yemekAdi].sayac++;
-            yemekKullanimlari[yemekAdi].haftalar.push(haftaNo);
           });
         }
       });
       
-      console.log('📊 Yemek kullanım verileri:', yemekKullanimlari);
+      console.log('📊 Toplam analiz edilen yemek sayısı:', Object.keys(yemekKullanimlari).length);
       
       // Sonuçları diziye çevir ve sırala
       let yemekListesi = Object.keys(yemekKullanimlari).map(yemekAdi => ({
@@ -9420,42 +9411,80 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         yemekListesi.sort((a, b) => b.sayac - a.sayac || a.ad.localeCompare(b.ad));
       } else if (yemekAnaliziSiralama === 'az') {
         yemekListesi.sort((a, b) => a.sayac - b.sayac || a.ad.localeCompare(b.ad));
+      } else if (yemekAnaliziSiralama === 'hic') {
+        // Önce hiç kullanılmayanlar (0), sonra kullanılanlar az->çok
+        yemekListesi.sort((a, b) => {
+          if (a.sayac === 0 && b.sayac === 0) return a.ad.localeCompare(b.ad);
+          if (a.sayac === 0) return -1;
+          if (b.sayac === 0) return 1;
+          return a.sayac - b.sayac || a.ad.localeCompare(b.ad);
+        });
       } else { // alfabetik
         yemekListesi.sort((a, b) => a.ad.localeCompare(b.ad));
       }
       
+      // Aktif buton stilini güncelle
+      document.querySelectorAll('[id^="btn"]').forEach(btn => {
+        btn.style.background = '#6c757d';
+      });
+      
+      if (yemekAnaliziSiralama === 'cok') document.getElementById('btnCok').style.background = '#28a745';
+      else if (yemekAnaliziSiralama === 'az') document.getElementById('btnAz').style.background = '#dc3545';
+      else if (yemekAnaliziSiralama === 'hic') document.getElementById('btnHic').style.background = '#6c757d';
+      else document.getElementById('btnAlfabetik').style.background = '#17a2b8';
+      
       // HTML oluştur
       const listeDiv = document.getElementById('yemekAnaliziListe');
+      const kullanilmayanSayisi = yemekListesi.filter(y => y.sayac === 0).length;
+      const kullanilanSayisi = yemekListesi.filter(y => y.sayac > 0).length;
       
-      if (yemekListesi.length === 0) {
-        listeDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Henüz yemek kartı eklenmemiş</div>';
-        return;
-      }
-      
-      let html = `<div style="margin-bottom: 10px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-        ${aktifHaftaNo}. haftaya kadar kullanılan yemekler (${yemekListesi.length} çeşit)
+      let html = `<div style="background: #f8f9fa; padding: 10px; margin-bottom: 10px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd;">
+        ${aktifHaftaNo}. haftaya kadar • Toplam: ${yemekListesi.length} tarif • Kullanılan: ${kullanilanSayisi} • Kullanılmayan: ${kullanilmayanSayisi}
       </div>`;
       
       yemekListesi.forEach(yemek => {
-        const renkKodu = yemek.sayac >= 5 ? '#28a745' : yemek.sayac >= 3 ? '#ffc107' : '#dc3545';
-        const haftalarStr = yemek.haftalar.join('-');
+        let renkKodu, durum;
+        if (yemek.sayac === 0) {
+          renkKodu = '#6c757d';
+          durum = 'KULLANILMADI';
+        } else if (yemek.sayac >= 5) {
+          renkKodu = '#28a745';
+          durum = 'ÇOK KULLANILDI';
+        } else if (yemek.sayac >= 3) {
+          renkKodu = '#ffc107';
+          durum = 'ORTA SEVİYE';
+        } else {
+          renkKodu = '#dc3545';
+          durum = 'AZ KULLANILDI';
+        }
+        
+        const haftalarStr = yemek.sayac > 0 ? yemek.haftalar.join('-') : '';
         
         html += `
-          <div style="display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #f8f9fa;">
-            <span style="background: ${renkKodu}; color: white; border-radius: 50%; width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; margin-right: 10px;">
+          <div style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; background: white; margin-bottom: 1px;">
+            <span style="background: ${renkKodu}; color: white; border-radius: 50%; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; min-width: 30px;">
               ${yemek.sayac}
             </span>
-            <span style="flex: 1; font-weight: 500; color: #333;">
+            <span style="flex: 1; font-weight: 500; color: #333; margin-right: 10px;">
               ${yemek.ad}
             </span>
-            <span style="font-size: 11px; color: #666; background: #f8f9fa; padding: 2px 6px; border-radius: 10px;">
-              (${haftalarStr})
+            ${yemek.sayac > 0 ? 
+              `<span style="font-size: 11px; color: #666; background: #e9ecef; padding: 3px 8px; border-radius: 12px; margin-right: 8px;">
+                ${haftalarStr}
+              </span>` : ''
+            }
+            <span style="font-size: 10px; color: ${renkKodu}; font-weight: bold; min-width: 80px; text-align: right;">
+              ${durum}
             </span>
           </div>
         `;
       });
       
       listeDiv.innerHTML = html;
+      
+      // Toplam bilgiyi güncelle
+      document.getElementById('analizToplamBilgi').textContent = 
+        `${yemekListesi.length} tarif • ${kullanilanSayisi} kullanılan`;
     }
 
         sayfaBaslat();
