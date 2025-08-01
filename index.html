@@ -6301,6 +6301,18 @@ function duzenleHafta(i) {
         const hastaAdi = turkceKarakterDuzelt(seciliHasta.isim);
         console.log('🎯 PDF için hasta adı düzeltmesi:', seciliHasta.isim, ' → ', hastaAdi);
         
+        // Manuel ASCII dönüştürme - Kesin Çalışan Versiyon
+        const asciiHastaAdi = hastaAdi
+          .replace(/Ş/g, 'S').replace(/ş/g, 's')
+          .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')  
+          .replace(/İ/g, 'I').replace(/ı/g, 'i')
+          .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+          .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+          .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+        
+        console.log('🔍 FINAL ASCII:', hastaAdi, ' → ', asciiHastaAdi);
+        doc.text(asciiHastaAdi.toUpperCase(), 20, 20);
+        
         // Debug: Hem orijinal hem ASCII versiyonu deneyelim
         console.log('🔍 Debug - orijinal isim:', hastaAdi);
         const pdfUygunHastaAdi = window.fixTurkishChars(hastaAdi);
