@@ -4184,35 +4184,70 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
         }
         
-        // Dosyayı sil
-        const deleteResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${bulunanDosya}`, {
+        // Dosyayı silmek yerine adını değiştir (silindi_ prefix ekle)
+        const eskiDosyaAdi = bulunanDosya;
+        const yeniDosyaAdi = `silindi_${eskiDosyaAdi}`;
+        
+        console.log(`🔄 Dosya adı değiştiriliyor: ${eskiDosyaAdi} → ${yeniDosyaAdi}`);
+        
+        // Önce dosyanın içeriğini al
+        const contentResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${eskiDosyaAdi}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (!contentResponse.ok) {
+          throw new Error(`Dosya içeriği alınamadı: ${contentResponse.status}`);
+        }
+        
+        const contentData = await contentResponse.json();
+        const dosyaIcerigi = contentData.content; // Base64 içerik
+        
+        // Yeni adla dosyayı oluştur
+        const createResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${yeniDosyaAdi}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Hasta dosyası arşivlendi: ${seciliHasta.isim}`,
+            content: dosyaIcerigi // Base64 içeriği direkt kullan
+          })
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error(`Yeni dosya oluşturulamadı: ${createResponse.status}`);
+        }
+        
+        // Eski dosyayı sil
+        const deleteResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${eskiDosyaAdi}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `token ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            message: `Hasta silindi: ${seciliHasta.isim}`,
+            message: `Hasta dosyası arşivlendi (eski dosya silindi): ${seciliHasta.isim}`,
             sha: dosyaSHA
           })
         });
         
         if (deleteResponse.ok) {
-          console.log(`✅ Hasta dosyası silindi: ${bulunanDosya}`);
+          console.log(`✅ Hasta dosyası arşivlendi: ${eskiDosyaAdi} → ${yeniDosyaAdi}`);
           
           // Hasta listesinden de kaldır
           const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
           if (listeGuncellendi) {
-            alert(`✅ ${seciliHasta.isim} hasta kaydı tamamen silindi!`);
+            alert(`✅ ${seciliHasta.isim} hasta kaydı arşivlendi!\n\nDosya: ${yeniDosyaAdi}`);
             
             // Panel temizle ve listeyi yenile
             kapatDetay();
             await renderHastalarYeniSistem();
           } else {
-            alert(`⚠️ Hasta dosyası silindi ama listeden kaldırılamadı. Sayfayı yenileyin.`);
+            alert(`⚠️ Hasta dosyası arşivlendi ama listeden kaldırılamadı. Sayfayı yenileyin.`);
           }
         } else {
-          throw new Error(`Hasta dosyası silinemedi: ${deleteResponse.status}`);
+          throw new Error(`Eski dosya silinemedi: ${deleteResponse.status}`);
         }
         
       } catch (error) {
