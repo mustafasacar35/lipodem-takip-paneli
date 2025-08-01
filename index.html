@@ -5485,6 +5485,12 @@ function duzenleHafta(i) {
             seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
             // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - JSON boyutunu küçük tutmak için
             // seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
+            
+            // Mevcut JSON'da eslesmeyenTarifler varsa sil (temizlik)
+            if (seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler) {
+              delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
+              console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
+            }
           }
           
           // Hasta verilerini GitHub'a kaydet
@@ -7347,6 +7353,45 @@ function duzenleHafta(i) {
     window.kopyalaGptMesaj = kopyalaGptMesaj;
 
     // Ortak fonksiyonlar
+    
+    // Tüm hasta JSON'larından eslesmeyenTarifler verilerini temizle
+    async function temizleEslesmeyenTarifleriJSON() {
+      console.log('🧹 Tüm hasta JSON\'larından eslesmeyenTarifler verileri temizleniyor...');
+      
+      const hastalar = getHastaListesi();
+      let temizlenenSayisi = 0;
+      
+      for (const hasta of hastalar) {
+        let temizlemeYapildi = false;
+        
+        if (hasta.haftalar) {
+          hasta.haftalar.forEach(hafta => {
+            if (hafta.eslesmeyenTarifler) {
+              delete hafta.eslesmeyenTarifler;
+              temizlemeYapildi = true;
+            }
+          });
+        }
+        
+        if (temizlemeYapildi) {
+          await hastayiAyriKaydet(hasta);
+          temizlenenSayisi++;
+          console.log(`✅ ${hasta.isim} - eslesmeyenTarifler verileri temizlendi`);
+        }
+      }
+      
+      console.log(`🎯 Toplam ${temizlenenSayisi} hasta JSON'u temizlendi`);
+      
+      if (temizlenenSayisi > 0) {
+        alert(`✅ ${temizlenenSayisi} hasta JSON dosyasından eşleşmeyen tarif verileri temizlendi!\n\nArtık JSON dosyaları daha küçük ve hızlı olacak.`);
+      } else {
+        alert('✅ Tüm JSON dosyaları zaten temiz!');
+      }
+    }
+    
+    // Global olarak erişilebilir yap
+    window.temizleEslesmeyenTarifleriJSON = temizleEslesmeyenTarifleriJSON;
+
     function extractTariflerDetay(text) {
       // Her satırı temizle, başında * veya miktar varsa da al
       const lines = text.split('\n').map(line => line.trim()).filter(l => l.length > 1);
