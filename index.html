@@ -6806,9 +6806,18 @@ function duzenleHafta(i) {
 
     function gosterKartlarHafta(i) {
       const hafta = getHaftaListesi()[i];
+      
+      // Hem hafta görsel div'i hem de eşleşen kartlar div'ini güncelle
       const gorselDiv = document.getElementById('haftaKartGorsel_' + i);
-      if (!gorselDiv) return;
-      gorselDiv.innerHTML = '';
+      const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
+      
+      if (gorselDiv) {
+        gorselDiv.innerHTML = '';
+      }
+      if (eslesenDiv) {
+        eslesenDiv.innerHTML = '';
+      }
+      
       (hafta.tarifKartlar||[]).forEach(kart => {
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
@@ -6890,7 +6899,33 @@ function duzenleHafta(i) {
         }
         
         kartDiv.appendChild(img);
-        gorselDiv.appendChild(kartDiv);
+        
+        // Her iki div'e de ekle (event listener'lar korunmalı)
+        if (gorselDiv) {
+          const gorselKlon = kartDiv.cloneNode(true);
+          // Event listener'ları yeniden ekle
+          const silButonu = gorselKlon.querySelector('div[title="Manuel kartı sil"]');
+          if (silButonu) {
+            silButonu.onmouseenter = function() {
+              this.style.transform = 'scale(1.2)';
+              this.style.backgroundColor = '#c82333';
+            };
+            silButonu.onmouseleave = function() {
+              this.style.transform = 'scale(1)';
+              this.style.backgroundColor = '#dc3545';
+            };
+            silButonu.onclick = function(e) {
+              e.stopPropagation();
+              if (confirm(`"${(kart.name || kart).replace(/\.[^.]+$/, '').replace(/_/g, ' ')}" kartını silmek istediğinizden emin misiniz?`)) {
+                manuelKartSil(i, kart.name || kart);
+              }
+            };
+          }
+          gorselDiv.appendChild(gorselKlon);
+        }
+        if (eslesenDiv) {
+          eslesenDiv.appendChild(kartDiv);
+        }
       });
     }
     
@@ -8983,16 +9018,23 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       modalOverlay.appendChild(modalContent);
       document.body.appendChild(modalOverlay);
       
-      // Arama kutusuna focus ve event listener
+      // Arama kutusuna focus ve event listener (mevcut kodun çalışan yöntemi)
       setTimeout(() => {
         const aramaKutusu = document.getElementById('manuelKartArama');
+        if (!aramaKutusu) {
+          console.error('❌ Arama kutusu bulunamadı!');
+          return;
+        }
+        
         aramaKutusu.focus();
         
-        // Event listener ekle
-        aramaKutusu.addEventListener('input', function() {
-          console.log('🔍 Arama input eventi tetiklendi:', this.value);
+        // Mevcut kodla aynı yöntem: oninput
+        aramaKutusu.oninput = function() {
+          console.log('🔍 Arama input eventi (oninput):', this.value);
           manuelKartAramaSonuclari();
-        });
+        };
+        
+        console.log('✅ oninput event listener başarıyla eklendi');
         
         // Başlangıçta tüm kartları göster
         tumKartlariGoster();
@@ -9004,7 +9046,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function tumKartlariGoster() {
       const sonuclarDiv = document.getElementById('manuelKartSonuclar');
       
-      if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
+      if (!tariflerKlasoruGorselleri || tariflerKlasoruGorselleri.length === 0) {
         sonuclarDiv.innerHTML = `
           <div style="text-align: center; color: #dc3545; padding: 40px;">
             ❌ Tarif kartları henüz yüklenmedi
@@ -9013,7 +9055,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      console.log('📋 Tüm kartlar gösteriliyor, toplam:', window.tarifKartlari.length);
+      console.log('📋 Tüm kartlar gösteriliyor, toplam:', tariflerKlasoruGorselleri.length);
+      
+      // Karakter düzeltme fonksiyonu
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
+      }
       
       // Aktif hafta için zaten eklenmiş kartları al
       const activeTab = document.querySelector('.hafta-tab.active');
@@ -9028,8 +9087,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Tüm kartları göster - resimsiz, sade görünüm
       sonuclarDiv.innerHTML = '';
-      window.tarifKartlari.forEach(kart => {
-        const zatenEklenmis = mevcutKartlar.includes(kart);
+      tariflerKlasoruGorselleri.forEach(kart => {
+        const kartName = kart.name;
+        const zatenEklenmis = mevcutKartlar.includes(kartName);
         
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
@@ -9047,7 +9107,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `manuel_${kart}`;
+        checkbox.id = `manuel_${kartName}`;
         checkbox.disabled = zatenEklenmis;
         checkbox.style.cssText = `
           margin-right: 12px;
@@ -9056,12 +9116,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
         checkbox.onchange = function() {
           if (!zatenEklenmis) {
-            manuelKartSecimDegisti(kart, this.checked);
+            manuelKartSecimDegisti(kartName, this.checked);
           }
         };
         
         const isimSpan = document.createElement('span');
-        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
+        const duzeltilmisKartAdi = karakterDuzelt(kartName);
+        isimSpan.textContent = duzeltilmisKartAdi.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
         isimSpan.style.cssText = `
           font-size: 14px;
           color: ${zatenEklenmis ? '#996515' : '#333'};
@@ -9086,7 +9147,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           kartDiv.onclick = function(e) {
             if (e.target !== checkbox) {
               checkbox.checked = !checkbox.checked;
-              manuelKartSecimDegisti(kart, checkbox.checked);
+              manuelKartSecimDegisti(kartName, checkbox.checked);
             }
           };
         }
@@ -9100,16 +9161,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const sonuclarDiv = document.getElementById('manuelKartSonuclar');
       
       console.log('🔍 Arama yapılıyor:', aramaMetni);
-      console.log('📊 window.tarifKartlari durumu:', window.tarifKartlari ? window.tarifKartlari.length + ' kart mevcut' : 'tanımsız');
+      console.log('📊 tariflerKlasoruGorselleri durumu:', tariflerKlasoruGorselleri ? tariflerKlasoruGorselleri.length + ' kart mevcut' : 'tanımsız');
       
+      // Boş arama durumunda tüm kartları göster
       if (!aramaMetni) {
-        // Boş arama durumunda tüm kartları göster
         tumKartlariGoster();
         return;
       }
       
-      if (!window.tarifKartlari) {
-        console.error('❌ window.tarifKartlari tanımsız!');
+      // window.tarifKartlari yerine doğrudan tariflerKlasoruGorselleri kullan
+      if (!tariflerKlasoruGorselleri || tariflerKlasoruGorselleri.length === 0) {
+        console.error('❌ tariflerKlasoruGorselleri tanımsız veya boş!');
         sonuclarDiv.innerHTML = `
           <div style="text-align: center; color: #dc3545; padding: 40px;">
             ❌ Tarif kartları henüz yüklenmedi
@@ -9118,24 +9180,21 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      // Arama sonuçlarını filtrele - çoklu kelime desteği
-      const aramaKelimeleri = aramaMetni.split(' ').filter(kelime => kelime.length > 0);
-      const filtreliKartlar = window.tarifKartlari.filter(kart => {
-        const kartAdi = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ').toLowerCase();
-        // Tüm arama kelimelerinin kart adında bulunması gerekir
-        return aramaKelimeleri.every(kelime => kartAdi.includes(kelime));
-      });
-      
-      console.log('📋 Arama kelimeleri:', aramaKelimeleri);
-      console.log('📋 Filtrelenmiş kart sayısı:', filtreliKartlar.length);
-      
-      if (filtreliKartlar.length === 0) {
-        sonuclarDiv.innerHTML = `
-          <div style="text-align: center; color: #666; padding: 40px;">
-            🔍 "${aramaMetni}" için sonuç bulunamadı
-          </div>
-        `;
-        return;
+      // Karakter düzeltme fonksiyonu (mevcut koddan kopyalandı)
+      function karakterDuzelt(text) {
+        if (!text) return text;
+        return text
+          .replace(/Ä±/g, 'ı')
+          .replace(/Ä/g, 'ğ') 
+          .replace(/Å/g, 'ş')
+          .replace(/Ğ/g, 'ğ')
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã¶/g, 'ö')
+          .replace(/Ã§/g, 'ç')
+          .replace(/â/g, 'a')
+          .replace(/î/g, 'i')
+          .replace(/û/g, 'u')
+          .replace(/ô/g, 'o');
       }
       
       // Aktif hafta için zaten eklenmiş kartları al
@@ -9149,10 +9208,30 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         }
       }
       
-      // Sonuçları göster - resimsiz, sade görünüm
+      // Filtreleme (mevcut kodun mantığı)
+      const filtreliKartlar = tariflerKlasoruGorselleri.filter(kart => {
+        if (!aramaMetni) return true;
+        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        const duzeltilmisArama = karakterDuzelt(aramaMetni);
+        return duzeltilmisKartAdi.toLowerCase().includes(duzeltilmisArama.toLowerCase());
+      });
+      
+      console.log('📋 Filtrelenmiş kart sayısı:', filtreliKartlar.length);
+      
+      if (filtreliKartlar.length === 0 && aramaMetni) {
+        sonuclarDiv.innerHTML = `
+          <div style="text-align: center; color: #666; padding: 40px;">
+            🔍 "${aramaMetni}" için sonuç bulunamadı
+          </div>
+        `;
+        return;
+      }
+      
+      // Sonuçları göster
       sonuclarDiv.innerHTML = '';
       filtreliKartlar.forEach(kart => {
-        const zatenEklenmis = mevcutKartlar.includes(kart);
+        const kartName = kart.name;
+        const zatenEklenmis = mevcutKartlar.includes(kartName);
         
         const kartDiv = document.createElement('div');
         kartDiv.style.cssText = `
@@ -9170,7 +9249,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `manuel_${kart}`;
+        checkbox.id = `manuel_${kartName}`;
         checkbox.disabled = zatenEklenmis;
         checkbox.style.cssText = `
           margin-right: 12px;
@@ -9179,12 +9258,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         `;
         checkbox.onchange = function() {
           if (!zatenEklenmis) {
-            manuelKartSecimDegisti(kart, this.checked);
+            manuelKartSecimDegisti(kartName, this.checked);
           }
         };
         
         const isimSpan = document.createElement('span');
-        isimSpan.textContent = kart.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
+        const duzeltilmisKartAdi = karakterDuzelt(kartName);
+        isimSpan.textContent = duzeltilmisKartAdi.replace(/\.[^.]+$/, '').replace(/_/g, ' ') + (zatenEklenmis ? ' (ZATEN EKLENMİŞ)' : '');
         isimSpan.style.cssText = `
           font-size: 14px;
           color: ${zatenEklenmis ? '#996515' : '#333'};
@@ -9209,7 +9289,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           kartDiv.onclick = function(e) {
             if (e.target !== checkbox) {
               checkbox.checked = !checkbox.checked;
-              manuelKartSecimDegisti(kart, checkbox.checked);
+              manuelKartSecimDegisti(kartName, checkbox.checked);
             }
           };
         }
@@ -9339,4 +9419,3 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
   </script>
 </body>
 </html>
-
