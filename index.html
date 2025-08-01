@@ -8968,48 +8968,111 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      // Şu anda bu haftada bulunan kartları bul (hem otomatik hem manuel)
-      const mevcutKartlar = getMevcutHaftaKartlari();
+      // Mevcut kartları kategorize et
+      const mevcutOtomatikKartlar = [];
+      const mevcutManuelKartlar = [];
       
-      // Eğer arama metni boşsa tüm kartları göster
-      let sonuclar = window.tarifKartlari.filter(kart => !mevcutKartlar.includes(kart));
+      if (seciliHasta && seciliHasta.haftalar && aktifHaftaIndex !== null && seciliHasta.haftalar[aktifHaftaIndex]) {
+        const hafta = seciliHasta.haftalar[aktifHaftaIndex];
+        
+        // Otomatik eşleşen kartlar
+        if (hafta.tarifKartlar) {
+          hafta.tarifKartlar.forEach(kart => {
+            if (kart.name) {
+              mevcutOtomatikKartlar.push(kart.name);
+            }
+          });
+        }
+        
+        // Manuel eklenen kartlar
+        if (hafta.manuelKartlar) {
+          hafta.manuelKartlar.forEach(kart => {
+            if (kart.name) {
+              mevcutManuelKartlar.push(kart.name);
+            }
+          });
+        }
+      }
+      
+      // Tüm kartları filtrele (arama kriterlerine göre)
+      let tumKartlar = window.tarifKartlari;
       
       // Arama metni varsa filtreleme yap
       if (aramaMetni && aramaMetni.trim().length > 0) {
         const aramaKelimeler = aramaMetni.toLowerCase().trim().split(/\s+/);
         
-        sonuclar = sonuclar.filter(kart => {
+        tumKartlar = tumKartlar.filter(kart => {
           const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
           // Tüm arama kelimelerinin kart adında bulunması gerekiyor
           return aramaKelimeler.every(kelime => kartAdi.includes(kelime));
         });
       }
       
-      if (sonuclar.length === 0) {
+      if (tumKartlar.length === 0) {
         liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Sonuç bulunamadı</div>';
         return;
       }
       
-      // Sonuçları liste olarak göster (sadece isimler ve checkbox)
+      // Sonuçları liste olarak göster
       let html = '<div style="max-height: 300px; overflow-y: auto;">';
       
-      sonuclar.forEach(kart => {
+      tumKartlar.forEach(kart => {
         const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ');
+        const otomatikMi = mevcutOtomatikKartlar.includes(kart);
+        const manuelMi = mevcutManuelKartlar.includes(kart);
         const seciliMi = secilenManuelKartlar.includes(kart);
+        const pasifMi = otomatikMi || manuelMi;
+        
+        let backgroundColor, hoverColor, textColor, prefix, icon;
+        
+        if (manuelMi) {
+          // Manuel eklenen - Sarı marker
+          backgroundColor = 'rgba(255, 215, 0, 0.2)'; // Transparan sarı
+          hoverColor = 'rgba(255, 215, 0, 0.3)';
+          textColor = '#666';
+          prefix = '🖐️ ';
+          icon = '';
+        } else if (otomatikMi) {
+          // Otomatik eşleşen - Yeşil marker  
+          backgroundColor = 'rgba(40, 167, 69, 0.2)'; // Transparan yeşil
+          hoverColor = 'rgba(40, 167, 69, 0.3)';
+          textColor = '#666';
+          prefix = '🔗 ';
+          icon = '';
+        } else if (seciliMi) {
+          // Yeni seçilen
+          backgroundColor = '#e8f5e8';
+          hoverColor = '#d4edda';
+          textColor = '#333';
+          prefix = '';
+          icon = '';
+        } else {
+          // Henüz eklenmemiş
+          backgroundColor = 'white';
+          hoverColor = '#f8f9fa';
+          textColor = '#333';
+          prefix = '';
+          icon = '';
+        }
         
         html += `
-          <div onclick="manuelKartToggle('${kart}')" style="
-            cursor: pointer; 
+          <div ${pasifMi ? '' : `onclick="manuelKartToggle('${kart}')"`} style="
+            cursor: ${pasifMi ? 'not-allowed' : 'pointer'}; 
             padding: 8px 12px; 
             border-bottom: 1px solid #eee;
-            background: ${seciliMi ? '#e8f5e8' : 'white'};
+            background: ${backgroundColor};
             display: flex;
             align-items: center;
             transition: background 0.2s;
-          " onmouseover="this.style.background='${seciliMi ? '#d4edda' : '#f8f9fa'}'" 
-             onmouseout="this.style.background='${seciliMi ? '#e8f5e8' : 'white'}'">
-            <input type="checkbox" ${seciliMi ? 'checked' : ''} style="margin-right: 10px; pointer-events: none;" />
-            <span style="font-size: 14px; color: #333; flex: 1;">${kartAdi}</span>
+            opacity: ${pasifMi ? '0.7' : '1'};
+          " ${pasifMi ? '' : `onmouseover="this.style.background='${hoverColor}'" onmouseout="this.style.background='${backgroundColor}'"`}>
+            ${pasifMi ? 
+              `<span style="margin-right: 10px; color: #999;">●</span>` : 
+              `<input type="checkbox" ${seciliMi ? 'checked' : ''} style="margin-right: 10px; pointer-events: none;" />`
+            }
+            <span style="font-size: 14px; color: ${textColor}; flex: 1;">${prefix}${kartAdi}</span>
+            ${manuelMi ? '<span style="font-size: 11px; color: #856404; background: rgba(255, 215, 0, 0.3); padding: 2px 6px; border-radius: 10px; margin-left: 8px;">MANUEL</span>' : ''}
+            ${otomatikMi ? '<span style="font-size: 11px; color: #155724; background: rgba(40, 167, 69, 0.3); padding: 2px 6px; border-radius: 10px; margin-left: 8px;">OTOMATİK</span>' : ''}
           </div>
         `;
       });
