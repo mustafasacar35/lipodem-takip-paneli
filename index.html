@@ -9630,8 +9630,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return null;
       }
 
+      // hastalar array kontrol
+      if (!hastalar || !Array.isArray(hastalar)) {
+        console.error('❌ hastalar array tanımlı değil, boş array oluşturuluyor');
+        window.hastalar = [];
+      }
+
+      console.log('🔍 findOrCreateHasta çağrıldı:', hastaAdi, 'Mevcut hasta sayısı:', hastalar.length);
+
       // Mevcut hastalar arasında ara
-      let mevcutHasta = hastalar.find(h => h && h.ad && h.ad.toLowerCase() === hastaAdi.toLowerCase());
+      let mevcutHasta = hastalar.find(h => {
+        console.log('🔍 Hasta kontrol:', h);
+        return h && h.ad && h.ad.toLowerCase() === hastaAdi.toLowerCase();
+      });
       
       if (!mevcutHasta) {
         // Yeni hasta oluştur
@@ -9781,15 +9792,41 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
 
-      // Mevcut eşleştirme fonksiyonunu kullan
-      const eskiHafta = { haftaNo: hafta.haftaNo };
-      const eskiHasta = { haftalar: [hafta] };
+      console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: tarif eşleştirmesi başlatıldı`);
       
-      // Tarif eşleştirmesi yap (mevcut algoritma)
-      const eslesmeAnalizi = analyzeEslesme(hafta.tarifler);
-      hafta.tarifKartlar = eslesmeAnalizi.eslesenler.map(e => e.kart);
+      // Basit eşleştirme - mevcut tarif kartları ile karşılaştır
+      if (window.tarifKartlari && window.tarifKartlari.length > 0) {
+        hafta.tarifKartlar = [];
+        
+        // Her tarifi kontrol et
+        hafta.tarifler.forEach(tarif => {
+          const eslesen = window.tarifKartlari.find(kart => {
+            const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+            return tarif.toLowerCase().includes(kartAdi) || kartAdi.includes(tarif.toLowerCase());
+          });
+          
+          if (eslesen) {
+            hafta.tarifKartlar.push({ name: eslesen });
+          }
+        });
+        
+        console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: ${hafta.tarifKartlar.length} tarif eşleşti`);
+      }
+    }
+
+    function extractTariflerFromText(pdfText) {
+      if (!pdfText) return [];
       
-      console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: ${hafta.tarifKartlar.length} tarif eşleşti`);
+      // Basit tarif çıkarma - satırları al ve temizle
+      const satirlar = pdfText.split('\n').filter(satir => 
+        satir.trim().length > 2 && 
+        !satir.includes('HAFTA') && 
+        !satir.includes('TEMMUZ') &&
+        !satir.includes('AĞUSTOS')
+      );
+      
+      console.log('📝 PDF\'den çıkarılan tarifler:', satirlar.length);
+      return satirlar.slice(0, 20); // İlk 20 satırı al
     }
 
     async function extractPdfText(file) {
