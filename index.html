@@ -951,8 +951,19 @@
     }
 
     // Hasta bulma/oluşturma (GitHub entegrasyonlu)
+    // Çoklu PDF işlemi için hasta cache'i
+    const cokluPdfHastaCache = new Map();
+
     async function findOrCreateHastaWithGitHub(hastaAdi) {
       console.log('👤 Hasta aranıyor/oluşturuluyor:', hastaAdi);
+      
+      // Cache'de var mı kontrol et (çoklu PDF işlemi için)
+      const cacheKey = hastaAdi.toUpperCase();
+      if (cokluPdfHastaCache.has(cacheKey)) {
+        const cachedHasta = cokluPdfHastaCache.get(cacheKey);
+        console.log('✅ Cache\'den hasta alındı:', hastaAdi, 'Hafta sayısı:', cachedHasta.haftalar.length);
+        return cachedHasta;
+      }
       
       // Global hastalar dizisini al
       let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
@@ -1007,8 +1018,11 @@
           }
         }
       } else {
-        console.log('✅ Mevcut hasta bulundu:', hastaAdi);
+        console.log('✅ Mevcut hasta bulundu:', hastaAdi, 'Hafta sayısı:', hasta.haftalar ? hasta.haftalar.length : 0);
       }
+      
+      // Cache'e ekle (çoklu PDF işlemi için)
+      cokluPdfHastaCache.set(cacheKey, hasta);
       
       // localStorage'a kaydet
       localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
@@ -1353,6 +1367,12 @@
       document.body.appendChild(modal);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+      
+      // Cache'i temizle
+      if (typeof cokluPdfHastaCache !== 'undefined') {
+        console.log('🧹 Cache temizleniyor... Önceki boyut:', cokluPdfHastaCache.size);
+        cokluPdfHastaCache.clear();
+      }
     }
 
     // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
