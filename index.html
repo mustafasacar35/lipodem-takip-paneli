@@ -1229,11 +1229,19 @@
                     const haftaIndex = bulunanHasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
                     if (haftaIndex >= 0) {
                       console.log(`🔗 ${file.name} için gelişmiş tarif eşleştirmesi başlıyor...`);
-                      await otomatikEsleHafta(haftaIndex);
+                      const eslestirmeSonucu = await otomatikEsleHafta(haftaIndex);
                       
-                      // Güncellenmiş verileri ana hafta'ya kopyala
-                      hafta.tarifKartlar = bulunanHafta.tarifKartlar || [];
-                      console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                      // EŞLEŞTİRME SONUÇLARINI HAFTA VERİSİNE DOĞRU ŞEKİLDE AKTAR
+                      if (eslestirmeSonucu && eslestirmeSonucu.eslesenKartlar) {
+                        hafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar;
+                        // Hasta verisindeki hafta verisini de güncelle
+                        bulunanHafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar;
+                        console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                        console.log(`🔍 Eşleşen kartlar:`, hafta.tarifKartlar.map(k => k.name || 'unnamed'));
+                      } else {
+                        hafta.tarifKartlar = [];
+                        console.warn('⚠️ Eşleştirme sonucu null/undefined döndü');
+                      }
                     }
                     
                     // seciliHasta'yı geri yükle
@@ -1279,8 +1287,27 @@
               hafta.tarifKartlar = [];
             }
             
-            // Güncellenmiş hasta verisini kaydet
+            // ✅ PDF ANALİZİ VE EŞLEŞTİRME TAMAMLANDI - ŞİMDİ OTOMATİK KAYDET
+            console.log('🎯 Çoklu PDF: PDF analizi ve eşleştirme tamamlandı, hasta verisi kaydediliyor...');
+            
+            // Güncellenmiş hasta verisini kaydet (GitHub + localStorage)
             await hastayiAyriKaydet(hasta);
+            
+            // AutoSave sistemini de çağır
+            if (seciliHasta && seciliHasta.id === hasta.id) {
+              autoSaveHastaData(hasta);
+              console.log('🔗 Çoklu PDF: autoSaveHastaData çağrıldı (seciliHasta güncellendi)');
+            } else {
+              // localStorage'a manuel kaydet
+              const hastaIndex = hastalar.findIndex(h => h.id === hasta.id);
+              if (hastaIndex >= 0) {
+                hastalar[hastaIndex] = hasta;
+              } else {
+                hastalar.push(hasta);
+              }
+              saveToStorage();
+              console.log('🔗 Çoklu PDF: hasta verisi localStorage\'a manuel kaydedildi');
+            }
             
           } catch (pdfError) {
             console.warn('⚠️ PDF işleme hatası:', pdfError);
@@ -6483,13 +6510,8 @@ function duzenleHafta(i) {
         }, 100);
       }
 
-      // Hasta verisini GitHub'a kaydet (yeni sisteme göre)
-      if (seciliHasta) {
-        await hastayiAyriKaydet(seciliHasta);
-      }
-
-      // Otomatik kaydetme - hasta verileri değişti
-      autoSaveHastaData(seciliHasta);
+      // HENÜZ PDF ANALİZİ TAMAMLANMADIĞI İÇİN OTOMATK KAYDETME YOK
+      // autoSaveHastaData çağrısı PDF analizi tamamlandıktan sonra yapılacak
       
       renderHastalar();
       gosterHaftalar();
@@ -6541,11 +6563,15 @@ function duzenleHafta(i) {
         haftalar[i].tarifler = extractTariflerDetay(fullText);
         
         // Eşleştirme yap ve sonuçları kaydet
+        console.log('🔗 otomatikEsleHafta çağrılıyor, hafta index:', i);
         const eslestirmeSonucu = await otomatikEsleHafta(i);
+        console.log('🔗 otomatikEsleHafta tamamlandı, sonuç:', eslestirmeSonucu);
         
         // JSON'a sadece eşleşen kartları kaydet (eşleşmeyenleri kaydetme)
         if (eslestirmeSonucu) {
           console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
+          console.log('🔍 Eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
+          console.log('🔍 Eşleşen kartlar:', eslestirmeSonucu.eslesenKartlar?.map(k => k.name || 'unnamed') || []);
           haftalar[i].tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
           // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - sadece UI'da göstereceğiz
           console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
@@ -6555,9 +6581,17 @@ function duzenleHafta(i) {
         // Hasta JSON dosyasını güncelle
         if (seciliHasta) {
           const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === (haftalar[i].haftaNo || (i + 1)));
+          console.log('🔍 Hasta güncellemesi:', {
+            seciliHaftaIndex: seciliHaftaIndex,
+            bulunanHaftaNo: seciliHasta.haftalar[seciliHaftaIndex]?.haftaNo,
+            hedeflenenHaftaNo: haftalar[i].haftaNo || (i + 1),
+            aktarilacakEslesenKartSayisi: haftalar[i].tarifKartlar?.length || 0
+          });
+          
           if (seciliHaftaIndex !== -1) {
             seciliHasta.haftalar[seciliHaftaIndex].tarifler = haftalar[i].tarifler;
             seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
+            console.log('📝 Hasta verisi güncellendi - eşleşen kart sayısı:', seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar.length);
             // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - JSON boyutunu küçük tutmak için
             // seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
             
@@ -6566,11 +6600,19 @@ function duzenleHafta(i) {
               delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
               console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
             }
+          } else {
+            console.warn('⚠️ Hafta bulunamadı, hasta güncellemesi yapılamadı');
           }
           
           // Hasta verilerini GitHub'a kaydet
           await hastayiAyriKaydet(seciliHasta);
           console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi (sadece eşleşenler)');
+          
+          // ✅ PDF ANALİZİ VE EŞLEŞTİRME TAMAMLANDI - ŞİMDİ OTOMATK KAYDET
+          autoSaveHastaData(seciliHasta);
+          console.log('🎯 PDF analizi ve eşleştirme tamamlandı, autoSaveHastaData çağrıldı');
+          console.log('💾 KAYDETME SONRASI KONTROL - Hasta verisindeki eşleşen kart sayısı:', 
+            seciliHasta.haftalar[seciliHaftaIndex]?.tarifKartlar?.length || 0);
         }
         
         saveToStorage();
@@ -8296,12 +8338,8 @@ function duzenleHafta(i) {
   console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
   console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
   
-  // Otomatik kaydetme - hafta verileri değişti
-  if (seciliHasta) {
-    autoSaveHastaData(seciliHasta);
-  } else {
-    saveToStorage(); // Fallback
-  }
+  // OTOMATK KAYDETME KALDIRILI - pdfYukleHafta içinde eşleştirme tamamlandıktan sonra yapılacak
+  // Bu fonksiyon sadece eşleştirme yapar, kaydetme işlemini çağıran fonksiyon yapar
   
   // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
   const sonuc = {
