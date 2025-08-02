@@ -842,6 +842,160 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
     // ⚡ ÇOKLU PDF İŞLEME FONKSİYONU (Global)
+    
+    // Profesyonel PDF adını parse etme
+    function parseProfessionalPdfName(fileName) {
+      console.log('🔍 Parse ediliyor:', fileName);
+      
+      // .pdf uzantısını kaldır
+      const cleanName = fileName.replace(/\.pdf$/i, '');
+      
+      // Regex pattern'ler (esnek format desteği)
+      const patterns = [
+        // "ESİN KARAKUŞ 28 TEMMUZ -3 AĞUSTOS 17. HAFTA"
+        /^(.+?)\s+(\d{1,2})\s+([A-Za-zçÇğĞıİöÖşŞüÜ]+)\s*-\s*(\d{1,2})\s+([A-Za-zçÇğĞıİöÖşŞüÜ]+)\s+(\d+)\.\s*HAFTA/i,
+        
+        // "FİGEN TEZMAN 4-10 AĞUSTOS 1.HAFTA"
+        /^(.+?)\s+(\d{1,2})-(\d{1,2})\s+([A-Za-zçÇğĞıİöÖşŞüÜ]+)\s+(\d+)\.?\s*HAFTA/i,
+        
+        // "HASTA ADI TARIH ARALIGI X. HAFTA" (genel format)
+        /^(.+?)\s+(.+?)\s+(\d+)\.?\s*HAFTA/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = cleanName.match(pattern);
+        if (match) {
+          console.log('✅ Pattern match:', match);
+          
+          if (pattern === patterns[0]) {
+            // "ESİN KARAKUŞ 28 TEMMUZ -3 AĞUSTOS 17. HAFTA"
+            return {
+              hastaAdi: match[1].trim().toUpperCase(),
+              haftaNo: parseInt(match[6]),
+              tarihAraligi: `${match[2]} ${match[3]} - ${match[4]} ${match[5]}`.toUpperCase()
+            };
+          } else if (pattern === patterns[1]) {
+            // "FİGEN TEZMAN 4-10 AĞUSTOS 1.HAFTA"
+            return {
+              hastaAdi: match[1].trim().toUpperCase(),
+              haftaNo: parseInt(match[5]),
+              tarihAraligi: `${match[2]}-${match[3]} ${match[4]}`.toUpperCase()
+            };
+          } else {
+            // Genel format
+            return {
+              hastaAdi: match[1].trim().toUpperCase(),
+              haftaNo: parseInt(match[3]),
+              tarihAraligi: match[2].trim().toUpperCase()
+            };
+          }
+        }
+      }
+      
+      console.warn('⚠️ Hiçbir pattern uyuşmadı');
+      return null;
+    }
+
+    // Hasta bulma/oluşturma (GitHub entegrasyonlu)
+    async function findOrCreateHastaWithGitHub(hastaAdi) {
+      console.log('👤 Hasta aranıyor/oluşturuluyor:', hastaAdi);
+      
+      // Global hastalar dizisini al
+      let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+      
+      // Mevcut hastayı ara
+      let hasta = hastalar.find(h => h.ad && h.ad.toUpperCase() === hastaAdi.toUpperCase());
+      
+      if (!hasta) {
+        // Yeni hasta oluştur
+        const hastaId = generatePatientId(hastaAdi);
+        hasta = {
+          id: hastaId,
+          isim: hastaAdi,
+          ad: hastaAdi, // backward compatibility
+          kayitTarihi: new Date().toISOString(),
+          haftalar: [],
+          durumu: 'aktif'
+        };
+        hastalar.push(hasta);
+        console.log('✅ Yeni hasta oluşturuldu:', hastaAdi);
+        
+        // GitHub'a hasta listesi kaydet
+        const token = document.getElementById('githubToken').value.trim();
+        if (token) {
+          try {
+            // Hasta listesini GitHub'a kaydet
+            const hastaListesi = await hastaListesiYukle() || [];
+            const yeniHastaListesi = {
+              id: hastaId,
+              isim: hastaAdi,
+              kayitTarihi: new Date().toISOString(),
+              durumu: 'aktif'
+            };
+            
+            // Aynı hasta yoksa ekle
+            if (!hastaListesi.find(h => h.id === hastaId)) {
+              hastaListesi.push(yeniHastaListesi);
+              await hastaListesiKaydet(hastaListesi);
+              console.log('✅ Hasta listesi GitHub\'a güncellendi');
+            }
+            
+            // Hasta verisini GitHub'a kaydet
+            await hastayiAyriKaydet(hasta);
+            console.log('✅ Hasta verisi GitHub\'a kaydedildi');
+            
+          } catch (error) {
+            console.error('⚠️ GitHub kaydetme hatası:', error);
+          }
+        }
+      } else {
+        console.log('✅ Mevcut hasta bulundu:', hastaAdi);
+      }
+      
+      // localStorage'a kaydet
+      localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+      
+      return hasta;
+    }
+
+    // Hafta bulma/oluşturma (GitHub güncellemeli)
+    async function findOrCreateHaftaWithGitHub(hasta, haftaNo, tarihAraligi) {
+      console.log('📅 Hafta aranıyor/oluşturuluyor:', haftaNo, tarihAraligi);
+      
+      if (!hasta.haftalar) hasta.haftalar = [];
+      
+      // Mevcut haftayı ara
+      let hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
+      
+      if (!hafta) {
+        // Yeni hafta oluştur
+        hafta = {
+          haftaNo: haftaNo,
+          tarihAraligi: tarihAraligi,
+          kayitTarihi: new Date().toISOString(),
+          tarifler: [],
+          tarifKartlar: []
+        };
+        hasta.haftalar.push(hafta);
+        console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta oluşturuldu (${tarihAraligi})`);
+        
+        // GitHub'a güncellenmiş hasta verisini kaydet
+        const token = document.getElementById('githubToken').value.trim();
+        if (token) {
+          try {
+            await hastayiAyriKaydet(hasta);
+            console.log(`✅ ${hasta.isim || hasta.ad} hafta verisi GitHub'a güncellendi`);
+          } catch (error) {
+            console.error('⚠️ Hafta GitHub kaydetme hatası:', error);
+          }
+        }
+      } else {
+        console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta zaten mevcut`);
+      }
+      
+      return hafta;
+    }
+
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
@@ -881,16 +1035,32 @@
         try {
           console.log(`🔍 ${i + 1}/${files.length} - "${file.name}" analiz ediliyor...`);
           
-          // Basit dosya adı analizi
-          const fileName = file.name.replace('.pdf', '');
-          console.log('✅ PDF başarıyla yüklendi:', fileName);
+          // Dosya adını parse et
+          const parsed = parseProfessionalPdfName(file.name);
+          
+          if (!parsed) {
+            console.warn('⚠️ Dosya adı format hatası:', file.name);
+            sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: 'Dosya adı formatı tanınmadı' });
+            hatali++;
+            continue;
+          }
+
+          // Hasta oluştur/bul (GitHub entegrasyonlu)
+          const hasta = await findOrCreateHastaWithGitHub(parsed.hastaAdi);
+          
+          // Hafta oluştur/bul (GitHub güncellemeli)
+          const hafta = await findOrCreateHaftaWithGitHub(hasta, parsed.haftaNo, parsed.tarihAraligi);
           
           sonuclar.push({ 
             dosya: file.name, 
-            durum: 'BAŞARILI',
-            mesaj: 'PDF yüklendi'
+            durum: 'BAŞARILI', 
+            hasta: parsed.hastaAdi,
+            hafta: parsed.haftaNo,
+            tarihAraligi: parsed.tarihAraligi 
           });
           basarili++;
+          
+          console.log(`✅ ${file.name} başarıyla işlendi`);
           
         } catch (error) {
           console.error('❌ PDF işleme hatası:', file.name, error);
@@ -905,8 +1075,61 @@
       // Progress dialog'u kapat
       document.body.removeChild(progressDiv);
       
+      // GitHub'dan hasta listesini yeniden yükle ve UI'ı güncelle
+      const token = document.getElementById('githubToken').value.trim();
+      if (token && basarili > 0) {
+        try {
+          console.log('🔄 GitHub\'dan hasta listesi yeniden yükleniyor...');
+          await yukleHastaListesiYeniSistem(true); // sessiz=true
+          console.log('✅ GitHub hasta listesi yenilendi');
+        } catch (error) {
+          console.warn('⚠️ GitHub hasta listesi yenilenemedi:', error);
+        }
+      }
+      
+      // UI'ı güncelle (eğer fonksiyon mevcutsa)
+      if (typeof renderYeniSistem === 'function') {
+        renderYeniSistem();
+      }
+      
       // Sonuç raporu göster
-      alert(`✅ Çoklu PDF işlemi tamamlandı!\nBaşarılı: ${basarili}\nHatalı: ${hatali}`);
+      let raporHtml = `
+        <div style="max-height: 400px; overflow-y: auto;">
+          <h3>📊 İşlem Raporu</h3>
+          <p><strong>Toplam:</strong> ${files.length} dosya</p>
+          <p><strong>Başarılı:</strong> ${basarili}</p>
+          <p><strong>Hatalı:</strong> ${hatali}</p>
+          <hr>
+          <h4>Detaylar:</h4>
+      `;
+      
+      sonuclar.forEach(sonuc => {
+        const ikon = sonuc.durum === 'BAŞARILI' ? '✅' : '❌';
+        raporHtml += `<p>${ikon} ${sonuc.dosya}`;
+        if (sonuc.hasta) raporHtml += ` → ${sonuc.hasta} (${sonuc.hafta}. hafta)`;
+        if (sonuc.mesaj && sonuc.durum === 'HATA') raporHtml += ` - ${sonuc.mesaj}`;
+        raporHtml += `</p>`;
+      });
+      
+      raporHtml += '</div>';
+      
+      // Modal dialog oluştur
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); z-index: 10000; 
+        display: flex; align-items: center; justify-content: center;
+      `;
+      modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 600px; width: 90%;">
+          ${raporHtml}
+          <button onclick="this.closest('div').parentElement.remove()" 
+                  style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Tamam
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
     }
