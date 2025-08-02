@@ -8154,6 +8154,20 @@ function duzenleHafta(i) {
   console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
   saveToStorage();
   
+  // YENİ SİSTEM: GitHub'a da kaydet
+  if (seciliHasta && typeof hastayiAyriKaydet === 'function') {
+    console.log('💾 Eşleştirme sonrası hasta GitHub\'a kaydediliyor...');
+    hastayiAyriKaydet(seciliHasta).then(basarili => {
+      if (basarili) {
+        console.log('✅ Eşleştirme sonrası GitHub kaydı başarılı');
+      } else {
+        console.error('❌ Eşleştirme sonrası GitHub kaydı başarısız');
+      }
+    }).catch(error => {
+      console.error('❌ Eşleştirme sonrası GitHub kayıt hatası:', error);
+    });
+  }
+  
   // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
   const sonuc = {
     eslesenKartlar: hafta.tarifKartlar,
