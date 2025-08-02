@@ -1015,11 +1015,17 @@
             }
             
             // Hasta verisini GitHub'a kaydet
-            await hastayiAyriKaydet(hasta);
-            console.log('✅ Hasta verisi GitHub\'a kaydedildi');
+            try {
+              await hastayiAyriKaydet(hasta);
+              console.log('✅ Hasta verisi GitHub\'a kaydedildi');
+            } catch (githubKaydetHatasi) {
+              console.error('⚠️ GitHub hasta kaydetme hatası (devam ediliyor):', githubKaydetHatasi.message);
+              // GitHub hatası olsa bile çoklu PDF işlemini devam ettir
+            }
             
           } catch (error) {
-            console.error('⚠️ GitHub kaydetme hatası:', error);
+            console.error('⚠️ GitHub genel hatası (çoklu PDF devam ediyor):', error.message);
+            // GitHub hatası olsa bile localStorage'a kaydet ve devam et
           }
         }
       } else {
@@ -1211,6 +1217,7 @@
               const tarifDetaylar = extractTariflerDetay(fullText);
               hafta.tarifler = tarifDetaylar;
               console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
+              console.log(`🔍 Tarif detayları örnek:`, tarifDetaylar.slice(0, 3)); // İlk 3 tarifi göster
               
               // Gelişmiş tarif eşleştirmesi için otomatikEsleHafta kullan
               if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
@@ -1255,22 +1262,32 @@
                   hafta.tarifKartlar = [];
                   let eslesenSayisi = 0;
                   
-                  tarifDetaylar.forEach(tarif => {
-                    const tarifAdi = tarif.isim.toLowerCase().trim();
+                  // extractTariflerDetay string array döndürür, obje array değil
+                  tarifDetaylar.forEach(tarifString => {
+                    // Güvenli tarif adı kontrolü - extractTariflerDetay zaten string döndürür
+                    let tarifAdi = '';
+                    if (typeof tarifString === 'string' && tarifString.trim().length > 0) {
+                      tarifAdi = tarifString.toLowerCase().trim();
+                    } else {
+                      console.warn('⚠️ Geçersiz tarif verisi:', tarifString);
+                      return; // Bu tarifu atla
+                    }
                     
                     // Tarif kartlarında ara
-                    const eslesenKart = window.tarifKartlari.find(kart => {
-                      const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
-                      return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
-                    });
-                    
-                    if (eslesenKart) {
-                      hafta.tarifKartlar.push({
-                        tarifAdi: tarif.isim,
-                        kartResmi: eslesenKart,
-                        eslesmeTuru: 'otomatik-basit'
+                    if (window.tarifKartlari && Array.isArray(window.tarifKartlari)) {
+                      const eslesenKart = window.tarifKartlari.find(kart => {
+                        const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
+                        return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
                       });
-                      eslesenSayisi++;
+                    
+                      if (eslesenKart) {
+                        hafta.tarifKartlar.push({
+                          tarifAdi: tarifAdi, // Güvenli tarif adını kullan
+                          kartResmi: eslesenKart,
+                          eslesmeTuru: 'otomatik-basit'
+                        });
+                        eslesenSayisi++;
+                      }
                     }
                   });
                   
@@ -1291,7 +1308,13 @@
             console.log('🎯 Çoklu PDF: PDF analizi ve eşleştirme tamamlandı, hasta verisi kaydediliyor...');
             
             // Güncellenmiş hasta verisini kaydet (GitHub + localStorage)
-            await hastayiAyriKaydet(hasta);
+            try {
+              await hastayiAyriKaydet(hasta);
+              console.log('✅ Çoklu PDF: GitHub kaydetme başarılı');
+            } catch (githubHatasi) {
+              console.error('⚠️ Çoklu PDF: GitHub kaydetme hatası (localStorage devam ediyor):', githubHatasi.message);
+              // GitHub hatası olsa bile localStorage'a kaydetmeye devam et
+            }
             
             // AutoSave sistemini de çağır
             if (seciliHasta && seciliHasta.id === hasta.id) {
@@ -2166,10 +2189,13 @@
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '');
         
-      // ID yoksa isimden oluştur
-      const hastaId = hasta.id || temizIsim;
-      
-      return `hasta_${hastaId}_${temizIsim}.json`;
+      // ID varsa kullan, yoksa isimden oluştur ama duplikasyon olmasın
+      if (hasta.id && hasta.id !== temizIsim) {
+        return `hasta_${hasta.id}_${temizIsim}.json`;
+      } else {
+        // ID yoksa veya ID zaten temizIsim ise sadece temizIsim kullan
+        return `hasta_${temizIsim}.json`;
+      }
     }
     
     function generatePatientId(isim) {
