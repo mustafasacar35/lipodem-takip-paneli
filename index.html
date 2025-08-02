@@ -1141,7 +1141,23 @@
               console.log(`🔍 ${file.name} PDF içerik analizi başlıyor...`);
               
               // Base64'den PDF metnini çıkar
-              const base64Data = pdfBase64.split(',')[1];
+              let base64Data = pdfBase64;
+              if (base64Data.includes(',')) {
+                base64Data = base64Data.split(',')[1];
+              }
+              
+              // Base64 verisini temizle ve doğrula
+              base64Data = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
+              
+              if (!base64Data || base64Data.length === 0) {
+                console.warn(`⚠️ ${file.name} için geçersiz Base64 verisi`);
+                hafta.tarifler = [];
+                hafta.tarifKartlar = [];
+                throw new Error('Geçersiz PDF Base64 verisi');
+              }
+              
+              console.log(`📄 Base64 veri uzunluğu: ${base64Data.length} karakter`);
+              
               const binaryString = atob(base64Data);
               const bytes = new Uint8Array(binaryString.length);
               for (let i = 0; i < binaryString.length; i++) {
@@ -1240,15 +1256,15 @@
       const token = document.getElementById('githubToken').value.trim();
       if (basarili > 0) {
         try {
-          console.log('🔄 Hasta listesi güncelleniyor...');
-          
-          // UI'ı güncelle
-          if (typeof updateHastaListesi === 'function') {
-            updateHastaListesi();
-            console.log('✅ Hasta listesi UI güncellendi');
-          } else {
-            console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
-          }
+        console.log('🔄 Hasta listesi güncelleniyor...');
+        
+        // UI'ı güncelle
+        if (typeof updateHastaListesi === 'function') {
+          updateHastaListesi();
+          console.log('✅ Hasta listesi UI güncellendi');
+        } else {
+          console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
+        }
           
         } catch (error) {
           console.warn('⚠️ Hasta listesi yenilenemedi:', error);
@@ -10398,54 +10414,41 @@ ${mesajlar.join('\n')}
     function updateHastaListesi() {
       console.log('🔄 Hasta listesi güncelleniyor...');
       
+      // Yeni sistem hasta listesini kullan
+      if (typeof renderHastalarYeniSistem === 'function') {
+        console.log('✅ Yeni sisteme yönlendiriliyor...');
+        renderHastalarYeniSistem();
+        return;
+      }
+      
+      // Fallback: Eski sistem
       const hastaListesiDiv = document.getElementById('hastaListesi');
       if (!hastaListesiDiv) {
         console.warn('⚠️ hastaListesi elementi bulunamadı');
         return;
       }
       
-      // Mevcut liste öğelerini temizle
-      hastaListesiDiv.innerHTML = '';
+      // GitHub'dan gelen hasta listesini kullan
+      const aktifHastalar = window.hastalar || [];
+      console.log(`✅ Hasta listesi güncellendi: ${aktifHastalar.length} hasta`);
       
-      // Tüm hastaları listele
-      hastalar.forEach((hasta, index) => {
-        const hastaDiv = document.createElement('div');
-        hastaDiv.className = 'hasta-item';
-        if (seciliHasta && seciliHasta.id === hasta.id) {
-          hastaDiv.classList.add('selected');
-        }
-        
-        hastaDiv.innerHTML = `
-          <div class="hasta-info">
-            <div class="hasta-name">${hasta.isim}</div>
-            <div class="hasta-details">
-              ${hasta.haftalar ? hasta.haftalar.length : 0} hafta
-              ${hasta.kayitTarihi ? `• ${new Date(hasta.kayitTarihi).toLocaleDateString('tr-TR')}` : ''}
-            </div>
-          </div>
-        `;
-        
-        hastaDiv.addEventListener('click', () => {
-          hastaSecildi(index);
-        });
-        
-        hastaListesiDiv.appendChild(hastaDiv);
-      });
-      
-      console.log('✅ Hasta listesi güncellendi:', hastalar.length, 'hasta');
+      // Bu fonksiyon artık renderHastalarYeniSistem'e yönlendiriyor
+      // Detaylar o fonksiyonda işleniyor
     }
 
     // Global erişim için
     window.updateHastaListesi = updateHastaListesi;
 
     // Hasta seçildiğinde çağrılan fonksiyon
-    function hastaSecildi(index) {
+    async function hastaSecildi(index) {
       seciliHasta = hastalar[index];
       console.log('👤 Hasta seçildi:', seciliHasta.isim);
       
       // UI'ı güncelle
       updateHastaListesi(); // Seçimi güncelle
-      renderYeniSistem(); // Ana içeriği güncelle
+      if (typeof renderHastalarYeniSistem === 'function') {
+        await renderHastalarYeniSistem(); // Ana içeriği güncelle
+      }
     }
 
     // Global erişim için
@@ -10600,7 +10603,9 @@ ${mesajlar.join('\n')}
       localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
       
       // UI'ı güncelle ve sidebar'ı yenile
-      renderYeniSistem();
+      if (typeof renderHastalarYeniSistem === 'function') {
+        await renderHastalarYeniSistem();
+      }
       updateHastaListesi(); // Sidebar'daki hasta listesini güncelle
       
       // Sonuç raporu göster
