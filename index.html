@@ -1190,6 +1190,9 @@
     }
     
     // --- GitHub'a JSON dosyası kaydetme fonksiyonu ---
+    // Global değişkenler
+    let seciliHasta = null;
+    
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
     function saveTokenToStorage() {
@@ -4107,9 +4110,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       console.log('💾 Temizlenmiş veriler localStorage\'a kaydedildi');
     }
     
-    // Hasta listesini otomatik sırala (isim sırası)
-    hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
-    let seciliHasta = null;
+    // Hasta listesini otomatik sırala (isim sırası) - güvenli sıralama
+    hastalar.sort((a, b) => {
+      const isimA = (a.isim || a.ad || '').toString();
+      const isimB = (b.isim || b.ad || '').toString();
+      return isimA.localeCompare(isimB, 'tr');
+    });
+    
     // === YENİ SİSTEM: SIDEBAR HASTA LİSTESİ ===
     
     // Yeni sistemden hasta listesini renderla
@@ -4139,7 +4146,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         // Filtreleme ve sıralama - yüklenen listeyi kullan
         const filtreliHastalar = yuklenmisList.filter(hasta => {
-          const aramaUygun = hasta.isim.toLowerCase().includes(ara);
+          const hastaIsim = hasta.isim || hasta.ad || '';
+          const aramaUygun = hastaIsim.toLowerCase().includes(ara);
           const filtreUygun = filtre === 'hepsi' || 
                              (filtre === 'aktif' && !hasta.arsiv) || 
                              (filtre === 'arsiv' && hasta.arsiv);
@@ -4155,10 +4163,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const li = document.createElement('li');
           li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
           
+          // Hasta ismini güvenli şekilde al
+          const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
+          
           // En büyük hafta sayısını bul
           let maxHafta = 0;
           console.log('🔍 Hasta hafta verileri debug:', {
-            isim: hasta.isim,
+            isim: hastaIsim,
             haftalar: hasta.haftalar,
             haftalarLength: hasta.haftalar ? hasta.haftalar.length : 'undefined'
           });
@@ -4179,7 +4190,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const isimDiv = document.createElement('div');
           isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;`;
           const haftaBilgisi = maxHafta > 0 ? ` (${maxHafta}. hafta)` : '';
-          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.isim}${haftaBilgisi}`; // textContent kullan
+          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hastaIsim}${haftaBilgisi}`; // textContent kullan
           
           li.appendChild(isimDiv);
           
@@ -4441,7 +4452,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       seciliHasta = hastalar.find(h => h.id === id);
       if (!seciliHasta) return;
       
-      console.log(`👤 Hasta seçildi: ${seciliHasta.isim}`);
+      const hastaIsim = seciliHasta.isim || seciliHasta.ad || 'Bilinmeyen Hasta';
+      console.log(`👤 Hasta seçildi: ${hastaIsim}`);
       
       // Hasta bilgi panelini güncelle ve göster
       const hastaBilgiPanel = document.getElementById('hastaBilgiPanel');
@@ -4455,7 +4467,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       });
       
       if (hastaBilgiPanel && secilenHastaIsim && secilenHastaNot) {
-        secilenHastaIsim.textContent = turkceKarakterDuzelt(seciliHasta.isim);
+        secilenHastaIsim.textContent = turkceKarakterDuzelt(hastaIsim);
         secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
         
         // Butonları göster
@@ -4464,7 +4476,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           hastaBilgiButonlar.style.display = 'block';
         }
         
-        console.log('✅ Hasta bilgi paneli güncellendi:', seciliHasta.isim);
+        console.log('✅ Hasta bilgi paneli güncellendi:', hastaIsim);
       } else {
         console.log('❌ Hasta bilgi paneli elementleri bulunamadı!');
       }
@@ -4478,16 +4490,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Sidebar'ları güncelle
       hastaSecildiginde(hastalar.findIndex(h => h.id === id));
       
-      console.log(`✅ ${seciliHasta.isim} için hafta tabları yüklendi ve aktif hafta otomatik seçilecek`);
+      console.log(`✅ ${hastaIsim} için hafta tabları yüklendi ve aktif hafta otomatik seçilecek`);
     }
 
     function duzenleHasta() {
       if (!seciliHasta) return;
       
-      console.log('Hasta düzenleme için:', seciliHasta.isim);
+      const hastaIsim = seciliHasta.isim || seciliHasta.ad || 'Bilinmeyen Hasta';
+      console.log('Hasta düzenleme için:', hastaIsim);
       
       // Mevcut bilgileri al
-      const mevcutIsim = seciliHasta.isim;
+      const mevcutIsim = seciliHasta.isim || seciliHasta.ad || '';
       const mevcutNot = seciliHasta.not || '';
       
       // Yeni isim iste
