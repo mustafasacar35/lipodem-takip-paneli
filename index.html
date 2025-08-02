@@ -4528,24 +4528,28 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             const gitHubHaftalar = hastaDetay.haftalar || [];
             
             console.log(`🔄 Hafta verileri birleştiriliyor: Mevcut=${mevcutHaftalar.length}, GitHub=${gitHubHaftalar.length}`);
-            console.log('🔍 Mevcut haftalar detay:', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
-            console.log('🔍 GitHub haftalar detay:', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('🔍 MEVCUT HAFTALAR (localStorage JSON):', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('🔍 GITHUB HAFTALAR (GitHub API):', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('🚨 DIKKAT: GitHub verisi eski hafta içeriyor mu?', gitHubHaftalar.filter(h => h.haftaNo < 32));
             
-            // Hafta verilerini birleştir (hafta numarasına göre)
+            // ⭐ ÇÖZÜM: localStorage verisine öncelik ver
+            // Hafta verilerini birleştir (localStorage öncelikli)
             const birlesikHaftalar = [...mevcutHaftalar];
             
             gitHubHaftalar.forEach(githubHafta => {
               const mevcutHaftaIndex = birlesikHaftalar.findIndex(h => h.haftaNo === githubHafta.haftaNo);
               console.log(`🔍 GitHub hafta ${githubHafta.haftaNo} için mevcut index: ${mevcutHaftaIndex}`);
               if (mevcutHaftaIndex >= 0) {
-                // Mevcut hafta varsa, sadece eksik alanları güncelle
-                const mevcutHafta = birlesikHaftalar[mevcutHaftaIndex];
-                console.log(`🔄 Hafta ${githubHafta.haftaNo} güncelleniyor`);
-                Object.keys(githubHafta).forEach(key => {
-                  if (mevcutHafta[key] === undefined || mevcutHafta[key] === null || mevcutHafta[key] === '') {
-                    mevcutHafta[key] = githubHafta[key];
-                  }
-                });
+                // ⭐ MEVCUT HAFTA VARSA, GITHUB VERİSİNİ ATLA (localStorage önceliği)
+                console.log(`⏭️ Hafta ${githubHafta.haftaNo} zaten localStorage'da var, GitHub verisi atlandı`);
+                // Eski kod: Mevcut hafta varsa, sadece eksik alanları güncelle
+                // const mevcutHafta = birlesikHaftalar[mevcutHaftaIndex];
+                // console.log(`🔄 Hafta ${githubHafta.haftaNo} güncelleniyor`);
+                // Object.keys(githubHafta).forEach(key => {
+                //   if (mevcutHafta[key] === undefined || mevcutHafta[key] === null || mevcutHafta[key] === '') {
+                //     mevcutHafta[key] = githubHafta[key];
+                //   }
+                // });
               } else {
                 // Yeni hafta ekle
                 console.log(`➕ Yeni hafta ${githubHafta.haftaNo} ekleniyor`);
