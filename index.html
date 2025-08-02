@@ -1022,12 +1022,14 @@
       
       if (!hasta.haftalar) hasta.haftalar = [];
       
-      // Mevcut haftayı ara
+      // Mevcut haftayı ara (hafta numarasına göre)
       let hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
       
       if (!hafta) {
         // Tarihleri parse et
         const tarihBilgisi = parseTarihAraligi(tarihAraligi);
+        
+        console.log(`✨ ${haftaNo}. hafta oluşturuluyor, mevcut hafta sayısı: ${hasta.haftalar.length}`);
         
         // Yeni hafta oluştur (manuel kayıt formatına uygun)
         hafta = {
@@ -1181,33 +1183,64 @@
               hafta.tarifler = tarifDetaylar;
               console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
               
-              // Tarif kartlarıyla eşleştir
-              if (window.tarifKartlari && window.tarifKartlari.length > 0) {
-                hafta.tarifKartlar = [];
-                let eslesenSayisi = 0;
+              // Gelişmiş tarif eşleştirmesi için otomatikEsleHafta kullan
+              if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
+                // Hasta verisini geçici olarak güncelle
+                const tempSeciliHasta = seciliHasta;
                 
-                tarifDetaylar.forEach(tarif => {
-                  const tarifAdi = tarif.isim.toLowerCase().trim();
+                // Hasta bulup güncellenmiş haliyle eşleştirme yap
+                const bulunanHasta = window.hastalar ? window.hastalar.find(h => h.id === hasta.id) : null;
+                if (bulunanHasta && bulunanHasta.haftalar) {
+                  const bulunanHafta = bulunanHasta.haftalar.find(h => h.haftaNo === hafta.haftaNo);
+                  if (bulunanHafta) {
+                    // Geçici olarak seciliHasta'yı güncelle
+                    seciliHasta = bulunanHasta;
+                    
+                    // Hafta index'ini bul
+                    const haftaIndex = bulunanHasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
+                    if (haftaIndex >= 0) {
+                      console.log(`🔗 ${file.name} için gelişmiş tarif eşleştirmesi başlıyor...`);
+                      await otomatikEsleHafta(haftaIndex);
+                      
+                      // Güncellenmiş verileri ana hafta'ya kopyala
+                      hafta.tarifKartlar = bulunanHafta.tarifKartlar || [];
+                      console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                    }
+                    
+                    // seciliHasta'yı geri yükle
+                    seciliHasta = tempSeciliHasta;
+                  }
+                }
+                
+                // Fallback: Basit eşleştirme
+                if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
+                  console.log(`⚠️ Gelişmiş eşleştirme başarısız, basit eşleştirme deneniyor...`);
+                  hafta.tarifKartlar = [];
+                  let eslesenSayisi = 0;
                   
-                  // Tarif kartlarında ara
-                  const eslesenKart = window.tarifKartlari.find(kart => {
-                    const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
-                    return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
+                  tarifDetaylar.forEach(tarif => {
+                    const tarifAdi = tarif.isim.toLowerCase().trim();
+                    
+                    // Tarif kartlarında ara
+                    const eslesenKart = window.tarifKartlari.find(kart => {
+                      const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
+                      return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
+                    });
+                    
+                    if (eslesenKart) {
+                      hafta.tarifKartlar.push({
+                        tarifAdi: tarif.isim,
+                        kartResmi: eslesenKart,
+                        eslesmeTuru: 'otomatik-basit'
+                      });
+                      eslesenSayisi++;
+                    }
                   });
                   
-                  if (eslesenKart) {
-                    hafta.tarifKartlar.push({
-                      tarifAdi: tarif.isim,
-                      kartResmi: eslesenKart,
-                      eslesmeTuru: 'otomatik'
-                    });
-                    eslesenSayisi++;
-                  }
-                });
-                
-                console.log(`🔗 Tarif eşleştirmesi tamamlandı: ${eslesenSayisi} eşleşme`);
+                  console.log(`🔗 Basit eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
+                }
               } else {
-                console.warn('⚠️ Tarif kartları yüklenmemiş, eşleştirme atlanıyor');
+                console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
                 hafta.tarifKartlar = [];
               }
               
@@ -4449,6 +4482,38 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         if (hastaDetay) {
+          // Mevcut seciliHasta verisiyle birleştir (hafta verisini koru)
+          if (seciliHasta && seciliHasta.id === hastaDetay.id && seciliHasta.haftalar) {
+            // Mevcut hafta verilerini koru ve GitHub'dan gelen verilerle birleştir
+            const mevcutHaftalar = seciliHasta.haftalar || [];
+            const gitHubHaftalar = hastaDetay.haftalar || [];
+            
+            console.log(`🔄 Hafta verileri birleştiriliyor: Mevcut=${mevcutHaftalar.length}, GitHub=${gitHubHaftalar.length}`);
+            
+            // Hafta verilerini birleştir (hafta numarasına göre)
+            const birlesikHaftalar = [...mevcutHaftalar];
+            
+            gitHubHaftalar.forEach(githubHafta => {
+              const mevcutHaftaIndex = birlesikHaftalar.findIndex(h => h.haftaNo === githubHafta.haftaNo);
+              if (mevcutHaftaIndex >= 0) {
+                // Mevcut hafta varsa, sadece eksik alanları güncelle
+                const mevcutHafta = birlesikHaftalar[mevcutHaftaIndex];
+                Object.keys(githubHafta).forEach(key => {
+                  if (mevcutHafta[key] === undefined || mevcutHafta[key] === null || mevcutHafta[key] === '') {
+                    mevcutHafta[key] = githubHafta[key];
+                  }
+                });
+              } else {
+                // Yeni hafta ekle
+                birlesikHaftalar.push(githubHafta);
+              }
+            });
+            
+            // Birleştirilmiş veriyi kullan
+            hastaDetay.haftalar = birlesikHaftalar;
+            console.log(`✅ Hafta verileri birleştirildi: Toplam=${birlesikHaftalar.length} hafta`);
+          }
+          
           // Global değişkeni güncelle
           seciliHasta = hastaDetay;
           
