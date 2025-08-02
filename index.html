@@ -1503,6 +1503,9 @@
     // Global değişkenler
     let seciliHasta = null;
     
+    // Debug modu - Console'da window.debugMode = true yazarak açabilirsiniz
+    window.debugMode = false;
+    
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
     function saveTokenToStorage() {
@@ -4304,7 +4307,44 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
-      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+      } catch(e) { 
+        console.error('localStorage kaydetme hatası:', e);
+        
+        // QuotaExceededError ise localStorage'ı temizle ve kompakt veri kaydet
+        if (e.name === 'QuotaExceededError') {
+          console.warn('🧹 localStorage dolu! Kompakt veri kaydediliyor...');
+          try {
+            // Sadece kritik hasta bilgilerini kaydet (PDF verilerini kaldır)
+            const kompaktHastalar = hastalar.map(hasta => ({
+              id: hasta.id,
+              isim: hasta.isim,
+              not: hasta.not,
+              arsiv: hasta.arsiv,
+              haftalar: (hasta.haftalar || []).map(hafta => ({
+                haftaNo: hafta.haftaNo,
+                baslangic: hafta.baslangic,
+                bitis: hafta.bitis,
+                tarifKartlar: hafta.tarifKartlar || [],
+                manuelKartlar: hafta.manuelKartlar || [],
+                gptMesaj: hafta.gptMesaj || '',
+                // PDF verilerini kaldır - GitHub'dan alınacak
+                pdfOrijinalIsim: hafta.pdfOrijinalIsim,
+                pdfName: hafta.pdfName,
+                githubUrl: hafta.githubUrl,
+                indirmeUrl: hafta.indirmeUrl
+              }))
+            }));
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(kompaktHastalar));
+            console.log('✅ Kompakt veri localStorage\'a kaydedildi');
+          } catch(kompaktHata) {
+            console.error('❌ Kompakt kaydetme de başarısız:', kompaktHata);
+            // Son çare: localStorage'ı tamamen temizle
+            localStorage.removeItem(STORAGE_KEY);
+            console.warn('🧹 localStorage tamamen temizlendi');
+          }
+        }
+      }
     }
     
     // Veri değiştiğinde otomatik kaydetme
@@ -4668,7 +4708,42 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           gosterHaftalar();
           
         } else {
-          throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
+          // Hasta dosyası bulunamadı - kullanıcı dostu mesaj
+          console.warn(`⚠️ Hasta dosyası GitHub'da bulunamadı: ${isim}`);
+          
+          // Kullanıcıya yeni hasta oluşturma seçeneği sun
+          const oluşturulacakMı = confirm(`"${isim}" adlı hasta GitHub'da bulunamadı.\n\nYeni hasta olarak oluşturmak ister misiniz?\n\n✅ EVET: Yeni hasta oluşturulur\n❌ HAYIR: İşlem iptal edilir`);
+          
+          if (oluşturulacakMı) {
+            // Yeni hasta oluştur
+            const yeniHasta = {
+              id: Date.now(), // Geçici ID
+              isim: isim,
+              not: '',
+              arsiv: false,
+              haftalar: [],
+              kayitTarihi: new Date().toISOString(),
+              githubKaydedildi: false
+            };
+            
+            // Global hastalar listesine ekle
+            hastalar.push(yeniHasta);
+            saveToStorage();
+            
+            // Seçili hasta olarak ata
+            seciliHasta = yeniHasta;
+            autoSaveHastaData(yeniHasta);
+            
+            console.log('✅ Yeni hasta oluşturuldu:', yeniHasta.isim);
+            
+            // UI'ı güncelle
+            gosterHaftalar();
+            renderHastalar(); // Hasta listesini yenile
+            
+            return; // İşlemi başarıyla tamamla
+          } else {
+            throw new Error(`Hasta seçimi iptal edildi: ${isim}`);
+          }
         }
         
       } catch (error) {
@@ -5233,16 +5308,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // --- Hasta Haftaları ---
     function getHaftaListesi() {
       if (!seciliHasta) {
-        console.log('🔍 getHaftaListesi: seciliHasta yok');
         return [];
       }
       if (!seciliHasta.haftalar) {
-        console.log('🔍 getHaftaListesi: haftalar array yok, oluşturuluyor');
         seciliHasta.haftalar = [];
       }
       
-      console.log(`🔍 getHaftaListesi: ${seciliHasta.haftalar.length} hafta bulundu`);
-      console.log('🔍 getHaftaListesi detay:', seciliHasta.haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis, pdfName: h.pdfName })));
+      // Debug mesajlarını sadece gerektiğinde göster
+      if (window.debugMode) {
+        console.log(`🔍 getHaftaListesi: ${seciliHasta.haftalar.length} hafta bulundu`);
+      }
       
       // Hafta listesini hafta numarasına göre sırala (küçükten büyüğe)
       const sorted = seciliHasta.haftalar.sort((a, b) => {
@@ -5251,7 +5326,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         return aHaftaNo - bHaftaNo;
       });
       
-      console.log(`🔍 getHaftaListesi: Sıralanmış ${sorted.length} hafta döndürülüyor`);
       return sorted;
     }
 
@@ -5731,9 +5805,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // PDF yüklü ama tarifler yoksa otomatik tara
           if (hafta.pdf && (!hafta.tarifler || hafta.tarifler.length === 0)) {
+            if (window.debugMode) console.log(`🔍 ${i}. hafta PDF analizi başlıyor...`);
             pdfOkuVeEsleHafta(i);
           } else if (hafta.tarifler && hafta.tarifler.length > 0) {
-            otomatikEsleHafta(i);
+            // Sadece eşleşen kartlar yoksa eşleştirme yap
+            if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
+              if (window.debugMode) console.log(`🔍 ${i}. hafta eşleştirme başlıyor...`);
+              otomatikEsleHafta(i);
+            } else {
+              if (window.debugMode) console.log(`✅ ${i}. hafta eşleştirme cache'ten alındı`);
+            }
           }
         }, 100 * i); // Sıralı yükleme
       });
@@ -7917,11 +7998,24 @@ function duzenleHafta(i) {
       if (!gorselDiv) return;
       gorselDiv.innerHTML = '';
       (hafta.tarifKartlar||[]).forEach(kart => {
+        // Güvenli görsel URL kontrolü
+        if (!kart || !kart.data || typeof kart.data !== 'string') {
+          console.warn('⚠️ Geçersiz kart verisi:', kart);
+          return; // Bu kartı atla
+        }
+        
         const img = document.createElement('img');
         img.src = kart.data;
-        img.alt = kart.name;
+        img.alt = kart.name || 'Tarif kartı';
         img.style.width = '100px';
         img.style.margin = '4px';
+        
+        // Görsel yükleme hatası için hata yakalama
+        img.onerror = function() {
+          console.warn('⚠️ Görsel yüklenemedi:', kart.data);
+          this.style.display = 'none'; // Hatalı görseli gizle
+        };
+        
         gorselDiv.appendChild(img);
       });
     }
@@ -8011,6 +8105,12 @@ function duzenleHafta(i) {
   }
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
+    // Null/undefined kontrolü
+    if (!ad || typeof ad !== 'string') {
+      console.warn('⚠️ temizleDosyaAdi: Geçersiz ad:', ad);
+      return '';
+    }
+    
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
     s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, '');
     s = s.replace(/\(.*?\)/g, '');
