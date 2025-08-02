@@ -965,11 +965,14 @@
         return cachedHasta;
       }
       
-      // Global hastalar dizisini al
-      let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+      // DÜZELTME: Global hastalar dizisini kullan (localStorage'dan her defasında yükleme!)
+      // let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
       
-      // Mevcut hastayı ara
-      let hasta = hastalar.find(h => h.ad && h.ad.toUpperCase() === hastaAdi.toUpperCase());
+      // Mevcut hastayı ara (global hastalar dizisinde)
+      let hasta = hastalar.find(h => 
+        (h.ad && h.ad.toUpperCase() === hastaAdi.toUpperCase()) || 
+        (h.isim && h.isim.toUpperCase() === hastaAdi.toUpperCase())
+      );
       
       if (!hasta) {
         // Yeni hasta oluştur (manuel kayıt formatına uygun)
@@ -1024,8 +1027,8 @@
       // Cache'e ekle (çoklu PDF işlemi için)
       cokluPdfHastaCache.set(cacheKey, hasta);
       
-      // localStorage'a kaydet
-      localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+      // DÜZELTME: Manuel sistemle aynı şekilde saveToStorage() kullan
+      saveToStorage();
       
       return hasta;
     }
@@ -1083,6 +1086,9 @@
           cokluPdfHastaCache.set(cacheKey, hasta);
           console.log(`🔄 Cache güncellendi: ${hasta.isim || hasta.ad} - Hafta sayısı: ${hasta.haftalar.length}`);
         }
+        
+        // DÜZELTME: Manuel sistemle aynı şekilde saveToStorage() kullan
+        saveToStorage();
       } else {
         console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta zaten mevcut`);
       }
@@ -1090,378 +1096,13 @@
       return hafta;
     }
 
-    // ===== SAĞLAM ÇOK DOSYA SİSTEMİ (Manuel Sistem Mantığı) =====
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
         return;
       }
 
-      console.log('� SAĞLAM ÇOK DOSYA SİSTEMİ BAŞLATILIYOR:', files.length, 'dosya');
-      console.log('📋 Manuel sistem mantığı kullanılıyor: Hafta ekleme → PDF ekleme → Eşleştirme');
-      
-      const sonuclar = [];
-      let basarili = 0;
-      let hatali = 0;
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        console.log(`\n🔍 ${i+1}/${files.length} - "${file.name}" işleniyor...`);
-        
-        try {
-          // 1. ADIM: PDF dosya adını parse et
-          const pdfData = parsePdfFileName(file.name);
-          if (!pdfData) {
-            throw new Error('Dosya adı formatı tanınamadı');
-          }
-          console.log('✅ PDF parse edildi:', pdfData);
-
-          // 2. ADIM: Hasta bulma/oluşturma (manuel mantık)
-          await ensureHastaExists(pdfData.hastaAdi);
-          
-          // 3. ADIM: Hastayı seç (manuel seçim mantığı)
-          await selectHastaManually(pdfData.hastaAdi);
-          
-          if (!seciliHasta) {
-            throw new Error('Hasta seçimi başarısız');
-          }
-          
-          console.log(`👤 Hasta seçildi: ${seciliHasta.isim} (${seciliHasta.haftalar?.length || 0} hafta)`);
-          
-          // 4. ADIM: Manuel hafta ekleme mantığı
-          const haftaIndex = await addHaftaManually(pdfData.haftaNo, pdfData.tarihAraligi);
-          
-          // 5. ADIM: PDF'i bu haftaya ekleme (manuel yükleme mantığı)
-          await uploadPdfToHaftaManually(file, haftaIndex);
-          
-          // 6. ADIM: Eşleştirme (sadece bu hafta için)
-          const eslestirmeResult = await runEslestirmeManually(haftaIndex);
-          
-          // 7. ADIM: Kaydetme
-          await saveEverything();
-          
-          sonuclar.push({
-            dosya: file.name,
-            durum: 'BAŞARILI',
-            hasta: seciliHasta.isim,
-            hafta: `${pdfData.haftaNo}`,
-            tarifSayisi: eslestirmeResult.tarifSayisi || 0,
-            eslesmeSayisi: eslestirmeResult.eslesmeSayisi || 0
-          });
-          basarili++;
-          
-          console.log(`✅ ${file.name} başarıyla işlendi - Hafta ${pdfData.haftaNo} eklendi`);
-          
-        } catch (error) {
-          console.error(`❌ ${file.name} hatası:`, error);
-          sonuclar.push({
-            dosya: file.name,
-            durum: 'HATA',
-            mesaj: error.message
-          });
-          hatali++;
-        }
-      }
-      
-      // Son adım: UI'ı güncelle
-      if (typeof renderYeniSistem === 'function') {
-        renderYeniSistem();
-      }
-      
-      // Sonuç raporu
-      showFinalReport(files.length, basarili, hatali, sonuclar);
-      
-      console.log('🎉 SAĞLAM SİSTEM TAMAMLANDI! Başarılı:', basarili, 'Hatalı:', hatali);
-    }
-
-    // Manuel sistem mantığı: Hasta varlığını garanti et
-    async function ensureHastaExists(hastaIsmi) {
-      console.log('🔍 Hasta varlığı kontrol ediliyor:', hastaIsmi);
-      
-      // localStorage'dan hasta listesini al
-      let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
-      
-      // Hasta var mı?
-      let mevcutHasta = hastalar.find(h => 
-        (h.ad && h.ad.toUpperCase() === hastaIsmi.toUpperCase()) ||
-        (h.isim && h.isim.toUpperCase() === hastaIsmi.toUpperCase())
-      );
-      
-      if (!mevcutHasta) {
-        console.log('📝 Yeni hasta oluşturuluyor:', hastaIsmi);
-        
-        const hastaId = generatePatientId(hastaIsmi);
-        const yeniHasta = {
-          id: hastaId,
-          isim: hastaIsmi,
-          ad: hastaIsmi,
-          not: "",
-          arsiv: false,
-          kayitTarihi: new Date().toISOString(),
-          haftalar: [], // BOŞ başlar
-          durumu: 'aktif',
-          olusturmaTarihi: new Date().toISOString(),
-          yeniSistem: true
-        };
-        
-        hastalar.push(yeniHasta);
-        localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
-        
-        console.log('✅ Yeni hasta oluşturuldu ve localStorage\'a kaydedildi');
-        
-        // GitHub'a da kaydet
-        await saveHastaToGitHub(yeniHasta);
-      } else {
-        console.log('✅ Hasta zaten mevcut:', hastaIsmi, 'Hafta sayısı:', mevcutHasta.haftalar?.length || 0);
-      }
-    }
-
-    // Manuel sistem mantığı: Hastayı UI'da seç
-    async function selectHastaManually(hastaIsmi) {
-      console.log('🎯 Hasta manuel seçiliyor:', hastaIsmi);
-      
-      try {
-        // Mevcut hastaSecYeniSistem fonksiyonunu kullan
-        await hastaSecYeniSistem(hastaIsmi);
-        
-        if (seciliHasta && (seciliHasta.isim === hastaIsmi || seciliHasta.ad === hastaIsmi)) {
-          console.log('✅ Hasta başarıyla seçildi:', hastaIsmi);
-          console.log('📊 Mevcut hafta sayısı:', seciliHasta.haftalar?.length || 0);
-        } else {
-          throw new Error(`Hasta seçimi doğrulanamadı: ${hastaIsmi}`);
-        }
-      } catch (error) {
-        console.error('❌ Hasta seçim hatası:', error);
-        throw new Error(`Hasta seçimi başarısız: ${hastaIsmi}`);
-      }
-    }
-
-    // Manuel sistem mantığı: Hafta ekleme (tıpkı haftaEkle() gibi)
-    async function addHaftaManually(haftaNo, tarihAraligi) {
-      console.log(`📅 Manuel hafta ekleme: ${haftaNo}. hafta (${tarihAraligi})`);
-      
-      if (!seciliHasta) {
-        throw new Error('Hasta seçili değil');
-      }
-      
-      if (!seciliHasta.haftalar) {
-        seciliHasta.haftalar = [];
-      }
-      
-      // Bu hafta numarası zaten var mı?
-      let mevcutHaftaIndex = seciliHasta.haftalar.findIndex(h => h.haftaNo === haftaNo);
-      
-      if (mevcutHaftaIndex >= 0) {
-        console.log(`⚠️ ${haftaNo}. hafta zaten mevcut! Mevcut hafta kullanılacak (VERİ KORUNUYOR)`);
-        return mevcutHaftaIndex;
-      }
-      
-      // Tarihleri parse et
-      const tarihBilgisi = parseTarihAraligi(tarihAraligi);
-      
-      // Yeni hafta oluştur (tam manuel haftaEkle() mantığı)
-      const yeniHafta = {
-        haftaNo: haftaNo,
-        baslangic: tarihBilgisi.baslangic,
-        bitis: tarihBilgisi.bitis,
-        aciklama: '',
-        pdf: null,
-        pdfName: null,
-        pdfOrijinalIsim: null,
-        pdfYolu: null,
-        githubUrl: null,
-        indirmeUrl: null,
-        kayitTarihi: null,
-        tarifKartlar: [],
-        tarifler: [],
-        gptMesaj: '',
-        pdfFile: {},
-        manuelKartlar: [] // Manuel kartlar için
-      };
-      
-      // Haftayı ekle (manuel sistem mantığı)
-      seciliHasta.haftalar.push(yeniHafta);
-      const yeniHaftaIndex = seciliHasta.haftalar.length - 1;
-      
-      console.log(`✅ ${haftaNo}. hafta eklendi! Index: ${yeniHaftaIndex}, Toplam hafta: ${seciliHasta.haftalar.length}`);
-      
-      // localStorage'a kaydet (manuel sistem mantığı)
-      saveToStorage();
-      
-      return yeniHaftaIndex;
-    }
-
-    // Manuel sistem mantığı: PDF yükleme
-    async function uploadPdfToHaftaManually(file, haftaIndex) {
-      console.log(`📄 PDF manuel yükleme başlıyor - Hafta index: ${haftaIndex}`);
-      
-      if (!seciliHasta?.haftalar?.[haftaIndex]) {
-        throw new Error('Hafta bulunamadı');
-      }
-      
-      const hafta = seciliHasta.haftalar[haftaIndex];
-      
-      // PDF'i Base64'e çevir
-      const base64Content = await fileToBase64(file);
-      console.log('📄 PDF Base64\'e çevrildi, boyut:', base64Content.length, 'karakter');
-      
-      // PDF bilgilerini haftaya kaydet (manuel yükleme mantığı)
-      hafta.pdf = base64Content;
-      hafta.pdfName = generateSafeFileName(file.name);
-      hafta.pdfOrijinalIsim = file.name;
-      hafta.kayitTarihi = new Date().toISOString();
-      hafta.pdfFile = {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      };
-      
-      console.log(`✅ PDF haftaya eklendi: ${file.name} → ${hafta.haftaNo}. hafta`);
-      
-      // localStorage'a kaydet
-      saveToStorage();
-    }
-
-    // Manuel sistem mantığı: Eşleştirme (sadece bu hafta için)
-    async function runEslestirmeManually(haftaIndex) {
-      console.log(`🔄 Manuel eşleştirme başlıyor - Hafta index: ${haftaIndex}`);
-      
-      if (!seciliHasta?.haftalar?.[haftaIndex]) {
-        throw new Error('Hafta bulunamadı');
-      }
-      
-      const hafta = seciliHasta.haftalar[haftaIndex];
-      
-      if (!hafta.pdf) {
-        throw new Error('PDF bulunamadı');
-      }
-      
-      try {
-        // PDF metni çıkar
-        const pdfText = await extractPdfText(hafta.pdf);
-        console.log(`📄 PDF metni çıkarıldı: ${pdfText.length} karakter`);
-        
-        // Tarifler bul
-        const tarifler = extractTariflerDetay(pdfText);
-        console.log(`🍽️ ${tarifler.length} tarif detayı bulundu`);
-        
-        // Otomatik eşleştirme yap (mevcut sistem)
-        let eslestirmeResult;
-        try {
-          eslestirmeResult = await otomatikEsleHafta(haftaIndex);
-          console.log('✅ Otomatik eşleştirme başarılı:', eslestirmeResult);
-        } catch (error) {
-          console.warn('⚠️ Otomatik eşleştirme hatası:', error);
-          eslestirmeResult = { eslesenKartSayisi: 0, eslesmeyenTarifSayisi: tarifler.length };
-        }
-        
-        return {
-          tarifSayisi: tarifler.length,
-          eslesmeSayisi: eslestirmeResult.eslesenKartSayisi || 0
-        };
-        
-      } catch (error) {
-        console.error('❌ Eşleştirme hatası:', error);
-        return { tarifSayisi: 0, eslesmeSayisi: 0 };
-      }
-    }
-
-    // Her şeyi kaydet (localStorage + GitHub)
-    async function saveEverything() {
-      console.log('💾 Tüm veriler kaydediliyor...');
-      
-      // localStorage'a kaydet
-      saveToStorage();
-      
-      // GitHub'a kaydet
-      const token = document.getElementById('githubToken')?.value?.trim();
-      if (token && seciliHasta) {
-        try {
-          await hastayiAyriKaydet(seciliHasta);
-          console.log('✅ GitHub\'a kaydedildi');
-        } catch (error) {
-          console.warn('⚠️ GitHub kaydetme hatası:', error);
-        }
-      }
-    }
-
-    // GitHub'a hasta kaydetme
-    async function saveHastaToGitHub(hasta) {
-      const token = document.getElementById('githubToken')?.value?.trim();
-      if (!token) return;
-      
-      try {
-        // Hasta listesini güncelle
-        const hastaListesi = await hastaListesiYukle() || [];
-        const yeniHastaListesi = {
-          id: hasta.id,
-          isim: hasta.isim,
-          kayitTarihi: hasta.kayitTarihi,
-          durumu: hasta.durumu
-        };
-        
-        if (!hastaListesi.find(h => h.id === hasta.id)) {
-          hastaListesi.push(yeniHastaListesi);
-          await hastaListesiKaydet(hastaListesi);
-        }
-        
-        // Hasta dosyasını kaydet
-        await hastayiAyriKaydet(hasta);
-        console.log('✅ Hasta GitHub\'a kaydedildi');
-        
-      } catch (error) {
-        console.warn('⚠️ GitHub hasta kaydetme hatası:', error);
-      }
-    }
-
-    // Sonuç raporu göster
-    function showFinalReport(toplamDosya, basarili, hatali, sonuclar) {
-      let raporHtml = `
-        <div style="max-height: 400px; overflow-y: auto;">
-          <h3>📊 SAĞLAM SİSTEM RAPORU</h3>
-          <p><strong>Toplam:</strong> ${toplamDosya} dosya</p>
-          <p><strong>Başarılı:</strong> ${basarili}</p>
-          <p><strong>Hatalı:</strong> ${hatali}</p>
-          <hr>
-          <h4>Detaylar:</h4>
-      `;
-      
-      sonuclar.forEach(sonuc => {
-        const ikon = sonuc.durum === 'BAŞARILI' ? '✅' : '❌';
-        raporHtml += `<p>${ikon} <strong>${sonuc.dosya}</strong>`;
-        if (sonuc.hasta) {
-          raporHtml += ` → ${sonuc.hasta} (${sonuc.hafta}. hafta)`;
-          if (sonuc.tarifSayisi !== undefined) raporHtml += ` - ${sonuc.tarifSayisi} tarif`;
-          if (sonuc.eslesmeSayisi !== undefined) raporHtml += `, ${sonuc.eslesmeSayisi} eşleşme`;
-        }
-        if (sonuc.mesaj && sonuc.durum === 'HATA') raporHtml += ` - ${sonuc.mesaj}`;
-        raporHtml += `</p>`;
-      });
-      
-      raporHtml += '</div>';
-      
-      // Modal dialog
-      const modal = document.createElement('div');
-      modal.style.cssText = `
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-        background: rgba(0,0,0,0.5); z-index: 10000; 
-        display: flex; align-items: center; justify-content: center;
-      `;
-      modal.innerHTML = `
-        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 600px; width: 90%;">
-          ${raporHtml}
-          <button onclick="this.closest('div').parentElement.remove()" 
-                  style="margin-top: 15px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Tamam
-          </button>
-        </div>
-      `;
-      document.body.appendChild(modal);
-    }
-
-    // ESKİ SİSTEM (KAPALI) - SAĞLAM SİSTEM YUKARDA
-    /*
-    async function processCokluPdfEski(files) {
+      console.log('📁 Çoklu PDF işlemi başlatıldı:', files.length, 'dosya');
       
       const sonuclar = [];
       let basarili = 0;
@@ -1745,6 +1386,10 @@
         console.log('🧹 Cache temizleniyor... Önceki boyut:', cokluPdfHastaCache.size);
         cokluPdfHastaCache.clear();
       }
+      
+      // Final kaydetme: Tüm değişiklikleri kesin olarak kaydet
+      saveToStorage();
+      console.log('💾 Çoklu PDF işlemi sonrası final kaydetme tamamlandı');
     }
 
     // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
