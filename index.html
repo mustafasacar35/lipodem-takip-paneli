@@ -961,7 +961,9 @@
       const cacheKey = hastaAdi.toUpperCase();
       if (cokluPdfHastaCache.has(cacheKey)) {
         const cachedHasta = cokluPdfHastaCache.get(cacheKey);
-        console.log('✅ Cache\'den hasta alındı:', hastaAdi, 'Hafta sayısı:', cachedHasta.haftalar.length);
+        console.log('🚨 CACHE\'DEN HASTA ALINDI:', hastaAdi);
+        console.log('🔍 Cache hafta sayısı:', cachedHasta.haftalar ? cachedHasta.haftalar.length : 0);
+        console.log('🔍 Cache hafta detayları:', cachedHasta.haftalar ? cachedHasta.haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })) : []);
         return cachedHasta;
       }
       
@@ -4526,15 +4528,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             const gitHubHaftalar = hastaDetay.haftalar || [];
             
             console.log(`🔄 Hafta verileri birleştiriliyor: Mevcut=${mevcutHaftalar.length}, GitHub=${gitHubHaftalar.length}`);
+            console.log('🔍 Mevcut haftalar detay:', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('🔍 GitHub haftalar detay:', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
             
             // Hafta verilerini birleştir (hafta numarasına göre)
             const birlesikHaftalar = [...mevcutHaftalar];
             
             gitHubHaftalar.forEach(githubHafta => {
               const mevcutHaftaIndex = birlesikHaftalar.findIndex(h => h.haftaNo === githubHafta.haftaNo);
+              console.log(`🔍 GitHub hafta ${githubHafta.haftaNo} için mevcut index: ${mevcutHaftaIndex}`);
               if (mevcutHaftaIndex >= 0) {
                 // Mevcut hafta varsa, sadece eksik alanları güncelle
                 const mevcutHafta = birlesikHaftalar[mevcutHaftaIndex];
+                console.log(`🔄 Hafta ${githubHafta.haftaNo} güncelleniyor`);
                 Object.keys(githubHafta).forEach(key => {
                   if (mevcutHafta[key] === undefined || mevcutHafta[key] === null || mevcutHafta[key] === '') {
                     mevcutHafta[key] = githubHafta[key];
@@ -4542,6 +4548,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                 });
               } else {
                 // Yeni hafta ekle
+                console.log(`➕ Yeni hafta ${githubHafta.haftaNo} ekleniyor`);
                 birlesikHaftalar.push(githubHafta);
               }
             });
@@ -4549,6 +4556,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             // Birleştirilmiş veriyi kullan
             hastaDetay.haftalar = birlesikHaftalar;
             console.log(`✅ Hafta verileri birleştirildi: Toplam=${birlesikHaftalar.length} hafta`);
+            console.log('🔍 Final birleşik haftalar:', birlesikHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
             
             // Cache'i de güncelle (çoklu PDF işlemi için)
             if (typeof cokluPdfHastaCache !== 'undefined') {
@@ -5127,6 +5135,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       if (haftaTabs) haftaTabs.innerHTML = '';
       if (haftaTabContent) haftaTabContent.innerHTML = '';
       
+      // Cache'i temizle
+      if (typeof cokluPdfHastaCache !== 'undefined') {
+        console.log('🧹 Cache temizleniyor...');
+        cokluPdfHastaCache.clear();
+      }
+      
       // Sol sidebar'da vurgulamayı kaldır
       renderHastalar();
     }
@@ -5134,15 +5148,27 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     // --- Hasta Haftaları ---
     function getHaftaListesi() {
-      if (!seciliHasta) return [];
-      if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
+      if (!seciliHasta) {
+        console.log('🔍 getHaftaListesi: seciliHasta yok');
+        return [];
+      }
+      if (!seciliHasta.haftalar) {
+        console.log('🔍 getHaftaListesi: haftalar array yok, oluşturuluyor');
+        seciliHasta.haftalar = [];
+      }
+      
+      console.log(`🔍 getHaftaListesi: ${seciliHasta.haftalar.length} hafta bulundu`);
+      console.log('🔍 getHaftaListesi detay:', seciliHasta.haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis, pdfName: h.pdfName })));
       
       // Hafta listesini hafta numarasına göre sırala (küçükten büyüğe)
-      return seciliHasta.haftalar.sort((a, b) => {
+      const sorted = seciliHasta.haftalar.sort((a, b) => {
         const aHaftaNo = a.haftaNo || 1;
         const bHaftaNo = b.haftaNo || 1;
         return aHaftaNo - bHaftaNo;
       });
+      
+      console.log(`🔍 getHaftaListesi: Sıralanmış ${sorted.length} hafta döndürülüyor`);
+      return sorted;
     }
 
     function haftaEkle() {
@@ -5382,6 +5408,34 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       normalizeHaftaData();
       
       const haftalar = getHaftaListesi();
+      
+      // DEBUG: Hafta verilerini detaylı logla
+      console.log('🔍 HAFTA VERİLERİ DEBUG:');
+      console.log('🔍 SeciliHasta:', seciliHasta?.isim);
+      console.log('🔍 SeciliHasta haftalar count:', seciliHasta?.haftalar?.length);
+      console.log('🔍 GetHaftaListesi count:', haftalar?.length);
+      console.log('🔍 Hafta detayları:', haftalar.map(h => ({
+        haftaNo: h.haftaNo,
+        baslangic: h.baslangic,
+        bitis: h.bitis,
+        hasPdf: !!h.pdf,
+        pdfName: h.pdfName || h.pdfOrijinalIsim || 'yok'
+      })));
+      
+      // Cache'i kontrol et
+      if (typeof cokluPdfHastaCache !== 'undefined') {
+        const cacheKey = seciliHasta?.isim?.toUpperCase();
+        const cachedData = cokluPdfHastaCache.get(cacheKey);
+        console.log('🔍 Cache\'te bu hasta:', !!cachedData);
+        if (cachedData) {
+          console.log('🔍 Cache\'teki hafta sayısı:', cachedData.haftalar?.length);
+          console.log('🔍 Cache\'teki haftalar:', cachedData.haftalar?.map(h => ({
+            haftaNo: h.haftaNo,
+            baslangic: h.baslangic,
+            bitis: h.bitis
+          })));
+        }
+      }
       
       // Backward compatibility: Mevcut haftalara hafta numarası ekle
       let haftaNumarasiDegisti = false;
