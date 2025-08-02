@@ -9685,6 +9685,76 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       return mevcutHafta;
     }
 
+    // 🔧 YARDIMCI FONKSİYONLAR
+    function extractTariflerFromText(pdfText) {
+      if (!pdfText) return [];
+      
+      // Basit tarif çıkarma - satırları al ve temizle
+      const satirlar = pdfText.split('\n').filter(satir => 
+        satir.trim().length > 2 && 
+        !satir.includes('HAFTA') && 
+        !satir.includes('TEMMUZ') &&
+        !satir.includes('AĞUSTOS')
+      );
+      
+      console.log('📝 PDF\'den çıkarılan tarifler:', satirlar.length);
+      return satirlar.slice(0, 20); // İlk 20 satırı al
+    }
+
+    async function extractPdfText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          try {
+            const typedarray = new Uint8Array(e.target.result);
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            let fullText = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              fullText += pageText + '\n';
+            }
+            
+            resolve(fullText);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('PDF okuma hatası'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function performTarifEslestirmesi(hafta, hasta) {
+      if (!hafta.tarifler || hafta.tarifler.length === 0) {
+        return;
+      }
+
+      console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: tarif eşleştirmesi başlatıldı`);
+      
+      // Basit eşleştirme - mevcut tarif kartları ile karşılaştır
+      if (window.tarifKartlari && window.tarifKartlari.length > 0) {
+        hafta.tarifKartlar = [];
+        
+        // Her tarifi kontrol et
+        hafta.tarifler.forEach(tarif => {
+          const eslesen = window.tarifKartlari.find(kart => {
+            const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+            return tarif.toLowerCase().includes(kartAdi) || kartAdi.includes(tarif.toLowerCase());
+          });
+          
+          if (eslesen) {
+            hafta.tarifKartlar.push({ name: eslesen });
+          }
+        });
+        
+        console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: ${hafta.tarifKartlar.length} tarif eşleşti`);
+      }
+    }
+
+    // 📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
@@ -9779,98 +9849,12 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
       
       // UI'ı güncelle
-      gosterHastalar();
+      renderYeniSistem();
       
       // Sonuç raporu göster
       showCokluPdfSonuclari(sonuclar, basarili, hatali);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
-    }
-
-    async function performTarifEslestirmesi(hafta, hasta) {
-      if (!hafta.tarifler || hafta.tarifler.length === 0) {
-        return;
-      }
-
-      console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: tarif eşleştirmesi başlatıldı`);
-      
-      // Basit eşleştirme - mevcut tarif kartları ile karşılaştır
-      if (window.tarifKartlari && window.tarifKartlari.length > 0) {
-        hafta.tarifKartlar = [];
-        
-        // Her tarifi kontrol et
-        hafta.tarifler.forEach(tarif => {
-          const eslesen = window.tarifKartlari.find(kart => {
-            const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
-            return tarif.toLowerCase().includes(kartAdi) || kartAdi.includes(tarif.toLowerCase());
-          });
-          
-          if (eslesen) {
-            hafta.tarifKartlar.push({ name: eslesen });
-          }
-        });
-        
-        console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: ${hafta.tarifKartlar.length} tarif eşleşti`);
-      }
-    }
-
-    function extractTariflerFromText(pdfText) {
-      if (!pdfText) return [];
-      
-      // Basit tarif çıkarma - satırları al ve temizle
-      const satirlar = pdfText.split('\n').filter(satir => 
-        satir.trim().length > 2 && 
-        !satir.includes('HAFTA') && 
-        !satir.includes('TEMMUZ') &&
-        !satir.includes('AĞUSTOS')
-      );
-      
-      console.log('📝 PDF\'den çıkarılan tarifler:', satirlar.length);
-      return satirlar.slice(0, 20); // İlk 20 satırı al
-    }
-
-    async function extractPdfText(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-          try {
-            const typedarray = new Uint8Array(e.target.result);
-            const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            let fullText = '';
-            
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const textContent = await page.getTextContent();
-              const pageText = textContent.items.map(item => item.str).join(' ');
-              fullText += pageText + '\n';
-            }
-            
-            resolve(fullText);
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = () => reject(new Error('PDF okuma hatası'));
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    function showCokluPdfSonuclari(sonuclar, basarili, hatali) {
-      let rapor = `🎉 ÇOKLU PDF İŞLEMİ TAMAMLANDI!\n\n`;
-      rapor += `✅ Başarılı: ${basarili}\n`;
-      rapor += `❌ Hatalı: ${hatali}\n`;
-      rapor += `📊 Toplam: ${sonuclar.length}\n\n`;
-      
-      rapor += `📋 DETAYLAR:\n`;
-      sonuclar.forEach((sonuc, index) => {
-        if (sonuc.durum === 'BAŞARILI') {
-          rapor += `${index + 1}. ✅ ${sonuc.hasta} - ${sonuc.hafta}. hafta (${sonuc.tarifSayisi} tarif)\n`;
-        } else {
-          rapor += `${index + 1}. ❌ ${sonuc.dosya} - ${sonuc.mesaj}\n`;
-        }
-      });
-      
-      alert(rapor);
     }
 
     // Global fonksiyon yap
