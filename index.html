@@ -9582,29 +9582,56 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         'EYLUL': 9, 'EKIM': 10, 'KASIM': 11, 'ARALIK': 12
       };
 
-      // Regex pattern - ESİN KARAKUŞ 28 TEMMUZ -3 AĞUSTOS 17. HAFTA
-      const pattern = /^(.+?)\s+(\d{1,2})\s+(\w+)\s*-\s*(\d{1,2})\s+(\w+)\s+(\d+)\.\s*HAFTA/i;
+      // Regex pattern - Birden fazla format desteği
+      const patterns = [
+        // ESİN KARAKUŞ 28 TEMMUZ -3 AĞUSTOS 17. HAFTA
+        /^(.+?)\s+(\d{1,2})\s+(\w+)\s*-\s*(\d{1,2})\s+(\w+)\s+(\d+)\.\s*HAFTA/i,
+        // DERYA BAYINDIR 9-15 HAZİRAN 11. HAFTA
+        /^(.+?)\s+(\d{1,2})\s*-\s*(\d{1,2})\s+(\w+)\s+(\d+)\.\s*HAFTA/i,
+        // DERYA BAYINDIR 2-8 HAZİRAN 10.HAFTA (boşluksuz)
+        /^(.+?)\s+(\d{1,2})\s*-\s*(\d{1,2})\s+(\w+)\s+(\d+)\.HAFTA/i
+      ];
       
-      const match = fileName.replace('.pdf', '').match(pattern);
-      
-      if (match) {
-        const [_, hastaAdi, gun1, ay1, gun2, ay2, haftaNo] = match;
+      for (let pattern of patterns) {
+        const match = fileName.replace('.pdf', '').match(pattern);
         
-        return {
-          hastaAdi: hastaAdi.trim(),
-          baslangicTarihi: `${gun1} ${ay1}`,
-          bitisTarihi: `${gun2} ${ay2}`,
-          haftaNo: parseInt(haftaNo),
-          tarihAraligi: `${gun1} ${ay1} - ${gun2} ${ay2}`
-        };
+        if (match) {
+          if (match.length === 7) {
+            // Format: HASTA ADI GUN1 AY1 - GUN2 AY2 HAFTA
+            const [_, hastaAdi, gun1, ay1, gun2, ay2, haftaNo] = match;
+            return {
+              hastaAdi: hastaAdi.trim(),
+              baslangicTarihi: `${gun1} ${ay1}`,
+              bitisTarihi: `${gun2} ${ay2}`,
+              haftaNo: parseInt(haftaNo),
+              tarihAraligi: `${gun1} ${ay1} - ${gun2} ${ay2}`
+            };
+          } else if (match.length === 6) {
+            // Format: HASTA ADI GUN1-GUN2 AY HAFTA
+            const [_, hastaAdi, gun1, gun2, ay, haftaNo] = match;
+            return {
+              hastaAdi: hastaAdi.trim(),
+              baslangicTarihi: `${gun1} ${ay}`,
+              bitisTarihi: `${gun2} ${ay}`,
+              haftaNo: parseInt(haftaNo),
+              tarihAraligi: `${gun1}-${gun2} ${ay}`
+            };
+          }
+        }
       }
       
       return null;
     }
 
     function findOrCreateHasta(hastaAdi) {
+      // Null/undefined check
+      if (!hastaAdi || typeof hastaAdi !== 'string') {
+        console.error('❌ Geçersiz hasta adı:', hastaAdi);
+        return null;
+      }
+
       // Mevcut hastalar arasında ara
-      let mevcutHasta = hastalar.find(h => h.ad.toLowerCase() === hastaAdi.toLowerCase());
+      let mevcutHasta = hastalar.find(h => h && h.ad && h.ad.toLowerCase() === hastaAdi.toLowerCase());
       
       if (!mevcutHasta) {
         // Yeni hasta oluştur
@@ -9738,7 +9765,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       document.body.removeChild(progressDiv);
       
       // Sonuçları kaydet
-      await saveAllData();
+      localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
       
       // UI'ı güncelle
       gosterHastalar();
