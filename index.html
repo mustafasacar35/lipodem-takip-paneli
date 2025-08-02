@@ -423,10 +423,11 @@
             <p id="secilenHastaNot" style="margin: 2px 0 0 0; color: #666; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Lütfen sol menüden bir hasta seçin</p>
           </div>
           <div id="hastaBilgiButonlar" style="display: none; flex-shrink: 0; margin-left: 15px;">
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
               <button onclick="duzenleHasta()" style="padding: 6px 10px; background: #ffc107; color: #000; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✏️ Düzenle</button>
               <button onclick="arsivleHasta()" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">📦 Arşivle</button>
-              <button onclick="silHasta()" style="padding: 6px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">🗑️ Sil</button>
+              <button onclick="silHasta()" style="padding: 6px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;" title="Dosyayı arşivle ve listeden kaldır">🗑️ Sil</button>
+              <button onclick="sadeceLisedenKaldir()" style="padding: 6px 10px; background: #fd7e14; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;" title="Sadece listeden kaldır, dosyayı koru">📋 Listeden Kaldır</button>
               <button onclick="kapatDetay()" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✖️ Kapat</button>
             </div>
           </div>
@@ -4826,11 +4827,29 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
         }
         
-        // Dosyayı silmek yerine adını değiştir (silindi_ prefix ekle)
+        // Dosyayı silmek yerine adını değiştir (timestamp ile benzersiz hale getir)
+        const timestamp = new Date().getTime();
         const eskiDosyaAdi = bulunanDosya;
-        const yeniDosyaAdi = `silindi_${eskiDosyaAdi}`;
+        const yeniDosyaAdi = `silindi_${timestamp}_${eskiDosyaAdi}`;
         
         console.log(`🔄 Dosya adı değiştiriliyor: ${eskiDosyaAdi} → ${yeniDosyaAdi}`);
+        
+        // Yeni dosya adının zaten var olup olmadığını kontrol et
+        try {
+          const varlikKontrol = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${yeniDosyaAdi}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          
+          if (varlikKontrol.ok) {
+            console.warn(`⚠️ ${yeniDosyaAdi} zaten var, farklı timestamp deneniyor`);
+            const yeniTimestamp = timestamp + Math.floor(Math.random() * 1000);
+            yeniDosyaAdi = `silindi_${yeniTimestamp}_${eskiDosyaAdi}`;
+            console.log(`🔄 Yeni dosya adı: ${yeniDosyaAdi}`);
+          }
+        } catch (e) {
+          // Dosya yok, bu iyi
+          console.log(`✅ ${yeniDosyaAdi} kullanılabilir`);
+        }
         
         // Önce dosyanın içeriğini al
         const contentResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${eskiDosyaAdi}`, {
@@ -4852,14 +4871,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            message: `Hasta dosyası arşivlendi: ${seciliHasta.isim}`,
+            message: `Hasta dosyası arşivlendi: ${seciliHasta.isim} - ${new Date().toLocaleString('tr-TR')}`,
             content: dosyaIcerigi // Base64 içeriği direkt kullan
           })
         });
         
         if (!createResponse.ok) {
-          throw new Error(`Yeni dosya oluşturulamadı: ${createResponse.status}`);
+          const errorText = await createResponse.text();
+          console.error('❌ Arşiv dosyası oluşturma hatası:', createResponse.status, errorText);
+          
+          if (createResponse.status === 422) {
+            throw new Error(`Arşiv dosyası zaten var veya geçersiz: ${yeniDosyaAdi}. Lütfen tekrar deneyin.`);
+          } else {
+            throw new Error(`Arşiv dosyası oluşturulamadı: ${createResponse.status} - ${errorText}`);
+          }
         }
+        
+        console.log(`✅ Arşiv dosyası oluşturuldu: ${yeniDosyaAdi}`);
         
         // Eski dosyayı sil
         const deleteResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${eskiDosyaAdi}`, {
@@ -4894,9 +4922,60 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
       } catch (error) {
         console.error('❌ Hasta silme hatası:', error);
-        alert(`❌ Hasta silme hatası: ${error.message}`);
+        
+        // 422 hatası özel durumu - alternatif silme yöntemi öner
+        if (error.message.includes('422') || error.message.includes('zaten var')) {
+          const alternatifOnay = confirm(`❌ Arşivleme başarısız (dosya çakışması).\n\n🔄 Alternatif yöntem: Sadece hasta listesinden kaldırmak ister misiniz?\n\n(Dosya GitHub'da kalacak ama listede görünmeyecek)`);
+          
+          if (alternatifOnay) {
+            try {
+              const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
+              if (listeGuncellendi) {
+                alert(`✅ ${seciliHasta.isim} hasta listesinden kaldırıldı!\n\n⚠️ Not: Dosya GitHub'da hala mevcut.`);
+                kapatDetay();
+                await renderHastalarYeniSistem();
+                return;
+              }
+            } catch (listeError) {
+              console.error('❌ Liste güncelleme hatası:', listeError);
+            }
+          }
+        }
+        
+        alert(`❌ Hasta silme hatası: ${error.message}\n\n💡 Öneriler:\n- Aynı hasta için önceki silme işlemi tamamlanmamış olabilir\n- Birkaç dakika bekleyip tekrar deneyin\n- Ya da sadece "listeden kaldır" seçeneğini kullanın`);
       }
     }
+
+    // Sadece listeden kaldırma fonksiyonu (dosyayı silmez)
+    async function sadeceLisedenKaldir() {
+      if (!seciliHasta) {
+        alert('❌ Önce bir hasta seçin!');
+        return;
+      }
+      
+      const onay = confirm(`📋 "${seciliHasta.isim}" hastasını sadece listeden kaldırmak istediğinize emin misiniz?\n\n⚠️ Dosya GitHub'da kalacak, sadece listede görünmeyecek.`);
+      if (!onay) return;
+      
+      try {
+        console.log(`📋 ${seciliHasta.isim} listeden kaldırılıyor...`);
+        
+        const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
+        if (listeGuncellendi) {
+          alert(`✅ ${seciliHasta.isim} listeden kaldırıldı!\n\n💾 Dosya GitHub'da korunuyor.`);
+          kapatDetay();
+          await renderHastalarYeniSistem();
+        } else {
+          throw new Error('Liste güncellenemedi');
+        }
+        
+      } catch (error) {
+        console.error('❌ Listeden kaldırma hatası:', error);
+        alert(`❌ Listeden kaldırma hatası: ${error.message}`);
+      }
+    }
+
+    // Global erişim için
+    window.sadeceLisedenKaldir = sadeceLisedenKaldir;
 
     function kapatDetay() {
       // Hasta bilgi panelindeki bilgileri sıfırla
