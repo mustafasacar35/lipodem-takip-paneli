@@ -10188,6 +10188,118 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
     }
 
+    // Çoklu PDF sonuçlarını göster
+    function showCokluPdfSonuclari(sonuclar, basarili, hatali) {
+      const mesajlar = [];
+      
+      sonuclar.forEach(sonuc => {
+        if (sonuc.durum === 'BAŞARILI') {
+          mesajlar.push(`✅ ${sonuc.dosya} → ${sonuc.hasta} (${sonuc.hafta}. hafta) - ${sonuc.tarifSayisi || 0} tarif, ${sonuc.eslesmeSayisi || 0} eşleşme`);
+        } else {
+          mesajlar.push(`❌ ${sonuc.dosya} → ${sonuc.mesaj}`);
+        }
+      });
+      
+      const rapor = `
+📁 ÇOKLU PDF İŞLEME RAPORU
+
+✅ Başarılı: ${basarili}
+❌ Hatalı: ${hatali}
+📊 Toplam: ${sonuclar.length}
+
+DETAYLAR:
+${mesajlar.join('\n')}
+      `;
+      
+      // Raporu modal olarak göster
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 10000;
+        display: flex; align-items: center; justify-content: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+          <h3>📁 PDF İşleme Sonuçları</h3>
+          <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; white-space: pre-wrap; font-size: 12px;">${rapor}</pre>
+          <button onclick="this.closest('.modal').remove()" style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Kapat</button>
+        </div>
+      `;
+      
+      modal.className = 'modal';
+      document.body.appendChild(modal);
+      
+      // Modal dışına tıklanırsa kapat
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+      
+      console.log('📊 PDF işleme raporu gösterildi');
+    }
+
+    // Global erişim için
+    window.showCokluPdfSonuclari = showCokluPdfSonuclari;
+
+    // Hasta listesini güncelle (sidebar'ı yenile)
+    function updateHastaListesi() {
+      console.log('🔄 Hasta listesi güncelleniyor...');
+      
+      const hastaListesiDiv = document.getElementById('hastaListesi');
+      if (!hastaListesiDiv) {
+        console.warn('⚠️ hastaListesi elementi bulunamadı');
+        return;
+      }
+      
+      // Mevcut liste öğelerini temizle
+      hastaListesiDiv.innerHTML = '';
+      
+      // Tüm hastaları listele
+      hastalar.forEach((hasta, index) => {
+        const hastaDiv = document.createElement('div');
+        hastaDiv.className = 'hasta-item';
+        if (seciliHasta && seciliHasta.id === hasta.id) {
+          hastaDiv.classList.add('selected');
+        }
+        
+        hastaDiv.innerHTML = `
+          <div class="hasta-info">
+            <div class="hasta-name">${hasta.isim}</div>
+            <div class="hasta-details">
+              ${hasta.haftalar ? hasta.haftalar.length : 0} hafta
+              ${hasta.kayitTarihi ? `• ${new Date(hasta.kayitTarihi).toLocaleDateString('tr-TR')}` : ''}
+            </div>
+          </div>
+        `;
+        
+        hastaDiv.addEventListener('click', () => {
+          hastaSecildi(index);
+        });
+        
+        hastaListesiDiv.appendChild(hastaDiv);
+      });
+      
+      console.log('✅ Hasta listesi güncellendi:', hastalar.length, 'hasta');
+    }
+
+    // Global erişim için
+    window.updateHastaListesi = updateHastaListesi;
+
+    // Hasta seçildiğinde çağrılan fonksiyon
+    function hastaSecildi(index) {
+      seciliHasta = hastalar[index];
+      console.log('👤 Hasta seçildi:', seciliHasta.isim);
+      
+      // UI'ı güncelle
+      updateHastaListesi(); // Seçimi güncelle
+      renderYeniSistem(); // Ana içeriği güncelle
+    }
+
+    // Global erişim için
+    window.hastaSecildi = hastaSecildi;
+
     // 📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
@@ -10244,27 +10356,81 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // Hafta oluştur/bul
           const hafta = findOrCreateHafta(hasta, parsed.haftaNo, parsed.tarihAraligi);
           
-          // PDF'i analiz et
-          const pdfText = await extractPdfText(file);
-          const tarifler = extractTariflerFromText(pdfText);
+          // PDF'i Base64'e çevir ve sakla
+          const pdfBase64 = await fileToBase64(file);
+          hafta.pdf = pdfBase64;
+          hafta.pdfName = file.name;
+          hafta.pdfOrijinalIsim = file.name;
+          hafta.pdfYolu = `pdfs/${file.name}`;
+          hafta.kayitTarihi = new Date().toISOString();
+          hafta.pdfFile = {
+            name: file.name,
+            size: file.size,
+            type: file.type
+          };
           
-          // Tarifleri hafta'ya kaydet
+          // PDF'i analiz et ve tarifleri çıkar
+          let pdfText = '';
+          let tarifler = [];
+          let eslesenKartlar = [];
+          let recipeCount = 0;
+          let matchCount = 0;
+          
+          try {
+            // PDF içeriğini çıkar
+            const loadingTask = pdfjsLib.getDocument({data: atob(pdfBase64)});
+            const pdf = await loadingTask.promise;
+            
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+              const page = await pdf.getPage(pageNum);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              pdfText += pageText + ' ';
+            }
+            
+            // Tarifleri analiz et
+            if (typeof window.tarifKartlari !== 'undefined' && Array.isArray(window.tarifKartlari)) {
+              window.tarifKartlari.forEach(kart => {
+                const tarifAdi = kart.querySelector('.card-title')?.textContent?.trim();
+                if (tarifAdi && pdfText.toLowerCase().includes(tarifAdi.toLowerCase())) {
+                  tarifler.push(tarifAdi);
+                  eslesenKartlar.push({
+                    id: kart.id,
+                    name: tarifAdi,
+                    kategori: kart.dataset.kategori || 'Genel',
+                    type: 'auto',
+                    eklenmeTarihi: new Date().toISOString()
+                  });
+                  matchCount++;
+                }
+              });
+            }
+            
+            // Toplam tarif sayısını tahmin et
+            const tarifMatches = pdfText.match(/tarif|yemek|öğün/gi);
+            recipeCount = tarifMatches ? tarifMatches.length : 0;
+            
+          } catch (pdfError) {
+            console.warn('PDF içerik çıkarma hatası:', pdfError);
+          }
+          
+          // Hafta verilerini güncelle
           hafta.tarifler = tarifler;
-          hafta.pdfText = pdfText;
-          
-          // Tarif eşleştirmesi yap
-          await performTarifEslestirmesi(hafta, hasta);
+          hafta.tarifKartlar = eslesenKartlar;
+          hafta.pdfText = pdfText.substring(0, 2000); // İlk 2000 karakter
+          hafta.gptMesaj = `PDF analizi: ${recipeCount} tarif tespit edildi, ${matchCount} eşleşme bulundu.`;
           
           sonuclar.push({ 
             dosya: file.name, 
             durum: 'BAŞARILI', 
             hasta: parsed.hastaAdi,
             hafta: parsed.haftaNo,
-            tarifSayisi: tarifler.length 
+            tarifSayisi: recipeCount,
+            eslesmeSayisi: matchCount
           });
           basarili++;
           
-          console.log(`✅ ${file.name} başarıyla işlendi`);
+          console.log(`✅ ${file.name} başarıyla işlendi - ${recipeCount} tarif, ${matchCount} eşleşme`);
           
         } catch (error) {
           console.error('❌ PDF işleme hatası:', file.name, error);
@@ -10282,8 +10448,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Sonuçları kaydet
       localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
       
-      // UI'ı güncelle
+      // UI'ı güncelle ve sidebar'ı yenile
       renderYeniSistem();
+      updateHastaListesi(); // Sidebar'daki hasta listesini güncelle
       
       // Sonuç raporu göster
       showCokluPdfSonuclari(sonuclar, basarili, hatali);
