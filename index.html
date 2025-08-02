@@ -1076,6 +1076,13 @@
             console.error('⚠️ Hafta GitHub kaydetme hatası:', error);
           }
         }
+        
+        // Cache'i de güncelle (çoklu PDF işlemi için)
+        if (typeof cokluPdfHastaCache !== 'undefined') {
+          const cacheKey = (hasta.isim || hasta.ad).toUpperCase();
+          cokluPdfHastaCache.set(cacheKey, hasta);
+          console.log(`🔄 Cache güncellendi: ${hasta.isim || hasta.ad} - Hafta sayısı: ${hasta.haftalar.length}`);
+        }
       } else {
         console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta zaten mevcut`);
       }
@@ -4532,6 +4539,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             // Birleştirilmiş veriyi kullan
             hastaDetay.haftalar = birlesikHaftalar;
             console.log(`✅ Hafta verileri birleştirildi: Toplam=${birlesikHaftalar.length} hafta`);
+            
+            // Cache'i de güncelle (çoklu PDF işlemi için)
+            if (typeof cokluPdfHastaCache !== 'undefined') {
+              const cacheKey = hastaDetay.isim.toUpperCase();
+              cokluPdfHastaCache.set(cacheKey, hastaDetay);
+              console.log(`🔄 Cache güncellendi (birleştirme sonrası): ${hastaDetay.isim} - Hafta sayısı: ${birlesikHaftalar.length}`);
+            }
           }
           
           // Global değişkeni güncelle
