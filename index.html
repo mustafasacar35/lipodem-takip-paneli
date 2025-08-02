@@ -4521,6 +4521,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           console.log('✅ Yeni sistemde hasta bilgileri yüklendi:', hastaDetay.isim);
           
+          // LocalStorage'daki güncel veriyi GitHub'a senkronize et
+          if (seciliHasta && typeof hastayiAyriKaydet === 'function') {
+            console.log('🔄 Hasta verileri GitHub\'a senkronize ediliyor...');
+            hastayiAyriKaydet(seciliHasta).then(basarili => {
+              if (basarili) {
+                console.log('✅ Hasta verileri GitHub\'a senkronize edildi');
+              } else {
+                console.log('⚠️ GitHub senkronizasyonu başarısız');
+              }
+            }).catch(error => {
+              console.log('⚠️ GitHub senkronizasyon hatası:', error.message);
+            });
+          }
+          
           // Hafta tablarını göster
           gosterHaftalar();
           
@@ -6272,21 +6286,17 @@ function duzenleHafta(i) {
       haftalar[i].indirmeUrl = pdfSonuc.indirmeUrl;
       haftalar[i].kayitTarihi = new Date().toISOString();
       
-      // YENİ PDF YÜKLENINCE ESKİ KARTLARI TEMİZLE
-      console.log('🧹 Yeni PDF yükleniyor, eski kartlar temizleniyor...');
-      console.log('🔍 Temizleme öncesi hafta verileri:', {
+      // PDF YENİDEN YÜKLENİYOR - SADECE PDF BİLGİLERİNİ GÜNCELLE, ESKİ KARTLARI KORU
+      console.log('🔄 PDF güncelleniyor, mevcut kartlar korunuyor...');
+      console.log('🔍 Mevcut hafta verileri:', {
         haftaIndex: i,
-        eskiTarifKartlar: haftalar[i].tarifKartlar?.length || 0,
-        eskiManuelKartlar: haftalar[i].manuelKartlar?.length || 0,
-        eskiTarifler: haftalar[i].tarifler?.length || 0
+        mevcutTarifKartlar: haftalar[i].tarifKartlar?.length || 0,
+        mevcutManuelKartlar: haftalar[i].manuelKartlar?.length || 0,
+        mevcutTarifler: haftalar[i].tarifler?.length || 0
       });
       
-      // 1. LocalStorage'daki hafta verilerinden eski kartları temizle
-      haftalar[i].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
-      haftalar[i].manuelKartlar = []; // Manuel eklenen kartları sıfırla
-      haftalar[i].tarifler = []; // Eski tarifleri sıfırla
-      
-      console.log('✅ LocalStorage hafta verileri temizlendi');
+      // ESKİ KARTLARI KORU - YENİ PDF ANALIZ EDİLDİKTEN SONRA EKLENECEKTİR
+      console.log('💾 Mevcut kartlar korunuyor - yeni analiz sonrası birleştirilecek');
       
       console.log('✅ PDF verileri güncellendi:', {
         pdfOrijinalIsim: haftalar[i].pdfOrijinalIsim,
@@ -6307,19 +6317,15 @@ function duzenleHafta(i) {
           seciliHasta.haftalar[seciliHaftaIndex].indirmeUrl = pdfSonuc.indirmeUrl;
           seciliHasta.haftalar[seciliHaftaIndex].kayitTarihi = haftalar[i].kayitTarihi;
           
-          // YENİ PDF YÜKLENINCE ESKİ KARTLARI HASTA JSON'UNDAN DA TEMİZLE
-          console.log('🔍 Hasta JSON temizleme öncesi:', {
+          // YENİ PDF YÜKLENINCE ESKİ KARTLARI KORU - HASTA JSON'UNDA DA KORU
+          console.log('🔍 Hasta JSON güncellemesi - kartlar korunuyor:', {
             haftaIndex: seciliHaftaIndex,
-            eskiTarifKartlar: seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar?.length || 0,
-            eskiManuelKartlar: seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar?.length || 0,
-            eskiTarifler: seciliHasta.haftalar[seciliHaftaIndex].tarifler?.length || 0
+            mevcutTarifKartlar: seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar?.length || 0,
+            mevcutManuelKartlar: seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar?.length || 0,
+            mevcutTarifler: seciliHasta.haftalar[seciliHaftaIndex].tarifler?.length || 0
           });
           
-          seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
-          seciliHasta.haftalar[seciliHaftaIndex].manuelKartlar = []; // Manuel eklenen kartları sıfırla
-          seciliHasta.haftalar[seciliHaftaIndex].tarifler = []; // Eski tarifleri sıfırla
-          
-          console.log('🧹 Hasta JSON\'undan da eski kartlar temizlendi');
+          console.log('💾 Hasta JSON\'unda da mevcut kartlar korunuyor');
         }
       }
 
@@ -6350,18 +6356,6 @@ function duzenleHafta(i) {
       saveToStorage();
       renderHastalar();
       gosterHaftalar();
-
-      // Eğer bu hafta şu anda aktif hafta ise, ekrandan da eski kartları temizle
-      const aktifTab = document.querySelector('.hafta-tab.active');
-      const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : null;
-      
-      if (aktifTab && aktifHaftaIndex === i) {
-        console.log('🧹 Aktif haftada PDF yenileniyor, ekrandaki kartlar temizleniyor...');
-        const currentDiv = document.getElementById('eslesenContent');
-        if (currentDiv) {
-          currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">PDF analiz ediliyor...</div>';
-        }
-      }
 
       // PDF'i analiz et ve tarifleri çıkar
       const reader = new FileReader();
@@ -6395,26 +6389,67 @@ function duzenleHafta(i) {
           }, 100);
         }
 
-        haftalar[i].tarifler = extractTariflerDetay(fullText);
+        // YENİ PDF'DEN ÇIKARILAN TARİFLERİ MEVCUT TARİFLERLE BİRLEŞTİR
+        const yeniTarifler = extractTariflerDetay(fullText);
+        const eskiTarifler = haftalar[i].tarifler || [];
         
-        // Eşleştirme yap ve sonuçları kaydet
+        // Yeni tarifleri eskilerle birleştir (dublikasyon kontrolü ile)
+        const mevcutTarifMetinleri = new Set(eskiTarifler.map(t => t.trim().toLowerCase()));
+        const eklenenYeniTarifler = yeniTarifler.filter(yeniTarif => 
+          !mevcutTarifMetinleri.has(yeniTarif.trim().toLowerCase())
+        );
+        
+        haftalar[i].tarifler = [...eskiTarifler, ...eklenenYeniTarifler];
+        
+        console.log('🔄 Tarif birleştirme sonucu:', {
+          eskiTarifSayisi: eskiTarifler.length,
+          yeniTarifSayisi: yeniTarifler.length,
+          eklenenYeniTarifSayisi: eklenenYeniTarifler.length,
+          toplamTarifSayisi: haftalar[i].tarifler.length
+        });
+        
+        // Eşleştirme yap ve sonuçları mevcut kartlarla birleştir
         const eslestirmeSonucu = await otomatikEsleHafta(i);
         
-        // JSON'a sadece eşleşen kartları kaydet (eşleşmeyenleri kaydetme)
+        // YENİ EŞLEŞEN KARTLARI MEVCUT KARTLARLA BİRLEŞTİR
         if (eslestirmeSonucu) {
-          console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
-          haftalar[i].tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
-          // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - sadece UI'da göstereceğiz
-          console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
-          console.log('📝 Eşleşmeyen tarifler JSON\'a kaydedilmiyor (sadece UI\'da görünür)');
+          console.log('✅ Eşleştirme sonuçları mevcut kartlarla birleştiriliyor...');
+          
+          const eskiTarifKartlar = haftalar[i].tarifKartlar || [];
+          const yeniEslesenKartlar = eslestirmeSonucu.eslesenKartlar || [];
+          
+          // Dublikasyon kontrolü ile birleştir (kart adına göre)
+          const mevcutKartAdlari = new Set(eskiTarifKartlar.map(kart => kart.name || kart));
+          const eklenenYeniKartlar = yeniEslesenKartlar.filter(yeniKart => 
+            !mevcutKartAdlari.has(yeniKart.name || yeniKart)
+          );
+          
+          haftalar[i].tarifKartlar = [...eskiTarifKartlar, ...eklenenYeniKartlar];
+          
+          console.log('� Kart birleştirme sonucu:', {
+            eskiKartSayisi: eskiTarifKartlar.length,
+            yeniEslesenKartSayisi: yeniEslesenKartlar.length,
+            eklenenYeniKartSayisi: eklenenYeniKartlar.length,
+            toplamKartSayisi: haftalar[i].tarifKartlar.length
+          });
+          
+          console.log('📝 JSON\'a kaydedilecek toplam kart sayısı:', haftalar[i].tarifKartlar.length);
         }
         
-        // Hasta JSON dosyasını güncelle
+        // Hasta JSON dosyasını yeni verilerle güncelle
         if (seciliHasta) {
           const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === (haftalar[i].haftaNo || (i + 1)));
           if (seciliHaftaIndex !== -1) {
+            // Tarifleri ve kartları güncellenmiş (birleştirilmiş) hallerini kaydet
             seciliHasta.haftalar[seciliHaftaIndex].tarifler = haftalar[i].tarifler;
             seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
+            
+            console.log('💾 Hasta JSON güncellendi:', {
+              haftaNo: haftalar[i].haftaNo || (i + 1),
+              toplamTarifSayisi: haftalar[i].tarifler.length,
+              toplamKartSayisi: haftalar[i].tarifKartlar.length
+            });
+            
             // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - JSON boyutunu küçük tutmak için
             // seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
             
@@ -6422,6 +6457,7 @@ function duzenleHafta(i) {
             if (seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler) {
               delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
               console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
+            }
             }
           }
           
@@ -6443,7 +6479,11 @@ function duzenleHafta(i) {
           eslestirmeSonucu: eslestirmeSonucu ? 'var' : 'yok'
         });
         
-        if (aktifTab && aktifHaftaIndex === i) {
+        // Eğer yüklenen hafta şu anda aktif hafta ise, ekranı güncelle
+        const aktifHaftaTab = document.querySelector('.hafta-tab.active');
+        const aktifHaftaIndeksi = aktifHaftaTab ? parseInt(aktifHaftaTab.dataset.haftaIndex) : null;
+        
+        if (aktifHaftaTab && aktifHaftaIndeksi === i) {
           console.log('🎯 PDF yüklenen hafta aktif hafta, kartları güncelleniyor...');
           setTimeout(() => {
             gosterEslesenKartlarSidebar(i);
@@ -8153,20 +8193,6 @@ function duzenleHafta(i) {
   console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
   console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
   saveToStorage();
-  
-  // YENİ SİSTEM: GitHub'a da kaydet
-  if (seciliHasta && typeof hastayiAyriKaydet === 'function') {
-    console.log('💾 Eşleştirme sonrası hasta GitHub\'a kaydediliyor...');
-    hastayiAyriKaydet(seciliHasta).then(basarili => {
-      if (basarili) {
-        console.log('✅ Eşleştirme sonrası GitHub kaydı başarılı');
-      } else {
-        console.error('❌ Eşleştirme sonrası GitHub kaydı başarısız');
-      }
-    }).catch(error => {
-      console.error('❌ Eşleştirme sonrası GitHub kayıt hatası:', error);
-    });
-  }
   
   // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
   const sonuc = {
