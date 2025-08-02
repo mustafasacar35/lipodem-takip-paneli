@@ -1135,23 +1135,69 @@
               type: file.type
             };
             
-            // PDF'den metin çıkar
-            if (typeof extractPdfText === 'function') {
-              const pdfText = await extractPdfText(file);
-              console.log(`📄 PDF metni çıkarıldı: ${pdfText.length} karakter`);
+            // PDF'den metin çıkar ve tarif analizi yap
+            try {
+              console.log(`🔍 ${file.name} PDF içerik analizi başlıyor...`);
               
-              // Tarifler çıkar
-              if (typeof extractTariflerFromText === 'function') {
-                const tarifler = extractTariflerFromText(pdfText);
-                hafta.tarifler = tarifler;
-                console.log(`🍽️ ${tarifler.length} tarif bulundu`);
-                
-                // Tarif eşleştirmesi yap
-                if (typeof performTarifEslestirmesi === 'function') {
-                  await performTarifEslestirmesi(hafta, hasta);
-                  console.log(`🔗 Tarif eşleştirmesi tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
-                }
+              // Base64'den PDF metnini çıkar
+              const base64Data = pdfBase64.split(',')[1];
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
               }
+              
+              const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+              let fullText = '';
+              
+              for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const strings = textContent.items.map(item => item.str);
+                fullText += strings.join(' ') + '\n';
+              }
+              
+              console.log(`📄 PDF metni çıkarıldı: ${fullText.length} karakter`);
+              
+              // Tarif detaylarını çıkar
+              const tarifDetaylar = extractTariflerDetay(fullText);
+              hafta.tarifler = tarifDetaylar;
+              console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
+              
+              // Tarif kartlarıyla eşleştir
+              if (window.tarifKartlari && window.tarifKartlari.length > 0) {
+                hafta.tarifKartlar = [];
+                let eslesenSayisi = 0;
+                
+                tarifDetaylar.forEach(tarif => {
+                  const tarifAdi = tarif.isim.toLowerCase().trim();
+                  
+                  // Tarif kartlarında ara
+                  const eslesenKart = window.tarifKartlari.find(kart => {
+                    const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
+                    return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
+                  });
+                  
+                  if (eslesenKart) {
+                    hafta.tarifKartlar.push({
+                      tarifAdi: tarif.isim,
+                      kartResmi: eslesenKart,
+                      eslesmeTuru: 'otomatik'
+                    });
+                    eslesenSayisi++;
+                  }
+                });
+                
+                console.log(`🔗 Tarif eşleştirmesi tamamlandı: ${eslesenSayisi} eşleşme`);
+              } else {
+                console.warn('⚠️ Tarif kartları yüklenmemiş, eşleştirme atlanıyor');
+                hafta.tarifKartlar = [];
+              }
+              
+            } catch (pdfAnalysisError) {
+              console.error('❌ PDF analiz hatası:', pdfAnalysisError);
+              hafta.tarifler = [];
+              hafta.tarifKartlar = [];
             }
             
             // Güncellenmiş hasta verisini kaydet
@@ -1169,7 +1215,8 @@
             hafta: parsed.haftaNo,
             tarihAraligi: parsed.tarihAraligi,
             tarifSayisi: hafta.tarifler ? hafta.tarifler.length : 0,
-            eslesmeSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0
+            eslesmeSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
+            mesaj: `${hafta.tarifler ? hafta.tarifler.length : 0} tarif, ${hafta.tarifKartlar ? hafta.tarifKartlar.length : 0} eşleşme`
           });
           basarili++;
           
@@ -1194,16 +1241,12 @@
         try {
           console.log('🔄 Hasta listesi güncelleniyor...');
           
-          if (token) {
-            // GitHub'dan hasta listesini yeniden yükle
-            await yukleHastaListesiYeniSistem(true); // sessiz=true
-            console.log('✅ GitHub hasta listesi yenilendi');
-          }
-          
           // UI'ı güncelle
-          if (typeof renderHastalarYeniSistem === 'function') {
-            await renderHastalarYeniSistem();
+          if (typeof updateHastaListesi === 'function') {
+            updateHastaListesi();
             console.log('✅ Hasta listesi UI güncellendi');
+          } else {
+            console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
           }
           
         } catch (error) {
@@ -6261,23 +6304,47 @@ function duzenleHafta(i) {
 
     // PDF'den otomatik tara ve eşleştir
     async function pdfOkuVeEsleHafta(i) {
-      const hafta = getHaftaListesi()[i];
-      if (!hafta.pdf) return;
-      const base64 = hafta.pdf.split(',')[1];
-      const binary = atob(base64);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let j = 0; j < len; j++) bytes[j] = binary.charCodeAt(j);
-      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-      let fullText = '';
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join('\n') + '\n';
-      }
-      
-      // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
+      try {
+        const hafta = getHaftaListesi()[i];
+        if (!hafta.pdf) {
+          console.log(`⚠️ ${i}. hafta için PDF bulunamadı`);
+          return;
+        }
+        
+        // Base64 verisini kontrol et ve temizle
+        let base64Data = hafta.pdf;
+        if (base64Data.includes(',')) {
+          base64Data = base64Data.split(',')[1];
+        }
+        
+        // Base64 verisini doğrula
+        if (!base64Data || base64Data.length === 0) {
+          console.error(`❌ ${i}. hafta için geçersiz PDF verisi`);
+          return;
+        }
+        
+        // Base64 karakterlerini temizle (sadece geçerli karakterler)
+        base64Data = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
+        
+        console.log(`🔍 ${i}. hafta PDF analizi başlıyor...`);
+        
+        const binary = atob(base64Data);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let j = 0; j < len; j++) bytes[j] = binary.charCodeAt(j);
+        
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join('\n') + '\n';
+        }
+        
+        console.log(`✅ ${i}. hafta PDF metni çıkarıldı: ${fullText.length} karakter`);
+        
+        // PDF içeriğinden de hafta numarasını kontrol et (dosya adından tespit edilmediyse)
       const haftalar = getHaftaListesi();
       const iceriktenHaftaNo = pdfIcerigindenhaftaNoAl(fullText);
       if (iceriktenHaftaNo && !pdfDosyaAdindenHaftaNoAl(hafta.pdfName)) {
@@ -6305,6 +6372,11 @@ function duzenleHafta(i) {
       saveToStorage();
       // Otomatik eşleştir
       otomatikEsleHafta(i);
+      
+      } catch (error) {
+        console.error(`❌ ${i}. hafta PDF analizi hatası:`, error);
+        console.error('PDF veri uzunluğu:', hafta.pdf ? hafta.pdf.length : 'N/A');
+      }
     }
 
     // pdfOkuHafta fonksiyonu artık kullanılmıyor (otomatikleştirildi)
