@@ -4246,11 +4246,37 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     function saveToStorage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+        console.log('💾 Hastalar localStorage\'a kaydedildi');
         // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+    }
+    
+    // Veri değiştiğinde otomatik kaydetme
+    function autoSaveHastaData(hasta) {
+      try {
+        if (!hasta) return;
+        
+        // Global hastalar dizisinde güncelle
+        const hastaIndex = hastalar.findIndex(h => h.id === hasta.id);
+        if (hastaIndex >= 0) {
+          hastalar[hastaIndex] = hasta;
+          console.log('🔄 Hasta verisi güncellendi:', hasta.isim);
+        } else {
+          hastalar.push(hasta);
+          console.log('➕ Yeni hasta eklendi:', hasta.isim);
+        }
+        
+        // localStorage'a kaydet
+        saveToStorage();
+        
+        return true;
+      } catch(e) { 
+        console.error('Otomatik kaydetme hatası:', e); 
+        return false;
+      }
     }
     function loadFromStorage() {
       try {
@@ -4521,57 +4547,58 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         if (hastaDetay) {
-          // Mevcut seciliHasta verisiyle birleştir (hafta verisini koru)
+          // ⭐ YENİ YAKLAŞIM: localStorage'ı temel al, GitHub'ı sadece eksik PDF'ler için kullan
           if (seciliHasta && seciliHasta.id === hastaDetay.id && seciliHasta.haftalar) {
-            // Mevcut hafta verilerini koru ve GitHub'dan gelen verilerle birleştir
+            console.log('🔄 localStorage verisi temel alınıyor, GitHub sadece eksik PDF bağlantıları için kullanılacak');
+            
+            // LocalStorage'daki hafta verilerini koru
             const mevcutHaftalar = seciliHasta.haftalar || [];
             const gitHubHaftalar = hastaDetay.haftalar || [];
             
-            console.log(`🔄 Hafta verileri birleştiriliyor: Mevcut=${mevcutHaftalar.length}, GitHub=${gitHubHaftalar.length}`);
-            console.log('🔍 MEVCUT HAFTALAR (localStorage JSON):', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
-            console.log('🔍 GITHUB HAFTALAR (GitHub API):', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
-            console.log('🚨 DIKKAT: GitHub verisi eski hafta içeriyor mu?', gitHubHaftalar.filter(h => h.haftaNo < 32));
+            console.log('🔍 MEVCUT HAFTALAR (localStorage - Temel):', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('🔍 GITHUB HAFTALAR (Sadece PDF link için):', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
             
-            // ⭐ ÇÖZÜM: localStorage verisine öncelik ver
-            // Hafta verilerini birleştir (localStorage öncelikli)
-            const birlesikHaftalar = [...mevcutHaftalar];
-            
-            gitHubHaftalar.forEach(githubHafta => {
-              const mevcutHaftaIndex = birlesikHaftalar.findIndex(h => h.haftaNo === githubHafta.haftaNo);
-              console.log(`🔍 GitHub hafta ${githubHafta.haftaNo} için mevcut index: ${mevcutHaftaIndex}`);
-              if (mevcutHaftaIndex >= 0) {
-                // ⭐ MEVCUT HAFTA VARSA, GITHUB VERİSİNİ ATLA (localStorage önceliği)
-                console.log(`⏭️ Hafta ${githubHafta.haftaNo} zaten localStorage'da var, GitHub verisi atlandı`);
-                // Eski kod: Mevcut hafta varsa, sadece eksik alanları güncelle
-                // const mevcutHafta = birlesikHaftalar[mevcutHaftaIndex];
-                // console.log(`🔄 Hafta ${githubHafta.haftaNo} güncelleniyor`);
-                // Object.keys(githubHafta).forEach(key => {
-                //   if (mevcutHafta[key] === undefined || mevcutHafta[key] === null || mevcutHafta[key] === '') {
-                //     mevcutHafta[key] = githubHafta[key];
-                //   }
-                // });
-              } else {
-                // Yeni hafta ekle
-                console.log(`➕ Yeni hafta ${githubHafta.haftaNo} ekleniyor`);
-                birlesikHaftalar.push(githubHafta);
+            // LocalStorage verilerini temel al, sadece GitHub'dan PDF linklerini al
+            const birlesikHaftalar = mevcutHaftalar.map(mevcutHafta => {
+              const githubHafta = gitHubHaftalar.find(gh => gh.haftaNo === mevcutHafta.haftaNo);
+              if (githubHafta) {
+                // Sadece PDF ile ilgili alanları GitHub'dan al
+                return {
+                  ...mevcutHafta, // localStorage verisi öncelikli
+                  // GitHub'dan sadece PDF linklerini al
+                  ...(githubHafta.githubUrl && { githubUrl: githubHafta.githubUrl }),
+                  ...(githubHafta.githubLink && { githubLink: githubHafta.githubLink }),
+                  ...(githubHafta.indirmeUrl && { indirmeUrl: githubHafta.indirmeUrl }),
+                  ...(githubHafta.githubRawLink && { githubRawLink: githubHafta.githubRawLink }),
+                  ...(githubHafta.pdfGithubPath && { pdfGithubPath: githubHafta.pdfGithubPath })
+                };
               }
+              return mevcutHafta;
             });
             
-            // Birleştirilmiş veriyi kullan
-            hastaDetay.haftalar = birlesikHaftalar;
-            console.log(`✅ Hafta verileri birleştirildi: Toplam=${birlesikHaftalar.length} hafta`);
-            console.log('🔍 Final birleşik haftalar:', birlesikHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
+            console.log('✅ Hafta verileri localStorage temel alınarak hazırlandı:', birlesikHaftalar.length, 'hafta');
             
-            // Cache'i de güncelle (çoklu PDF işlemi için)
-            if (typeof cokluPdfHastaCache !== 'undefined') {
-              const cacheKey = hastaDetay.isim.toUpperCase();
-              cokluPdfHastaCache.set(cacheKey, hastaDetay);
-              console.log(`🔄 Cache güncellendi (birleştirme sonrası): ${hastaDetay.isim} - Hafta sayısı: ${birlesikHaftalar.length}`);
-            }
+            // Hasta verisini güncelle (localStorage öncelikli)
+            hastaDetay.haftalar = birlesikHaftalar;
+            seciliHasta.haftalar = birlesikHaftalar;
+            
+          } else {
+            // Yeni hasta veya hafta verisi yok - GitHub verisini al
+            console.log('🆕 GitHub\'dan hasta verisi alınıyor:', hastaDetay.isim);
+          }
+          
+          // Cache'i de güncelle (çoklu PDF işlemi için)
+          if (typeof cokluPdfHastaCache !== 'undefined') {
+            const cacheKey = hastaDetay.isim.toUpperCase();
+            cokluPdfHastaCache.set(cacheKey, hastaDetay);
+            console.log(`🔄 Cache güncellendi: ${hastaDetay.isim} - Hafta sayısı: ${hastaDetay.haftalar?.length || 0}`);
           }
           
           // Global değişkeni güncelle
           seciliHasta = hastaDetay;
+          
+          // Otomatik kaydet - hasta verilerini localStorage'a kaydet
+          autoSaveHastaData(seciliHasta);
           
           // UI'ı güncelle
           const secilenHastaIsim = document.getElementById('secilenHastaIsim');
@@ -5243,8 +5270,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       console.log('✅ Yeni hafta eklendi:', sonrakiHaftaNo, 'numaralı hafta');
       
-      // Otomatik GitHub kaydetme kaldırıldı (çakışmaları önlemek için)
-      // Manuel kaydetme için GitHub'a Kaydet butonunu kullanın
+      // Otomatik kaydetme - hafta eklendi
+      autoSaveHastaData(seciliHasta);
       
       // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
@@ -5900,7 +5927,9 @@ function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
   const haftalar = getHaftaListesi();
   haftalar.splice(i, 1);
-  saveToStorage();
+  
+  // Otomatik kaydetme - hafta silindi
+  autoSaveHastaData(seciliHasta);
   
   // Tab sistemini yeniden yükle
   gosterHaftalar();
@@ -5917,7 +5946,10 @@ function duzenleHafta(i) {
   hafta.baslangic = yeniBaslangic;
   hafta.bitis = yeniBitis;
   hafta.aciklama = document.getElementById('aciklama_' + i).value;
-  saveToStorage();
+  
+  // Otomatik kaydetme - hafta düzenlendi
+  autoSaveHastaData(seciliHasta);
+  
   gosterHaftalar();
 }
 
@@ -6456,7 +6488,9 @@ function duzenleHafta(i) {
         await hastayiAyriKaydet(seciliHasta);
       }
 
-      saveToStorage();
+      // Otomatik kaydetme - hasta verileri değişti
+      autoSaveHastaData(seciliHasta);
+      
       renderHastalar();
       gosterHaftalar();
 
@@ -8261,7 +8295,13 @@ function duzenleHafta(i) {
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
   console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
   console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
-  saveToStorage();
+  
+  // Otomatik kaydetme - hafta verileri değişti
+  if (seciliHasta) {
+    autoSaveHastaData(seciliHasta);
+  } else {
+    saveToStorage(); // Fallback
+  }
   
   // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
   const sonuc = {
