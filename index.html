@@ -1098,6 +1098,302 @@
       return hafta;
     }
 
+    async function processCokluPdf(files) {
+      if (!files || files.length === 0) {
+        alert('Lütfen en az bir PDF dosyası seçin.');
+        return;
+      }
+
+      console.log('📁 Çoklu PDF işlemi başlatıldı:', files.length, 'dosya');
+      
+      const sonuclar = [];
+      let basarili = 0;
+      let hatali = 0;
+
+      // Progress gösterimi
+      const progressDiv = document.createElement('div');
+      progressDiv.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000; min-width: 300px; text-align: center;
+      `;
+      progressDiv.innerHTML = `
+        <h3>📁 PDF'ler İşleniyor...</h3>
+        <div id="progressBar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+          <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(45deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+        </div>
+        <div id="progressText">0 / ${files.length}</div>
+      `;
+      document.body.appendChild(progressDiv);
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const progress = ((i + 1) / files.length) * 100;
+        
+        // Progress güncelle
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('progressText').textContent = `${i + 1} / ${files.length}`;
+        
+        try {
+          console.log(`🔍 ${i + 1}/${files.length} - "${file.name}" analiz ediliyor...`);
+          
+          // Dosya adını parse et
+          const parsed = parseProfessionalPdfName(file.name);
+          
+          if (!parsed) {
+            console.warn('⚠️ Dosya adı format hatası:', file.name);
+            sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: 'Dosya adı formatı tanınmadı' });
+            hatali++;
+            continue;
+          }
+
+          // Hasta oluştur/bul (GitHub entegrasyonlu)
+          const hasta = await findOrCreateHastaWithGitHub(parsed.hastaAdi);
+          
+          // Hafta oluştur/bul (GitHub güncellemeli)
+          const hafta = await findOrCreateHaftaWithGitHub(hasta, parsed.haftaNo, parsed.tarihAraligi);
+          
+          // PDF dosyasını işle
+          try {
+            // PDF'i Base64'e çevir ve hafta verisine ekle
+            const pdfBase64 = await fileToBase64(file);
+            hafta.pdf = pdfBase64;
+            hafta.pdfName = file.name;
+            hafta.pdfOrijinalIsim = file.name;
+            hafta.pdfYolu = `pdfs/${file.name}`;
+            hafta.pdfFile = {
+              name: file.name,
+              size: file.size,
+              type: file.type
+            };
+            
+            // PDF'den metin çıkar ve tarif analizi yap
+            try {
+              console.log(`🔍 ${file.name} PDF içerik analizi başlıyor...`);
+              
+              // Base64'den PDF metnini çıkar
+              let base64Data = pdfBase64;
+              if (base64Data.includes(',')) {
+                base64Data = base64Data.split(',')[1];
+              }
+              
+              // Base64 verisini temizle ve doğrula
+              base64Data = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
+              
+              if (!base64Data || base64Data.length === 0) {
+                console.warn(`⚠️ ${file.name} için geçersiz Base64 verisi`);
+                hafta.tarifler = [];
+                hafta.tarifKartlar = [];
+                throw new Error('Geçersiz PDF Base64 verisi');
+              }
+              
+              console.log(`📄 Base64 veri uzunluğu: ${base64Data.length} karakter`);
+              
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              
+              const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+              let fullText = '';
+              
+              for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const strings = textContent.items.map(item => item.str);
+                fullText += strings.join(' ') + '\n';
+              }
+              
+              console.log(`📄 PDF metni çıkarıldı: ${fullText.length} karakter`);
+              
+              // Tarif detaylarını çıkar
+              const tarifDetaylar = extractTariflerDetay(fullText);
+              hafta.tarifler = tarifDetaylar;
+              console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
+              
+              // Gelişmiş tarif eşleştirmesi için otomatikEsleHafta kullan
+              if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
+                // Hasta verisini geçici olarak güncelle
+                const tempSeciliHasta = seciliHasta;
+                
+                // Hasta bulup güncellenmiş haliyle eşleştirme yap
+                const bulunanHasta = window.hastalar ? window.hastalar.find(h => h.id === hasta.id) : null;
+                if (bulunanHasta && bulunanHasta.haftalar) {
+                  const bulunanHafta = bulunanHasta.haftalar.find(h => h.haftaNo === hafta.haftaNo);
+                  if (bulunanHafta) {
+                    // Geçici olarak seciliHasta'yı güncelle
+                    seciliHasta = bulunanHasta;
+                    
+                    // Hafta index'ini bul
+                    const haftaIndex = bulunanHasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
+                    if (haftaIndex >= 0) {
+                      console.log(`🔗 ${file.name} için gelişmiş tarif eşleştirmesi başlıyor...`);
+                      await otomatikEsleHafta(haftaIndex);
+                      
+                      // Güncellenmiş verileri ana hafta'ya kopyala
+                      hafta.tarifKartlar = bulunanHafta.tarifKartlar || [];
+                      console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                    }
+                    
+                    // seciliHasta'yı geri yükle
+                    seciliHasta = tempSeciliHasta;
+                  }
+                }
+                
+                // Fallback: Basit eşleştirme
+                if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
+                  console.log(`⚠️ Gelişmiş eşleştirme başarısız, basit eşleştirme deneniyor...`);
+                  hafta.tarifKartlar = [];
+                  let eslesenSayisi = 0;
+                  
+                  tarifDetaylar.forEach(tarif => {
+                    const tarifAdi = tarif.isim.toLowerCase().trim();
+                    
+                    // Tarif kartlarında ara
+                    const eslesenKart = window.tarifKartlari.find(kart => {
+                      const kartAdi = kart.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
+                      return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
+                    });
+                    
+                    if (eslesenKart) {
+                      hafta.tarifKartlar.push({
+                        tarifAdi: tarif.isim,
+                        kartResmi: eslesenKart,
+                        eslesmeTuru: 'otomatik-basit'
+                      });
+                      eslesenSayisi++;
+                    }
+                  });
+                  
+                  console.log(`🔗 Basit eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
+                }
+              } else {
+                console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
+                hafta.tarifKartlar = [];
+              }
+              
+            } catch (pdfAnalysisError) {
+              console.error('❌ PDF analiz hatası:', pdfAnalysisError);
+              hafta.tarifler = [];
+              hafta.tarifKartlar = [];
+            }
+            
+            // Güncellenmiş hasta verisini kaydet
+            await hastayiAyriKaydet(hasta);
+            
+          } catch (pdfError) {
+            console.warn('⚠️ PDF işleme hatası:', pdfError);
+            // PDF hatası olsa bile hasta/hafta kaydını tamamla
+          }
+          
+          sonuclar.push({ 
+            dosya: file.name, 
+            durum: 'BAŞARILI', 
+            hasta: parsed.hastaAdi,
+            hafta: parsed.haftaNo,
+            tarihAraligi: parsed.tarihAraligi,
+            tarifSayisi: hafta.tarifler ? hafta.tarifler.length : 0,
+            eslesmeSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
+            mesaj: `${hafta.tarifler ? hafta.tarifler.length : 0} tarif, ${hafta.tarifKartlar ? hafta.tarifKartlar.length : 0} eşleşme`
+          });
+          basarili++;
+          
+          console.log(`✅ ${file.name} başarıyla işlendi`);
+          
+        } catch (error) {
+          console.error('❌ PDF işleme hatası:', file.name, error);
+          sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: error.message });
+          hatali++;
+        }
+        
+        // Küçük bir delay (UI donmaması için)
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Progress dialog'u kapat
+      document.body.removeChild(progressDiv);
+      
+      // GitHub'dan hasta listesini yeniden yükle ve UI'ı güncelle
+      const token = document.getElementById('githubToken').value.trim();
+      if (basarili > 0) {
+        try {
+        console.log('🔄 Hasta listesi güncelleniyor...');
+        
+        // UI'ı güncelle
+        if (typeof updateHastaListesi === 'function') {
+          updateHastaListesi();
+          console.log('✅ Hasta listesi UI güncellendi');
+        } else {
+          console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
+        }
+          
+        } catch (error) {
+          console.warn('⚠️ Hasta listesi yenilenemedi:', error);
+        }
+      }
+      
+      // UI'ı güncelle (eğer fonksiyon mevcutsa)
+      if (typeof renderYeniSistem === 'function') {
+        renderYeniSistem();
+      }
+      
+      // Sonuç raporu göster
+      let raporHtml = `
+        <div style="max-height: 400px; overflow-y: auto;">
+          <h3>📊 İşlem Raporu</h3>
+          <p><strong>Toplam:</strong> ${files.length} dosya</p>
+          <p><strong>Başarılı:</strong> ${basarili}</p>
+          <p><strong>Hatalı:</strong> ${hatali}</p>
+          <hr>
+          <h4>Detaylar:</h4>
+      `;
+      
+      sonuclar.forEach(sonuc => {
+        const ikon = sonuc.durum === 'BAŞARILI' ? '✅' : '❌';
+        raporHtml += `<p>${ikon} <strong>${sonuc.dosya}</strong>`;
+        if (sonuc.hasta) {
+          raporHtml += ` → ${sonuc.hasta} (${sonuc.hafta}. hafta)`;
+          if (sonuc.tarifSayisi !== undefined) raporHtml += ` - ${sonuc.tarifSayisi} tarif`;
+          if (sonuc.eslesmeSayisi !== undefined) raporHtml += `, ${sonuc.eslesmeSayisi} eşleşme`;
+        }
+        if (sonuc.mesaj && sonuc.durum === 'HATA') raporHtml += ` - ${sonuc.mesaj}`;
+        raporHtml += `</p>`;
+      });
+      
+      raporHtml += '</div>';
+      
+      // Modal dialog oluştur
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); z-index: 10000; 
+        display: flex; align-items: center; justify-content: center;
+      `;
+      modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 600px; width: 90%;">
+          ${raporHtml}
+          <button onclick="this.closest('div').parentElement.remove()" 
+                  style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Tamam
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+      
+      // Cache'i temizle
+      if (typeof cokluPdfHastaCache !== 'undefined') {
+        console.log('🧹 Cache temizleniyor... Önceki boyut:', cokluPdfHastaCache.size);
+        cokluPdfHastaCache.clear();
+      }
+      
+      // Final kaydetme: Tüm değişiklikleri kesin olarak kaydet
+      saveToStorage();
+      console.log('💾 Çoklu PDF işlemi sonrası final kaydetme tamamlandı');
+    }
+
     // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
     function decodeBase64UTF8(base64Content) {
       try {
@@ -7781,24 +8077,7 @@ function duzenleHafta(i) {
 
   // Her tarif için eşleştirme yap
   hafta.tarifler.forEach(tarif => {
-    // UNDEFINED KONTROLÜ EKLENDİ
-    if (!tarif) {
-      console.warn('⚠️ Boş tarif bulundu, atlanıyor');
-      return;
-    }
-    
-    // Tarif obje mi yoksa string mi kontrolü
-    let tarifMetni = '';
-    if (typeof tarif === 'string') {
-      tarifMetni = tarif;
-    } else if (tarif && tarif.isim && typeof tarif.isim === 'string') {
-      tarifMetni = tarif.isim;
-    } else {
-      console.warn('⚠️ Geçersiz tarif formatı, atlanıyor:', tarif);
-      return;
-    }
-    
-    let tarifSatir = tarifMetni.replace(/^\*+\s*/, '').trim();
+    let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
     let eslesen = null;
     let eslesenKartlar = [];
     let eslesenTip = '';
@@ -7812,7 +8091,7 @@ function duzenleHafta(i) {
     }
 
     // 1. Önce manuel eşleştirme kontrol et
-    const manuelEslesenler = manuelEslestirmeKontrol(tarifMetni);
+    const manuelEslesenler = manuelEslestirmeKontrol(tarif);
     if (manuelEslesenler && manuelEslesenler.length > 0) {
       // Manuel eşleştirme bulundu
       const kullanilamayacaklar = manuelEslesenler.filter(kart => kullanilanKartlar.has(kart.name));
@@ -7837,7 +8116,7 @@ function duzenleHafta(i) {
           if (kullanilanKartlar.has(kart.name)) continue;
 
           // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
-          if (eslesmemeKontrolu(tarifMetni, kart.name)) {
+          if (eslesmemeKontrolu(tarif, kart.name)) {
             continue; // Bu kart yasaklı, sonrakine geç
           }
 
@@ -8007,24 +8286,10 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
   
   // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
-  const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => {
-    if (e.tarif && typeof e.tarif === 'string') {
-      return e.tarif.toLowerCase();
-    } else if (e.tarif && e.tarif.isim && typeof e.tarif.isim === 'string') {
-      return e.tarif.isim.toLowerCase();
-    }
-    return '';
-  }).filter(t => t.length > 0);
-  
-  hafta.tarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => {
-    let tarifIsmi = '';
-    if (typeof tarif === 'string') {
-      tarifIsmi = tarif.toLowerCase();
-    } else if (tarif && tarif.isim && typeof tarif.isim === 'string') {
-      tarifIsmi = tarif.isim.toLowerCase();
-    }
-    return tarifIsmi && eslesenTarifIsimleri.includes(tarifIsmi);
-  }) : [];
+  const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
+  hafta.tarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
+    eslesenTarifIsimleri.includes(tarif.toLowerCase())
+  ) : [];
   
   console.log('📝 Eşleştirme öncesi toplam tarif:', hafta.tarifler ? hafta.tarifler.length : 0);
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
@@ -10467,135 +10732,54 @@ ${mesajlar.join('\n')}
           
           // PDF'i analiz et ve tarifleri çıkar
           let pdfText = '';
-          let tarifDetaylar = [];
+          let tarifler = [];
           let eslesenKartlar = [];
           let recipeCount = 0;
           let matchCount = 0;
           
           try {
-            console.log(`🔍 ${file.name} PDF içerik analizi başlıyor...`);
-            
             // PDF içeriğini çıkar
-            let base64Data = pdfBase64;
-            if (base64Data.includes(',')) {
-              base64Data = base64Data.split(',')[1];
-            }
-            
-            // Base64 verisini temizle ve doğrula
-            base64Data = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
-            
-            if (!base64Data || base64Data.length === 0) {
-              console.warn(`⚠️ ${file.name} için geçersiz Base64 verisi`);
-              throw new Error('Geçersiz PDF Base64 verisi');
-            }
-            
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let j = 0; j < binaryString.length; j++) {
-              bytes[j] = binaryString.charCodeAt(j);
-            }
-            
-            const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+            const loadingTask = pdfjsLib.getDocument({data: atob(pdfBase64)});
+            const pdf = await loadingTask.promise;
             
             for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
-              const pageText = textContent.items.map(item => item ? (item.str || '') : '').join(' ');
+              const pageText = textContent.items.map(item => item.str).join(' ');
               pdfText += pageText + ' ';
             }
             
-            console.log(`📄 PDF metni çıkarıldı: ${pdfText.length} karakter`);
-            
-            // Tarif detaylarını çıkar
-            tarifDetaylar = extractTariflerDetay(pdfText);
-            hafta.tarifler = tarifDetaylar;
-            recipeCount = tarifDetaylar.length;
-            console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
-            
-            // OTOMATİK ESLEŞTİRME YAP
-            // Tarif kartları mevcutsa gelişmiş eşleştirme yap
-            if (window.tariflerKlasoruGorselleri && window.tariflerKlasoruGorselleri.length > 0 && tarifDetaylar.length > 0) {
-              console.log(`🔗 ${file.name} için gelişmiş tarif eşleştirmesi başlıyor...`);
-              
-              // Hasta seçili durumunu geçici ayarla
-              const eskiSeciliHasta = seciliHasta;
-              seciliHasta = hasta;
-              
-              // Hafta index'ini bul
-              const haftaIndex = hasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
-              if (haftaIndex >= 0) {
-                try {
-                  // otomatikEsleHafta fonksiyonunu çağır
-                  const eslestirmeSonucu = await otomatikEsleHafta(haftaIndex);
-                  
-                  if (eslestirmeSonucu && eslestirmeSonucu.eslesenKartlar) {
-                    hafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar;
-                    matchCount = eslestirmeSonucu.eslesenKartlar.length;
-                    console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${matchCount} eşleşme`);
-                  } else {
-                    console.warn('⚠️ Gelişmiş eşleştirme sonuç döndürmedi');
-                  }
-                } catch (eslestirmeError) {
-                  console.warn('⚠️ Gelişmiş eşleştirme hatası:', eslestirmeError);
-                }
-              }
-              
-              // Hasta seçili durumunu geri yükle
-              seciliHasta = eskiSeciliHasta;
-            }
-            
-            // Fallback: Eğer gelişmiş eşleştirme başarısız olduysa basit eşleştirme dene
-            if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
-              console.log(`⚠️ Gelişmiş eşleştirme başarısız, basit eşleştirme deneniyor...`);
-              hafta.tarifKartlar = [];
-              matchCount = 0;
-              
-              // Basit eşleştirme: sadece tariflerKlasoruGorselleri ile
-              if (window.tariflerKlasoruGorselleri && window.tariflerKlasoruGorselleri.length > 0) {
-                tarifDetaylar.forEach(tarif => {
-                  if (!tarif || !tarif.isim) return;
-                  
-                  const tarifAdi = tarif.isim.toLowerCase().trim();
-                  
-                  // Tarif kartlarında ara
-                  window.tariflerKlasoruGorselleri.forEach(gorselInfo => {
-                    if (!gorselInfo || !gorselInfo.name) return;
-                    
-                    const kartAdi = gorselInfo.name.toLowerCase()
-                      .replace(/\.(jpg|png|jpeg|webp)$/i, '')
-                      .replace(/_/g, ' ')
-                      .trim();
-                    
-                    // Basit içerme kontrolü
-                    if (kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi)) {
-                      hafta.tarifKartlar.push({
-                        tarifAdi: tarif.isim,
-                        kartResmi: gorselInfo.name,
-                        eslesmeTuru: 'otomatik-basit',
-                        eklenmeTarihi: new Date().toISOString()
-                      });
-                      matchCount++;
-                    }
+            // Tarifleri analiz et
+            if (typeof window.tarifKartlari !== 'undefined' && Array.isArray(window.tarifKartlari)) {
+              window.tarifKartlari.forEach(kart => {
+                const tarifAdi = kart.querySelector('.card-title')?.textContent?.trim();
+                if (tarifAdi && pdfText.toLowerCase().includes(tarifAdi.toLowerCase())) {
+                  tarifler.push(tarifAdi);
+                  eslesenKartlar.push({
+                    id: kart.id,
+                    name: tarifAdi,
+                    kategori: kart.dataset.kategori || 'Genel',
+                    type: 'auto',
+                    eklenmeTarihi: new Date().toISOString()
                   });
-                });
-              }
-              
-              console.log(`🔗 Basit eşleştirme tamamlandı: ${matchCount} eşleşme`);
+                  matchCount++;
+                }
+              });
             }
+            
+            // Toplam tarif sayısını tahmin et
+            const tarifMatches = pdfText.match(/tarif|yemek|öğün/gi);
+            recipeCount = tarifMatches ? tarifMatches.length : 0;
             
           } catch (pdfError) {
             console.warn('PDF içerik çıkarma hatası:', pdfError);
-            hafta.tarifler = [];
-            hafta.tarifKartlar = [];
           }
           
           // Hafta verilerini güncelle
-          hafta.tarifler = tarifDetaylar;
+          hafta.tarifler = tarifler;
+          hafta.tarifKartlar = eslesenKartlar;
           hafta.pdfText = pdfText.substring(0, 2000); // İlk 2000 karakter
           hafta.gptMesaj = `PDF analizi: ${recipeCount} tarif tespit edildi, ${matchCount} eşleşme bulundu.`;
-          
-          // Otomatik kaydetme
-          autoSaveHastaData(hasta);
           
           sonuclar.push({ 
             dosya: file.name, 
