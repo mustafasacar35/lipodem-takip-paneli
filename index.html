@@ -595,6 +595,8 @@
       <!-- Araçlar -->
       <div class="sidebar-section">
         <h3>🛠️ Araçlar</h3>
+        <input type="file" id="cokluPdfInput" multiple accept=".pdf" style="display:none" onchange="processCokluPdf(this.files)">
+        <button onclick="document.getElementById('cokluPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">📁 Çoklu PDF Yükle</button>
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
@@ -9564,6 +9566,251 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     
     // Global accordion fonksiyonu
     window.toggleAccordion = toggleAccordion;
+
+    // 📁 ÇOKLU PDF UPLOAD SİSTEMİ
+    function parseProfessionalPdfName(fileName) {
+      // Türkçe karakterleri normalize et
+      fileName = fileName.replace(/[İıĞğÜüŞşÖöÇç]/g, (match) => {
+        const map = {'İ': 'I', 'ı': 'i', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o', 'Ç': 'C', 'ç': 'c'};
+        return map[match] || match;
+      });
+
+      // Türkçe ay isimleri mapping
+      const aylar = {
+        'OCAK': 1, 'SUBAT': 2, 'MART': 3, 'NISAN': 4,
+        'MAYIS': 5, 'HAZIRAN': 6, 'TEMMUZ': 7, 'AGUSTOS': 8,
+        'EYLUL': 9, 'EKIM': 10, 'KASIM': 11, 'ARALIK': 12
+      };
+
+      // Regex pattern - ESİN KARAKUŞ 28 TEMMUZ -3 AĞUSTOS 17. HAFTA
+      const pattern = /^(.+?)\s+(\d{1,2})\s+(\w+)\s*-\s*(\d{1,2})\s+(\w+)\s+(\d+)\.\s*HAFTA/i;
+      
+      const match = fileName.replace('.pdf', '').match(pattern);
+      
+      if (match) {
+        const [_, hastaAdi, gun1, ay1, gun2, ay2, haftaNo] = match;
+        
+        return {
+          hastaAdi: hastaAdi.trim(),
+          baslangicTarihi: `${gun1} ${ay1}`,
+          bitisTarihi: `${gun2} ${ay2}`,
+          haftaNo: parseInt(haftaNo),
+          tarihAraligi: `${gun1} ${ay1} - ${gun2} ${ay2}`
+        };
+      }
+      
+      return null;
+    }
+
+    function findOrCreateHasta(hastaAdi) {
+      // Mevcut hastalar arasında ara
+      let mevcutHasta = hastalar.find(h => h.ad.toLowerCase() === hastaAdi.toLowerCase());
+      
+      if (!mevcutHasta) {
+        // Yeni hasta oluştur
+        const yeniHastaId = 'hasta_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        mevcutHasta = {
+          id: yeniHastaId,
+          ad: hastaAdi,
+          haftalar: []
+        };
+        hastalar.push(mevcutHasta);
+        console.log('✅ Yeni hasta oluşturuldu:', hastaAdi);
+      }
+      
+      return mevcutHasta;
+    }
+
+    function findOrCreateHafta(hasta, haftaNo, tarihAraligi) {
+      // Mevcut hafta var mı kontrol et
+      let mevcutHafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
+      
+      if (!mevcutHafta) {
+        // Yeni hafta oluştur
+        mevcutHafta = {
+          haftaNo: haftaNo,
+          tarihAraligi: tarihAraligi,
+          tarifler: [],
+          tarifKartlar: [],
+          manuelKartlar: [],
+          gptMesaj: '',
+          aciklama: ''
+        };
+        hasta.haftalar.push(mevcutHafta);
+        
+        // Hafta sırasına göre sırala
+        hasta.haftalar.sort((a, b) => a.haftaNo - b.haftaNo);
+        
+        console.log(`✅ ${hasta.ad} için ${haftaNo}. hafta oluşturuldu (${tarihAraligi})`);
+      }
+      
+      return mevcutHafta;
+    }
+
+    async function processCokluPdf(files) {
+      if (!files || files.length === 0) {
+        alert('Lütfen en az bir PDF dosyası seçin.');
+        return;
+      }
+
+      console.log('📁 Çoklu PDF işlemi başlatıldı:', files.length, 'dosya');
+      
+      const sonuclar = [];
+      let basarili = 0;
+      let hatali = 0;
+
+      // Progress gösterimi
+      const progressDiv = document.createElement('div');
+      progressDiv.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000; min-width: 300px; text-align: center;
+      `;
+      progressDiv.innerHTML = `
+        <h3>📁 PDF'ler İşleniyor...</h3>
+        <div id="progressBar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+          <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(45deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+        </div>
+        <div id="progressText">0 / ${files.length}</div>
+      `;
+      document.body.appendChild(progressDiv);
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const progress = ((i + 1) / files.length) * 100;
+        
+        // Progress güncelle
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('progressText').textContent = `${i + 1} / ${files.length}`;
+        
+        try {
+          console.log(`🔍 ${i + 1}/${files.length} - "${file.name}" analiz ediliyor...`);
+          
+          // Dosya adını parse et
+          const parsed = parseProfessionalPdfName(file.name);
+          
+          if (!parsed) {
+            console.warn('⚠️ Dosya adı format hatası:', file.name);
+            sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: 'Dosya adı formatı tanınmadı' });
+            hatali++;
+            continue;
+          }
+
+          // Hasta oluştur/bul
+          const hasta = findOrCreateHasta(parsed.hastaAdi);
+          
+          // Hafta oluştur/bul
+          const hafta = findOrCreateHafta(hasta, parsed.haftaNo, parsed.tarihAraligi);
+          
+          // PDF'i analiz et
+          const pdfText = await extractPdfText(file);
+          const tarifler = extractTariflerFromText(pdfText);
+          
+          // Tarifleri hafta'ya kaydet
+          hafta.tarifler = tarifler;
+          hafta.pdfText = pdfText;
+          
+          // Tarif eşleştirmesi yap
+          await performTarifEslestirmesi(hafta, hasta);
+          
+          sonuclar.push({ 
+            dosya: file.name, 
+            durum: 'BAŞARILI', 
+            hasta: parsed.hastaAdi,
+            hafta: parsed.haftaNo,
+            tarifSayisi: tarifler.length 
+          });
+          basarili++;
+          
+          console.log(`✅ ${file.name} başarıyla işlendi`);
+          
+        } catch (error) {
+          console.error('❌ PDF işleme hatası:', file.name, error);
+          sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: error.message });
+          hatali++;
+        }
+        
+        // Küçük bir delay (UI donmaması için)
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Progress dialog'u kapat
+      document.body.removeChild(progressDiv);
+      
+      // Sonuçları kaydet
+      await saveAllData();
+      
+      // UI'ı güncelle
+      gosterHastalar();
+      
+      // Sonuç raporu göster
+      showCokluPdfSonuclari(sonuclar, basarili, hatali);
+      
+      console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+    }
+
+    async function performTarifEslestirmesi(hafta, hasta) {
+      if (!hafta.tarifler || hafta.tarifler.length === 0) {
+        return;
+      }
+
+      // Mevcut eşleştirme fonksiyonunu kullan
+      const eskiHafta = { haftaNo: hafta.haftaNo };
+      const eskiHasta = { haftalar: [hafta] };
+      
+      // Tarif eşleştirmesi yap (mevcut algoritma)
+      const eslesmeAnalizi = analyzeEslesme(hafta.tarifler);
+      hafta.tarifKartlar = eslesmeAnalizi.eslesenler.map(e => e.kart);
+      
+      console.log(`🔗 ${hasta.ad} ${hafta.haftaNo}. hafta: ${hafta.tarifKartlar.length} tarif eşleşti`);
+    }
+
+    async function extractPdfText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          try {
+            const typedarray = new Uint8Array(e.target.result);
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            let fullText = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              fullText += pageText + '\n';
+            }
+            
+            resolve(fullText);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('PDF okuma hatası'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function showCokluPdfSonuclari(sonuclar, basarili, hatali) {
+      let rapor = `🎉 ÇOKLU PDF İŞLEMİ TAMAMLANDI!\n\n`;
+      rapor += `✅ Başarılı: ${basarili}\n`;
+      rapor += `❌ Hatalı: ${hatali}\n`;
+      rapor += `📊 Toplam: ${sonuclar.length}\n\n`;
+      
+      rapor += `📋 DETAYLAR:\n`;
+      sonuclar.forEach((sonuc, index) => {
+        if (sonuc.durum === 'BAŞARILI') {
+          rapor += `${index + 1}. ✅ ${sonuc.hasta} - ${sonuc.hafta}. hafta (${sonuc.tarifSayisi} tarif)\n`;
+        } else {
+          rapor += `${index + 1}. ❌ ${sonuc.dosya} - ${sonuc.mesaj}\n`;
+        }
+      });
+      
+      alert(rapor);
+    }
+
+    // Global fonksiyon yap
+    window.processCokluPdf = processCokluPdf;
 
         sayfaBaslat();
         initResizableSidebars();
