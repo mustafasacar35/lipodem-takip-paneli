@@ -896,6 +896,59 @@
       return null;
     }
 
+    // Dosyayı Base64'e çevirme
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1]; // Data URL prefix'ini kaldır
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Tarih aralığını parse etme
+    function parseTarihAraligi(tarihAraligi) {
+      const bugun = new Date();
+      const yil = bugun.getFullYear();
+      
+      // "28 TEMMUZ - 3 AĞUSTOS" formatını parse et
+      const aylar = {
+        'OCAK': '01', 'ŞUBAT': '02', 'MART': '03', 'NİSAN': '04',
+        'MAYIS': '05', 'HAZİRAN': '06', 'TEMMUZ': '07', 'AĞUSTOS': '08',
+        'EYLÜL': '09', 'EKİM': '10', 'KASIM': '11', 'ARALIK': '12'
+      };
+      
+      try {
+        const parts = tarihAraligi.split(' - ');
+        if (parts.length >= 2) {
+          const baslangicParts = parts[0].trim().split(' ');
+          const bitisParts = parts[1].trim().split(' ');
+          
+          const baslangicGun = baslangicParts[0].padStart(2, '0');
+          const baslangicAy = aylar[baslangicParts[1]] || '01';
+          
+          const bitisGun = bitisParts[0].padStart(2, '0');
+          const bitisAy = aylar[bitisParts[1]] || '01';
+          
+          return {
+            baslangic: `${yil}-${baslangicAy}-${baslangicGun}`,
+            bitis: `${yil}-${bitisAy}-${bitisGun}`
+          };
+        }
+      } catch (error) {
+        console.warn('Tarih parse hatası:', error);
+      }
+      
+      // Fallback
+      return {
+        baslangic: bugun.toISOString().split('T')[0],
+        bitis: bugun.toISOString().split('T')[0]
+      };
+    }
+
     // Hasta bulma/oluşturma (GitHub entegrasyonlu)
     async function findOrCreateHastaWithGitHub(hastaAdi) {
       console.log('👤 Hasta aranıyor/oluşturuluyor:', hastaAdi);
@@ -907,15 +960,19 @@
       let hasta = hastalar.find(h => h.ad && h.ad.toUpperCase() === hastaAdi.toUpperCase());
       
       if (!hasta) {
-        // Yeni hasta oluştur
+        // Yeni hasta oluştur (manuel kayıt formatına uygun)
         const hastaId = generatePatientId(hastaAdi);
         hasta = {
           id: hastaId,
           isim: hastaAdi,
           ad: hastaAdi, // backward compatibility
+          not: "",
+          arsiv: false,
           kayitTarihi: new Date().toISOString(),
           haftalar: [],
-          durumu: 'aktif'
+          durumu: 'aktif',
+          olusturmaTarihi: new Date().toISOString(),
+          yeniSistem: true
         };
         hastalar.push(hasta);
         console.log('✅ Yeni hasta oluşturuldu:', hastaAdi);
@@ -968,13 +1025,26 @@
       let hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
       
       if (!hafta) {
-        // Yeni hafta oluştur
+        // Tarihleri parse et
+        const tarihBilgisi = parseTarihAraligi(tarihAraligi);
+        
+        // Yeni hafta oluştur (manuel kayıt formatına uygun)
         hafta = {
           haftaNo: haftaNo,
-          tarihAraligi: tarihAraligi,
+          baslangic: tarihBilgisi.baslangic,
+          bitis: tarihBilgisi.bitis,
+          aciklama: "",
+          pdf: null,
+          pdfName: null,
+          pdfOrijinalIsim: null,
+          pdfYolu: null,
+          githubUrl: null,
+          indirmeUrl: null,
           kayitTarihi: new Date().toISOString(),
+          tarifKartlar: [],
           tarifler: [],
-          tarifKartlar: []
+          gptMesaj: "",
+          pdfFile: {}
         };
         hasta.haftalar.push(hafta);
         console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta oluşturuldu (${tarihAraligi})`);
@@ -1051,12 +1121,55 @@
           // Hafta oluştur/bul (GitHub güncellemeli)
           const hafta = await findOrCreateHaftaWithGitHub(hasta, parsed.haftaNo, parsed.tarihAraligi);
           
+          // PDF dosyasını işle
+          try {
+            // PDF'i Base64'e çevir ve hafta verisine ekle
+            const pdfBase64 = await fileToBase64(file);
+            hafta.pdf = pdfBase64;
+            hafta.pdfName = file.name;
+            hafta.pdfOrijinalIsim = file.name;
+            hafta.pdfYolu = `pdfs/${file.name}`;
+            hafta.pdfFile = {
+              name: file.name,
+              size: file.size,
+              type: file.type
+            };
+            
+            // PDF'den metin çıkar
+            if (typeof extractPdfText === 'function') {
+              const pdfText = await extractPdfText(file);
+              console.log(`📄 PDF metni çıkarıldı: ${pdfText.length} karakter`);
+              
+              // Tarifler çıkar
+              if (typeof extractTariflerFromText === 'function') {
+                const tarifler = extractTariflerFromText(pdfText);
+                hafta.tarifler = tarifler;
+                console.log(`🍽️ ${tarifler.length} tarif bulundu`);
+                
+                // Tarif eşleştirmesi yap
+                if (typeof performTarifEslestirmesi === 'function') {
+                  await performTarifEslestirmesi(hafta, hasta);
+                  console.log(`🔗 Tarif eşleştirmesi tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                }
+              }
+            }
+            
+            // Güncellenmiş hasta verisini kaydet
+            await hastayiAyriKaydet(hasta);
+            
+          } catch (pdfError) {
+            console.warn('⚠️ PDF işleme hatası:', pdfError);
+            // PDF hatası olsa bile hasta/hafta kaydını tamamla
+          }
+          
           sonuclar.push({ 
             dosya: file.name, 
             durum: 'BAŞARILI', 
             hasta: parsed.hastaAdi,
             hafta: parsed.haftaNo,
-            tarihAraligi: parsed.tarihAraligi 
+            tarihAraligi: parsed.tarihAraligi,
+            tarifSayisi: hafta.tarifler ? hafta.tarifler.length : 0,
+            eslesmeSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0
           });
           basarili++;
           
@@ -1077,13 +1190,24 @@
       
       // GitHub'dan hasta listesini yeniden yükle ve UI'ı güncelle
       const token = document.getElementById('githubToken').value.trim();
-      if (token && basarili > 0) {
+      if (basarili > 0) {
         try {
-          console.log('🔄 GitHub\'dan hasta listesi yeniden yükleniyor...');
-          await yukleHastaListesiYeniSistem(true); // sessiz=true
-          console.log('✅ GitHub hasta listesi yenilendi');
+          console.log('🔄 Hasta listesi güncelleniyor...');
+          
+          if (token) {
+            // GitHub'dan hasta listesini yeniden yükle
+            await yukleHastaListesiYeniSistem(true); // sessiz=true
+            console.log('✅ GitHub hasta listesi yenilendi');
+          }
+          
+          // UI'ı güncelle
+          if (typeof renderHastalarYeniSistem === 'function') {
+            await renderHastalarYeniSistem();
+            console.log('✅ Hasta listesi UI güncellendi');
+          }
+          
         } catch (error) {
-          console.warn('⚠️ GitHub hasta listesi yenilenemedi:', error);
+          console.warn('⚠️ Hasta listesi yenilenemedi:', error);
         }
       }
       
@@ -1105,8 +1229,12 @@
       
       sonuclar.forEach(sonuc => {
         const ikon = sonuc.durum === 'BAŞARILI' ? '✅' : '❌';
-        raporHtml += `<p>${ikon} ${sonuc.dosya}`;
-        if (sonuc.hasta) raporHtml += ` → ${sonuc.hasta} (${sonuc.hafta}. hafta)`;
+        raporHtml += `<p>${ikon} <strong>${sonuc.dosya}</strong>`;
+        if (sonuc.hasta) {
+          raporHtml += ` → ${sonuc.hasta} (${sonuc.hafta}. hafta)`;
+          if (sonuc.tarifSayisi !== undefined) raporHtml += ` - ${sonuc.tarifSayisi} tarif`;
+          if (sonuc.eslesmeSayisi !== undefined) raporHtml += `, ${sonuc.eslesmeSayisi} eşleşme`;
+        }
         if (sonuc.mesaj && sonuc.durum === 'HATA') raporHtml += ` - ${sonuc.mesaj}`;
         raporHtml += `</p>`;
       });
