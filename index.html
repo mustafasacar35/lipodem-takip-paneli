@@ -844,216 +844,6 @@
   <script>
     // ⚡ ÇOKLU PDF İŞLEME FONKSİYONU (Global)
     
-    // Gelişmiş tarif eşleştirme fonksiyonu - çoklu PDF yükleme için
-    async function performAdvancedMatching(tarifDetaylar, hafta) {
-      console.log('🔍 Gelişmiş eşleştirme algoritması başlıyor...');
-      
-      // Tarif satırından alternatifli yemek adlarını ayıkla
-      function extractYemekAdlari(satir) {
-        let s = satir.replace(/^\*+\s*/, '');
-        s = s.replace(/\(.*?\)/g, '');
-        s = s.replace(/\+.*$/, '');
-        s = s.replace(/([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g))($|\s)/gi, '');
-        s = s.replace(/(istenilen baharatlarla|istenirse|isteğe bağlı|arzuya göre|isteğe göre|isteğe bağlı olarak|isteğe göre baharat|isteğe göre malzeme|isteğe göre eklenebilir)/gi, '');
-        
-        let alternatifler = s.split(/\s*(ya da|veya)\s*/i).map(a => a.trim()).filter(a => a.length > 0);
-        let tumAdlar = [];
-        
-        alternatifler.forEach(alt => {
-          alt = alt.replace(/\b(ile|için|ve)\b/gi, '');
-          let adlar = alt.split(/\s*[\/|,]\s*/).map(a => a.trim()).filter(a => a.length > 0);
-          adlar = adlar.map(a => a.replace(/^[0-9]+\s*/, '').replace(/\s*[0-9]+\s*(gram|gr|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?\s*$/i, '').replace(/\s*icin?$/i, '').replace(/\s*ile$/i, '').trim());
-          adlar = adlar.filter(a => a.length > 0);
-          tumAdlar = tumAdlar.concat(adlar);
-        });
-        
-        return tumAdlar;
-      }
-
-      // Manuel eşleştirme kontrolü
-      function manuelEslestirmeKontrol(tarifSatir) {
-        function normalizeLocal(str) {
-          return str
-            .toLowerCase()
-            .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-            .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-            .replace(/i̇/g, 'i')
-            .replace(/[_*\/()]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .replace(/[^a-z0-9\s]/g, '')
-            .trim();
-        }
-        
-        const normalizeEdilmis = normalizeLocal(tarifSatir);
-        
-        if (typeof manuelEslestirmeler !== 'undefined' && manuelEslestirmeler[normalizeEdilmis]) {
-          const eslestirme = manuelEslestirmeler[normalizeEdilmis];
-          return eslestirme.kartlar.map(kartAdi => {
-            const kart = tumKartlar.find(k => k.name === kartAdi);
-            return kart || null;
-          }).filter(k => k !== null);
-        }
-        
-        return null;
-      }
-
-      // Eşleşme yasağı kontrolü
-      function eslesmemeKontrolu(tarifSatir, kartAdi) {
-        function normalizeLocal(str) {
-          return str
-            .toLowerCase()
-            .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-            .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-            .replace(/i̇/g, 'i')
-            .replace(/[_*\/()]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .replace(/[^a-z0-9\s]/g, '')
-            .trim();
-        }
-        
-        const normalizeEdilmis = normalizeLocal(tarifSatir);
-        
-        if (typeof eslesmemeKurallari !== 'undefined' && eslesmemeKurallari[normalizeEdilmis]) {
-          const yasak = eslesmemeKurallari[normalizeEdilmis];
-          return yasak.yasakliKartlar.includes(kartAdi);
-        }
-        
-        return false;
-      }
-
-      // Dosya adındaki miktar ve açıklama kelimelerini temizle
-      function temizleDosyaAdi(ad) {
-        let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
-        s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, '');
-        s = s.replace(/\(.*?\)/g, '');
-        s = s.replace(/_?(istenilen_baharatlarla|istenirse|istege_bagli|arzuya_gore|istege_gore|istege_bagli_olarak|istege_gore_baharat|istege_gore_malzeme|istege_gore_eklenebilir)/gi, '');
-        s = s.replace(/_+/g, '_');
-        s = s.replace(/\s+/g, '_');
-        s = s.replace(/\+.*$/, '');
-        return s.trim();
-      }
-
-      // Normalize fonksiyonu
-      function normalize(str) {
-        return str
-          .toLowerCase()
-          .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-          .replace(/i̇/g, 'i')
-          .replace(/[_*\/()]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .replace(/[^a-z0-9\s]/g, '')
-          .trim();
-      }
-
-      // Kartların TÜM kelimelerinin PDF yemeğinde ardışık olarak bulunup bulunmadığını kontrol et
-      function kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler) {
-        if (kartKelimeler.length === 0) return false;
-        
-        const kartMetni = kartKelimeler.join(' ');
-        const tarifMetni = tarifKelimeler.join(' ');
-        
-        return tarifMetni.includes(kartMetni);
-      }
-
-      // Mevcut kartları birleştir (manuel + tarifler klasörü)
-      const tumKartlar = [].concat(
-        hafta.tarifKartlar || [],
-        (typeof tariflerKlasoruGorselleri !== 'undefined') ? tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url })) : []
-      );
-
-      console.log(`📊 Eşleştirme için mevcut kartlar: ${tumKartlar.length}`);
-
-      if (tumKartlar.length === 0) {
-        console.warn('⚠️ Hiç kart bulunamadı, eşleştirme yapılamıyor');
-        return { eslesenKartlar: [], eslesmeyenTarifler: tarifDetaylar };
-      }
-
-      const kullanilanKartlar = new Set();
-      let eslesenKartlarListesi = [];
-      let eslesmeyenTarifler = [];
-
-      // Her tarif için eşleştirme yap
-      tarifDetaylar.forEach(tarifObj => {
-        const tarifSatir = typeof tarifObj === 'string' ? tarifObj : tarifObj.isim || tarifObj.name || tarifObj;
-        let eslesenKartlar = [];
-        let eslesenTip = '';
-
-        // 1. Manuel eşleştirme kontrol et
-        const manuelEslesenler = manuelEslestirmeKontrol(tarifSatir);
-        if (manuelEslesenler && manuelEslesenler.length > 0) {
-          const kullanilabilirler = manuelEslesenler.filter(kart => !kullanilanKartlar.has(kart.name));
-          
-          if (kullanilabilirler.length > 0) {
-            eslesenKartlar = kullanilabilirler;
-            eslesenTip = 'manuel eşleştirme';
-            kullanilabilirler.forEach(kart => kullanilanKartlar.add(kart.name));
-          }
-        } else {
-          // 2. Otomatik eşleştirme dene
-          let yemekAdlari = extractYemekAdlari(tarifSatir);
-
-          for (let yemekAdi of yemekAdlari) {
-            const tarifNorm = normalize(yemekAdi);
-            const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
-
-            for (let kart of tumKartlar) {
-              if (kullanilanKartlar.has(kart.name)) continue;
-
-              if (eslesmemeKontrolu(tarifSatir, kart.name)) {
-                continue;
-              }
-
-              const kartNorm = normalize(temizleDosyaAdi(kart.name));
-              const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
-
-              // Tam eşleşme kontrol et
-              if (tarifNorm === kartNorm) {
-                eslesenKartlar = [kart];
-                eslesenTip = 'tam eşleşme';
-                break;
-              }
-
-              // Ardışık eşleşme kontrol et
-              if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-                eslesenKartlar = [kart];
-                eslesenTip = 'ardışık eşleşme';
-                break;
-              }
-            }
-
-            if (eslesenKartlar.length > 0) {
-              kullanilanKartlar.add(eslesenKartlar[0].name);
-              break;
-            }
-          }
-        }
-
-        // Eşleşme bulunduysa kaydet
-        if (eslesenKartlar.length > 0) {
-          eslesenKartlar.forEach(kart => {
-            eslesenKartlarListesi.push({
-              tarifAdi: tarifSatir,
-              kartResmi: kart.name,
-              eslesmeTuru: eslesenTip,
-              tarif: tarifSatir,
-              kart: kart,
-              tip: eslesenTip
-            });
-          });
-        } else {
-          eslesmeyenTarifler.push(tarifSatir);
-        }
-      });
-
-      console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${eslesenKartlarListesi.length} eşleşme, ${eslesmeyenTarifler.length} eşleşmeyen`);
-      
-      return {
-        eslesenKartlar: eslesenKartlarListesi,
-        eslesmeyenTarifler: eslesmeyenTarifler
-      };
-    }
-    
     // Profesyonel PDF adını parse etme
     function parseProfessionalPdfName(fileName) {
       console.log('🔍 PDF dosya adı parse ediliyor:', fileName);
@@ -1460,37 +1250,104 @@
               hafta.tarifler = tarifDetaylar;
               console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
               
-              // Gelişmiş tarif eşleştirmesi - manuel yüklemede kullanılan tam algoritma
-              console.log(`🔗 ${file.name} için gelişmiş tarif eşleştirmesi başlıyor...`);
-              hafta.tarifKartlar = [];
-              
-              // Eğer tarifler klasörü görselleri henüz yüklenmediyse, yükle
-              if (typeof tariflerKlasoruGorselleri === 'undefined' || tariflerKlasoruGorselleri.length === 0) {
-                try {
-                  await tariflerKlasoruGorselleriniYukle();
-                  console.log(`📁 Tarifler klasörü yüklendi: ${tariflerKlasoruGorselleri.length} görsel`);
-                } catch (e) {
-                  console.warn('⚠️ Tarifler klasörü yüklenemedi:', e);
+              // Gelişmiş tarif eşleştirmesi için otomatikEsleHafta kullan
+              if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
+                console.log(`🔗 ${file.name} için tarif eşleştirmesi başlıyor...`);
+                
+                // Hasta ve hafta verilerini güncelle (global değişkenler için)
+                const tempSeciliHasta = seciliHasta;
+                const tempHastalar = window.hastalar;
+                
+                // Hasta listesini güncelle
+                if (!window.hastalar) window.hastalar = [];
+                let hastaIndex = window.hastalar.findIndex(h => h.id === hasta.id);
+                if (hastaIndex === -1) {
+                  window.hastalar.push(hasta);
+                  hastaIndex = window.hastalar.length - 1;
+                } else {
+                  window.hastalar[hastaIndex] = hasta;
                 }
-              }
-              
-              // Manuel eşleştirmeleri yükle
-              if (typeof manuelEslestirmeler === 'undefined') {
-                try {
-                  await manuelEslestirmeleriGitHubYukle(true);
-                  console.log(`📋 Manuel eşleştirmeler yüklendi`);
-                } catch (e) {
-                  console.warn('⚠️ Manuel eşleştirmeler yüklenemedi:', e);
+                
+                // seciliHasta'yı geçici olarak güncelle
+                seciliHasta = hasta;
+                
+                // Hafta index'ini bul
+                const haftaIndex = hasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
+                if (haftaIndex >= 0) {
+                  try {
+                    // Gelişmiş otomatik eşleştirme yap
+                    await otomatikEsleHafta(haftaIndex);
+                    
+                    // Güncellenmiş verileri kopyala
+                    const guncelHafta = hasta.haftalar[haftaIndex];
+                    hafta.tarifKartlar = guncelHafta.tarifKartlar || [];
+                    hafta.tarifler = guncelHafta.tarifler || hafta.tarifler;
+                    
+                    console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme bulundu`);
+                  } catch (eslesmeError) {
+                    console.warn('⚠️ Gelişmiş eşleştirme hatası:', eslesmeError);
+                    hafta.tarifKartlar = [];
+                  }
                 }
-              }
-              
-              if (tarifDetaylar.length > 0) {
-                // Gelişmiş eşleştirme algoritması - otomatikEsleHafta fonksiyonundaki mantığı kullan
-                const eslestirmeSonucu = await performAdvancedMatching(tarifDetaylar, hafta);
-                hafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
-                console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme`);
+                
+                // Global değişkenleri geri yükle
+                seciliHasta = tempSeciliHasta;
+                window.hastalar = tempHastalar;
+                
+                // Eğer gelişmiş eşleştirme başarısız olduysa basit eşleştirme yap
+                if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
+                  console.log(`⚠️ Gelişmiş eşleştirme başarısız, manuel basit eşleştirme yapılıyor...`);
+                  hafta.tarifKartlar = [];
+                  let eslesenSayisi = 0;
+                  
+                  tarifDetaylar.forEach(tarif => {
+                    const tarifAdi = tarif.isim.toLowerCase().trim();
+                    
+                    // Daha gelişmiş kart eşleştirmesi
+                    const eslesenKart = window.tarifKartlari.find(kart => {
+                      const kartAdi = kart.toLowerCase()
+                        .replace(/\.(jpg|png|jpeg|webp)$/i, '')
+                        .replace(/_/g, ' ')
+                        .replace(/[^a-zçğıöşü\s]/gi, '')
+                        .trim();
+                      
+                      const temizTarifAdi = tarifAdi
+                        .replace(/[^a-zçğıöşü\s]/gi, '')
+                        .trim();
+                      
+                      // Kelime kelime karşılaştırma
+                      const kartKelimeler = kartAdi.split(/\s+/);
+                      const tarifKelimeler = temizTarifAdi.split(/\s+/);
+                      
+                      // En az %60 kelime eşleşmesi
+                      let eslesenKelimeSayisi = 0;
+                      tarifKelimeler.forEach(tk => {
+                        if (kartKelimeler.some(kk => 
+                          kk.includes(tk) || tk.includes(kk) || 
+                          (kk.length > 3 && tk.length > 3 && (kk.includes(tk.substring(0, 4)) || tk.includes(kk.substring(0, 4))))
+                        )) {
+                          eslesenKelimeSayisi++;
+                        }
+                      });
+                      
+                      const eslesmePortu = eslesenKelimeSayisi / Math.max(tarifKelimeler.length, 1);
+                      return eslesmePortu >= 0.6 || kartAdi.includes(temizTarifAdi) || temizTarifAdi.includes(kartAdi);
+                    });
+                    
+                    if (eslesenKart) {
+                      hafta.tarifKartlar.push({
+                        tarifAdi: tarif.isim,
+                        kartResmi: eslesenKart,
+                        eslesmeTuru: 'otomatik-gelismis'
+                      });
+                      eslesenSayisi++;
+                    }
+                  });
+                  
+                  console.log(`🔗 Manuel gelişmiş eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
+                }
               } else {
-                console.warn('⚠️ Tarif bulunamadı, eşleştirme atlanıyor');
+                console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
                 hafta.tarifKartlar = [];
               }
               
@@ -1536,27 +1393,42 @@
       document.body.removeChild(progressDiv);
       
       // GitHub'dan hasta listesini yeniden yükle ve UI'ı güncelle
-      const token = document.getElementById('githubToken').value.trim();
       if (basarili > 0) {
         try {
-        console.log('🔄 Hasta listesi güncelleniyor...');
-        
-        // UI'ı güncelle
-        if (typeof updateHastaListesi === 'function') {
-          updateHastaListesi();
-          console.log('✅ Hasta listesi UI güncellendi');
-        } else {
-          console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
-        }
+          console.log('🔄 Çoklu PDF işlemi sonrası sistem güncelleniyor...');
+          
+          // Cache'i temizle (yeni veriler için)
+          try {
+            const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('hasta_'));
+            cacheKeys.forEach(key => localStorage.removeItem(key));
+            console.log('✅ Cache temizlendi');
+          } catch (cacheError) {
+            console.warn('⚠️ Cache temizleme hatası:', cacheError);
+          }
+          
+          // Hasta listesini yeniden yükle
+          if (typeof loadHastaDataFromGitHub === 'function') {
+            await loadHastaDataFromGitHub(true); // sessiz mod
+            console.log('✅ Hasta listesi GitHub\'dan yeniden yüklendi');
+          }
+          
+          // UI'ı güncelle
+          if (typeof updateHastaListesi === 'function') {
+            updateHastaListesi();
+            console.log('✅ Hasta listesi UI güncellendi');
+          } else {
+            console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
+          }
+          
+          // Ana sistem UI'ını güncelle
+          if (typeof renderYeniSistem === 'function') {
+            renderYeniSistem();
+            console.log('✅ Ana sistem UI güncellendi');
+          }
           
         } catch (error) {
-          console.warn('⚠️ Hasta listesi yenilenemedi:', error);
+          console.warn('⚠️ Sistem güncelleme hatası:', error);
         }
-      }
-      
-      // UI'ı güncelle (eğer fonksiyon mevcutsa)
-      if (typeof renderYeniSistem === 'function') {
-        renderYeniSistem();
       }
       
       // Sonuç raporu göster
@@ -5300,71 +5172,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (deleteResponse.ok) {
           console.log(`✅ Hasta dosyası arşivlendi: ${eskiDosyaAdi} → ${yeniDosyaAdi}`);
           
-          // KAPSAMLI CACHE TEMİZLİĞİ
-          console.log('🧹 Kapsamlı cache temizliği başlıyor...');
-          
-          // 1. LocalStorage cache temizliği
-          console.log('💿 LocalStorage cache temizleniyor...');
-          const hastaId = seciliHasta.id;
-          
-          // Hasta ile ilgili tüm cache anahtarlarını bul ve temizle
-          const cacheAnahtarlari = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const anahtar = localStorage.key(i);
-            if (anahtar && (
-              anahtar.includes(`hafta_${hastaId}`) ||
-              anahtar.includes(`hasta_${hastaId}`) ||
-              anahtar === `seciliHasta_${hastaId}` ||
-              anahtar === `hastaCache_${hastaId}`
-            )) {
-              cacheAnahtarlari.push(anahtar);
-            }
-          }
-          
-          cacheAnahtarlari.forEach(anahtar => {
-            localStorage.removeItem(anahtar);
-            console.log(`🗑️ LocalStorage temizlendi: ${anahtar}`);
-          });
-          
-          // 2. Çoklu PDF cache temizliği
-          if (typeof cokluPdfHastaCache !== 'undefined' && cokluPdfHastaCache.has(hastaId)) {
-            cokluPdfHastaCache.delete(hastaId);
-            console.log(`🗑️ Çoklu PDF cache temizlendi: ${hastaId}`);
-          }
-          
-          // 3. Memory cache temizliği
-          if (typeof hastaCache !== 'undefined' && hastaCache[hastaId]) {
-            delete hastaCache[hastaId];
-            console.log(`🗑️ Memory cache temizlendi: ${hastaId}`);
-          }
-          
-          // 4. Global hasta listesi temizliği
-          if (typeof hastalar !== 'undefined' && hastalar.length > 0) {
-            const oncekiUzunluk = hastalar.length;
-            hastalar = hastalar.filter(h => h.id !== hastaId);
-            console.log(`🗑️ Global listeden kaldırıldı: ${oncekiUzunluk} → ${hastalar.length}`);
-          }
-          
-          // 5. Session cache temizliği (eğer varsa)
-          if (typeof sessionStorage !== 'undefined') {
-            for (let i = 0; i < sessionStorage.length; i++) {
-              const anahtar = sessionStorage.key(i);
-              if (anahtar && anahtar.includes(hastaId)) {
-                sessionStorage.removeItem(anahtar);
-                console.log(`🗑️ SessionStorage temizlendi: ${anahtar}`);
-              }
-            }
-          }
-          
-          console.log('✅ Kapsamlı cache temizliği tamamlandı');
-          
           // Hasta listesinden de kaldır
           const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
           if (listeGuncellendi) {
-            // En son cache güncellemesi
-            saveToStorage();
-            
-            alert(`✅ ${seciliHasta.isim} hasta kaydı başarıyla silindi!\n\n📁 Arşiv dosyası: ${yeniDosyaAdi}\n🧹 Tüm cache verileri temizlendi\n💾 Değişiklikler kaydedildi`);
+            alert(`✅ ${seciliHasta.isim} hasta kaydı arşivlendi!\n\nDosya: ${yeniDosyaAdi}`);
             
             // Panel temizle ve listeyi yenile
             kapatDetay();
@@ -5385,47 +5196,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           if (alternatifOnay) {
             try {
-              // Önce cache temizliği yap
-              console.log('🧹 Alternatif silme - cache temizliği...');
-              const hastaId = seciliHasta.id;
-              
-              // LocalStorage temizliği
-              const cacheAnahtarlari = [];
-              for (let i = 0; i < localStorage.length; i++) {
-                const anahtar = localStorage.key(i);
-                if (anahtar && (
-                  anahtar.includes(`hafta_${hastaId}`) ||
-                  anahtar.includes(`hasta_${hastaId}`) ||
-                  anahtar === `seciliHasta_${hastaId}` ||
-                  anahtar === `hastaCache_${hastaId}`
-                )) {
-                  cacheAnahtarlari.push(anahtar);
-                }
-              }
-              
-              cacheAnahtarlari.forEach(anahtar => {
-                localStorage.removeItem(anahtar);
-              });
-              
-              // Diğer cache türlerini temizle
-              if (typeof cokluPdfHastaCache !== 'undefined' && cokluPdfHastaCache.has(hastaId)) {
-                cokluPdfHastaCache.delete(hastaId);
-              }
-              
-              if (typeof hastaCache !== 'undefined' && hastaCache[hastaId]) {
-                delete hastaCache[hastaId];
-              }
-              
-              if (typeof hastalar !== 'undefined' && hastalar.length > 0) {
-                hastalar = hastalar.filter(h => h.id !== hastaId);
-              }
-              
-              console.log('✅ Cache temizliği tamamlandı');
-              
               const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
               if (listeGuncellendi) {
-                saveToStorage(); // Cache değişikliklerini kaydet
-                alert(`✅ ${seciliHasta.isim} hasta listesinden kaldırıldı!\n\n⚠️ Not: Dosya GitHub'da hala mevcut\n🧹 Tüm cache verileri temizlendi`);
+                alert(`✅ ${seciliHasta.isim} hasta listesinden kaldırıldı!\n\n⚠️ Not: Dosya GitHub'da hala mevcut.`);
                 kapatDetay();
                 await renderHastalarYeniSistem();
                 return;
@@ -5440,64 +5213,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
-    // Sadece listeden kaldırma fonksiyonu (dosyayı silmez) - cache temizliği ile
+    // Sadece listeden kaldırma fonksiyonu (dosyayı silmez)
     async function sadeceLisedenKaldir() {
       if (!seciliHasta) {
         alert('❌ Önce bir hasta seçin!');
         return;
       }
       
-      const onay = confirm(`📋 "${seciliHasta.isim}" hastasını sadece listeden kaldırmak istediğinize emin misiniz?\n\n⚠️ Dosya GitHub'da kalacak, sadece listede görünmeyecek.\n🧹 Cache verileri temizlenecek.`);
+      const onay = confirm(`📋 "${seciliHasta.isim}" hastasını sadece listeden kaldırmak istediğinize emin misiniz?\n\n⚠️ Dosya GitHub'da kalacak, sadece listede görünmeyecek.`);
       if (!onay) return;
       
       try {
         console.log(`📋 ${seciliHasta.isim} listeden kaldırılıyor...`);
         
-        // Cache temizliği
-        console.log('🧹 Cache temizliği başlıyor...');
-        const hastaId = seciliHasta.id;
-        
-        // LocalStorage temizliği
-        const cacheAnahtarlari = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const anahtar = localStorage.key(i);
-          if (anahtar && (
-            anahtar.includes(`hafta_${hastaId}`) ||
-            anahtar.includes(`hasta_${hastaId}`) ||
-            anahtar === `seciliHasta_${hastaId}` ||
-            anahtar === `hastaCache_${hastaId}`
-          )) {
-            cacheAnahtarlari.push(anahtar);
-          }
-        }
-        
-        cacheAnahtarlari.forEach(anahtar => {
-          localStorage.removeItem(anahtar);
-          console.log(`🗑️ LocalStorage temizlendi: ${anahtar}`);
-        });
-        
-        // Diğer cache türlerini temizle
-        if (typeof cokluPdfHastaCache !== 'undefined' && cokluPdfHastaCache.has(hastaId)) {
-          cokluPdfHastaCache.delete(hastaId);
-          console.log(`🗑️ Çoklu PDF cache temizlendi`);
-        }
-        
-        if (typeof hastaCache !== 'undefined' && hastaCache[hastaId]) {
-          delete hastaCache[hastaId];
-          console.log(`🗑️ Memory cache temizlendi`);
-        }
-        
-        if (typeof hastalar !== 'undefined' && hastalar.length > 0) {
-          hastalar = hastalar.filter(h => h.id !== hastaId);
-          console.log(`🗑️ Global listeden kaldırıldı`);
-        }
-        
-        console.log('✅ Cache temizliği tamamlandı');
-        
         const listeGuncellendi = await hastaListesindenKaldir(seciliHasta.id);
         if (listeGuncellendi) {
-          saveToStorage(); // Cache değişikliklerini kaydet
-          alert(`✅ ${seciliHasta.isim} listeden kaldırıldı!\n\n💾 Dosya GitHub'da korunuyor\n🧹 Tüm cache verileri temizlendi`);
+          alert(`✅ ${seciliHasta.isim} listeden kaldırıldı!\n\n💾 Dosya GitHub'da korunuyor.`);
           kapatDetay();
           await renderHastalarYeniSistem();
         } else {
@@ -6294,168 +6025,80 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
   return null;
 }
 
-// Hafta sil - Gelişmiş temizlik (cache, web arayüzü ve hasta JSON dosyası)
+// Hafta sil
 async function silHafta(i) {
-  if (!confirm('Bu haftayı silmek istediğinize emin misiniz?\n\nBu işlem şunları yapacak:\n• Haftayı web arayüzünden kaldıracak\n• Cache\'den temizleyecek\n• Hasta JSON dosyasından silecek\n• Tüm verileri GitHub\'a kaydedecek')) return;
-  
-  console.log(`🗑️ ${i}. hafta silinmeye başlanıyor...`);
-  
+  if (!seciliHasta) {
+    alert('❌ Lütfen önce bir hasta seçin!');
+    return;
+  }
+
   const haftalar = getHaftaListesi();
   const silinecekHafta = haftalar[i];
   
   if (!silinecekHafta) {
-    console.warn('⚠️ Silinecek hafta bulunamadı:', i);
+    alert('❌ Silinecek hafta bulunamadı!');
     return;
   }
-  
-  console.log('🔍 Silinecek hafta bilgileri:', {
-    haftaNo: silinecekHafta.haftaNo || (i + 1),
-    baslangic: silinecekHafta.baslangic,
-    bitis: silinecekHafta.bitis,
-    pdfVar: !!silinecekHafta.pdf,
-    tarifSayisi: silinecekHafta.tarifler?.length || 0,
-    kartSayisi: silinecekHafta.tarifKartlar?.length || 0
-  });
+
+  if (!confirm(`Bu haftayı silmek istediğinize emin misiniz?\n\nHafta: ${silinecekHafta.haftaNo}\nTarih Aralığı: ${silinecekHafta.baslangic} - ${silinecekHafta.bitis}\n\n⚠️ Bu işlem geri alınamaz!`)) {
+    return;
+  }
 
   try {
-    // 1. WEB ARAYÜZÜNDEN KALDIR
-    console.log('🌐 1. Web arayüzünden kaldırılıyor...');
+    console.log(`🗑️ Hafta ${silinecekHafta.haftaNo} siliniyor...`);
+    
+    // 1. Web arayüzünden sil
     haftalar.splice(i, 1);
-    console.log('✅ Web arayüzünden kaldırıldı');
-
-    // 2. CACHE'DEN TEMİZLE
-    console.log('🧹 2. Cache temizleniyor...');
+    console.log('✅ Hafta web arayüzünden silindi');
     
-    // LocalStorage cache'i temizle
-    const cacheKey = `hafta_${seciliHasta?.id}_${silinecekHafta.haftaNo || (i + 1)}`;
-    if (localStorage.getItem(cacheKey)) {
-      localStorage.removeItem(cacheKey);
-      console.log(`✅ LocalStorage cache temizlendi: ${cacheKey}`);
-    }
-    
-    // Çoklu PDF cache'i temizle (eğer mevcutsa)
-    if (typeof cokluPdfHastaCache !== 'undefined' && cokluPdfHastaCache.has(seciliHasta?.id)) {
-      const cachedHasta = cokluPdfHastaCache.get(seciliHasta?.id);
-      if (cachedHasta && cachedHasta.haftalar) {
-        const cacheHaftaIndex = cachedHasta.haftalar.findIndex(h => 
-          (h.haftaNo || 0) === (silinecekHafta.haftaNo || (i + 1))
-        );
-        if (cacheHaftaIndex >= 0) {
-          cachedHasta.haftalar.splice(cacheHaftaIndex, 1);
-          console.log(`✅ Çoklu PDF cache'den hafta kaldırıldı`);
+    // 2. Cache'den sil (localStorage)
+    try {
+      const cacheKey = `hasta_${seciliHasta.id}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData.haftalar) {
+          parsedData.haftalar = parsedData.haftalar.filter(h => h.haftaNo !== silinecekHafta.haftaNo);
+          localStorage.setItem(cacheKey, JSON.stringify(parsedData));
+          console.log('✅ Hafta cache\'den silindi');
         }
       }
+    } catch (cacheError) {
+      console.warn('⚠️ Cache temizleme hatası:', cacheError);
     }
     
-    // Memory cache temizle (eğer varsa)
-    if (typeof hastaCache !== 'undefined' && hastaCache[seciliHasta?.id]) {
-      const memoryHasta = hastaCache[seciliHasta?.id];
-      if (memoryHasta.haftalar) {
-        const memoryHaftaIndex = memoryHasta.haftalar.findIndex(h => 
-          (h.haftaNo || 0) === (silinecekHafta.haftaNo || (i + 1))
-        );
-        if (memoryHaftaIndex >= 0) {
-          memoryHasta.haftalar.splice(memoryHaftaIndex, 1);
-          console.log(`✅ Memory cache'den hafta kaldırıldı`);
-        }
+    // 3. Hasta JSON dosyasından sil (GitHub'a kaydet)
+    try {
+      // seciliHasta nesnesini de güncelle
+      if (seciliHasta.haftalar) {
+        seciliHasta.haftalar = seciliHasta.haftalar.filter(h => h.haftaNo !== silinecekHafta.haftaNo);
       }
-    }
-
-    // 3. SEÇİLİ HASTA OBJESİNDEN KALDIR
-    console.log('👤 3. Seçili hasta objesinden kaldırılıyor...');
-    if (seciliHasta && seciliHasta.haftalar) {
-      const secilidIndex = seciliHasta.haftalar.findIndex(h => 
-        (h.haftaNo || 0) === (silinecekHafta.haftaNo || (i + 1))
-      );
-      if (secilidIndex >= 0) {
-        seciliHasta.haftalar.splice(secilidIndex, 1);
-        console.log('✅ Seçili hasta objesinden kaldırıldı');
+      
+      // GitHub'a kaydet
+      const kaydedildi = await hastayiAyriKaydet(seciliHasta);
+      if (kaydedildi) {
+        console.log('✅ Hafta hasta JSON dosyasından silindi ve GitHub\'a kaydedildi');
       } else {
-        console.warn('⚠️ Seçili hasta objesinde hafta bulunamadı');
+        console.warn('⚠️ GitHub\'a kaydetme başarısız, sadece yerel silme yapıldı');
       }
+    } catch (githubError) {
+      console.warn('⚠️ GitHub kaydetme hatası:', githubError);
     }
-
-    // 4. GLOBAL HASTA LİSTESİNDEN KALDIR
-    console.log('🌍 4. Global hasta listesinden kaldırılıyor...');
-    if (typeof hastalar !== 'undefined' && hastalar.length > 0) {
-      const globalHasta = hastalar.find(h => h.id === seciliHasta?.id);
-      if (globalHasta && globalHasta.haftalar) {
-        const globalHaftaIndex = globalHasta.haftalar.findIndex(h => 
-          (h.haftaNo || 0) === (silinecekHafta.haftaNo || (i + 1))
-        );
-        if (globalHaftaIndex >= 0) {
-          globalHasta.haftalar.splice(globalHaftaIndex, 1);
-          console.log('✅ Global hasta listesinden kaldırıldı');
-        }
-      }
-    }
-
-    // 5. HASTA JSON DOSYASINI GÜNCELLE (GitHub'a kaydet)
-    console.log('💾 5. Hasta JSON dosyası güncelleniyor...');
-    if (seciliHasta) {
-      try {
-        await hastayiAyriKaydet(seciliHasta);
-        console.log('✅ Hasta JSON dosyası GitHub\'a kaydedildi');
-      } catch (error) {
-        console.error('❌ Hasta JSON dosyası kaydedilemedi:', error);
-        throw new Error(`Hasta JSON dosyası güncellenemedi: ${error.message}`);
-      }
-    }
-
-    // 6. LOCALSTORAGE GÜNCELLE
-    console.log('💿 6. LocalStorage güncelleniyor...');
-    saveToStorage();
-    console.log('✅ LocalStorage güncellendi');
-
-    // 7. OTOMATIK KAYDETME TETİKLE
-    console.log('🔄 7. Otomatik kaydetme tetikleniyor...');
-    autoSaveHastaData(seciliHasta);
-    console.log('✅ Otomatik kaydetme tamamlandı');
-
-    // 8. UI GÜNCELLE
-    console.log('🖥️ 8. Kullanıcı arayüzü güncelleniyor...');
     
-    // Aktif tab kontrolü
-    const aktifTab = document.querySelector('.hafta-tab.active');
-    const aktifHaftaIndex = aktifTab ? parseInt(aktifTab.dataset.haftaIndex) : null;
-    
-    // Tab sistemini yeniden yükle
+    // 4. UI'ı güncelle
     gosterHaftalar();
     
-    // Eğer silinen hafta aktif haftaysa, ilk haftayı aktif yap
-    if (aktifHaftaIndex === i) {
-      setTimeout(() => {
-        const ilkTab = document.querySelector('.hafta-tab');
-        if (ilkTab) {
-          ilkTab.click();
-          console.log('🎯 İlk hafta aktif yapıldı');
-        }
-      }, 100);
+    // 5. Hasta listesini güncelle
+    if (typeof updateHastaListesi === 'function') {
+      updateHastaListesi();
     }
     
-    console.log('✅ UI güncellendi');
-
-    // 9. BAŞARI MESAJI
-    const hastaAdi = seciliHasta?.isim || 'Bilinmeyen';
-    const haftaNo = silinecekHafta.haftaNo || (i + 1);
+    console.log(`✅ Hafta ${silinecekHafta.haftaNo} başarıyla silindi`);
+    alert(`✅ Hafta ${silinecekHafta.haftaNo} başarıyla silindi!`);
     
-    console.log(`🎉 ${haftaNo}. hafta başarıyla silindi!`);
-    
-    // Kullanıcıya bilgi ver
-    setTimeout(() => {
-      alert(`✅ ${hastaAdi} - ${haftaNo}. hafta başarıyla silindi!\n\nŞu alanlarda temizlik yapıldı:\n• Web arayüzü\n• Cache (LocalStorage & Memory)\n• Hasta JSON dosyası\n• GitHub arşivi`);
-    }, 500);
-
   } catch (error) {
     console.error('❌ Hafta silme hatası:', error);
-    alert(`❌ Hafta silinirken hata oluştu:\n\n${error.message}\n\nLütfen tekrar deneyin veya sayfayı yenileyin.`);
-    
-    // Hata durumunda UI'ı yenile
-    try {
-      gosterHaftalar();
-    } catch (uiError) {
-      console.error('❌ UI yenileme hatası:', uiError);
-    }
+    alert(`❌ Hafta silinirken hata oluştu: ${error.message}`);
   }
 }
 
