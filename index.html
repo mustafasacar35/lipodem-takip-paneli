@@ -1301,10 +1301,14 @@
                   let eslesenSayisi = 0;
                   
                   tarifDetaylar.forEach(tarif => {
+                    if (!tarif || !tarif.isim) return; // Tarif kontrolü
+                    
                     const tarifAdi = tarif.isim.toLowerCase().trim();
                     
                     // Daha gelişmiş kart eşleştirmesi
                     const eslesenKart = window.tarifKartlari.find(kart => {
+                      if (!kart || typeof kart !== 'string') return false; // Kart kontrolü
+                      
                       const kartAdi = kart.toLowerCase()
                         .replace(/\.(jpg|png|jpeg|webp)$/i, '')
                         .replace(/_/g, ' ')
@@ -8215,11 +8219,18 @@ function duzenleHafta(i) {
 
   const hafta = getHaftaListesi()[i];
   const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
-  eslesenDiv.innerHTML = '';
+  
+  // DOM element kontrolü - çoklu PDF işleminde element olmayabilir
+  const domElementMevcut = eslesenDiv !== null;
+  if (domElementMevcut) {
+    eslesenDiv.innerHTML = '';
+  }
 
   if (!hafta.tarifler.length) {
-    eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
-    return;
+    if (domElementMevcut) {
+      eslesenDiv.innerHTML = '<i>Önce PDF yükleyin ve tarifleri çıkarın.</i>';
+    }
+    return [];
   }
 
   // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
@@ -8394,53 +8405,54 @@ function duzenleHafta(i) {
     }
   });
 
-  // Sonuçları göster
-  if (eslesenKartlarListesi.length === 0) {
-    eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
-  } else {
-    // Tarifleri grupla ve göster
-    const tarifGruplari = {};
-    eslesenKartlarListesi.forEach(({ tarif, kart, tip }) => {
-      if (!tarifGruplari[tarif]) {
-        tarifGruplari[tarif] = { kartlar: [], tip: tip };
-      }
-      tarifGruplari[tarif].kartlar.push(kart);
-    });
-
-    Object.keys(tarifGruplari).forEach(tarif => {
-      const grup = tarifGruplari[tarif];
-      const p = document.createElement('p');
-      const kartIsimleri = grup.kartlar.map(k => k.name).join(', ');
-      p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kartIsimleri}</span> <small style="color:blue;">(${grup.tip})</small>`;
-      eslesenDiv.appendChild(p);
-      
-      // Her kart için görsel ekle
-      grup.kartlar.forEach(kart => {
-        const img = document.createElement('img');
-        img.src = kart.data;
-        img.alt = tarif;
-        img.title = kart.name;
-        img.style.width = '120px';
-        img.style.margin = '4px';
-        eslesenDiv.appendChild(img);
+  // Sonuçları göster (sadece DOM element varsa)
+  if (domElementMevcut) {
+    if (eslesenKartlarListesi.length === 0) {
+      eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
+    } else {
+      // Tarifleri grupla ve göster
+      const tarifGruplari = {};
+      eslesenKartlarListesi.forEach(({ tarif, kart, tip }) => {
+        if (!tarifGruplari[tarif]) {
+          tarifGruplari[tarif] = { kartlar: [], tip: tip };
+        }
+        tarifGruplari[tarif].kartlar.push(kart);
       });
-    });
-    
-    // İndir butonları ekle
-    const indirDiv = document.createElement('div');
-    indirDiv.style.marginTop = '15px';
-    indirDiv.style.display = 'flex';
-    indirDiv.style.gap = '10px';
-    indirDiv.style.flexWrap = 'wrap';
-    
-    // ZIP olarak indir butonu
-    const zipBtn = document.createElement('button');
-    zipBtn.textContent = '📦 Tüm Dosyaları ZIP İndir';
-    zipBtn.style.background = '#28a745';
-    zipBtn.style.color = 'white';
-    zipBtn.style.border = 'none';
-    zipBtn.style.padding = '10px 15px';
-    zipBtn.style.borderRadius = '5px';
+
+      Object.keys(tarifGruplari).forEach(tarif => {
+        const grup = tarifGruplari[tarif];
+        const p = document.createElement('p');
+        const kartIsimleri = grup.kartlar.map(k => k.name).join(', ');
+        p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kartIsimleri}</span> <small style="color:blue;">(${grup.tip})</small>`;
+        eslesenDiv.appendChild(p);
+        
+        // Her kart için görsel ekle
+        grup.kartlar.forEach(kart => {
+          const img = document.createElement('img');
+          img.src = kart.data;
+          img.alt = tarif;
+          img.title = kart.name;
+          img.style.width = '120px';
+          img.style.margin = '4px';
+          eslesenDiv.appendChild(img);
+        });
+      });
+      
+      // İndir butonları ekle
+      const indirDiv = document.createElement('div');
+      indirDiv.style.marginTop = '15px';
+      indirDiv.style.display = 'flex';
+      indirDiv.style.gap = '10px';
+      indirDiv.style.flexWrap = 'wrap';
+      
+      // ZIP olarak indir butonu
+      const zipBtn = document.createElement('button');
+      zipBtn.textContent = '📦 Tüm Dosyaları ZIP İndir';
+      zipBtn.style.background = '#28a745';
+      zipBtn.style.color = 'white';
+      zipBtn.style.border = 'none';
+      zipBtn.style.padding = '10px 15px';
+      zipBtn.style.borderRadius = '5px';
     zipBtn.style.cursor = 'pointer';
     zipBtn.style.marginBottom = '10px';
     zipBtn.title = 'Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir';
@@ -8476,9 +8488,10 @@ function duzenleHafta(i) {
     
     // Sidebar butonları artık GPT alanında olduğu için kaldırıldı
   }
+  } // domElementMevcut kapanışı
 
-  // Eşleşmeyen tarifleri yeni accordion sistemine ekle
-  if (eslesmeyenTarifler.length > 0) {
+  // Eşleşmeyen tarifleri yeni accordion sistemine ekle (sadece DOM varsa)
+  if (domElementMevcut && eslesmeyenTarifler.length > 0) {
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     
@@ -8501,7 +8514,7 @@ function duzenleHafta(i) {
         eslesmeyenlerContent.appendChild(p);
       });
     }
-  } else {
+  } else if (domElementMevcut) {
     // Eşleşmeyen tarif yoksa başlığı sıfırla
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
@@ -8514,8 +8527,13 @@ function duzenleHafta(i) {
     }
   }
 
-  // Eşleşen kartları hafta verisine kaydet
-  hafta.tarifKartlar = eslesenKartlarListesi.map(e => e.kart);
+  // Eşleşen kartları hafta verisine JSON uyumlu formatta kaydet
+  hafta.tarifKartlar = eslesenKartlarListesi.map(e => ({
+    tarifAdi: e.tarif,
+    kartResmi: e.kart.name,
+    kartData: e.kart.data,
+    eslesmeTuru: e.tip
+  }));
   
   // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
   const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
