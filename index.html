@@ -1283,6 +1283,10 @@
                     hafta.tarifKartlar = guncelHafta.tarifKartlar || [];
                     hafta.tarifler = guncelHafta.tarifler || hafta.tarifler;
                     
+                    // Eşleştirme sonrası manuel kaydetme gibi GitHub'a da kaydet
+                    await hastayiAyriKaydet(hasta);
+                    console.log(`📝 Eşleştirme sonrası GitHub'a kaydedildi: ${hafta.tarifKartlar.length} eşleşme`);
+                    
                     console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme bulundu`);
                   } catch (eslesmeError) {
                     console.warn('⚠️ Gelişmiş eşleştirme hatası:', eslesmeError);
@@ -1349,6 +1353,12 @@
                   });
                   
                   console.log(`🔗 Manuel gelişmiş eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
+                  
+                  // Basit eşleştirmeden sonra da GitHub'a kaydet
+                  if (eslesenSayisi > 0) {
+                    await hastayiAyriKaydet(hasta);
+                    console.log(`📝 Basit eşleştirme sonrası GitHub'a kaydedildi: ${eslesenSayisi} eşleşme`);
+                  }
                 }
               } else {
                 console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
@@ -1362,40 +1372,10 @@
             }
             
             // Güncellenmiş hasta verisini kaydet
-            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifKartlar:`, hafta.tarifKartlar);
-            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifler:`, hafta.tarifler);
-            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta tüm bilgiler:`, hafta);
-            
-            // Manuel PDF yükleme süreci gibi verileri kaydet
-            try {
-              // 1. Global hasta listesini güncelle
-              if (window.hastalar) {
-                const hastaIndex = window.hastalar.findIndex(h => h.id === hasta.id);
-                if (hastaIndex >= 0) {
-                  window.hastalar[hastaIndex] = hasta;
-                  localStorage.setItem('hastalar', JSON.stringify(window.hastalar));
-                  console.log('✅ Çoklu PDF: Hasta localStorage\'a kaydedildi');
-                }
-              }
-              
-              // 2. Eğer bu hasta şu anda seçili hastaysa, seciliHasta'yı da güncelle
-              if (seciliHasta && seciliHasta.id === hasta.id) {
-                seciliHasta.haftalar = hasta.haftalar;
-                console.log('✅ Çoklu PDF: seciliHasta senkronize edildi');
-              }
-              
-              // 3. Manuel PDF'deki gibi GitHub'a kaydet
-              await hastayiAyriKaydet(hasta);
-              console.log('✅ Çoklu PDF: Hasta GitHub\'a kaydedildi');
-              
-              // 4. Cache güncelle
-              if (typeof updateHastaCache === 'function') {
-                updateHastaCache(hasta);
-              }
-              
-            } catch (kaydetmeError) {
-              console.error('❌ Çoklu PDF kaydetme hatası:', kaydetmeError);
-            }
+            console.log(`🔍 DEBUG: ${file.name} - Hasta kaydedilmeden önce hafta.tarifKartlar:`, hafta.tarifKartlar);
+            console.log(`🔍 DEBUG: ${file.name} - Hasta kaydedilmeden önce hafta.tarifler:`, hafta.tarifler);
+            console.log(`🔍 DEBUG: ${file.name} - Hasta hafta verisi:`, JSON.stringify(hafta, null, 2));
+            await hastayiAyriKaydet(hasta);
             
           } catch (pdfError) {
             console.warn('⚠️ PDF işleme hatası:', pdfError);
@@ -8212,8 +8192,7 @@ function duzenleHafta(i) {
   }
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
-    if (!ad || typeof ad !== 'string') return '';
-    
+    if (!ad || typeof ad !== 'string') return ''; // Güvenlik kontrolü
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
     s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, '');
     s = s.replace(/\(.*?\)/g, '');
@@ -8272,7 +8251,7 @@ function duzenleHafta(i) {
   const tumKartlar = [].concat(
     hafta.tarifKartlar || [],
     tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
-  );
+  ).filter(kart => kart && kart.name); // Null/undefined kartları filtrele
 
   if (!tumKartlar.length) {
     // Daha detaylı hata mesajı ve çözüm önerileri
@@ -8393,7 +8372,6 @@ function duzenleHafta(i) {
 
         // Kullanılmayan kartlar arasında ara
         for (let kart of tumKartlar) {
-          if (!kart || !kart.name || typeof kart.name !== 'string') continue;
           if (kullanilanKartlar.has(kart.name)) continue;
 
           // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
