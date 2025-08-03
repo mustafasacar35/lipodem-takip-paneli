@@ -5318,8 +5318,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       console.log('✅ Yeni hafta eklendi:', sonrakiHaftaNo, 'numaralı hafta');
       
-      // Otomatik kaydetme - hafta eklendi
+      // Otomatik kaydetme - hafta eklendi (localStorage)
       autoSaveHastaData(seciliHasta);
+      
+      // GitHub'a da kaydet (async olarak, UI'ı bloklamadan)
+      const token = document.getElementById('githubToken')?.value?.trim();
+      if (token && seciliHasta) {
+        hastayiAyriKaydet(seciliHasta).then(() => {
+          console.log(`✅ ${sonrakiHaftaNo}. hafta GitHub'a da kaydedildi`);
+        }).catch(error => {
+          console.error('⚠️ GitHub kaydetme hatası:', error);
+          // UI'da uyarı gösterme (kullanıcıyı rahatsız etmemek için console'da kalıyor)
+        });
+      }
       
       // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
@@ -5608,8 +5619,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               <span style="color: #666; font-size: 14px;">📅 ${hafta.baslangic} - ${hafta.bitis}</span>
             </div>
             <div style="display: flex; gap: 5px;">
-              <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
-              <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+              <button onclick="duzenleHafta(${i}).catch(err => console.error('Hafta düzenleme hatası:', err))" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
+              <button onclick="silHafta(${i}).catch(err => console.error('Hafta silme hatası:', err))" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
               ${haftaNo === 5 ? `<button onclick="haftaZipIndir(${i}, 5)" style="padding: 5px 10px; font-size: 12px; background: #17a2b8; color: white; border: none; border-radius: 4px;" title="5. hafta özel ZIP">📦 ZIP</button>` : ''}
               ${haftaNo === 9 ? `<button onclick="haftaZipIndir(${i}, 9)" style="padding: 5px 10px; font-size: 12px; background: #6f42c1; color: white; border: none; border-radius: 4px;" title="9. hafta özel ZIP">📦 ZIP</button>` : ''}
             </div>
@@ -5876,6 +5887,16 @@ function saveHaftaNo(i) {
   haftalar[i].haftaNo = yeniHaftaNo;
   saveToStorage();
   
+  // GitHub'a da kaydet (async olarak, UI'ı bloklamadan)
+  const token = document.getElementById('githubToken')?.value?.trim();
+  if (token && seciliHasta) {
+    hastayiAyriKaydet(seciliHasta).then(() => {
+      console.log(`✅ Hafta numarası GitHub'a da kaydedildi: ${yeniHaftaNo}. hafta`);
+    }).catch(error => {
+      console.error('⚠️ GitHub kaydetme hatası:', error);
+    });
+  }
+  
   // UI'ı güncelle
   displaySpan.textContent = yeniHaftaNo;
   displaySpan.style.display = 'inline-block';
@@ -5971,20 +5992,41 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 }
 
 // Hafta sil
-function silHafta(i) {
+async function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+  
   const haftalar = getHaftaListesi();
+  const silinecekHafta = haftalar[i];
+  
+  console.log(`🗑️ ${silinecekHafta.haftaNo}. hafta siliniyor...`);
+  
+  // Haftayı listeden çıkar
   haftalar.splice(i, 1);
   
-  // Otomatik kaydetme - hafta silindi
+  // Otomatik kaydetme - hafta silindi (localStorage)
   autoSaveHastaData(seciliHasta);
+  
+  // GitHub'a da kaydet
+  const token = document.getElementById('githubToken')?.value?.trim();
+  if (token && seciliHasta) {
+    try {
+      console.log(`💾 ${seciliHasta.isim} hastasının güncellenmiş verisi GitHub'a kaydediliyor...`);
+      await hastayiAyriKaydet(seciliHasta);
+      console.log(`✅ ${silinecekHafta.haftaNo}. hafta GitHub'dan da silindi`);
+    } catch (error) {
+      console.error('⚠️ GitHub kaydetme hatası:', error);
+      alert('❌ Hafta lokal olarak silindi ancak GitHub kaydetme sırasında hata oluştu: ' + error.message);
+    }
+  } else {
+    console.warn('⚠️ GitHub token yok veya hasta seçili değil, sadece lokal silme yapıldı');
+  }
   
   // Tab sistemini yeniden yükle
   gosterHaftalar();
 }
 
 // Hafta düzenle (tarih ve açıklama)
-function duzenleHafta(i) {
+async function duzenleHafta(i) {
   const haftalar = getHaftaListesi();
   const hafta = haftalar[i];
   const yeniBaslangic = prompt('Yeni başlangıç tarihi (YYYY-MM-DD):', hafta.baslangic);
@@ -5995,8 +6037,25 @@ function duzenleHafta(i) {
   hafta.bitis = yeniBitis;
   hafta.aciklama = document.getElementById('aciklama_' + i).value;
   
-  // Otomatik kaydetme - hafta düzenlendi
+  console.log(`📝 ${hafta.haftaNo}. hafta düzenleniyor...`);
+  
+  // Otomatik kaydetme - hafta düzenlendi (localStorage)
   autoSaveHastaData(seciliHasta);
+  
+  // GitHub'a da kaydet
+  const token = document.getElementById('githubToken')?.value?.trim();
+  if (token && seciliHasta) {
+    try {
+      console.log(`💾 ${seciliHasta.isim} hastasının güncellenmiş verisi GitHub'a kaydediliyor...`);
+      await hastayiAyriKaydet(seciliHasta);
+      console.log(`✅ ${hafta.haftaNo}. hafta GitHub'da da güncellendi`);
+    } catch (error) {
+      console.error('⚠️ GitHub kaydetme hatası:', error);
+      alert('❌ Hafta lokal olarak güncellendi ancak GitHub kaydetme sırasında hata oluştu: ' + error.message);
+    }
+  } else {
+    console.warn('⚠️ GitHub token yok veya hasta seçili değil, sadece lokal güncelleme yapıldı');
+  }
   
   gosterHaftalar();
 }
