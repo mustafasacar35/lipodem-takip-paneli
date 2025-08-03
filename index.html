@@ -1364,7 +1364,38 @@
             // Güncellenmiş hasta verisini kaydet
             console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifKartlar:`, hafta.tarifKartlar);
             console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifler:`, hafta.tarifler);
-            await hastayiAyriKaydet(hasta);
+            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta tüm bilgiler:`, hafta);
+            
+            // Manuel PDF yükleme süreci gibi verileri kaydet
+            try {
+              // 1. Global hasta listesini güncelle
+              if (window.hastalar) {
+                const hastaIndex = window.hastalar.findIndex(h => h.id === hasta.id);
+                if (hastaIndex >= 0) {
+                  window.hastalar[hastaIndex] = hasta;
+                  localStorage.setItem('hastalar', JSON.stringify(window.hastalar));
+                  console.log('✅ Çoklu PDF: Hasta localStorage\'a kaydedildi');
+                }
+              }
+              
+              // 2. Eğer bu hasta şu anda seçili hastaysa, seciliHasta'yı da güncelle
+              if (seciliHasta && seciliHasta.id === hasta.id) {
+                seciliHasta.haftalar = hasta.haftalar;
+                console.log('✅ Çoklu PDF: seciliHasta senkronize edildi');
+              }
+              
+              // 3. Manuel PDF'deki gibi GitHub'a kaydet
+              await hastayiAyriKaydet(hasta);
+              console.log('✅ Çoklu PDF: Hasta GitHub\'a kaydedildi');
+              
+              // 4. Cache güncelle
+              if (typeof updateHastaCache === 'function') {
+                updateHastaCache(hasta);
+              }
+              
+            } catch (kaydetmeError) {
+              console.error('❌ Çoklu PDF kaydetme hatası:', kaydetmeError);
+            }
             
           } catch (pdfError) {
             console.warn('⚠️ PDF işleme hatası:', pdfError);
@@ -8181,6 +8212,8 @@ function duzenleHafta(i) {
   }
   // Dosya adındaki miktar ve açıklama kelimelerini temizle
   function temizleDosyaAdi(ad) {
+    if (!ad || typeof ad !== 'string') return '';
+    
     let s = ad.replace(/\.(jpg|jpeg|png)$/i, '');
     s = s.replace(/_\d+(gr|gram|adet|dilim|kase|bardak|ml|kg|tsp|tbsp)?/gi, '');
     s = s.replace(/\(.*?\)/g, '');
@@ -8360,6 +8393,7 @@ function duzenleHafta(i) {
 
         // Kullanılmayan kartlar arasında ara
         for (let kart of tumKartlar) {
+          if (!kart || !kart.name || typeof kart.name !== 'string') continue;
           if (kullanilanKartlar.has(kart.name)) continue;
 
           // Eşleşme yasağı kontrolü - ÖNCE BU KONTROL EDİLİR
