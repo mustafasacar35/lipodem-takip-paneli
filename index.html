@@ -1193,17 +1193,28 @@
           
           // PDF dosyasını işle
           try {
-            // PDF'i Base64'e çevir ve hafta verisine ekle
+            // PDF'i GitHub'a yükle (manuel sistemle aynı)
+            console.log(`📤 ${file.name} GitHub'a yükleniyor...`);
+            const pdfSonuc = await pdfYukleGithub(file, hasta.id, hafta.haftaNo);
+            
+            if (!pdfSonuc) {
+              console.error(`❌ ${file.name} yükleme başarısız`);
+              sonuclar.push({ dosya: file.name, durum: 'HATA', mesaj: 'PDF yükleme başarısız' });
+              hatali++;
+              continue;
+            }
+            
+            // Manuel sistemle aynı şekilde yol referansı kaydet (Base64 değil!)
+            hafta.pdfOrijinalIsim = pdfSonuc.orijinalAd;
+            hafta.pdfName = pdfSonuc.guvenliAd;
+            hafta.pdfYolu = pdfSonuc.dosyaYolu;
+            hafta.githubUrl = pdfSonuc.githubUrl;
+            hafta.indirmeUrl = pdfSonuc.indirmeUrl;
+            hafta.kayitTarihi = new Date().toISOString();
+            
+            // PDF analizi için geçici Base64 oluştur (JSON'a kaydetmiyoruz!)
             const pdfBase64 = await fileToBase64(file);
-            hafta.pdf = pdfBase64;
-            hafta.pdfName = file.name;
-            hafta.pdfOrijinalIsim = file.name;
-            hafta.pdfYolu = `pdfs/${file.name}`;
-            hafta.pdfFile = {
-              name: file.name,
-              size: file.size,
-              type: file.type
-            };
+            hafta.pdfFile = file; // Geçici analiz için File objesi
             
             // PDF'den metin çıkar ve tarif analizi yap
             try {
@@ -1250,13 +1261,13 @@
               hafta.tarifler = tarifDetaylar;
               console.log(`🍽️ ${tarifDetaylar.length} tarif detayı bulundu`);
               
-              // Gelişmiş tarif eşleştirmesi için otomatikEsleHafta kullan
+              // Manuel sistemle AYNI şekilde eşleştirme yap
               if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
-                console.log(`🔗 ${file.name} için tarif eşleştirmesi başlıyor...`);
+                console.log(`🔗 ${file.name} için tarif eşleştirmesi başlıyor (manuel sistem gibi)...`);
                 
-                // Hasta ve hafta verilerini güncelle (global değişkenler için)
+                // Global değişkenleri geçici güncelle (manuel sistem için gerekli)
                 const tempSeciliHasta = seciliHasta;
-                const tempHastalar = window.hastalar;
+                const tempHastalar = window.hastalar ? [...window.hastalar] : [];
                 
                 // Hasta listesini güncelle
                 if (!window.hastalar) window.hastalar = [];
@@ -1275,21 +1286,35 @@
                 const haftaIndex = hasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
                 if (haftaIndex >= 0) {
                   try {
-                    // Gelişmiş otomatik eşleştirme yap
-                    await otomatikEsleHafta(haftaIndex);
+                    // Manuel sistemle AYNI otomatik eşleştirme fonksiyonunu kullan
+                    const eslestirmeSonucu = await otomatikEsleHafta(haftaIndex);
                     
-                    // Güncellenmiş verileri kopyala
-                    const guncelHafta = hasta.haftalar[haftaIndex];
-                    hafta.tarifKartlar = guncelHafta.tarifKartlar || [];
-                    hafta.tarifler = guncelHafta.tarifler || hafta.tarifler;
+                    if (eslestirmeSonucu) {
+                      console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
+                      hafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
+                      console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
+                    }
                     
-                    // Eşleştirme sonrası manuel kaydetme gibi GitHub'a da kaydet
-                    await hastayiAyriKaydet(hasta);
-                    console.log(`📝 Eşleştirme sonrası GitHub'a kaydedildi: ${hafta.tarifKartlar.length} eşleşme`);
+                    // Manuel sistemle AYNI şekilde hasta verilerini güncelle
+                    const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === hafta.haftaNo);
+                    if (seciliHaftaIndex !== -1) {
+                      seciliHasta.haftalar[seciliHaftaIndex].tarifler = hafta.tarifler;
+                      seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = hafta.tarifKartlar || [];
+                      
+                      // Mevcut JSON'da eslesmeyenTarifler varsa sil (manuel sistemle aynı)
+                      if (seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler) {
+                        delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
+                        console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
+                      }
+                    }
                     
-                    console.log(`✅ Gelişmiş eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme bulundu`);
+                    // Manuel sistemle AYNI şekilde GitHub'a kaydet
+                    await hastayiAyriKaydet(seciliHasta);
+                    console.log('📝 Eşleştirme sonrası GitHub\'a kaydedildi (manuel sistem gibi)');
+                    
+                    console.log(`✅ Manuel sistem uyumlu eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme bulundu`);
                   } catch (eslesmeError) {
-                    console.warn('⚠️ Gelişmiş eşleştirme hatası:', eslesmeError);
+                    console.warn('⚠️ Eşleştirme hatası:', eslesmeError);
                     hafta.tarifKartlar = [];
                   }
                 }
@@ -1354,10 +1379,22 @@
                   
                   console.log(`🔗 Manuel gelişmiş eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
                   
-                  // Basit eşleştirmeden sonra da GitHub'a kaydet
+                  // Manuel sistemle AYNI şekilde basit eşleştirme sonrası hasta güncellemesi
                   if (eslesenSayisi > 0) {
+                    // Geçici olarak global değişkenleri güncelle
+                    const tempSeciliHasta2 = seciliHasta;
+                    seciliHasta = hasta;
+                    
+                    const seciliHaftaIndex = hasta.haftalar.findIndex(h => (h.haftaNo || 0) === hafta.haftaNo);
+                    if (seciliHaftaIndex !== -1) {
+                      hasta.haftalar[seciliHaftaIndex].tarifKartlar = hafta.tarifKartlar;
+                    }
+                    
                     await hastayiAyriKaydet(hasta);
                     console.log(`📝 Basit eşleştirme sonrası GitHub'a kaydedildi: ${eslesenSayisi} eşleşme`);
+                    
+                    // Global değişkeni geri yükle
+                    seciliHasta = tempSeciliHasta2;
                   }
                 }
               } else {
@@ -1371,11 +1408,19 @@
               hafta.tarifKartlar = [];
             }
             
+            // Geçici pdfFile'ı temizle (manuel sistemle aynı)
+            if (hafta.pdfFile) {
+              delete hafta.pdfFile;
+            }
+            
             // Güncellenmiş hasta verisini kaydet
             console.log(`🔍 DEBUG: ${file.name} - Hasta kaydedilmeden önce hafta.tarifKartlar:`, hafta.tarifKartlar);
             console.log(`🔍 DEBUG: ${file.name} - Hasta kaydedilmeden önce hafta.tarifler:`, hafta.tarifler);
-            console.log(`🔍 DEBUG: ${file.name} - Hasta hafta verisi:`, JSON.stringify(hafta, null, 2));
+            console.log(`🔍 DEBUG: ${file.name} - Final hafta verisi (Base64 olmadan):`, JSON.stringify(hafta, null, 2));
             await hastayiAyriKaydet(hasta);
+            
+            // Manuel sistemle AYNI şekilde localStorage da güncelle
+            saveToStorage();
             
           } catch (pdfError) {
             console.warn('⚠️ PDF işleme hatası:', pdfError);
