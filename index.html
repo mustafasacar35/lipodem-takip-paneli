@@ -4525,18 +4525,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // localStorage'a kaydet
         saveToStorage();
         
-        // GitHub'a da kaydet (async)
-        saveHastaDataToGitHub(hasta).then(success => {
+        // GitHub'a da kaydet (async await ile)
+        try {
+          const success = await saveHastaDataToGitHub(hasta);
           if (success) {
             console.log(`💾 GitHub'a kaydedildi: ${hasta.isim || hasta.ad}`);
           } else {
             console.warn(`⚠️ GitHub kaydetme başarısız: ${hasta.isim || hasta.ad}`);
           }
-        }).catch(error => {
+          return success;
+        } catch (error) {
           console.error('GitHub kaydetme hatası:', error);
-        });
+          return false;
+        }
         
-        return true;
       } catch(e) { 
         console.error('Otomatik kaydetme hatası:', e); 
         return false;
@@ -4638,34 +4640,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     function temizleTorupcuKarakterler(text) {
       return kapsamliKarakterTemizle(text);
     }
-    
-    // Mevcut hasta verilerindeki bozuk karakterleri temizle
-    console.log('🧹 Mevcut hasta verilerindeki bozuk karakterler temizleniyor...');
-    hastalar.forEach(hasta => {
-      if (hasta.isim) {
-        const eskiIsim = hasta.isim;
-        hasta.isim = temizleTorupcuKarakterler(hasta.isim);
-        if (eskiIsim !== hasta.isim) {
-          console.log(`✅ Bozuk karakter temizlendi: "${eskiIsim}" → "${hasta.isim}"`);
-        }
-      }
-      if (hasta.not) {
-        hasta.not = temizleTorupcuKarakterler(hasta.not);
-      }
-    });
-    
-    // Temizlenmiş verileri kaydet
-    if (hastalar.length > 0) {
-      saveToStorage();
-      console.log('💾 Temizlenmiş veriler localStorage\'a kaydedildi');
-    }
-    
-    // Hasta listesini otomatik sırala (isim sırası) - güvenli sıralama
-    hastalar.sort((a, b) => {
-      const isimA = (a.isim || a.ad || '').toString();
-      const isimB = (b.isim || b.ad || '').toString();
-      return isimA.localeCompare(isimB, 'tr');
-    });
     
     // === YENİ SİSTEM: SIDEBAR HASTA LİSTESİ ===
     
@@ -6236,35 +6210,47 @@ async function silHafta(i) {
     border: 1px solid #c3e6cb; z-index: 10000;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   `;
-  bilgiMesaji.innerHTML = `
-    ✅ <strong>Hafta başarıyla silindi!</strong><br>
-    📄 JSON dosyasından da kaldırıldı<br>
-    💾 localStorage güncellendi<br>
-    🌐 GitHub'a kaydediliyor...<br>
-    📊 Kalan hafta sayısı: ${guncelHaftalar.length}
-  `;
+  
+  if (githubKayitBasarili) {
+    bilgiMesaji.innerHTML = `
+      ✅ <strong>Hafta başarıyla silindi!</strong><br>
+      📄 JSON dosyasından da kaldırıldı<br>
+      💾 localStorage güncellendi<br>
+      🌐 GitHub'a kaydedildi ✅<br>
+      📊 Kalan hafta sayısı: ${guncelHaftalar.length}
+    `;
+  } else {
+    bilgiMesaji.innerHTML = `
+      ✅ <strong>Hafta başarıyla silindi!</strong><br>
+      📄 JSON dosyasından da kaldırıldı<br>
+      💾 localStorage güncellendi<br>
+      ⚠️ GitHub kaydetme hatası<br>
+      📊 Kalan hafta sayısı: ${guncelHaftalar.length}
+    `;
+  }
+  
   document.body.appendChild(bilgiMesaji);
   
   // GitHub kaydetme durumunu kontrol et ve mesajı güncelle
-  setTimeout(() => {
-    if (githubKayitBasarili) {
-      bilgiMesaji.innerHTML = `
-        ✅ <strong>Hafta başarıyla silindi!</strong><br>
-        📄 JSON dosyasından da kaldırıldı<br>
-        💾 localStorage güncellendi<br>
-        🌐 GitHub'a kaydedildi ✅<br>
-        📊 Kalan hafta sayısı: ${guncelHaftalar.length}
-      `;
-    } else {
-      bilgiMesaji.innerHTML = `
-        ✅ <strong>Hafta başarıyla silindi!</strong><br>
-        📄 JSON dosyasından da kaldırıldı<br>
-        💾 localStorage güncellendi<br>
-        ⚠️ GitHub kaydetme hatası<br>
-        📊 Kalan hafta sayısı: ${guncelHaftalar.length}
-      `;
-    }
-  }, 2000);
+  // setTimeout(() => {
+  //   if (githubKayitBasarili) {
+  //     bilgiMesaji.innerHTML = `
+  //       ✅ <strong>Hafta başarıyla silindi!</strong><br>
+  //       📄 JSON dosyasından da kaldırıldı<br>
+  //       💾 localStorage güncellendi<br>
+  //       🌐 GitHub'a kaydedildi ✅<br>
+  //       📊 Kalan hafta sayısı: ${guncelHaftalar.length}
+  //     `;
+  //   } else {
+  //     bilgiMesaji.innerHTML = `
+  //       ✅ <strong>Hafta başarıyla silindi!</strong><br>
+  //       📄 JSON dosyasından da kaldırıldı<br>
+  //       💾 localStorage güncellendi<br>
+  //       ⚠️ GitHub kaydetme hatası<br>
+  //       📊 Kalan hafta sayısı: ${guncelHaftalar.length}
+  //     `;
+  //   }
+  // }, 2000);
   
   // 5 saniye sonra mesajı kaldır
   setTimeout(() => {
