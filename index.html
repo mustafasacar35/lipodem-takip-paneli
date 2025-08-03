@@ -1301,9 +1301,9 @@
                   let eslesenSayisi = 0;
                   
                   tarifDetaylar.forEach(tarif => {
-                    if (!tarif || !tarif.isim) return; // Tarif kontrolü
+                    if (!tarif || typeof tarif !== 'string') return; // Tarif kontrolü
                     
-                    const tarifAdi = tarif.isim.toLowerCase().trim();
+                    const tarifAdi = tarif.toLowerCase().trim();
                     
                     // Daha gelişmiş kart eşleştirmesi
                     const eslesenKart = window.tarifKartlari.find(kart => {
@@ -1340,7 +1340,7 @@
                     
                     if (eslesenKart) {
                       hafta.tarifKartlar.push({
-                        tarifAdi: tarif.isim,
+                        tarifAdi: tarif,
                         kartResmi: eslesenKart,
                         eslesmeTuru: 'otomatik-gelismis'
                       });
@@ -1362,6 +1362,8 @@
             }
             
             // Güncellenmiş hasta verisini kaydet
+            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifKartlar:`, hafta.tarifKartlar);
+            console.log(`🔍 DEBUG: Hasta kaydedilmeden önce hafta.tarifler:`, hafta.tarifler);
             await hastayiAyriKaydet(hasta);
             
           } catch (pdfError) {
@@ -8278,8 +8280,10 @@ function duzenleHafta(i) {
         </button>
       </div>
     `;
-    eslesenDiv.appendChild(hataDiv);
-    return;
+    if (domElementMevcut) {
+      eslesenDiv.appendChild(hataDiv);
+    }
+    return [];
   }
 
   // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
