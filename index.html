@@ -1581,8 +1581,6 @@
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      console.log('🔧 Türkçe düzeltme başlıyor:', text);
-      
       // SADECE BOZUK KARAKTERLERI TEMİZLE, YENİ BOZUKLUK YARATMA!
       let temizMetin = text;
       
@@ -1603,7 +1601,6 @@
       
       // 2. ÖNCE tam isim kalıplarını düzelt (en spesifik olanlar)
       temizMetin = temizMetin.replace(/\^EYDA E EÇ0\^Ç/gi, 'ŞEYDA EĞEÇİŞ');
-      console.log('Tam isim düzeltmesi sonrası:', temizMetin);
       
       // 2.1. PDF'de yaygın bozuk karakterleri düzelt
       const karakterDuzeltmeleri = {
@@ -1656,7 +1653,6 @@
       // 4. Fazla boşlukları temizle
       temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
       
-      console.log('✅ Türkçe düzeltme tamamlandı:', text, ' → ', temizMetin);
       return temizMetin;
     }
     
@@ -1701,7 +1697,6 @@
                 const eskiIsim = hasta.isim;
                 hasta.isim = turkceKarakterDuzelt(hasta.isim);
                 if (eskiIsim !== hasta.isim) {
-                  console.log(`✅ "${eskiIsim}" → "${hasta.isim}"`);
                   degisiklik = true;
                   temizlenen++;
                 }
@@ -1721,8 +1716,7 @@
         });
         
         if (temizlenen > 0) {
-          console.log(`🎉 ${temizlenen} hasta ismi temizlendi! Sayfa yenileniyor...`);
-          setTimeout(() => window.location.reload(), 1000);
+          console.log(`🎉 ${temizlenen} hasta ismi temizlendi!`);
         } else {
           console.log('✅ Veri zaten temiz!');
         }
@@ -4386,100 +4380,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     // YENİ SİSTEM: Global hasta listesi
     let hastaListesi = [];
-    
-    // KAPSAMLI BOZUK KARAKTER TEMİZLEME FONKSİYONU
-    function kapsamliKarakterTemizle(text) {
-      if (!text || typeof text !== 'string') return text;
-      
-      let temizMetin = text;
-      
-      // 1. ÖNCE TÜM BOZUK ÃÂÃÂ KALIPLARINI TEMİZLE
-      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
-      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
-      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g, '');
-      temizMetin = temizMetin.replace(/ÃÂÃÂÃÂÃÂ/g, '');
-      temizMetin = temizMetin.replace(/ãâãâãâãâãâãâãâãâãâãâãâãâãâãâãâãâ/g, '');
-      temizMetin = temizMetin.replace(/ãâãâãâãâ/g, '');
-      temizMetin = temizMetin.replace(/ãâãâ/g, '');
-      temizMetin = temizMetin.replace(/ãâ/g, '');
-      temizMetin = temizMetin.replace(/Ã/g, '');
-      temizMetin = temizMetin.replace(/Â/g, '');
-      temizMetin = temizMetin.replace(/â/g, '');
-      
-      // 2. ÖZEL KARAKTER DÜZELTMELERİ
-      temizMetin = temizMetin.replace(/°/g, 'İ');
-      temizMetin = temizMetin.replace(/\*/g, 'Ş');
-      
-      // 3. BELİRLİ İSİM DÜZELTMELERİ (JSON'dan gelen örneklere göre)
-      const isimDuzeltmeleri = {
-        'efKE BAY': 'ŞEFİKE BAY',
-        'EF°KE BAY': 'ŞEFİKE BAY',
-        'EFKE BAY': 'ŞEFİKE BAY',
-        'enay UZAKGDER': 'PENAY UZAKGÖDER',
-        'zlem BRNCKALFA': 'ÖZLEM BİRİNCİ KALFA',
-        'zlem B°RNC° KALFA': 'ÖZLEM BİRİNCİ KALFA',
-        'AYÃE ULUDAG': 'AYŞE ULUDAĞ',
-        'AYÃE KOYUNCU': 'AYŞE KOYUNCU',
-        'BAHRYE YE°M DEMR': 'BAHRİYE YEŞİM DEMİR',
-        'BER°N KARADA': 'BERİN KARADAĞ',
-        'BETL GENÃ': 'BETÜL GENÇ',
-        'BETL TAdemR': 'BETÜL TAŞDEMİR',
-        'D°LEK DEerlR °AH°N': 'DİLEK DEĞERLİ ŞAHAN',
-        'DEFNE SER°NKEN': 'DEFNE SERİNKEN',
-        'EM°NE KAVALA': 'EMİNE KAVALA',
-        'ES°N KARAKU*': 'ESİN KARAKUŞ',
-        'F°SUN YANAL': 'FİSUN YANAL',
-        'FAD°ME AKAY': 'FADİME AKKAYA',
-        'FATMA KK KARAG°Z': 'FATMA KÖK KARAGÖZ',
-        'H°LYA KOAR': 'HÜLYAKOŞARr',
-        'HAF°ZE TOK': 'HAFİZE TOK',
-        'HANIM ACA': 'HANIM AĞCA',
-        'HAT°CE AYDIN': 'HATİCE AYDIN',
-        'HAT°CE KESER': 'HATİCE KESER',
-        'HAT°CE OKTA': 'HATİCE OKTAY',
-        'HUR°YE MERCOlu': 'HÜRİYE MERCİOĞLU',
-        'MERYEM KARADA NN': 'MERYEM KARADAĞ ANN',
-        'SEDA ENG°n': 'SEDA ENGİN',
-        'SEV°LAY CEYLAN': 'SEVİLAY CEYLAN',
-        'SEV°LAY COKUN': 'SEVİLAY ÇOŞKUN',
-        'SEVG° DOAN': 'SEVGİ DOĞAN',
-        'TUBA ATA': 'TUBA ATAY',
-        'TUBA GL': 'TUBA GÜL',
-        'V°LDAN APA': 'VİLDAN APA',
-        'ZEYNEP NUR ZKAYA': 'ZEYNEP NUR ÖZKAYA'
-      };
-      
-      // İsim düzeltmelerini uygula
-      for (const [bozuk, dogru] of Object.entries(isimDuzeltmeleri)) {
-        const regex = new RegExp(bozuk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        temizMetin = temizMetin.replace(regex, dogru);
-      }
-      
-      // 4. FAZLA BOŞLUKLARI TEMİZLE
-      temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
-      
-      return temizMetin;
-    }
-    
-    // ESKİ BOZUK FONKSİYON - KULLANILMIYOR ARTIK
-    function temizleTorupcuKarakterler(text) {
-      return kapsamliKarakterTemizle(text);
-    }
-    
-    // Mevcut hasta verilerindeki bozuk karakterleri temizle
-    console.log('🧹 Mevcut hasta verilerindeki bozuk karakterler temizleniyor...');
-    hastalar.forEach(hasta => {
-      if (hasta.isim) {
-        const eskiIsim = hasta.isim;
-        hasta.isim = temizleTorupcuKarakterler(hasta.isim);
-        if (eskiIsim !== hasta.isim) {
-          console.log(`✅ Bozuk karakter temizlendi: "${eskiIsim}" → "${hasta.isim}"`);
-        }
-      }
-      if (hasta.not) {
-        hasta.not = temizleTorupcuKarakterler(hasta.not);
-      }
-    });
     
     // Temizlenmiş verileri kaydet
     if (hastalar.length > 0) {
