@@ -5318,19 +5318,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       console.log('✅ Yeni hafta eklendi:', sonrakiHaftaNo, 'numaralı hafta');
       
-      // Otomatik kaydetme - hafta eklendi (localStorage)
+      // Otomatik kaydetme - hafta eklendi
       autoSaveHastaData(seciliHasta);
-      
-      // GitHub'a da kaydet (async olarak, UI'ı bloklamadan)
-      const token = document.getElementById('githubToken')?.value?.trim();
-      if (token && seciliHasta) {
-        hastayiAyriKaydet(seciliHasta).then(() => {
-          console.log(`✅ ${sonrakiHaftaNo}. hafta GitHub'a da kaydedildi`);
-        }).catch(error => {
-          console.error('⚠️ GitHub kaydetme hatası:', error);
-          // UI'da uyarı gösterme (kullanıcıyı rahatsız etmemek için console'da kalıyor)
-        });
-      }
       
       // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
@@ -5619,8 +5608,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               <span style="color: #666; font-size: 14px;">📅 ${hafta.baslangic} - ${hafta.bitis}</span>
             </div>
             <div style="display: flex; gap: 5px;">
-              <button onclick="duzenleHafta(${i}).catch(err => console.error('Hafta düzenleme hatası:', err))" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
-              <button onclick="silHafta(${i}).catch(err => console.error('Hafta silme hatası:', err))" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
+              <button onclick="duzenleHafta(${i})" style="padding: 5px 10px; font-size: 12px;">Düzenle</button>
+              <button onclick="silHafta(${i})" style="padding: 5px 10px; font-size: 12px; color: red;">Sil</button>
               ${haftaNo === 5 ? `<button onclick="haftaZipIndir(${i}, 5)" style="padding: 5px 10px; font-size: 12px; background: #17a2b8; color: white; border: none; border-radius: 4px;" title="5. hafta özel ZIP">📦 ZIP</button>` : ''}
               ${haftaNo === 9 ? `<button onclick="haftaZipIndir(${i}, 9)" style="padding: 5px 10px; font-size: 12px; background: #6f42c1; color: white; border: none; border-radius: 4px;" title="9. hafta özel ZIP">📦 ZIP</button>` : ''}
             </div>
@@ -5887,16 +5876,6 @@ function saveHaftaNo(i) {
   haftalar[i].haftaNo = yeniHaftaNo;
   saveToStorage();
   
-  // GitHub'a da kaydet (async olarak, UI'ı bloklamadan)
-  const token = document.getElementById('githubToken')?.value?.trim();
-  if (token && seciliHasta) {
-    hastayiAyriKaydet(seciliHasta).then(() => {
-      console.log(`✅ Hafta numarası GitHub'a da kaydedildi: ${yeniHaftaNo}. hafta`);
-    }).catch(error => {
-      console.error('⚠️ GitHub kaydetme hatası:', error);
-    });
-  }
-  
   // UI'ı güncelle
   displaySpan.textContent = yeniHaftaNo;
   displaySpan.style.display = 'inline-block';
@@ -5992,41 +5971,20 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 }
 
 // Hafta sil
-async function silHafta(i) {
+function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
-  
   const haftalar = getHaftaListesi();
-  const silinecekHafta = haftalar[i];
-  
-  console.log(`🗑️ ${silinecekHafta.haftaNo}. hafta siliniyor...`);
-  
-  // Haftayı listeden çıkar
   haftalar.splice(i, 1);
   
-  // Otomatik kaydetme - hafta silindi (localStorage)
+  // Otomatik kaydetme - hafta silindi
   autoSaveHastaData(seciliHasta);
-  
-  // GitHub'a da kaydet
-  const token = document.getElementById('githubToken')?.value?.trim();
-  if (token && seciliHasta) {
-    try {
-      console.log(`💾 ${seciliHasta.isim} hastasının güncellenmiş verisi GitHub'a kaydediliyor...`);
-      await hastayiAyriKaydet(seciliHasta);
-      console.log(`✅ ${silinecekHafta.haftaNo}. hafta GitHub'dan da silindi`);
-    } catch (error) {
-      console.error('⚠️ GitHub kaydetme hatası:', error);
-      alert('❌ Hafta lokal olarak silindi ancak GitHub kaydetme sırasında hata oluştu: ' + error.message);
-    }
-  } else {
-    console.warn('⚠️ GitHub token yok veya hasta seçili değil, sadece lokal silme yapıldı');
-  }
   
   // Tab sistemini yeniden yükle
   gosterHaftalar();
 }
 
 // Hafta düzenle (tarih ve açıklama)
-async function duzenleHafta(i) {
+function duzenleHafta(i) {
   const haftalar = getHaftaListesi();
   const hafta = haftalar[i];
   const yeniBaslangic = prompt('Yeni başlangıç tarihi (YYYY-MM-DD):', hafta.baslangic);
@@ -6037,25 +5995,8 @@ async function duzenleHafta(i) {
   hafta.bitis = yeniBitis;
   hafta.aciklama = document.getElementById('aciklama_' + i).value;
   
-  console.log(`📝 ${hafta.haftaNo}. hafta düzenleniyor...`);
-  
-  // Otomatik kaydetme - hafta düzenlendi (localStorage)
+  // Otomatik kaydetme - hafta düzenlendi
   autoSaveHastaData(seciliHasta);
-  
-  // GitHub'a da kaydet
-  const token = document.getElementById('githubToken')?.value?.trim();
-  if (token && seciliHasta) {
-    try {
-      console.log(`💾 ${seciliHasta.isim} hastasının güncellenmiş verisi GitHub'a kaydediliyor...`);
-      await hastayiAyriKaydet(seciliHasta);
-      console.log(`✅ ${hafta.haftaNo}. hafta GitHub'da da güncellendi`);
-    } catch (error) {
-      console.error('⚠️ GitHub kaydetme hatası:', error);
-      alert('❌ Hafta lokal olarak güncellendi ancak GitHub kaydetme sırasında hata oluştu: ' + error.message);
-    }
-  } else {
-    console.warn('⚠️ GitHub token yok veya hasta seçili değil, sadece lokal güncelleme yapıldı');
-  }
   
   gosterHaftalar();
 }
@@ -10740,7 +10681,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       sonuclar.forEach(sonuc => {
         if (sonuc.durum === 'BAŞARILI') {
-          mesajlar.push(`✅ ${sonuc.dosya} → ${sonuc.hasta} (${sonuc.hafta}. hafta) - ${sonuc.tarifSayisi || 0} tarif, ${sonuc.eslesmeSayisi || 0} eşleşme`);
+          mesajlar.push(`✅ ${sonuc.dosya} → ${sonuc.hasta} (${sonuc.hafta}. hafta)`);
+          mesajlar.push(`   📝 ${sonuc.tarifSayisi || 0} tarif JSON'a eklendi`);
+          mesajlar.push(`   🔗 ${sonuc.eslesmeSayisi || 0} tarif kartı eşleşmesi JSON'a eklendi`);
+          mesajlar.push(''); // Boş satır
         } else {
           mesajlar.push(`❌ ${sonuc.dosya} → ${sonuc.mesaj}`);
         }
@@ -10902,9 +10846,9 @@ ${mesajlar.join('\n')}
             type: file.type
           };
           
-          // PDF'i analiz et ve tarifleri çıkar
+          // PDF'i analiz et ve tarifleri çıkar (Manuel yükleme gibi)
           let pdfText = '';
-          let tarifler = [];
+          let tarifDetaylar = [];
           let eslesenKartlar = [];
           let recipeCount = 0;
           let matchCount = 0;
@@ -10921,34 +10865,63 @@ ${mesajlar.join('\n')}
               pdfText += pageText + ' ';
             }
             
-            // Tarifleri analiz et
-            if (typeof window.tarifKartlari !== 'undefined' && Array.isArray(window.tarifKartlari)) {
-              window.tarifKartlari.forEach(kart => {
-                const tarifAdi = kart.querySelector('.card-title')?.textContent?.trim();
-                if (tarifAdi && pdfText.toLowerCase().includes(tarifAdi.toLowerCase())) {
-                  tarifler.push(tarifAdi);
-                  eslesenKartlar.push({
-                    id: kart.id,
-                    name: tarifAdi,
-                    kategori: kart.dataset.kategori || 'Genel',
-                    type: 'auto',
-                    eklenmeTarihi: new Date().toISOString()
-                  });
-                  matchCount++;
+            // Tarifleri detaylı analiz et (manuel yüklemedeki gibi)
+            if (pdfText.trim().length > 0) {
+              tarifDetaylar = extractTariflerDetay(pdfText);
+              console.log(`📝 ${file.name}: ${tarifDetaylar.length} tarif çıkarıldı`);
+              
+              // Tarif kartları ile eşleştir (manuel yüklemedeki gelişmiş logic)
+              // Önce tarif kartlarını yükle
+              if (typeof tariflerKlasoruGorselleri === 'undefined' || tariflerKlasoruGorselleri.length === 0) {
+                if (typeof tariflerKlasoruGorselleriniYukle === 'function') {
+                  await tariflerKlasoruGorselleriniYukle();
                 }
-              });
+              }
+              
+              // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir (otomatikEsleHafta'daki gibi)
+              const tumKartlar = [].concat(
+                hafta.tarifKartlar || [],
+                (tariflerKlasoruGorselleri || []).map(g => ({ name: g.name, data: g.url }))
+              );
+              
+              if (tumKartlar.length > 0) {
+                eslesenKartlar = [];
+                
+                // Eşleştirmeyi başlat - tarifDetaylar'ı kullanarak basit eşleştirme yap
+                tarifDetaylar.forEach(tarif => {
+                  const tarifAdi = (typeof tarif === 'object' ? tarif.isim : tarif).toLowerCase().trim();
+                  
+                  // Tarif kartlarında ara
+                  const eslesenKart = tumKartlar.find(kart => {
+                    const kartAdi = kart.name.toLowerCase().replace(/\.(jpg|png|jpeg|webp)$/i, '').replace(/_/g, ' ');
+                    return kartAdi.includes(tarifAdi) || tarifAdi.includes(kartAdi);
+                  });
+                  
+                  if (eslesenKart) {
+                    eslesenKartlar.push({
+                      tarifAdi: typeof tarif === 'object' ? tarif.isim : tarif,
+                      kartResmi: eslesenKart.name,
+                      kartData: eslesenKart.data,
+                      eslesmeTuru: 'otomatik-basit'
+                    });
+                    matchCount++;
+                  }
+                });
+                
+                console.log(`🔗 ${file.name}: ${matchCount} eşleşme bulundu`);
+              } else {
+                console.warn(`⚠️ ${file.name}: Tarif kartları yüklenmemiş, eşleştirme atlanıyor`);
+              }
+              
+              recipeCount = tarifDetaylar.length;
             }
-            
-            // Toplam tarif sayısını tahmin et
-            const tarifMatches = pdfText.match(/tarif|yemek|öğün/gi);
-            recipeCount = tarifMatches ? tarifMatches.length : 0;
             
           } catch (pdfError) {
             console.warn('PDF içerik çıkarma hatası:', pdfError);
           }
           
-          // Hafta verilerini güncelle
-          hafta.tarifler = tarifler;
+          // Hafta verilerini güncelle (manuel yüklemedeki gibi)
+          hafta.tarifler = tarifDetaylar;
           hafta.tarifKartlar = eslesenKartlar;
           hafta.pdfText = pdfText.substring(0, 2000); // İlk 2000 karakter
           hafta.gptMesaj = `PDF analizi: ${recipeCount} tarif tespit edildi, ${matchCount} eşleşme bulundu.`;
@@ -10978,12 +10951,21 @@ ${mesajlar.join('\n')}
       // Progress dialog'u kapat
       document.body.removeChild(progressDiv);
       
-      // Sonuçları kaydet
+      // Sonuçları kaydet - hem localStorage hem de GitHub'a
       localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
       
-      // Otomatik kaydetme - hasta verileri değişti
-      if (seciliHasta) {
-        autoSaveHastaData(seciliHasta);
+      // Her yeni hasta için ayrı JSON dosyası kaydet (manuel yükleme gibi)
+      const yeniHastalar = hastalar.filter(h => sonuclar.some(s => s.hasta === h.ad && s.durum === 'BAŞARILI'));
+      
+      for (const hasta of yeniHastalar) {
+        try {
+          if (typeof autoSaveHastaData === 'function') {
+            await autoSaveHastaData(hasta);
+            console.log(`💾 ${hasta.ad} hasta verisi kaydedildi`);
+          }
+        } catch (saveError) {
+          console.warn(`⚠️ ${hasta.ad} hasta verisi kaydetme hatası:`, saveError);
+        }
       }
       
       // UI'ı güncelle ve sidebar'ı yenile
@@ -10996,6 +10978,10 @@ ${mesajlar.join('\n')}
       showCokluPdfSonuclari(sonuclar, basarili, hatali);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+      console.log('📊 Toplam işlenen veriler:');
+      console.log('- Yeni hasta sayısı:', yeniHastalar.length);
+      console.log('- Toplam tarif sayısı:', sonuclar.reduce((sum, s) => sum + (s.tarifSayisi || 0), 0));
+      console.log('- Toplam eşleşme sayısı:', sonuclar.reduce((sum, s) => sum + (s.eslesmeSayisi || 0), 0));
     }
 
         sayfaBaslat();
