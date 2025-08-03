@@ -1247,11 +1247,12 @@
               const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
               let fullText = '';
               
+              // Manuel sistemle AYNI şekilde metin çıkarma
               for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                 const page = await pdf.getPage(pageNum);
                 const textContent = await page.getTextContent();
                 const strings = textContent.items.map(item => item.str);
-                fullText += strings.join(' ') + '\n';
+                fullText += strings.join('\n') + '\n'; // Manuel sistemle aynı: '\n' kullan!
               }
               
               console.log(`📄 PDF metni çıkarıldı: ${fullText.length} karakter`);
@@ -1282,9 +1283,12 @@
                 // seciliHasta'yı geçici olarak güncelle
                 seciliHasta = hasta;
                 
-                // Hafta index'ini bul
+                // Manuel sistemle AYNI şekilde hafta localStorage güncellemesi
                 const haftaIndex = hasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
                 if (haftaIndex >= 0) {
+                  // Manuel sistemle AYNI: önce tarifler güncelle
+                  hasta.haftalar[haftaIndex].tarifler = tarifDetaylar;
+                  
                   try {
                     // Manuel sistemle AYNI otomatik eşleştirme fonksiyonunu kullan
                     const eslestirmeSonucu = await otomatikEsleHafta(haftaIndex);
@@ -1293,24 +1297,20 @@
                       console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
                       hafta.tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
                       console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
-                    }
-                    
-                    // Manuel sistemle AYNI şekilde hasta verilerini güncelle
-                    const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === hafta.haftaNo);
-                    if (seciliHaftaIndex !== -1) {
-                      seciliHasta.haftalar[seciliHaftaIndex].tarifler = hafta.tarifler;
-                      seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = hafta.tarifKartlar || [];
+                      
+                      // Manuel sistemle AYNI şekilde hasta verilerini güncelle
+                      seciliHasta.haftalar[haftaIndex].tarifKartlar = hafta.tarifKartlar || [];
                       
                       // Mevcut JSON'da eslesmeyenTarifler varsa sil (manuel sistemle aynı)
-                      if (seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler) {
-                        delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
+                      if (seciliHasta.haftalar[haftaIndex].eslesmeyenTarifler) {
+                        delete seciliHasta.haftalar[haftaIndex].eslesmeyenTarifler;
                         console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
                       }
+                      
+                      // Manuel sistemle AYNI şekilde GitHub'a kaydet
+                      await hastayiAyriKaydet(seciliHasta);
+                      console.log('📝 Eşleştirme sonrası GitHub\'a kaydedildi (manuel sistem gibi)');
                     }
-                    
-                    // Manuel sistemle AYNI şekilde GitHub'a kaydet
-                    await hastayiAyriKaydet(seciliHasta);
-                    console.log('📝 Eşleştirme sonrası GitHub\'a kaydedildi (manuel sistem gibi)');
                     
                     console.log(`✅ Manuel sistem uyumlu eşleştirme tamamlandı: ${hafta.tarifKartlar.length} eşleşme bulundu`);
                   } catch (eslesmeError) {
@@ -1323,80 +1323,6 @@
                 seciliHasta = tempSeciliHasta;
                 window.hastalar = tempHastalar;
                 
-                // Eğer gelişmiş eşleştirme başarısız olduysa basit eşleştirme yap
-                if (!hafta.tarifKartlar || hafta.tarifKartlar.length === 0) {
-                  console.log(`⚠️ Gelişmiş eşleştirme başarısız, manuel basit eşleştirme yapılıyor...`);
-                  hafta.tarifKartlar = [];
-                  let eslesenSayisi = 0;
-                  
-                  tarifDetaylar.forEach(tarif => {
-                    if (!tarif || typeof tarif !== 'string') return; // Tarif kontrolü
-                    
-                    const tarifAdi = tarif.toLowerCase().trim();
-                    
-                    // Daha gelişmiş kart eşleştirmesi
-                    const eslesenKart = window.tarifKartlari.find(kart => {
-                      if (!kart || typeof kart !== 'string') return false; // Kart kontrolü
-                      
-                      const kartAdi = kart.toLowerCase()
-                        .replace(/\.(jpg|png|jpeg|webp)$/i, '')
-                        .replace(/_/g, ' ')
-                        .replace(/[^a-zçğıöşü\s]/gi, '')
-                        .trim();
-                      
-                      const temizTarifAdi = tarifAdi
-                        .replace(/[^a-zçğıöşü\s]/gi, '')
-                        .trim();
-                      
-                      // Kelime kelime karşılaştırma
-                      const kartKelimeler = kartAdi.split(/\s+/);
-                      const tarifKelimeler = temizTarifAdi.split(/\s+/);
-                      
-                      // En az %60 kelime eşleşmesi
-                      let eslesenKelimeSayisi = 0;
-                      tarifKelimeler.forEach(tk => {
-                        if (kartKelimeler.some(kk => 
-                          kk.includes(tk) || tk.includes(kk) || 
-                          (kk.length > 3 && tk.length > 3 && (kk.includes(tk.substring(0, 4)) || tk.includes(kk.substring(0, 4))))
-                        )) {
-                          eslesenKelimeSayisi++;
-                        }
-                      });
-                      
-                      const eslesmePortu = eslesenKelimeSayisi / Math.max(tarifKelimeler.length, 1);
-                      return eslesmePortu >= 0.6 || kartAdi.includes(temizTarifAdi) || temizTarifAdi.includes(kartAdi);
-                    });
-                    
-                    if (eslesenKart) {
-                      hafta.tarifKartlar.push({
-                        tarifAdi: tarif,
-                        kartResmi: eslesenKart,
-                        eslesmeTuru: 'otomatik-gelismis'
-                      });
-                      eslesenSayisi++;
-                    }
-                  });
-                  
-                  console.log(`🔗 Manuel gelişmiş eşleştirme tamamlandı: ${eslesenSayisi} eşleşme`);
-                  
-                  // Manuel sistemle AYNI şekilde basit eşleştirme sonrası hasta güncellemesi
-                  if (eslesenSayisi > 0) {
-                    // Geçici olarak global değişkenleri güncelle
-                    const tempSeciliHasta2 = seciliHasta;
-                    seciliHasta = hasta;
-                    
-                    const seciliHaftaIndex = hasta.haftalar.findIndex(h => (h.haftaNo || 0) === hafta.haftaNo);
-                    if (seciliHaftaIndex !== -1) {
-                      hasta.haftalar[seciliHaftaIndex].tarifKartlar = hafta.tarifKartlar;
-                    }
-                    
-                    await hastayiAyriKaydet(hasta);
-                    console.log(`📝 Basit eşleştirme sonrası GitHub'a kaydedildi: ${eslesenSayisi} eşleşme`);
-                    
-                    // Global değişkeni geri yükle
-                    seciliHasta = tempSeciliHasta2;
-                  }
-                }
               } else {
                 console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
                 hafta.tarifKartlar = [];
