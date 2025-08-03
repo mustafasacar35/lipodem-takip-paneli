@@ -912,6 +912,8 @@
 
     // Tarih aralığını parse etme
     function parseTarihAraligi(tarihAraligi) {
+      console.log('📅 Tarih aralığı parse ediliyor:', tarihAraligi);
+      
       const bugun = new Date();
       const yil = bugun.getFullYear();
       
@@ -934,20 +936,26 @@
           const bitisGun = bitisParts[0].padStart(2, '0');
           const bitisAy = aylar[bitisParts[1]] || '01';
           
-          return {
+          const sonuc = {
             baslangic: `${yil}-${baslangicAy}-${baslangicGun}`,
             bitis: `${yil}-${bitisAy}-${bitisGun}`
           };
+          
+          console.log('✅ Tarih parse başarılı:', sonuc);
+          return sonuc;
         }
       } catch (error) {
         console.warn('Tarih parse hatası:', error);
       }
       
       // Fallback
-      return {
+      const fallback = {
         baslangic: bugun.toISOString().split('T')[0],
         bitis: bugun.toISOString().split('T')[0]
       };
+      
+      console.log('⚠️ Fallback tarih kullanılıyor:', fallback);
+      return fallback;
     }
 
     // Hasta bulma/oluşturma (GitHub entegrasyonlu)
@@ -1049,6 +1057,7 @@
         const tarihBilgisi = parseTarihAraligi(tarihAraligi);
         
         console.log(`✨ ${haftaNo}. hafta oluşturuluyor, mevcut hafta sayısı: ${hasta.haftalar.length}`);
+        console.log('📅 Hafta için hesaplanan tarihler:', tarihBilgisi);
         
         // Yeni hafta oluştur (manuel kayıt formatına uygun)
         hafta = {
@@ -1070,6 +1079,7 @@
         };
         hasta.haftalar.push(hafta);
         console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta oluşturuldu (${tarihAraligi})`);
+        console.log('📋 Oluşturulan hafta detayı:', { haftaNo: hafta.haftaNo, baslangic: hafta.baslangic, bitis: hafta.bitis });
         
         // GitHub'a güncellenmiş hasta verisini kaydet
         const token = document.getElementById('githubToken').value.trim();
@@ -1382,6 +1392,16 @@
       document.body.appendChild(modal);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+      
+      // Otomatik kaydetme - çoklu PDF işlemi tamamlandı (Cache temizlenmeden önce!)
+      if (basarili > 0 && typeof cokluPdfHastaCache !== 'undefined') {
+        console.log('💾 Çoklu PDF işlemi başarılı, tüm hasta verileri otomatik kaydediliyor...');
+        
+        // Cache'deki tüm hastaları global hastalar dizisine ekle/güncelle
+        for (const [key, hasta] of cokluPdfHastaCache.entries()) {
+          autoSaveHastaData(hasta);
+        }
+      }
       
       // Cache'i temizle
       if (typeof cokluPdfHastaCache !== 'undefined') {
