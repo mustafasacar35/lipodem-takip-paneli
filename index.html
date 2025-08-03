@@ -1953,6 +1953,23 @@
     // Hasta listesini GitHub'dan yükle
     async function hastaListesiYukle() {
       try {
+        // Önce localStorage'dan kontrol et
+        const localData = localStorage.getItem(STORAGE_KEY);
+        if (localData) {
+          try {
+            const localHastalar = JSON.parse(localData);
+            if (Array.isArray(localHastalar) && localHastalar.length > 0) {
+              console.log('✅ Hasta listesi localStorage\'dan yüklendi:', localHastalar.length, 'hasta (localStorage öncelikli)');
+              hastaListesi = localHastalar; // Global değişkeni güncelle
+              hastalar = localHastalar; // Global hastalar array'ini de güncelle
+              return localHastalar;
+            }
+          } catch (parseError) {
+            console.warn('⚠️ localStorage parse hatası, GitHub\'dan yüklenecek:', parseError);
+          }
+        }
+        
+        // localStorage boş veya hatalı, GitHub'dan yükle
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
           console.log('⚠️ GitHub token yok, hasta listesi yükleme atlanıyor');
@@ -1983,6 +2000,12 @@
             if (Array.isArray(content)) {
               console.log('✅ Hasta listesi GitHub\'dan yüklendi:', content.length, 'hasta');
               hastaListesi = content; // Global değişkeni güncelle
+              hastalar = content; // Global hastalar array'ini de güncelle
+              
+              // GitHub'dan gelen veriyi localStorage'a da kaydet
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
+              console.log('💾 GitHub verisi localStorage\'a da kaydedildi');
+              
               return content;
             } else {
               console.log('⚠️ Hasta listesi array değil, yeni liste oluşturulacak');
@@ -4356,11 +4379,38 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
         console.log('💾 Hastalar localStorage\'a kaydedildi');
+        
+        // GitHub'a da otomatik sync - async olarak çağır
+        if (typeof syncToGitHub === 'function') {
+          syncToGitHub().catch(err => console.warn('GitHub sync hatası:', err));
+        }
+        
         // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
       } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+    }
+    
+    // GitHub'a hasta verilerini senkronize et
+    async function syncToGitHub() {
+      try {
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+          console.log('⚠️ GitHub token yok, sync atlanıyor');
+          return;
+        }
+        
+        console.log('🔄 GitHub\'a senkronizasyon başlatılıyor...');
+        
+        // hastalar array'ini GitHub'a kaydet
+        await hastaListesiKaydet(hastalar);
+        
+        console.log('✅ GitHub senkronizasyonu tamamlandı');
+      } catch (error) {
+        console.error('❌ GitHub sync hatası:', error);
+        // Hata durumunda da devam et, localStorage'da veriler korunur
+      }
     }
     
     // Veri değiştiğinde otomatik kaydetme
@@ -6065,11 +6115,39 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 // Hafta sil
 function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+  
+  console.log(`🗑️ HAFTA SİLME BAŞLADI - Index: ${i}`);
+  
+  if (!seciliHasta) {
+    alert('Seçili hasta yok!');
+    return;
+  }
+  
   const haftalar = getHaftaListesi();
-  haftalar.splice(i, 1);
+  
+  if (!haftalar || i < 0 || i >= haftalar.length) {
+    alert('Geçersiz hafta seçimi!');
+    return;
+  }
+  
+  // Silinecek hafta bilgisi
+  const silinecekHafta = haftalar[i];
+  console.log(`🗑️ Silinecek hafta:`, silinecekHafta);
+  
+  // Global hasta verilerinden sil
+  seciliHasta.haftalar.splice(i, 1);
+  
+  console.log(`🗑️ Hafta silindi. Kalan hafta sayısı: ${seciliHasta.haftalar.length}`);
   
   // Otomatik kaydetme - hafta silindi
-  autoSaveHastaData(seciliHasta);
+  if (typeof autoSaveHastaData === 'function') {
+    autoSaveHastaData(seciliHasta);
+  } else {
+    // Fallback
+    saveToStorage();
+  }
+  
+  console.log(`🗑️ Hafta silme işlemi tamamlandı, UI güncelleniyor...`);
   
   // Tab sistemini yeniden yükle
   gosterHaftalar();
@@ -11211,6 +11289,42 @@ ${mesajlar.join('\n')}
     }
     
     // Global debug fonksiyonları YONETIMI YUKARI TASILDI
+    
+    // Test fonksiyonu - hafta silme işlemlerini kontrol etmek için
+    function testHaftaSilme() {
+      console.log('🧪 HAFTA SİLME TEST BAŞLADI');
+      console.log('📊 Test öncesi veriler:');
+      if (seciliHasta && seciliHasta.haftalar) {
+        console.log(`   Seçili hasta: ${seciliHasta.isim}`);
+        console.log(`   Toplam hafta sayısı: ${seciliHasta.haftalar.length}`);
+        seciliHasta.haftalar.forEach((hafta, index) => {
+          console.log(`   Hafta ${index}: ${hafta.haftaNo || (index + 1)} - Tarif kartları: ${hafta.tarifKartlar?.length || 0}`);
+        });
+      } else {
+        console.log('   ❌ Seçili hasta yok!');
+        return;
+      }
+      
+      console.log('💾 localStorage durumu:');
+      const localData = localStorage.getItem(STORAGE_KEY);
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          const hastaIndex = parsed.findIndex(h => h.id === seciliHasta.id);
+          if (hastaIndex >= 0) {
+            console.log(`   localStorage'da hasta bulundu, hafta sayısı: ${parsed[hastaIndex].haftalar?.length || 0}`);
+          } else {
+            console.log('   ❌ localStorage\'da hasta bulunamadı');
+          }
+        } catch (e) {
+          console.log('   ❌ localStorage parse hatası:', e);
+        }
+      } else {
+        console.log('   ❌ localStorage boş');
+      }
+      
+      console.log('🔧 Test tamamlandı. Şimdi bir hafta silip tekrar testHaftaSilme() çağırın!');
+    }
     // (Debug fonksiyonlar erken tanımlandı, burası temizlendi)
 
   </script>
