@@ -1854,7 +1854,7 @@
       }
     }
 
-    // Hasta verisini GitHub'a kaydet (YENİ FONKSİYON)
+    // Hasta verisini GitHub'a kaydet (İKİLİ SİSTEM: Ana liste + Individual dosya)
     async function saveHastaDataToGitHub(hasta) {
       try {
         const token = document.getElementById('githubToken').value.trim();
@@ -1866,12 +1866,40 @@
         const repo = 'lipodem-takip-paneli';
         const owner = 'mustafasacar35';
         
-        // Hasta ID'sini oluştur veya mevcut olanı kullan
+        // 1. ANA LİSTE GÜNCELLEMESİ (sadece özet bilgiler)
+        try {
+          const mevcutListe = await hastaListesiYukle();
+          const hastaIndex = mevcutListe.findIndex(h => h.id === hasta.id || h.isim === hasta.isim || h.ad === hasta.ad);
+          
+          const hastaOzet = {
+            id: hasta.id,
+            isim: hasta.isim || hasta.ad,
+            not: hasta.not || '',
+            arsiv: hasta.arsiv || false,
+            kayitTarihi: hasta.kayitTarihi || new Date().toISOString(),
+            guncellemeTarihi: new Date().toISOString()
+          };
+          
+          if (hastaIndex >= 0) {
+            mevcutListe[hastaIndex] = hastaOzet;
+            console.log(`🔄 Ana listede güncelleniyor: ${hastaOzet.isim}`);
+          } else {
+            mevcutListe.push(hastaOzet);
+            console.log(`➕ Ana listeye ekleniyor: ${hastaOzet.isim}`);
+          }
+          
+          await hastaListesiKaydet(mevcutListe);
+          console.log(`✅ Ana liste güncellendi: ${hastaOzet.isim}`);
+        } catch (anaListeError) {
+          console.warn('⚠️ Ana liste güncellenemedi:', anaListeError);
+        }
+        
+        // 2. INDIVIDUAL DOSYA GÜNCELLEMESİ (detaylı hafta verileri)
         const hastaId = hasta.id || `hasta_${Date.now()}`;
         const dosyaYolu = `patients/${hastaId}/hasta_data.json`;
         
-        // Hasta verisini JSON'a çevir
-        const hastaVerisi = {
+        // Detaylı hasta verisini hazırla
+        const detayliHastaVerisi = {
           id: hastaId,
           isim: hasta.isim || hasta.ad,
           haftalar: hasta.haftalar || [],
@@ -1881,9 +1909,9 @@
           guncellemeTarihi: new Date().toISOString()
         };
         
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(hastaVerisi, null, 2))));
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(detayliHastaVerisi, null, 2))));
         
-        // Önce mevcut dosyanın SHA'sını al (güncelleme için)
+        // Mevcut dosyanın SHA'sını al
         let sha = undefined;
         try {
           const checkResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dosyaYolu}`, {
@@ -1892,13 +1920,13 @@
           if (checkResponse.ok) {
             const data = await checkResponse.json();
             sha = data.sha;
-            console.log(`🔄 Mevcut hasta verisi güncelleniyor: ${hastaVerisi.isim}`);
+            console.log(`🔄 Individual dosya güncelleniyor: ${detayliHastaVerisi.isim}`);
           }
         } catch (e) {
-          console.log(`➕ Yeni hasta verisi oluşturuluyor: ${hastaVerisi.isim}`);
+          console.log(`➕ Yeni individual dosya oluşturuluyor: ${detayliHastaVerisi.isim}`);
         }
         
-        // GitHub'a kaydet
+        // Individual dosyayı GitHub'a kaydet
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dosyaYolu}`, {
           method: 'PUT',
           headers: {
@@ -1906,14 +1934,14 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            message: `Hasta verisi güncellendi: ${hastaVerisi.isim} (${hastaVerisi.haftalar.length} hafta)`,
+            message: `Hasta detay verisi güncellendi: ${detayliHastaVerisi.isim} (${detayliHastaVerisi.haftalar.length} hafta)`,
             content: content,
             sha: sha
           })
         });
         
         if (response.ok) {
-          console.log(`✅ Hasta verisi GitHub'a kaydedildi: ${hastaVerisi.isim}`);
+          console.log(`✅ Individual dosya kaydedildi: ${detayliHastaVerisi.isim} (${detayliHastaVerisi.haftalar.length} hafta)`);
           
           // Hasta ID'sini hasta objesine ekle (yeni oluşturulduysa)
           if (!hasta.id) {
