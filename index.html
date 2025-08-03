@@ -5582,7 +5582,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                   </div>
                   ${hafta.githubUrl || hafta.githubLink ? `
                     <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #c3e6cb;">
-                      <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                      <a href="javascript:void(0)" onclick="pdfGoruntule('${hafta.indirmeUrl || hafta.githubRawLink || hafta.githubUrl}')" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                        <span style="font-size: 12px;">👁️</span> PDF Görüntüle
+                      </a>
+                      <span style="margin: 0 5px; color: #dee2e6;">|</span>
+                      <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #666; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
                         <span style="font-size: 12px;">🔗</span> GitHub'da Görüntüle
                       </a>
                       ${hafta.indirmeUrl || hafta.githubRawLink ? `
@@ -6036,6 +6040,25 @@ function duzenleHafta(i) {
       } catch (error) {
         console.error('❌ PDF indirme hatası:', error);
         alert(`PDF indirilemedi: ${error.message}`);
+      }
+    }
+
+    // PDF'i browser'da görüntüleme fonksiyonu
+    function pdfGoruntule(pdfUrl) {
+      try {
+        console.log('👁️ PDF görüntüleniyor:', pdfUrl);
+        
+        if (!pdfUrl) {
+          alert('PDF URL\'si bulunamadı.');
+          return;
+        }
+        
+        // Yeni sekmede PDF'i aç
+        window.open(pdfUrl, '_blank');
+        
+      } catch (error) {
+        console.error('❌ PDF görüntüleme hatası:', error);
+        alert(`PDF görüntülenemedi: ${error.message}`);
       }
     }
 
@@ -10377,6 +10400,20 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
               if (kart.name) {
                 const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
                 haftaninYemekleri.add(yemekAdi);
+              }
+            });
+          }
+          
+          // Çoklu PDF'den eklenen kartlar
+          if (hafta.cokluPdfVerileri && hafta.cokluPdfVerileri.length > 0) {
+            hafta.cokluPdfVerileri.forEach(veri => {
+              if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
+                veri.tarifKartlar.forEach(kart => {
+                  if (kart.name) {
+                    const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+                    haftaninYemekleri.add(yemekAdi);
+                  }
+                });
               }
             });
           }
