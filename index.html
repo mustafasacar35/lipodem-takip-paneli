@@ -5973,14 +5973,69 @@ function pdfIcerigindenhaftaNoAl(pdfIcerik) {
 // Hafta sil
 function silHafta(i) {
   if (!confirm('Bu haftayı silmek istediğinize emin misiniz?')) return;
+  
   const haftalar = getHaftaListesi();
+  const silinecekHafta = haftalar[i];
+  
+  // Silme öncesi log
+  console.log(`🗑️ Hafta siliniyor: ${silinecekHafta?.haftaNo || i+1}. hafta`, silinecekHafta);
+  
+  // Haftayı sil
   haftalar.splice(i, 1);
   
-  // Otomatik kaydetme - hafta silindi
+  // Seçili hasta ve hafta sisteminde de güncelle
+  if (seciliHasta && seciliHasta.haftalar) {
+    // Global hastalar array'inde de güncelle
+    const hastaIndex = hastalar.findIndex(h => h.id === seciliHasta.id);
+    if (hastaIndex >= 0) {
+      hastalar[hastaIndex].haftalar = haftalar;
+      console.log(`✅ ${seciliHasta.isim || seciliHasta.ad} hastasının haftaları güncellendi. Kalan hafta sayısı: ${haftalar.length}`);
+    }
+  }
+  
+  // JSON'a kaydet - otomatik kaydetme
   autoSaveHastaData(seciliHasta);
+  
+  // localStorage'a da kaydet
+  try {
+    localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+    console.log(`💾 Hafta silme sonrası localStorage güncellendi`);
+  } catch(e) {
+    console.error('localStorage kaydetme hatası:', e);
+  }
   
   // Tab sistemini yeniden yükle
   gosterHaftalar();
+  
+  // Doğrulama: Hafta gerçekten silindi mi?
+  const guncelHaftalar = getHaftaListesi();
+  console.log(`✅ Doğrulama: Silme sonrası kalan hafta sayısı: ${guncelHaftalar.length}`);
+  
+  // Başarı mesajı göster
+  const bilgiMesaji = document.createElement('div');
+  bilgiMesaji.style.cssText = `
+    position: fixed; top: 20px; right: 20px; 
+    background: #d4edda; color: #155724; 
+    padding: 15px; border-radius: 5px; 
+    border: 1px solid #c3e6cb; z-index: 10000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  `;
+  bilgiMesaji.innerHTML = `
+    ✅ <strong>Hafta başarıyla silindi!</strong><br>
+    📄 JSON dosyasından da kaldırıldı<br>
+    💾 Değişiklikler kaydedildi<br>
+    📊 Kalan hafta sayısı: ${guncelHaftalar.length}
+  `;
+  document.body.appendChild(bilgiMesaji);
+  
+  // 3 saniye sonra mesajı kaldır
+  setTimeout(() => {
+    if (bilgiMesaji.parentNode) {
+      bilgiMesaji.parentNode.removeChild(bilgiMesaji);
+    }
+  }, 3000);
+  
+  console.log(`🎉 Hafta başarıyla silindi ve JSON'a kaydedildi`);
 }
 
 // Hafta düzenle (tarih ve açıklama)
