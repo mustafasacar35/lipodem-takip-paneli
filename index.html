@@ -8070,8 +8070,9 @@ function duzenleHafta(i) {
       gorselDiv.innerHTML = '';
       (hafta.tarifKartlar||[]).forEach(kart => {
         const img = document.createElement('img');
-        img.src = kart.data;
-        img.alt = kart.name;
+        // Güvenli src atama - undefined hatası önleme
+        img.src = kart.data || kart.kartData || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.kartResmi || 'default.jpg'}`;
+        img.alt = kart.name || kart.tarifAdi || 'Tarif kartı';
         img.style.width = '100px';
         img.style.margin = '4px';
         gorselDiv.appendChild(img);
@@ -8221,7 +8222,7 @@ function duzenleHafta(i) {
   // Hem manuel yüklenen hem tarifler klasörü görsellerini birleştir
   const tumKartlar = [].concat(
     hafta.tarifKartlar || [],
-    tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url }))
+    tariflerKlasoruGorselleri.map(g => ({ name: g.name, data: g.url, url: g.url }))
   ).filter(kart => kart && kart.name); // Null/undefined kartları filtrele
 
   if (!tumKartlar.length) {
@@ -8416,9 +8417,10 @@ function duzenleHafta(i) {
         // Her kart için görsel ekle
         grup.kartlar.forEach(kart => {
           const img = document.createElement('img');
-          img.src = kart.data;
+          // Güvenli src atama - undefined hatası önleme
+          img.src = kart.data || kart.kartData || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.kartResmi || kart.name || 'default.jpg'}`;
           img.alt = tarif;
-          img.title = kart.name;
+          img.title = kart.name || kart.tarifAdi || 'Tarif kartı';
           img.style.width = '120px';
           img.style.margin = '4px';
           eslesenDiv.appendChild(img);
@@ -8518,7 +8520,7 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => ({
     tarifAdi: e.tarif,
     kartResmi: e.kart.name,
-    kartData: e.kart.data,
+    kartData: e.kart.data || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${e.kart.name}`,
     eslesmeTuru: e.tip
   }));
   
