@@ -4709,9 +4709,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const duzeltilmisIsim = temizIsim;
       
       // Aynı isimde hasta var mı kontrol et (hem eski hem yeni sistemde)
-      const mevcutHastaEski = hastalar.find(h => h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
+      const mevcutHastaEski = hastalar.find(h => h && h.isim && h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
       if (mevcutHastaEski) {
         alert('Bu isimde bir hasta zaten mevcut! (Eski sistem)');
+        return;
+      }
+      
+      // Yeni sistemde de kontrol et
+      const mevcutHastaYeni = hastaListesi.find(h => h && h.isim && h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
+      if (mevcutHastaYeni) {
+        alert('Bu isimde bir hasta zaten mevcut! (Yeni sistem)');
         return;
       }
       
@@ -4742,7 +4749,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             arsiv: yeniHasta.arsiv || false
           };
           hastaListesi.push(yeniHastaListeItem);
-          hastaListesi.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+          hastaListesi.sort((a, b) => {
+            if (!a || !a.isim) return 1;
+            if (!b || !b.isim) return -1;
+            return a.isim.localeCompare(b.isim, 'tr');
+          });
           console.log('✅ Global hasta listesi güncellendi');
           
           // 3. Hasta listesini yeniden render et
@@ -4765,7 +4776,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // ESKİ SİSTEME EKLEME (sadece local olarak - geriye uyumluluk için)
       hastalar.push(yeniHasta);
-      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+      hastalar.sort((a, b) => {
+        if (!a || !a.isim) return 1;
+        if (!b || !b.isim) return -1;
+        return a.isim.localeCompare(b.isim, 'tr');
+      });
       saveToStorage();
       renderHastalar();
     }
@@ -9345,6 +9360,27 @@ function duzenleHafta(i) {
         }
       }
       
+      // 2c. Çoklu PDF'den eklenen kartları da ana dizine ekle
+      if (hafta.cokluPdfVerileri && hafta.cokluPdfVerileri.length > 0) {
+        console.log('📁 Çoklu PDF kartları ZIP\'e ekleniyor...', hafta.cokluPdfVerileri);
+        for (let veri of hafta.cokluPdfVerileri) {
+          if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
+            for (let cokluKart of veri.tarifKartlar) {
+              try {
+                const response = await fetch(cokluKart.data);
+                const blob = await response.blob();
+                const cokluName = `COKLU_PDF_${cokluKart.name}`;
+                zip.file(cokluName, blob);  // Ana dizine ekle, COKLU_PDF_ prefix ile
+                fileCount++;
+                console.log('✅ Çoklu PDF kartı eklendi:', cokluName);
+              } catch (e) {
+                console.warn('⚠️ Çoklu PDF kartı eklenemedi:', cokluKart.name, e);
+              }
+            }
+          }
+        }
+      }
+      
       // 3. PDF dosyasını ekle
       if (hasPdf) {
         try {
@@ -9816,6 +9852,51 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           
           kartVarMi = true;
         }
+        
+        // 3. Çoklu PDF'den eklenen kartları ekle
+        if (hafta.cokluPdfVerileri && hafta.cokluPdfVerileri.length > 0) {
+          console.log('✅ Çoklu PDF kartları bulundu, ekleniyor...', hafta.cokluPdfVerileri);
+          
+          hafta.cokluPdfVerileri.forEach((veri, veriIndex) => {
+            if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
+              veri.tarifKartlar.forEach(kart => {
+                const kartDiv = document.createElement('div');
+                kartDiv.style.cssText = 'display: inline-block; margin: 10px; position: relative; vertical-align: top;';
+                kartDiv.className = 'coklu-pdf-kart';
+                kartDiv.setAttribute('data-kart-name', kart.name);
+                
+                // Kart adını düzenle
+                const kartBaslik = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+                
+                kartDiv.innerHTML = `
+                  <div style="background: white; border: 3px solid #17a2b8; border-radius: 12px; padding: 15px; width: 200px; box-shadow: 0 4px 8px rgba(23,162,184,0.3);">
+                    <img src="${kart.data}" alt="${kart.name}" title="${kartBaslik}" 
+                         style="width: 100%; height: 120px; object-fit: cover; object-position: top; border-radius: 8px; margin-bottom: 10px;">
+                    
+                    <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; text-align: center;">
+                      ${kartBaslik}
+                    </div>
+                    
+                    <div style="background: #17a2b8; color: white; text-align: center; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">
+                      📁 ÇOKLU PDF'DEN
+                    </div>
+                    
+                    <div style="text-align: center;">
+                      <button onclick="cokluPdfKartSil('${kart.name}', ${haftaIndex}, ${veriIndex})" 
+                              style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        🗑️ Sil
+                      </button>
+                    </div>
+                  </div>
+                `;
+                
+                currentDiv.appendChild(kartDiv);
+              });
+            }
+          });
+          
+          kartVarMi = true;
+        }
       }
       
       // 3. Eğer hiç kart yoksa mesaj göster
@@ -10261,6 +10342,38 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Sidebar'ı güncelle
       haftaTabSecildiginde(haftaIndex);
+      
+      // Yemek analizini güncelle
+      updateYemekAnalizi();
+    }
+    
+    // Çoklu PDF kartını silme fonksiyonu
+    function cokluPdfKartSil(kartAdi, haftaIndex, veriIndex) {
+      if (!seciliHasta || !seciliHasta.haftalar[haftaIndex]) {
+        alert('Hasta veya hafta verisi bulunamadı!');
+        return;
+      }
+      
+      const hafta = seciliHasta.haftalar[haftaIndex];
+      if (!hafta.cokluPdfVerileri || !hafta.cokluPdfVerileri[veriIndex]) return;
+      
+      const pdfVeri = hafta.cokluPdfVerileri[veriIndex];
+      if (!pdfVeri.tarifKartlar) return;
+      
+      // Kartı listeden çıkar
+      pdfVeri.tarifKartlar = pdfVeri.tarifKartlar.filter(kart => kart.name !== kartAdi);
+      
+      console.log('🗑️ Çoklu PDF kartı silindi:', kartAdi);
+      
+      // Verileri kaydet
+      saveToStorage();
+      hastayiAyriKaydet(seciliHasta);
+      
+      // Sidebar'ı güncelle
+      haftaTabSecildiginde(haftaIndex);
+      
+      // Yemek analizini güncelle
+      updateYemekAnalizi();
     }
     
     // Global olarak erişilebilir yap
@@ -10270,6 +10383,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     window.manuelKartToggle = manuelKartToggle;
     window.secilenManuelKartlariEkle = secilenManuelKartlariEkle;
     window.manuelKartSil = manuelKartSil;
+    window.cokluPdfKartSil = cokluPdfKartSil;
 
     // ========================
     // SÜRÜKLENEBİLİR SIDEBAR
