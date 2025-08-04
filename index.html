@@ -8770,8 +8770,21 @@ function duzenleHafta(i) {
     window.temizleEslesmeyenTarifleriJSON = temizleEslesmeyenTarifleriJSON;
 
     function extractTariflerDetay(text) {
+      console.log('🔍 extractTariflerDetay başlıyor...');
+      console.log('📄 Ham metin uzunluğu:', text.length);
+      
       // Her satırı temizle, başında * veya miktar varsa da al
       const lines = text.split('\n').map(line => line.trim()).filter(l => l.length > 1);
+      console.log('📝 Toplam satır sayısı (>1 karakter):', lines.length);
+      
+      // * ile başlayan satırları özel olarak logla
+      const yildizliSatirlar = lines.filter(l => /^\*/.test(l));
+      console.log('⭐ * ile başlayan satırlar:', yildizliSatirlar);
+      
+      // Avokado içeren satırları bul
+      const avokadoSatirlar = lines.filter(l => l.toLowerCase().includes('avokado'));
+      console.log('🥑 "avokado" içeren satırlar:', avokadoSatirlar);
+      
       // Satır başında rakam, *, miktar, büyük harf, veya yemek adı olabilecek her şeyi al
       const filtered = lines.filter(l =>
         /^[0-9]+\./.test(l) || // 1. ...
@@ -8779,16 +8792,32 @@ function duzenleHafta(i) {
         /^[0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)/i.test(l) || // miktar ile başlayan
         /^[A-ZİĞÜŞÖÇ]/.test(l) // büyük harf ile başlayan
       );
+      
+      console.log('🔍 Filtrelenmiş satır sayısı:', filtered.length);
+      console.log('📋 Filtrelenmiş satırlar:', filtered);
+      
       // Baştaki numara, * işareti ve fazla boşlukları her zaman temizle
-      return filtered.map(line =>
-        line
+      const result = filtered.map(line => {
+        const temizlenmis = line
           .replace(/^[0-9]+\.\s*/, '') // baştaki numara
           .replace(/^\*+\s*/, '') // baştaki yıldız
           .replace(/^([0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s*)+/i, '') // baştaki miktar
           .replace(/\s+/g, ' ') // fazla boşluk
           .trim()
-          .toLowerCase()
-      );
+          .toLowerCase();
+        
+        // Avokado içeren satırları özel logla
+        if (line.toLowerCase().includes('avokado')) {
+          console.log(`🥑 AVOKADO SATIRI: "${line}" → "${temizlenmis}"`);
+        }
+        
+        return temizlenmis;
+      });
+      
+      console.log('✅ Final tarif listesi:', result);
+      console.log('🥑 Final listede avokado var mı?', result.filter(r => r.includes('avokado')));
+      
+      return result;
     }
 
     function normalizeNameDetay(name) {
