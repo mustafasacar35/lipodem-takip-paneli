@@ -4462,13 +4462,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           return a.hastaIsim.localeCompare(b.hastaIsim, 'tr'); // Alfabetik sıralama
         });
         
-        hastalarVeriAnaliziIle.forEach(hasta => {
+        hastalarVeriAnaliziIle.forEach((hasta, index) => {
           const li = document.createElement('li');
           li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
           isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;`;
+          
+          // Sıra numarasını ekle
+          const siraSpan = document.createElement('span');
+          siraSpan.style.cssText = 'color: #6c757d; font-weight: normal; margin-right: 8px;';
+          siraSpan.textContent = `${index + 1}.`;
+          isimDiv.appendChild(siraSpan);
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
