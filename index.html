@@ -4437,22 +4437,61 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${yuklenmisList.length}`);
         
         // Filtreleme ve hasta hafta verilerini analiz etme
-        const hastalarVeriAnaliziIle = filtreliHastalar.map(hasta => {
+        const hastalarVeriAnaliziIle = await Promise.all(filtreliHastalar.map(async (hasta) => {
           const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
           
-          // En büyük hafta sayısını bul
+          // En büyük hafta sayısını bul - önce localStorage'a bak
           let maxHafta = 0;
-          if (hasta.haftalar && hasta.haftalar.length > 0) {
-            const haftaNumaralari = hasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
+          let hastaDetayiBulundu = false;
+          
+          // Önce localStorage'dan kontrol et
+          const localHasta = hastalar.find(h => h && h.id === hasta.id);
+          if (localHasta && localHasta.haftalar && localHasta.haftalar.length > 0) {
+            const haftaNumaralari = localHasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
             maxHafta = Math.max(...haftaNumaralari);
+            hastaDetayiBulundu = true;
+          }
+          
+          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel)
+          if (!hastaDetayiBulundu && hasta.id) {
+            try {
+              const dosyaAdlari = [
+                generateFileName({ id: hasta.id, isim: hasta.isim }),
+                generateFileName({ isim: hasta.isim })
+              ];
+              
+              for (const dosyaAdi of dosyaAdlari) {
+                try {
+                  const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/patients/${dosyaAdi}`, {
+                    headers: { 'Authorization': `token ${token}` }
+                  });
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    const hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
+                    if (hastaDetay.haftalar && hastaDetay.haftalar.length > 0) {
+                      const haftaNumaralari = hastaDetay.haftalar.map(h => h.haftaNo || h.hafta || 0);
+                      maxHafta = Math.max(...haftaNumaralari);
+                      hastaDetayiBulundu = true;
+                      break;
+                    }
+                  }
+                } catch (e) {
+                  // Sessizce geç
+                }
+              }
+            } catch (e) {
+              // Sessizce geç
+            }
           }
           
           return {
             ...hasta,
             maxHafta: maxHafta,
-            hastaIsim: hastaIsim
+            hastaIsim: hastaIsim,
+            hastaDetayiBulundu: hastaDetayiBulundu
           };
-        });
+        }));
         
         // En büyük hafta numarasına göre sırala, aynı hafta numarası olanlarda alfabetik
         hastalarVeriAnaliziIle.sort((a, b) => {
@@ -4482,12 +4521,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           isimDiv.appendChild(isimSpan);
           
           // Hafta bilgisini ekle (kırmızı renkte)
+          const haftaSpan = document.createElement('span');
+          haftaSpan.style.cssText = 'color: #dc3545; font-weight: normal;'; // Kırmızı renk
           if (hasta.maxHafta > 0) {
-            const haftaSpan = document.createElement('span');
-            haftaSpan.style.cssText = 'color: #dc3545; font-weight: normal;'; // Kırmızı renk
             haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
-            isimDiv.appendChild(haftaSpan);
+          } else {
+            haftaSpan.textContent = ` (pdf yok)`;
           }
+          isimDiv.appendChild(haftaSpan);
           
           li.appendChild(isimDiv);
           
