@@ -4436,38 +4436,52 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const arsivSayisi = yuklenmisList.filter(h => h.arsiv).length;
         console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${yuklenmisList.length}`);
         
-        filtreliHastalar.forEach(hasta => {
-          const li = document.createElement('li');
-          li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
-          
-          // Hasta ismini güvenli şekilde al
+        // Filtreleme ve hasta hafta verilerini analiz etme
+        const hastalarVeriAnaliziIle = filtreliHastalar.map(hasta => {
           const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
           
           // En büyük hafta sayısını bul
           let maxHafta = 0;
-          console.log('🔍 Hasta hafta verileri debug:', {
-            isim: hastaIsim,
-            haftalar: hasta.haftalar,
-            haftalarLength: hasta.haftalar ? hasta.haftalar.length : 'undefined'
-          });
-          
           if (hasta.haftalar && hasta.haftalar.length > 0) {
-            // Hafta numaralarını topla
-            const haftaNumaralari = hasta.haftalar.map(h => {
-              console.log('🔍 Hafta objesi:', h);
-              return h.haftaNo || h.hafta || 0;
-            });
-            console.log('🔍 Hafta numaraları:', haftaNumaralari);
+            const haftaNumaralari = hasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
             maxHafta = Math.max(...haftaNumaralari);
           }
           
-          console.log('🔍 En büyük hafta:', maxHafta);
+          return {
+            ...hasta,
+            maxHafta: maxHafta,
+            hastaIsim: hastaIsim
+          };
+        });
+        
+        // En büyük hafta numarasına göre sırala, aynı hafta numarası olanlarda alfabetik
+        hastalarVeriAnaliziIle.sort((a, b) => {
+          if (a.maxHafta !== b.maxHafta) {
+            return a.maxHafta - b.maxHafta; // Küçük haftadan büyük haftaya
+          }
+          return a.hastaIsim.localeCompare(b.hastaIsim, 'tr'); // Alfabetik sıralama
+        });
+        
+        hastalarVeriAnaliziIle.forEach(hasta => {
+          const li = document.createElement('li');
+          li.style.cssText = 'cursor: pointer; padding: 8px 12px; border-radius: 4px; margin-bottom: 2px; background: #f8f9fa; border-left: 3px solid ' + (hasta.arsiv ? '#6c757d' : '#007bff') + ';';
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
           isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : '#333'}; font-size: 13px;`;
-          const haftaBilgisi = maxHafta > 0 ? ` (${maxHafta}. hafta)` : '';
-          isimDiv.textContent = `${hasta.arsiv ? '📦 ' : ''}${hastaIsim}${haftaBilgisi}`; // textContent kullan
+          
+          // İsim kısmını ekle
+          const isimSpan = document.createElement('span');
+          isimSpan.textContent = `${hasta.arsiv ? '� ' : ''}${hasta.hastaIsim}`;
+          isimDiv.appendChild(isimSpan);
+          
+          // Hafta bilgisini ekle (kırmızı renkte)
+          if (hasta.maxHafta > 0) {
+            const haftaSpan = document.createElement('span');
+            haftaSpan.style.cssText = 'color: #dc3545; font-weight: normal;'; // Kırmızı renk
+            haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
+            isimDiv.appendChild(haftaSpan);
+          }
           
           li.appendChild(isimDiv);
           
