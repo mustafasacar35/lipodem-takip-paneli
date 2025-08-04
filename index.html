@@ -4881,10 +4881,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
       
       // Hasta listesini yenile ve sırala
-      hastalar.sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+      hastalar.sort((a, b) => {
+        if (!a || !a.isim) return 1;
+        if (!b || !b.isim) return -1;
+        return a.isim.localeCompare(b.isim, 'tr');
+      });
       renderHastalar();
       
       console.log(`✅ Hasta bilgileri güncellendi: ${mevcutIsim} → ${duzeltilmisIsim}`);
+      
+      // YENİ SİSTEM HASTA LİSTESİNDE İSMİ GÜNCELLE
+      const hastaListeItem = hastaListesi.find(h => h && h.id === seciliHasta.id);
+      if (hastaListeItem) {
+        hastaListeItem.isim = duzeltilmisIsim;
+        console.log('✅ Yeni sistem hasta listesinde isim güncellendi');
+      }
       
       // YENİ SİSTEME KAYDET
       hastayiAyriKaydet(seciliHasta).then(basarili => {
