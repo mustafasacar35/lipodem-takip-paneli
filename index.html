@@ -1247,15 +1247,50 @@
               const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
               let fullText = '';
               
+              console.log(`📖 PDF toplam sayfa sayısı: ${pdf.numPages}`);
+              
               // Manuel sistemle AYNI şekilde metin çıkarma
               for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                console.log(`📄 Sayfa ${pageNum}/${pdf.numPages} işleniyor...`);
                 const page = await pdf.getPage(pageNum);
                 const textContent = await page.getTextContent();
                 const strings = textContent.items.map(item => item.str);
-                fullText += strings.join('\n') + '\n'; // Manuel sistemle aynı: '\n' kullan!
+                const pageText = strings.join('\n') + '\n';
+                
+                console.log(`📄 Sayfa ${pageNum} metin uzunluğu: ${pageText.length} karakter`);
+                console.log(`📄 Sayfa ${pageNum} ilk 200 karakter:`, pageText.substring(0, 200));
+                
+                // Tavuk içeren satırları özel kontrol et
+                if (pageText.toLowerCase().includes('tavuk')) {
+                  console.log(`🐔 Sayfa ${pageNum}'da TAVUK bulundu!`);
+                  const tavukSatirlari = pageText.split('\n').filter(line => line.toLowerCase().includes('tavuk'));
+                  console.log(`🐔 Sayfa ${pageNum} tavuk satırları:`, tavukSatirlari);
+                }
+                
+                // Pirzola içeren satırları özel kontrol et
+                if (pageText.toLowerCase().includes('pirzola')) {
+                  console.log(`🥩 Sayfa ${pageNum}'da PIRZOLA bulundu!`);
+                  const pirzolaSatirlari = pageText.split('\n').filter(line => line.toLowerCase().includes('pirzola'));
+                  console.log(`🥩 Sayfa ${pageNum} pirzola satırları:`, pirzolaSatirlari);
+                }
+                
+                // 150 gr içeren satırları özel kontrol et
+                if (pageText.includes('150') && pageText.toLowerCase().includes('gr')) {
+                  console.log(`⚖️ Sayfa ${pageNum}'da 150 gr bulundu!`);
+                  const miktarSatirlari = pageText.split('\n').filter(line => line.includes('150') && line.toLowerCase().includes('gr'));
+                  console.log(`⚖️ Sayfa ${pageNum} 150 gr satırları:`, miktarSatirlari);
+                }
+                
+                fullText += pageText; // Manuel sistemle aynı: '\n' kullan!
               }
               
               console.log(`📄 PDF metni çıkarıldı: ${fullText.length} karakter`);
+              console.log(`📄 PDF tam metni (ilk 500 karakter):`, fullText.substring(0, 500));
+              
+              // Ham metinde aradığımız satırları kontrol et
+              console.log(`🔍 Ham metinde 'tavuk' var mı?`, fullText.toLowerCase().includes('tavuk'));
+              console.log(`🔍 Ham metinde 'pirzola' var mı?`, fullText.toLowerCase().includes('pirzola'));
+              console.log(`🔍 Ham metinde '150' var mı?`, fullText.includes('150'));
               
               // Tarif detaylarını çıkar
               const tarifDetaylar = extractTariflerDetay(fullText);
@@ -8797,7 +8832,7 @@ function duzenleHafta(i) {
       const filtered = lines.filter(l =>
         /^[0-9]+\./.test(l) || // 1. ...
         /^\*/.test(l) || // * ...
-        /^[0-9]+\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)\s+/i.test(l) || // miktar ile başlayan (sonunda boşluk olmalı)
+        /^[0-9]+[\.,]?\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)(\s|\.|\,|$)/i.test(l) || // miktar ile başlayan (nokta, virgül, boşluk veya satır sonu ile biter)
         /^[A-ZİĞÜŞÖÇ]/.test(l) // büyük harf ile başlayan
       );
       
@@ -8816,9 +8851,10 @@ function duzenleHafta(i) {
         
         // Miktar kısmını akıllıca temizle - sadece başındakini al, ortadakini bırak
         // "150 gr. Tavuk pirzola" → "Tavuk pirzola"
-        // "2 adet Köfte" → "Köfte" 
+        // "150gr Köfte" → "Köfte" 
         // "100 gram Et" → "Et"
-        const miktarRegex = /^([0-9]+[\.,]?[0-9]*)\s*(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)[\.,]?\s*/i;
+        // "150 gr." → "" (sadece miktar varsa boş döner)
+        const miktarRegex = /^([0-9]+[\.,]?\s*)(gram|gr|adet|yemek\s*kaşığı|tatlı\s*kaşığı|su\s*bardağı|dilim|kase|çay\s*bardağı|bardak|kaşık|tbsp|tsp|ml|kg|g)[\.,]?\s*/i;
         temizlenmis = temizlenmis.replace(miktarRegex, '');
         
         // Fazla boşlukları temizle
