@@ -1632,7 +1632,15 @@
           updateYemekAnalizi();
           // Eşleşmeyenler listesini de güncelle
           setTimeout(() => {
-            eslesmeyenlerListesiniGuncelle();
+            try {
+              if (typeof eslesmeyenlerListesiniGuncelle === 'function') {
+                eslesmeyenlerListesiniGuncelle();
+              } else {
+                console.warn('⚠️ eslesmeyenlerListesiniGuncelle fonksiyonu henüz yüklenmemiş');
+              }
+            } catch (error) {
+              console.warn('⚠️ eslesmeyenlerListesiniGuncelle hatası:', error.message);
+            }
           }, 500);
         }, 1500); // Tüm veriler yüklenmesi için 1.5 saniye bekle
         
@@ -3373,7 +3381,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           p.onmouseenter = () => p.style.background = '#ffe6e6';
           p.onmouseleave = () => p.style.background = '#fff5f5';
-          p.onclick = () => eslesmeyenTarifManuelEslestir(tarif);
+          p.onclick = () => {
+            console.log('🔗 Eşleşmeyen tarif adına tıklandı:', tarif);
+            try {
+              if (typeof eslesmeyenTarifManuelEslestir === 'function') {
+                eslesmeyenTarifManuelEslestir(tarif);
+              } else {
+                console.error('❌ eslesmeyenTarifManuelEslestir fonksiyonu bulunamadı!');
+                alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+              }
+            } catch (error) {
+              console.error('❌ Eşleşmeyen tarif tıklama hatası:', error);
+              alert('Hata: ' + error.message);
+            }
+          };
           
           eslesmeyenlerContent.appendChild(p);
         });
@@ -5381,7 +5402,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Eşleşmeyenler listesini güncelle (hasta değiştiğinde)
           setTimeout(() => {
-            eslesmeyenlerListesiniGuncelle();
+            try {
+              if (typeof eslesmeyenlerListesiniGuncelle === 'function') {
+                eslesmeyenlerListesiniGuncelle();
+              } else {
+                console.warn('⚠️ eslesmeyenlerListesiniGuncelle fonksiyonu henüz yüklenmemiş (hasta değişimi)');
+              }
+            } catch (error) {
+              console.warn('⚠️ eslesmeyenlerListesiniGuncelle hatası (hasta değişimi):', error.message);
+            }
           }, 1000);
           
         } else {
@@ -9152,7 +9181,18 @@ function duzenleHafta(i) {
         
         // Tıklama olayı - Manuel eşleştirme panelini aç ve bilgileri doldur
         tarifSpan.onclick = () => {
-          eslesenTarifManuelEslestir(tarif, grup.kartlar);
+          console.log('🔧 Eşleşen tarif adına tıklandı:', tarif, grup.kartlar);
+          try {
+            if (typeof eslesenTarifManuelEslestir === 'function') {
+              eslesenTarifManuelEslestir(tarif, grup.kartlar);
+            } else {
+              console.error('❌ eslesenTarifManuelEslestir fonksiyonu bulunamadı!');
+              alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+            }
+          } catch (error) {
+            console.error('❌ Eşleşen tarif tıklama hatası:', error);
+            alert('Hata: ' + error.message);
+          }
         };
         
         // Full p elementi oluştur (innerHTML += kullanmadan)
