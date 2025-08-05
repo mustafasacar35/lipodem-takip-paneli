@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -1534,6 +1533,20 @@
       }
     }
     
+    // UTF-8 encoding için yardımcı fonksiyon
+    function encodeUTF8ToBase64(jsonData) {
+      try {
+        const jsonString = JSON.stringify(jsonData, null, 2);
+        const encoder = new TextEncoder();
+        const utf8Bytes = encoder.encode(jsonString);
+        return btoa(String.fromCharCode(...utf8Bytes));
+      } catch (error) {
+        console.warn('UTF-8 encode başarısız, fallback kullanılıyor:', error);
+        // Fallback: Eski yöntem
+        return btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+      }
+    }
+    
     // Base64'ü blob'a çevir
     function base64ToBlob(base64Content, mimeType = 'application/octet-stream') {
       try {
@@ -2031,7 +2044,9 @@
       try {
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(hastaListesi, null, 2))));
+        
+        // UTF-8 için doğru encoding
+        const content = encodeUTF8ToBase64(hastaListesi);
         
         // Önce mevcut dosyanın SHA'sını al
         let sha = undefined;
@@ -2364,7 +2379,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           });
         }
         
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(hasta, null, 2))));
+        // UTF-8 için doğru encoding
+        const content = encodeUTF8ToBase64(hasta);
         
         // Önce dosyanın SHA'sını kontrol et
         let sha = undefined;
@@ -2709,7 +2725,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           eslesmemeKurallari: eslesmemeKurallari
         };
 
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(kayitVerisi, null, 2))));
+        // UTF-8 için doğru encoding
+        const content = encodeUTF8ToBase64(kayitVerisi);
 
         // Dosyayı yükle
         const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
@@ -3129,7 +3146,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           eslestirmeler: manuelEslestirmeler
         };
 
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify(kayitVerisi, null, 2))));
+        // UTF-8 için doğru encoding
+        const content = encodeUTF8ToBase64(kayitVerisi);
 
         // Dosyayı yükle
         const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
@@ -3478,7 +3496,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const guncelListe = mevcutListe.filter(kart => kart !== silinecekKart);
 
         // Güncellenmiş listeyi yükle
-        const yeniListeContent = btoa(unescape(encodeURIComponent(JSON.stringify(guncelListe, null, 2))));
+        const yeniListeContent = encodeUTF8ToBase64(guncelListe);
         const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
           method: 'PUT',
           headers: {
@@ -3833,7 +3851,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           },
           body: JSON.stringify({
             message: `List.json temizlendi: ${removedCount} dosya kaldırıldı`,
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(validFiles, null, 2)))),
+            content: encodeUTF8ToBase64(validFiles),
             sha: fileData.sha
           })
         });
@@ -4089,7 +4107,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         },
         body: JSON.stringify({
           message: 'list.json güncellendi (kart düzenleme)',
-          content: btoa(unescape(encodeURIComponent(JSON.stringify(imageFiles, null, 2)))),
+          content: encodeUTF8ToBase64(imageFiles),
           ...(listSha && { sha: listSha })
         })
       });
@@ -4239,7 +4257,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
 
         // Güncellenmiş listeyi yükle
-        const yeniListeContent = btoa(unescape(encodeURIComponent(JSON.stringify(mevcutListe, null, 2))));
+        const yeniListeContent = encodeUTF8ToBase64(mevcutListe);
         const listUpdateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/tarifler/list.json`, {
           method: 'PUT',
           headers: {
