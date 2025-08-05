@@ -1518,6 +1518,14 @@
       // Final kaydetme: Tüm değişiklikleri kesin olarak kaydet
       saveToStorage();
       console.log('💾 Çoklu PDF işlemi sonrası final kaydetme tamamlandı');
+      
+      // Yemek analizini güncelle (çoklu PDF işlemi sonrası)
+      if (basarili > 0) {
+        console.log('📊 Çoklu PDF işlemi sonrası yemek analizi güncelleniyor...');
+        setTimeout(() => {
+          updateYemekAnalizi();
+        }, 1000); // Veriler tamamen yüklenmesi için 1 saniye bekle
+      }
     }
 
     // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
@@ -1618,6 +1626,12 @@
       // Sadece yeni sistemi başlat
       loadHastaDataFromGitHub().then(() => {
         console.log('✅ Yeni sistem hazır');
+        
+        // Sistem yüklendikten sonra yemek analizini başlat
+        setTimeout(() => {
+          updateYemekAnalizi();
+        }, 1500); // Tüm veriler yüklenmesi için 1.5 saniye bekle
+        
       }).catch(error => {
         console.warn('⚠️ Yeni sistem yüklenemedi:', error.message);
         // Boş yeni sistem ile başlat
@@ -8720,12 +8734,6 @@ function duzenleHafta(i) {
   let eslesenKartlarListesi = [];
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
-  let tumEkstrakteEdilenTarifler = hafta.tarifler ? [...hafta.tarifler] : []; // Tüm extrakte edilen tarifleri sakla
-
-  console.log('🔍 otomatikEsleHafta debug:', {
-    toplamTarifSayisi: hafta.tarifler?.length || 0,
-    tarifler: hafta.tarifler
-  });
 
   // Her tarif için eşleştirme yap
   hafta.tarifler.forEach(tarif => {
@@ -8901,86 +8909,39 @@ function duzenleHafta(i) {
   } // domElementMevcut kapanışı
 
   // Eşleşmeyen tarifleri yeni accordion sistemine ekle (sadece DOM varsa)
-  if (domElementMevcut) {
+  if (domElementMevcut && eslesmeyenTarifler.length > 0) {
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     
     if (eslesmeyenlerContent && eslesmeyenlerBaslik) {
-      // Başlığı güncelle - hem eşleşmeyen hem tüm extrakte edilen sayısını göster
-      const eslesmeyenSayisi = eslesmeyenTarifler.length;
-      const toplamSayisi = tumEkstrakteEdilenTarifler.length;
-      eslesmeyenlerBaslik.textContent = `� PDF'den Çıkarılan Tüm Satırlar (${toplamSayisi}) - Eşleşmeyen: ${eslesmeyenSayisi}`;
+      // Başlığı güncelle
+      eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
       
       // İçeriği temizle ve yeniden doldur
       eslesmeyenlerContent.innerHTML = '';
       
-      // Önce eşleşmeyenleri göster (kırmızı)
-      if (eslesmeyenTarifler.length > 0) {
-        const eslesmeyenBaslik = document.createElement('h4');
-        eslesmeyenBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-        eslesmeyenBaslik.style.color = '#dc3545';
-        eslesmeyenBaslik.style.marginBottom = '10px';
-        eslesmeyenlerContent.appendChild(eslesmeyenBaslik);
-        
-        eslesmeyenTarifler.forEach(tarif => {
-          const p = document.createElement('p');
-          p.textContent = tarif;
-          p.style.color = '#dc3545';
-          p.style.margin = '6px 0';
-          p.style.padding = '4px 8px';
-          p.style.background = '#fff5f5';
-          p.style.borderLeft = '3px solid #dc3545';
-          p.style.borderRadius = '4px';
-          eslesmeyenlerContent.appendChild(p);
-        });
-      }
-      
-      // Sonra tüm extrakte edilen tarifleri göster (mavi)
-      if (tumEkstrakteEdilenTarifler.length > 0) {
-        const tumBaslik = document.createElement('h4');
-        tumBaslik.textContent = `📋 PDF'den Çıkarılan Tüm Satırlar (${tumEkstrakteEdilenTarifler.length})`;
-        tumBaslik.style.color = '#007bff';
-        tumBaslik.style.marginBottom = '10px';
-        tumBaslik.style.marginTop = '20px';
-        eslesmeyenlerContent.appendChild(tumBaslik);
-        
-        tumEkstrakteEdilenTarifler.forEach((tarif, index) => {
-          const p = document.createElement('p');
-          
-          // Eşleşen tarifleri yeşil, eşleşmeyenleri gri göster
-          const isEslesmis = !eslesmeyenTarifler.includes(tarif);
-          
-          p.innerHTML = `<span style="color: #666; font-weight: bold;">${index + 1}.</span> ${tarif}`;
-          p.style.margin = '4px 0';
-          p.style.padding = '4px 8px';
-          p.style.borderRadius = '4px';
-          
-          if (isEslesmis) {
-            // Eşleşen tarif - yeşil
-            p.style.color = '#28a745';
-            p.style.background = '#f0fff0';
-            p.style.borderLeft = '3px solid #28a745';
-          } else {
-            // Eşleşmeyen tarif - açık kırmızı
-            p.style.color = '#dc3545';
-            p.style.background = '#fff5f5';
-            p.style.borderLeft = '3px solid #dc3545';
-          }
-          
-          eslesmeyenlerContent.appendChild(p);
-        });
-      }
+      eslesmeyenTarifler.forEach(tarif => {
+        const p = document.createElement('p');
+        p.textContent = tarif;
+        p.style.color = '#dc3545';
+        p.style.margin = '6px 0';
+        p.style.padding = '4px 8px';
+        p.style.background = '#fff5f5';
+        p.style.borderLeft = '3px solid #dc3545';
+        p.style.borderRadius = '4px';
+        eslesmeyenlerContent.appendChild(p);
+      });
     }
-  } else {
-    // DOM element yoksa veya boşsa başlığı sıfırla
+  } else if (domElementMevcut) {
+    // Eşleşmeyen tarif yoksa başlığı sıfırla
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
     
     if (eslesmeyenlerBaslik) {
-      eslesmeyenlerBaslik.textContent = '� PDF\'den Çıkarılan Satırlar';
+      eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
     }
     if (eslesmeyenlerContent) {
-      eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">PDF\'den tarif çıkarılmadı</div>';
+      eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Eşleşmeyen tarif bulunamadı</div>';
     }
   }
 
@@ -9021,6 +8982,11 @@ function duzenleHafta(i) {
     eslesenKartSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
     eslesmeyenTarifSayisi: eslesmeyenTarifler.length
   });
+  
+  // Eşleştirme sonrası yemek analizini güncelle
+  setTimeout(() => {
+    updateYemekAnalizi();
+  }, 300); // Veriler tamamen güncellenmesi için kısa bir gecikme
   
   return sonuc;
 }
@@ -10349,6 +10315,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
     // Aktif hastayı seçtiğimizde eşleşen kartları göster
     function hastaSecildiginde(hastaIndex) {
+      console.log(`👤 Hasta seçildi: ${hastaIndex}`);
+      
       // Mevcut aktif hafta için eşleşen kartları sidebar'da göster
       const actTab = document.querySelector('.hafta-tab.active');
       if (actTab) {
@@ -10357,6 +10325,11 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           gosterEslesenKartlarSidebar(haftaIndex);
         }
       }
+      
+      // Hasta seçildiğinde yemek analizini güncelle
+      setTimeout(() => {
+        updateYemekAnalizi();
+      }, 500); // Hasta verilerinin yüklenmesi için kısa gecikme
     }
     window.hastaSecildiginde = hastaSecildiginde;
 
@@ -10957,6 +10930,9 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Modal'ı kapat
       manuelKartModalKapat();
       
+      // Yemek analizini güncelle
+      updateYemekAnalizi();
+      
       alert(`✅ ${eklenenKartSayisi} kart başarıyla eklendi!`);
     }
     
@@ -11097,16 +11073,30 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     window.siralaYemekAnalizi = siralaYemekAnalizi;
     
     function updateYemekAnalizi() {
+      console.log('📊 updateYemekAnalizi fonksiyonu çağrıldı');
+      
       if (!seciliHasta || !seciliHasta.haftalar || aktifHaftaIndex === null) {
         document.getElementById('yemekAnaliziListe').innerHTML = 
           '<div style="text-align: center; color: #666; padding: 20px;">Hasta veya hafta seçilmemiş</div>';
         return;
       }
       
-      // Tüm tarif kartları yoksa bekle
+      // Tüm tarif kartları yoksa veya yüklenmediyse yeniden yükleme dene
       if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
+        console.log('⚠️ Tarif kartları yüklenmemiş, yeniden yükleme deneniyor...');
+        
+        // Tarif kartlarını yeniden yükleme dene
+        if (typeof loadTarifKartlariFromGitHub === 'function') {
+          loadTarifKartlariFromGitHub().then(() => {
+            console.log('✅ Tarif kartları yeniden yüklendi, analiz tekrar deneniyor');
+            setTimeout(() => updateYemekAnalizi(), 1000); // 1 saniye sonra tekrar dene
+          }).catch(err => {
+            console.error('❌ Tarif kartları yeniden yüklenemedi:', err);
+          });
+        }
+        
         document.getElementById('yemekAnaliziListe').innerHTML = 
-          '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmeyi bekliyor...</div>';
+          '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmeyi bekliyor... <br><small>GitHub\'dan tarif kartları çekiliyor</small></div>';
         return;
       }
       
