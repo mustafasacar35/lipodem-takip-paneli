@@ -11075,10 +11075,22 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function updateYemekAnalizi() {
       console.log('📊 updateYemekAnalizi fonksiyonu çağrıldı');
       
-      if (!seciliHasta || !seciliHasta.haftalar || aktifHaftaIndex === null) {
+      if (!seciliHasta || !seciliHasta.haftalar) {
         document.getElementById('yemekAnaliziListe').innerHTML = 
-          '<div style="text-align: center; color: #666; padding: 20px;">Hasta veya hafta seçilmemiş</div>';
+          '<div style="text-align: center; color: #666; padding: 20px;">Hasta seçilmemiş</div>';
         return;
+      }
+      
+      // aktifHaftaIndex null ise en son haftayı al
+      if (aktifHaftaIndex === null || aktifHaftaIndex === undefined) {
+        aktifHaftaIndex = seciliHasta.haftalar.length - 1;
+        console.log('⚠️ aktifHaftaIndex null, en son hafta atandı:', aktifHaftaIndex);
+      }
+      
+      // Hafta index sınırlarını kontrol et
+      if (aktifHaftaIndex < 0 || aktifHaftaIndex >= seciliHasta.haftalar.length) {
+        aktifHaftaIndex = seciliHasta.haftalar.length - 1;
+        console.log('⚠️ aktifHaftaIndex sınır dışı, düzeltildi:', aktifHaftaIndex);
       }
       
       // Tüm tarif kartları yoksa veya yüklenmediyse yeniden yükleme dene
@@ -11101,7 +11113,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
       
       const aktifHafta = seciliHasta.haftalar[aktifHaftaIndex];
-      const aktifHaftaNo = aktifHafta.haftaNo || (aktifHaftaIndex + 1);
+      const aktifHaftaNo = aktifHafta ? (aktifHafta.haftaNo || (aktifHaftaIndex + 1)) : 1;
       
       console.log('📊 Yemek analizi başlatılıyor:', {
         hastaId: seciliHasta.id,
@@ -11137,14 +11149,28 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           console.log(`🔍 Hafta ${haftaNo} analiz ediliyor:`, {
             tarifKartlar: hafta.tarifKartlar?.length || 0,
             manuelKartlar: hafta.manuelKartlar?.length || 0,
-            cokluPdfVerileri: hafta.cokluPdfVerileri?.length || 0
+            cokluPdfVerileri: hafta.cokluPdfVerileri?.length || 0,
+            tarifKartlarVeriTipi: hafta.tarifKartlar ? typeof hafta.tarifKartlar[0] : 'undefined',
+            tarifKartlarOrnek: hafta.tarifKartlar ? hafta.tarifKartlar.slice(0, 2) : [],
+            manuelKartlarOrnek: hafta.manuelKartlar ? hafta.manuelKartlar.slice(0, 2) : []
           });
           
           // 1. Otomatik eşleşen kartlar (Manuel PDF yükleme + Çoklu PDF otomatik eşleştirme)
           if (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) {
             hafta.tarifKartlar.forEach(kart => {
-              if (kart.name) {
-                const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+              let kartAdi = null;
+              
+              // Farklı veri yapılarını kontrol et
+              if (typeof kart === 'string') {
+                kartAdi = kart; // Direkt string
+              } else if (kart.name) {
+                kartAdi = kart.name; // {name: "kart_adi.jpg"}
+              } else if (kart.kartResmi) {
+                kartAdi = kart.kartResmi; // {kartResmi: "kart_adi.jpg"}
+              }
+              
+              if (kartAdi) {
+                const yemekAdi = kartAdi.replace('.jpg', '').replace(/_/g, ' ');
                 haftaninYemekleri.add(yemekAdi);
                 console.log(`✅ Otomatik eşleşen: ${yemekAdi}`);
               }
@@ -11154,8 +11180,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           // 2. Manuel eklenen kartlar (Sidebar'dan manuel ekleme)
           if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
             hafta.manuelKartlar.forEach(kart => {
-              if (kart.name) {
-                const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+              let kartAdi = null;
+              
+              // Farklı veri yapılarını kontrol et
+              if (typeof kart === 'string') {
+                kartAdi = kart; // Direkt string
+              } else if (kart.name) {
+                kartAdi = kart.name; // {name: "kart_adi.jpg"}
+              }
+              
+              if (kartAdi) {
+                const yemekAdi = kartAdi.replace('.jpg', '').replace(/_/g, ' ');
                 haftaninYemekleri.add(yemekAdi);
                 console.log(`✅ Manuel eklenen: ${yemekAdi}`);
               }
@@ -11167,8 +11202,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
             hafta.cokluPdfVerileri.forEach(veri => {
               if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
                 veri.tarifKartlar.forEach(kart => {
-                  if (kart.name) {
-                    const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
+                  let kartAdi = null;
+                  
+                  // Farklı veri yapılarını kontrol et
+                  if (typeof kart === 'string') {
+                    kartAdi = kart; // Direkt string
+                  } else if (kart.name) {
+                    kartAdi = kart.name; // {name: "kart_adi.jpg"}
+                  } else if (kart.kartResmi) {
+                    kartAdi = kart.kartResmi; // {kartResmi: "kart_adi.jpg"}
+                  }
+                  
+                  if (kartAdi) {
+                    const yemekAdi = kartAdi.replace('.jpg', '').replace(/_/g, ' ');
                     haftaninYemekleri.add(yemekAdi);
                     console.log(`✅ Çoklu PDF (eski): ${yemekAdi}`);
                   }
@@ -11787,3 +11833,4 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
+
