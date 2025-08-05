@@ -1632,7 +1632,11 @@
           updateYemekAnalizi();
           // Eşleşmeyenler listesini de güncelle
           setTimeout(() => {
-            eslesmeyenlerListesiniGuncelle();
+            if (typeof eslesmeyenlerListesiniGuncelle === 'function') {
+              eslesmeyenlerListesiniGuncelle();
+            } else {
+              console.warn('⚠️ eslesmeyenlerListesiniGuncelle fonksiyonu henüz tanımlı değil');
+            }
           }, 500);
         }, 1500); // Tüm veriler yüklenmesi için 1.5 saniye bekle
         
@@ -3043,7 +3047,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     // Eşleşen tariften direkt manuel eşleştirme (düzenleme için)
     async function eslesenTarifManuelEslestir(tarifAdi, eslesenKartlar) {
-      console.log('🔧 Eşleşen tarif için manuel eşleştirme düzenleme başlatılıyor:', tarifAdi, eslesenKartlar);
+      console.log('� eslesenTarifManuelEslestir çağrıldı!');
+      console.log('�🔧 Eşleşen tarif için manuel eşleştirme düzenleme başlatılıyor:', tarifAdi, eslesenKartlar);
       
       // Kartları yükle
       if (tariflerKlasoruGorselleri.length === 0) {
@@ -5621,7 +5626,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Eşleşmeyenler listesini güncelle (hasta değiştiğinde)
           setTimeout(() => {
-            eslesmeyenlerListesiniGuncelle();
+            if (typeof eslesmeyenlerListesiniGuncelle === 'function') {
+              eslesmeyenlerListesiniGuncelle();
+            } else {
+              console.warn('⚠️ eslesmeyenlerListesiniGuncelle fonksiyonu henüz tanımlı değil');
+            }
           }, 1000);
           
         } else {
@@ -9392,7 +9401,14 @@ function duzenleHafta(i) {
         
         // Tıklama olayı - Manuel eşleştirme panelini aç ve bilgileri doldur
         tarifSpan.onclick = () => {
-          eslesenTarifManuelEslestir(tarif, grup.kartlar);
+          console.log('🔧 Tarif ismine tıklandı:', tarif, grup.kartlar);
+          console.log('🔧 eslesenTarifManuelEslestir fonksiyonu mevcut mu?', typeof eslesenTarifManuelEslestir);
+          try {
+            eslesenTarifManuelEslestir(tarif, grup.kartlar);
+          } catch (error) {
+            console.error('❌ eslesenTarifManuelEslestir hatası:', error);
+            alert('Düzenleme paneli açılırken hata oluştu: ' + error.message);
+          }
         };
         
         // Full p elementi oluştur (innerHTML += kullanmadan)
