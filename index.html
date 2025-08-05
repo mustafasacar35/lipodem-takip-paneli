@@ -10978,6 +10978,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         yemekKullanimlari[yemekAdi] = { sayac: 0, haftalar: [] };
       });
       
+      console.log('🔄 Yemek analizi başlatıldı:', {
+        hasta: seciliHasta.ad,
+        haftaSayisi: seciliHasta.haftalar.length,
+        aktifHafta: aktifHaftaNo,
+        analizEdilenHaftalar: seciliHasta.haftalar.filter((_, index) => (index + 1) <= aktifHaftaNo).length
+      });
+      
       // Seçili haftaya kadar olan tüm haftaları kontrol et
       seciliHasta.haftalar.forEach((hafta, index) => {
         const haftaNo = hafta.haftaNo || (index + 1);
@@ -10986,27 +10993,35 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         if (haftaNo <= aktifHaftaNo) {
           const haftaninYemekleri = new Set(); // Aynı hafta içinde tekrar saymaması için Set kullan
           
-          // Otomatik eşleşen kartlar
+          console.log(`🔍 Hafta ${haftaNo} analiz ediliyor:`, {
+            tarifKartlar: hafta.tarifKartlar?.length || 0,
+            manuelKartlar: hafta.manuelKartlar?.length || 0,
+            cokluPdfVerileri: hafta.cokluPdfVerileri?.length || 0
+          });
+          
+          // 1. Otomatik eşleşen kartlar (Manuel PDF yükleme + Çoklu PDF otomatik eşleştirme)
           if (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) {
             hafta.tarifKartlar.forEach(kart => {
               if (kart.name) {
                 const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
                 haftaninYemekleri.add(yemekAdi);
+                console.log(`✅ Otomatik eşleşen: ${yemekAdi}`);
               }
             });
           }
           
-          // Manuel eklenen kartlar
+          // 2. Manuel eklenen kartlar (Sidebar'dan manuel ekleme)
           if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
             hafta.manuelKartlar.forEach(kart => {
               if (kart.name) {
                 const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
                 haftaninYemekleri.add(yemekAdi);
+                console.log(`✅ Manuel eklenen: ${yemekAdi}`);
               }
             });
           }
           
-          // Çoklu PDF'den eklenen kartlar
+          // 3. Çoklu PDF'den eklenen kartlar (Eski yapı - geriye uyumluluk)
           if (hafta.cokluPdfVerileri && hafta.cokluPdfVerileri.length > 0) {
             hafta.cokluPdfVerileri.forEach(veri => {
               if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
@@ -11014,11 +11029,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
                   if (kart.name) {
                     const yemekAdi = kart.name.replace('.jpg', '').replace(/_/g, ' ');
                     haftaninYemekleri.add(yemekAdi);
+                    console.log(`✅ Çoklu PDF (eski): ${yemekAdi}`);
                   }
                 });
               }
             });
           }
+          
+          // Her hafta için toplam eşsiz yemek sayısını raporla  
+          console.log(`📊 Hafta ${haftaNo} toplam eşsiz yemek: ${haftaninYemekleri.size}`);
           
           // Bu haftada kullanılan her benzersiz yemeği kaydet
           haftaninYemekleri.forEach(yemekAdi => {
@@ -11031,6 +11050,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       });
       
       console.log('📊 Toplam analiz edilen yemek sayısı:', Object.keys(yemekKullanimlari).length);
+      console.log('📋 Analiz edilen yemekler:', Object.keys(yemekKullanimlari));
+      
+      // Debug: Hasta verilerinin yapısını incele
+      console.log('🔍 Hasta veri yapısı analizi:', {
+        hastalar: Object.keys(window.hastalar || {}),
+        seciliHasta: seciliHasta?.ad || 'Seçili değil',
+        haftaSayisi: seciliHasta?.haftalar?.length || 0,
+        aktifHafta: aktifHaftaNo
+      });
       
       // Sonuçları diziye çevir ve sırala
       let yemekListesi = Object.keys(yemekKullanimlari).map(yemekAdi => ({
