@@ -1620,46 +1620,59 @@
       
       let yeniEslesmeyenler = [];
       
-      // Tüm haftalardaki tarifleri topla ve eşleşmeyenleri bul
+      // Önce JSON'dan kaydedilmiş eşleşmeyen tarifleri al
       aktifHasta.haftalar.forEach(hafta => {
-        if (hafta.tarifler && hafta.tarifler.length > 0) {
-          hafta.tarifler.forEach(tarif => {
-            // Normalize et
-            function normalizeLocal(str) {
-              return str
-                .toLowerCase()
-                .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-                .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-                .replace(/i̇/g, 'i')
-                .replace(/[_*\/()]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .replace(/[^a-z0-9\s]/g, '')
-                .trim();
-            }
-            
-            const normalizedTarif = normalizeLocal(tarif);
-            
-            // Otomatik eşleşme kontrolü
-            const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
-              const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
-              return normalizedKart.includes(normalizedTarif) || 
-                     normalizedTarif.includes(normalizedKart) ||
-                     normalizedKart === normalizedTarif;
-            });
-            
-            // Manuel eşleşme kontrolü  
-            const manuelEslesen = manuelEslestirmeler[normalizedTarif];
-            
-            // Yasak kural kontrolü
-            const yasakMi = eslesmemeKurallari[normalizedTarif];
-            
-            // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
-            if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
+        if (hafta.eslesmeyenTarifler && hafta.eslesmeyenTarifler.length > 0) {
+          hafta.eslesmeyenTarifler.forEach(tarif => {
+            if (!yeniEslesmeyenler.includes(tarif)) {
               yeniEslesmeyenler.push(tarif);
             }
           });
         }
       });
+      
+      // Eğer JSON'da eşleşmeyen tarif yoksa, eski yöntemle hesapla
+      if (yeniEslesmeyenler.length === 0) {
+        aktifHasta.haftalar.forEach(hafta => {
+          if (hafta.tarifler && hafta.tarifler.length > 0) {
+            hafta.tarifler.forEach(tarif => {
+              // Normalize et
+              function normalizeLocal(str) {
+                return str
+                  .toLowerCase()
+                  .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+                  .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+                  .replace(/i̇/g, 'i')
+                  .replace(/[_*\/()]/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .replace(/[^a-z0-9\s]/g, '')
+                  .trim();
+              }
+              
+              const normalizedTarif = normalizeLocal(tarif);
+              
+              // Otomatik eşleşme kontrolü
+              const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
+                const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
+                return normalizedKart.includes(normalizedTarif) || 
+                       normalizedTarif.includes(normalizedKart) ||
+                       normalizedKart === normalizedTarif;
+              });
+              
+              // Manuel eşleşme kontrolü  
+              const manuelEslesen = manuelEslestirmeler[normalizedTarif];
+              
+              // Yasak kural kontrolü
+              const yasakMi = eslesmemeKurallari[normalizedTarif];
+              
+              // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
+              if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
+                yeniEslesmeyenler.push(tarif);
+              }
+            });
+          }
+        });
+      }
       
       // UI'ı güncelle
       if (yeniEslesmeyenler.length > 0) {
@@ -9327,16 +9340,19 @@ function duzenleHafta(i) {
     eslesmeTuru: e.tip
   }));
   
-  // Sadece eşleşen tarifleri kaydet (eşleşmeyen tarifleri çıkar)
+  // Eşleşmeyen tarifleri ayrı array'de sakla (JSON'a da kaydedilsin)
   const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
-  hafta.tarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
+  hafta.eslesmeyenTarifler = eslesmeyenTarifler; // JSON'a kaydet
+  
+  // Orijinal tarifler listesini koruyalım ama eşleşen/eşleşmeyen diye ayıralım
+  hafta.eslesenTarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
     eslesenTarifIsimleri.includes(tarif.toLowerCase())
   ) : [];
   
   console.log('📝 Eşleştirme öncesi toplam tarif:', hafta.tarifler ? hafta.tarifler.length : 0);
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
-  console.log('📝 Filtreleme sonrası tarif sayısı:', hafta.tarifler.length);
-  console.log('🚫 Eşleşmeyen tarifler (sadece UI görünümü):', eslesmeyenTarifler);
+  console.log('📝 Eşleşen tarif sayısı:', hafta.eslesenTarifler.length);
+  console.log('🚫 Eşleşmeyen tarifler:', eslesmeyenTarifler.length, 'adet kaydedildi');
   
   // Otomatik kaydetme - hafta verileri değişti
   if (seciliHasta) {
@@ -10763,9 +10779,40 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       if (eskiDiv && eskiDiv.children.length > 0) {
         console.log('✅ Otomatik eşleşen kartlar bulundu, sidebar\'a klonlanıyor...');
         
-        // Her child elementi klonla (onclick eventleri korunur)
+        // Her child elementi klonla ve onclick eventleri yeniden ekle
         Array.from(eskiDiv.children).forEach(child => {
           const clonedChild = child.cloneNode(true);
+          
+          // Klonlanan element içindeki tıklanabilir span'ları bul ve onclick ekle
+          const clickableSpans = clonedChild.querySelectorAll('span[style*="cursor: pointer"]');
+          clickableSpans.forEach(span => {
+            const tarifText = span.textContent.replace(/^[^:]*:\s*/, '').trim(); // "Tarif: xyz" formatından "xyz" al
+            console.log('🔧 Sidebar klonuna onclick ekleniyor:', tarifText);
+            
+            span.onclick = () => {
+              console.log('🔧 Sidebar\'dan eşleşen tarif adına tıklandı:', tarifText);
+              try {
+                if (typeof eslesenTarifManuelEslestir === 'function') {
+                  // Orjinal kartları bul
+                  const aktifHaftaIndex = getAktifHaftaIndex();
+                  const hafta = seciliHasta?.haftalar?.[aktifHaftaIndex];
+                  if (hafta?.tarifKartlar) {
+                    const eslesmeTarifKartlari = hafta.tarifKartlar.filter(kart => 
+                      kart.tarifAdi.toLowerCase() === tarifText.toLowerCase()
+                    );
+                    eslesenTarifManuelEslestir(tarifText, eslesmeTarifKartlari);
+                  }
+                } else {
+                  console.error('❌ eslesenTarifManuelEslestir fonksiyonu bulunamadı!');
+                  alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+                }
+              } catch (error) {
+                console.error('❌ Sidebar eşleşen tarif tıklama hatası:', error);
+                alert('Hata: ' + error.message);
+              }
+            };
+          });
+          
           currentDiv.appendChild(clonedChild);
         });
         
@@ -12226,5 +12273,3 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
-
-  
