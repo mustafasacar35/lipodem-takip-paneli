@@ -2910,6 +2910,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     const MANUEL_ESLESTIRME_KEY = 'lipedem_manuel_eslestirmeler';
     let manuelEslestirmeler = {};
 
+    // Global karakter düzeltme fonksiyonu
+    function karakterDuzelt(text) {
+      if (!text) return text;
+      return text
+        .replace(/Ä±/g, 'ı')
+        .replace(/Ä/g, 'ğ') 
+        .replace(/Å/g, 'ş')
+        .replace(/Ğ/g, 'ğ')
+        .replace(/Ã¼/g, 'ü')
+        .replace(/Ã¶/g, 'ö')
+        .replace(/Ã§/g, 'ç')
+        .replace(/â/g, 'a')
+        .replace(/î/g, 'i')
+        .replace(/û/g, 'u')
+        .replace(/ô/g, 'o');
+    }
+
     // Normalize fonksiyonu - Manuel eşleştirme için
     function normalize(str) {
       return str
