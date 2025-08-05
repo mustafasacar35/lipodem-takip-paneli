@@ -3460,10 +3460,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             <small style="color: #666;">Örnek: karnıyarık, patlıcan yemeği, et yemeği</small>
           </div>
           
-          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
             <button onclick="manuelEslestirmeDuzenleKaydet('${anahtar}')" 
                     style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
               ✅ Kaydet
+            </button>
+            <button onclick="manuelEslestirmeDuzenleYeniKaydet('${anahtar}')" 
+                    style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+              ➕ Yeni Kaydet
             </button>
             <button onclick="manuelEslestirmeDuzenleIptal()" 
                     style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
@@ -3526,6 +3530,67 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeDuzenleIptal();
       
       manuelEslestirmeStatusGoster('Eşleştirme başarıyla güncellendi!', 'success');
+    }
+
+    function manuelEslestirmeDuzenleYeniKaydet(eskiAnahtar) {
+      console.log('➕ Yeni eşleştirme olarak kaydetme başlatıldı, eski anahtar:', eskiAnahtar);
+      
+      const yeniOrijinalMetin = document.getElementById('duzenleOrijinalMetin').value.trim();
+      const yeniKartlarMetin = document.getElementById('duzenleKartlar').value.trim();
+
+      if (!yeniOrijinalMetin || !yeniKartlarMetin) {
+        alert('Lütfen tüm alanları doldurun!');
+        return;
+      }
+
+      // Kartları virgülle ayır ve temizle
+      const yeniKartlar = yeniKartlarMetin.split(',').map(kart => kart.trim()).filter(kart => kart.length > 0);
+      
+      if (yeniKartlar.length === 0) {
+        alert('En az bir kart adı girmelisiniz!');
+        return;
+      }
+
+      // Yeni anahtar oluştur
+      function normalize(str) {
+        return str
+          .toLowerCase()
+          .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+          .replace(/i̇/g, 'i')
+          .replace(/[_*\/()]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/[^a-z0-9\s]/g, '')
+          .trim();
+      }
+      
+      const yeniAnahtar = normalize(yeniOrijinalMetin);
+      
+      // Yeni anahtar zaten varsa uyar
+      if (manuelEslestirmeler[yeniAnahtar]) {
+        if (!confirm('Bu tarif adı zaten mevcut! Mevcut eşleştirmeyi güncellemek istediğinize emin misiniz?')) {
+          return;
+        }
+      }
+
+      // Yeni eşleştirmeyi kaydet (eski eşleştirmeyi silme!)
+      manuelEslestirmeler[yeniAnahtar] = {
+        orijinalMetin: yeniOrijinalMetin,
+        kartlar: yeniKartlar,
+        eklemeTarihi: new Date().toISOString()
+      };
+
+      // Kaydet ve güncelle
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      manuelEslestirmeDuzenleIptal();
+      
+      manuelEslestirmeStatusGoster(`✅ Yeni eşleştirme oluşturuldu: "${yeniOrijinalMetin}" → ${yeniKartlar.length} kart`, 'success');
+      
+      // Eşleşmeyenler listesini güncelle (yeni eşleştirme eklendiğinde)
+      eslesmeyenlerListesiniGuncelle();
+      
+      console.log('✅ Yeni eşleştirme başarıyla oluşturuldu:', yeniAnahtar);
     }
 
     function manuelEslestirmeDuzenleIptal() {
