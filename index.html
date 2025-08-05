@@ -669,7 +669,7 @@
       </div>
       <div style="flex:1;">
         <label style="display:block; margin-bottom:5px; font-weight:bold;">Eşleşecek Kartlar:</label>
-        <input type="text" id="eskiKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px;" />
+        <input type="text" id="eskiKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px;" oninput="manuelEslestirmeKartAra(this.value)" />
         <div id="manuelKartListesi" style="height:120px; overflow-y:auto; border:1px solid #ddd; padding:8px; background:#f8f9fa;">
           <!-- Dinamik kartlar buraya gelecek -->
         </div>
@@ -2988,40 +2988,80 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       document.getElementById('manuelEslestirmePanel').style.display = 'block';
     }
 
+    // Manuel eşleştirme paneli için dinamik kart arama
+    function manuelEslestirmeKartAra(aramaMetni) {
+      console.log('🔍 Manuel eşleştirme kart arama:', aramaMetni);
+      manuelKartListesiniGoster(aramaMetni);
+    }
+
     function manuelKartListesiniGoster(aramaMetni = '') {
       const div = document.getElementById('manuelKartListesi');
       div.innerHTML = '';
 
-      // Karakter düzeltme fonksiyonu
-      function karakterDuzelt(text) {
-        if (!text) return text;
-        return text
-          .replace(/Ä±/g, 'ı')
-          .replace(/Ä/g, 'ğ') 
-          .replace(/Å/g, 'ş')
-          .replace(/Ğ/g, 'ğ')
-          .replace(/Ã¼/g, 'ü')
-          .replace(/Ã¶/g, 'ö')
-          .replace(/Ã§/g, 'ç')
-          .replace(/â/g, 'a')
-          .replace(/î/g, 'i')
-          .replace(/û/g, 'u')
-          .replace(/ô/g, 'o');
+      console.log('🔍 Manuel kart listesi gösteriliyor, arama metni:', aramaMetni);
+      
+      // Arama metnini kelimelere ayır ve türkçe karakterleri normalize et
+      const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0)
+        .map(kelime => karakterDuzelt(kelime.toLowerCase()));
+      
+      console.log('🔍 Arama kelimeleri:', aramaKelimeleri);
+      
+      // Filtreleme fonksiyonu
+      function kartEslesiyorMu(kartAdi) {
+        if (aramaKelimeleri.length === 0) return true;
+        
+        const kartMetni = karakterDuzelt(kartAdi.toLowerCase())
+          .replace(/\.(jpg|jpeg|png)$/i, '') // dosya uzantısını kaldır
+          .replace(/_/g, ' '); // alt çizgileri boşluğa çevir
+        
+        // Tüm arama kelimelerinin kart adında bulunup bulunmadığını kontrol et
+        const eslesiyor = aramaKelimeleri.every(kelime => kartMetni.includes(kelime));
+        
+        if (aramaKelimeleri.length > 0) {
+          console.log(`🔎 "${kartAdi}" → "${kartMetni}" eşleşme: ${eslesiyor}`);
+        }
+        
+        return eslesiyor;
       }
       
       // Filtreleme
-      const filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => {
-        if (!aramaMetni) return true;
-        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
-        const duzeltilmisArama = karakterDuzelt(aramaMetni);
-        return duzeltilmisKartAdi.toLowerCase().includes(duzeltilmisArama.toLowerCase());
-      });
+      const filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => 
+        kartEslesiyorMu(kart.name)
+      );
+      
+      console.log(`📋 Filtrelenmiş kart sayısı: ${filtrelenmisKartlar.length}`);
+      
+      // Sonuçları eşleşme skoruna göre sırala
+      if (aramaKelimeleri.length > 0) {
+        filtrelenmisKartlar.sort((a, b) => {
+          const aAdi = karakterDuzelt(a.name.toLowerCase()).replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+          const bAdi = karakterDuzelt(b.name.toLowerCase()).replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+          
+          // Tam arama metni eşleşmesi
+          const aramaTam = aramaKelimeleri.join(' ');
+          const aIceriyor = aAdi.includes(aramaTam);
+          const bIceriyor = bAdi.includes(aramaTam);
+          
+          if (aIceriyor && !bIceriyor) return -1;
+          if (!aIceriyor && bIceriyor) return 1;
+          
+          // Başlangıç eşleşmesi
+          const aBaslangic = aramaKelimeleri.some(kelime => aAdi.startsWith(kelime));
+          const bBaslangic = aramaKelimeleri.some(kelime => bAdi.startsWith(kelime));
+          
+          if (aBaslangic && !bBaslangic) return -1;
+          if (!aBaslangic && bBaslangic) return 1;
+          
+          // Alfabetik sıralama
+          return a.name.localeCompare(b.name, 'tr-TR');
+        });
+      }
       
       filtrelenmisKartlar.forEach(kart => {
         const label = document.createElement('label');
         label.style.cssText = 'display:block; margin:4px 0; cursor:pointer; padding:2px;';
         
-        const duzeltilmisKartAdi = karakterDuzelt(kart.name);
+        const duzeltilmisKartAdi = kart.name; // Artık karakterDuzelt global fonksiyonu kullanılıyor
         
         label.innerHTML = `
           <input type="checkbox" data-kart="${kart.name}" style="margin-right:8px;" />
