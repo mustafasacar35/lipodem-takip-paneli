@@ -5979,23 +5979,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
       
       // Tabları oluştur
-      // En büyük hafta numarasını bul
-      let enBuyukHaftaNo = 0;
-      let enBuyukHaftaIndex = 0;
-      haftalar.forEach((hafta, index) => {
-        const haftaNo = hafta.haftaNo || (index + 1);
-        if (haftaNo > enBuyukHaftaNo) {
-          enBuyukHaftaNo = haftaNo;
-          enBuyukHaftaIndex = index;
-        }
-      });
-      
       haftalar.forEach((hafta, i) => {
         const haftaNo = hafta.haftaNo || (i + 1);
         
-        // Tab başlığı oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
+        // Tab başlığı oluştur - İLK TAB AKTİF OLSUN (son tıklanan kalacak)
         const tabDiv = document.createElement('div');
-        tabDiv.className = `hafta-tab ${i === enBuyukHaftaIndex ? 'active' : ''}`;
+        tabDiv.className = `hafta-tab ${i === 0 ? 'active' : ''}`;
         tabDiv.dataset.haftaIndex = i; // Dataset ekle
         tabDiv.onclick = () => switchTab(i);
         
@@ -6038,9 +6027,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         tabsDiv.appendChild(tabDiv);
         console.log(`🏷️ ${haftaNo}. hafta tab'ı eklendi, CSS class:`, tabDiv.className);
         
-        // Tab içeriği oluştur - EN BÜYÜK HAFTA NUMARASI AKTİF OLSUN
+        // Tab içeriği oluştur - İLK TAB AKTİF OLSUN (son tıklanan kalacak)
         const contentTab = document.createElement('div');
-        contentTab.className = `hafta-tab-content ${i === enBuyukHaftaIndex ? 'active' : ''}`;
+        contentTab.className = `hafta-tab-content ${i === 0 ? 'active' : ''}`;
         contentTab.id = `haftaContent_${i}`;
         
         contentTab.innerHTML = `
