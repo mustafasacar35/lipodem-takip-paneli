@@ -7717,6 +7717,19 @@ function duzenleHafta(i) {
         const haftalar = getHaftaListesi();
         console.log('🔍 Hafta listesi uzunluğu:', haftalar.length);
         
+        // Hasta ve hafta bilgilerini detaylı kontrol et
+        if (!haftalar || haftalar.length === 0) {
+          console.warn('❌ Hiç hafta verisi yok');
+          return null;
+        }
+        
+        console.log('🔍 Hasta bilgileri:', {
+          id: seciliHasta.id,
+          isim: seciliHasta.isim,
+          haftaSayisi: haftalar.length,
+          belirliHaftaNo: belirliHaftaNo
+        });
+        
         // Hafta sayısı kontrolünü kaldır - tek hafta bile olsa masaj takvimi oluşturulabilir
         // if (haftalar.length < 5) return null; // KALDIRILDI
         
@@ -9946,9 +9959,18 @@ function duzenleHafta(i) {
       if (hasPdf) {
         try {
           const base64 = hafta.pdf.split(',')[1];
-          zip.file(pdfFileName, base64, {base64: true});
-          fileCount++;
-          console.log('✅ PDF eklendi:', pdfFileName);
+          if (base64 && base64.length > 0) {
+            // Base64 string boyutunu kontrol et (minimum 100 karakter olmalı - çok küçük PDF'leri engelle)
+            if (base64.length < 100) {
+              console.warn('⚠️ PDF çok küçük (100 karakterden az), eklenmedi:', base64.length, 'karakter');
+            } else {
+              zip.file(pdfFileName, base64, {base64: true});
+              fileCount++;
+              console.log('✅ PDF eklendi:', pdfFileName, 'boyut:', base64.length, 'karakter');
+            }
+          } else {
+            console.warn('⚠️ PDF base64 verisi boş');
+          }
         } catch (e) {
           console.warn('⚠️ PDF eklenemedi:', e);
         }
@@ -10014,10 +10036,16 @@ function duzenleHafta(i) {
           if (pdfResponse.ok) {
             const pdfData = await pdfResponse.json();
             const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
-            const menuPdfName = `MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`;
-            zip.file(menuPdfName, pdfBlob);
-            fileCount++;
-            console.log(`✅ ${haftaNo}. hafta Menü PDF eklendi:`, menuPdfName);
+            
+            // PDF boyutunu kontrol et (minimum 1KB olmalı)
+            if (pdfBlob && pdfBlob.size > 1024) {
+              const menuPdfName = `MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`;
+              zip.file(menuPdfName, pdfBlob);
+              fileCount++;
+              console.log(`✅ ${haftaNo}. hafta Menü PDF eklendi:`, menuPdfName, 'boyut:', pdfBlob.size, 'bytes');
+            } else {
+              console.warn(`⚠️ ${haftaNo}. hafta Menü PDF çok küçük (1KB altı), eklenmedi:`, pdfBlob ? pdfBlob.size : 'null', 'bytes');
+            }
           } else {
             const errorText = await pdfResponse.text();
             console.warn(`❌ ${haftaNo}. hafta PDF yanıtı başarısız:`, pdfResponse.status, errorText);
@@ -10057,14 +10085,15 @@ function duzenleHafta(i) {
           const masajTakvimBlob = await generateLenfDrenajPDFBlob(5);
           console.log('🔍 generateLenfDrenajPDFBlob sonucu:', masajTakvimBlob ? 'Blob var' : 'Blob yok');
           
-          if (masajTakvimBlob) {
+          if (masajTakvimBlob && masajTakvimBlob.size > 0) {
             const masajTakvimFileName = `${baseName}_Masaj_Takvimi.pdf`;
+            console.log('🔍 Masaj PDF boyutu:', masajTakvimBlob.size, 'bytes');
             console.log('🔍 Masaj PDF dosya adı:', masajTakvimFileName);
             zip.file(masajTakvimFileName, masajTakvimBlob);
             fileCount++;
             console.log('✅ Masaj Takvim PDF\'i ZIP\'e eklendi:', masajTakvimFileName);
           } else {
-            console.warn('❌ Masaj Takvim PDF Blob oluşturulamadı');
+            console.warn('❌ Masaj Takvim PDF Blob oluşturulamadı veya boyutu 0 KB:', masajTakvimBlob ? masajTakvimBlob.size : 'null');
           }
         } catch (e) {
           console.warn('⚠️ Masaj Takvim PDF\'i eklenemedi:', e);
@@ -10079,11 +10108,14 @@ function duzenleHafta(i) {
           
           // Masaj + egzersiz içeren takvim PDF'ini oluştur (9. hafta için, egzersiz dahil)
           const masajEgzersizTakvimBlob = await generateLenfDrenajPDFBlob(9);
-          if (masajEgzersizTakvimBlob) {
+          if (masajEgzersizTakvimBlob && masajEgzersizTakvimBlob.size > 0) {
             const masajEgzersizTakvimFileName = `${baseName}_Masaj_Egzersiz_Takvimi.pdf`;
+            console.log('🔍 Masaj+Egzersiz PDF boyutu:', masajEgzersizTakvimBlob.size, 'bytes');
             zip.file(masajEgzersizTakvimFileName, masajEgzersizTakvimBlob);
             fileCount++;
             console.log('✅ Masaj + Egzersiz Takvim PDF\'i ZIP\'e eklendi:', masajEgzersizTakvimFileName);
+          } else {
+            console.warn('❌ Masaj + Egzersiz Takvim PDF Blob oluşturulamadı veya boyutu 0 KB:', masajEgzersizTakvimBlob ? masajEgzersizTakvimBlob.size : 'null');
           }
         } catch (e) {
           console.warn('⚠️ Masaj + Egzersiz Takvim PDF\'i eklenemedi:', e);
