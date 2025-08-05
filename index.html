@@ -3817,11 +3817,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               });
               
               if (retryRes.ok) {
+                console.log('✅ Retry başarılı - GitHub\'a kaydedildi!');
                 localStorage.setItem('lastGithubUpdate', Date.now().toString());
                 if (!sessizKaydetme) {
                   manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi! (retry)', 'success');
                 }
                 return;
+              } else {
+                console.error('❌ Retry de başarısız oldu:', await retryRes.text());
               }
             }
           } catch (retryError) {
