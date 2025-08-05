@@ -8720,6 +8720,12 @@ function duzenleHafta(i) {
   let eslesenKartlarListesi = [];
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
+  let tumEkstrakteEdilenTarifler = hafta.tarifler ? [...hafta.tarifler] : []; // Tüm extrakte edilen tarifleri sakla
+
+  console.log('🔍 otomatikEsleHafta debug:', {
+    toplamTarifSayisi: hafta.tarifler?.length || 0,
+    tarifler: hafta.tarifler
+  });
 
   // Her tarif için eşleştirme yap
   hafta.tarifler.forEach(tarif => {
@@ -8895,39 +8901,86 @@ function duzenleHafta(i) {
   } // domElementMevcut kapanışı
 
   // Eşleşmeyen tarifleri yeni accordion sistemine ekle (sadece DOM varsa)
-  if (domElementMevcut && eslesmeyenTarifler.length > 0) {
+  if (domElementMevcut) {
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     
     if (eslesmeyenlerContent && eslesmeyenlerBaslik) {
-      // Başlığı güncelle
-      eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+      // Başlığı güncelle - hem eşleşmeyen hem tüm extrakte edilen sayısını göster
+      const eslesmeyenSayisi = eslesmeyenTarifler.length;
+      const toplamSayisi = tumEkstrakteEdilenTarifler.length;
+      eslesmeyenlerBaslik.textContent = `� PDF'den Çıkarılan Tüm Satırlar (${toplamSayisi}) - Eşleşmeyen: ${eslesmeyenSayisi}`;
       
       // İçeriği temizle ve yeniden doldur
       eslesmeyenlerContent.innerHTML = '';
       
-      eslesmeyenTarifler.forEach(tarif => {
-        const p = document.createElement('p');
-        p.textContent = tarif;
-        p.style.color = '#dc3545';
-        p.style.margin = '6px 0';
-        p.style.padding = '4px 8px';
-        p.style.background = '#fff5f5';
-        p.style.borderLeft = '3px solid #dc3545';
-        p.style.borderRadius = '4px';
-        eslesmeyenlerContent.appendChild(p);
-      });
+      // Önce eşleşmeyenleri göster (kırmızı)
+      if (eslesmeyenTarifler.length > 0) {
+        const eslesmeyenBaslik = document.createElement('h4');
+        eslesmeyenBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
+        eslesmeyenBaslik.style.color = '#dc3545';
+        eslesmeyenBaslik.style.marginBottom = '10px';
+        eslesmeyenlerContent.appendChild(eslesmeyenBaslik);
+        
+        eslesmeyenTarifler.forEach(tarif => {
+          const p = document.createElement('p');
+          p.textContent = tarif;
+          p.style.color = '#dc3545';
+          p.style.margin = '6px 0';
+          p.style.padding = '4px 8px';
+          p.style.background = '#fff5f5';
+          p.style.borderLeft = '3px solid #dc3545';
+          p.style.borderRadius = '4px';
+          eslesmeyenlerContent.appendChild(p);
+        });
+      }
+      
+      // Sonra tüm extrakte edilen tarifleri göster (mavi)
+      if (tumEkstrakteEdilenTarifler.length > 0) {
+        const tumBaslik = document.createElement('h4');
+        tumBaslik.textContent = `📋 PDF'den Çıkarılan Tüm Satırlar (${tumEkstrakteEdilenTarifler.length})`;
+        tumBaslik.style.color = '#007bff';
+        tumBaslik.style.marginBottom = '10px';
+        tumBaslik.style.marginTop = '20px';
+        eslesmeyenlerContent.appendChild(tumBaslik);
+        
+        tumEkstrakteEdilenTarifler.forEach((tarif, index) => {
+          const p = document.createElement('p');
+          
+          // Eşleşen tarifleri yeşil, eşleşmeyenleri gri göster
+          const isEslesmis = !eslesmeyenTarifler.includes(tarif);
+          
+          p.innerHTML = `<span style="color: #666; font-weight: bold;">${index + 1}.</span> ${tarif}`;
+          p.style.margin = '4px 0';
+          p.style.padding = '4px 8px';
+          p.style.borderRadius = '4px';
+          
+          if (isEslesmis) {
+            // Eşleşen tarif - yeşil
+            p.style.color = '#28a745';
+            p.style.background = '#f0fff0';
+            p.style.borderLeft = '3px solid #28a745';
+          } else {
+            // Eşleşmeyen tarif - açık kırmızı
+            p.style.color = '#dc3545';
+            p.style.background = '#fff5f5';
+            p.style.borderLeft = '3px solid #dc3545';
+          }
+          
+          eslesmeyenlerContent.appendChild(p);
+        });
+      }
     }
-  } else if (domElementMevcut) {
-    // Eşleşmeyen tarif yoksa başlığı sıfırla
+  } else {
+    // DOM element yoksa veya boşsa başlığı sıfırla
     const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
     const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
     
     if (eslesmeyenlerBaslik) {
-      eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
+      eslesmeyenlerBaslik.textContent = '� PDF\'den Çıkarılan Satırlar';
     }
     if (eslesmeyenlerContent) {
-      eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Eşleşmeyen tarif bulunamadı</div>';
+      eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">PDF\'den tarif çıkarılmadı</div>';
     }
   }
 
