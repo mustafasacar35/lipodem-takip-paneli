@@ -3086,7 +3086,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         eslestirmeDiv.innerHTML = `
           <div style="font-weight:bold; color:#28a745;">${duzeltilmisMetin}</div>
           <div style="margin:5px 0; font-size:0.9em;">→ ${duzeltilmisKartlar.join(', ')}</div>
-          <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">Sil</button>
+          <div style="margin-top:5px;">
+            <button onclick="manuelEslestirmeDuzenle('${anahtar}')" style="background:#ffc107; color:#212529; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer; margin-right:5px;">✏️ Düzenle</button>
+            <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">🗑️ Sil</button>
+          </div>
         `;
         div.appendChild(eslestirmeDiv);
       });
@@ -3099,6 +3102,101 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
       manuelEslestirmeStatusGoster('Eşleştirme silindi.', 'success');
+    }
+
+    function manuelEslestirmeDuzenle(anahtar) {
+      const eslestirme = manuelEslestirmeler[anahtar];
+      if (!eslestirme) {
+        alert('Eşleştirme bulunamadı!');
+        return;
+      }
+
+      // Mevcut değerleri al
+      const mevcutMetin = anahtar; // anahtar = normalize edilmiş tarif metni
+      const mevcutKartlar = eslestirme.join(', ');
+
+      // Düzenleme modalı oluştur
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); z-index: 10000; 
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      modal.innerHTML = `
+        <div style="background: white; padding: 25px; border-radius: 10px; max-width: 500px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+          <h3 style="margin-top: 0; color: #495057;">✏️ Manuel Eşleştirme Düzenle</h3>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Tarif Metni:</label>
+            <input type="text" id="duzenleMetin" value="${mevcutMetin}" 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <small style="color: #6c757d;">Tarif adını düzenleyebilirsiniz</small>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Eşleşen Kartlar:</label>
+            <input type="text" id="duzenleKartlar" value="${mevcutKartlar}" 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <small style="color: #6c757d;">Kart adlarını virgülle ayırın</small>
+          </div>
+          
+          <div style="text-align: right;">
+            <button onclick="this.closest('div').parentElement.remove()" 
+                    style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+              İptal
+            </button>
+            <button onclick="manuelEslestirmeDuzenleKaydet('${anahtar}', this)" 
+                    style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+              💾 Kaydet
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+      
+      // İlk input'a focus yap
+      setTimeout(() => {
+        modal.querySelector('#duzenleMetin').focus();
+        modal.querySelector('#duzenleMetin').select();
+      }, 100);
+    }
+
+    function manuelEslestirmeDuzenleKaydet(eskiAnahtar, button) {
+      const modal = button.closest('div').parentElement;
+      const yeniMetin = modal.querySelector('#duzenleMetin').value.trim();
+      const yeniKartlarStr = modal.querySelector('#duzenleKartlar').value.trim();
+
+      if (!yeniMetin || !yeniKartlarStr) {
+        alert('Lütfen tüm alanları doldurun!');
+        return;
+      }
+
+      // Yeni kartları parse et
+      const yeniKartlar = yeniKartlarStr.split(',').map(k => k.trim()).filter(k => k);
+      if (yeniKartlar.length === 0) {
+        alert('En az bir kart adı girmelisiniz!');
+        return;
+      }
+
+      // Eski eşleştirmeyi sil
+      delete manuelEslestirmeler[eskiAnahtar];
+
+      // Yeni eşleştirmeyi ekle (yeni normalize edilmiş anahtar ile)
+      const yeniAnahtar = normalizeNameDetay(yeniMetin);
+      manuelEslestirmeler[yeniAnahtar] = yeniKartlar;
+
+      // Kaydet ve güncelle
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      
+      // Modal'ı kapat
+      modal.remove();
+      
+      manuelEslestirmeStatusGoster(`Eşleştirme güncellendi: "${yeniMetin}" → ${yeniKartlar.length} kart`, 'success');
+      
+      console.log('✏️ Manuel eşleştirme düzenlendi:', eskiAnahtar, '→', yeniAnahtar, yeniKartlar);
     }
 
     // Sayfa yüklenirken manuel eşleştirmeleri yükle
