@@ -3336,8 +3336,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     }
 
     function manuelEslestirmeSil(anahtar) {
-      if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
+      console.log('🗑️ Silme işlemi başlatıldı, anahtar:', anahtar);
       
+      if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) {
+        console.log('❌ Kullanıcı silme işlemini iptal etti');
+        return;
+      }
+      
+      console.log('✅ Kullanıcı silme işlemini onayladı');
       delete manuelEslestirmeler[anahtar];
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
@@ -3345,6 +3351,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // Eşleştirme silindiğinde eşleşmeyenler listesini güncelle
       eslesmeyenlerListesiniGuncelle();
+      console.log('🔄 Silme işlemi tamamlandı');
     }
 
     function manuelEslestirmeListesiniGoster() {
@@ -3387,10 +3394,31 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           <div style="font-weight:bold; color:#28a745;">${duzeltilmisMetin}</div>
           <div style="margin:5px 0; font-size:0.9em;">→ ${duzeltilmisKartlar.join(', ')}</div>
           <div style="display:flex; gap:8px; margin-top:5px;">
-            <button onclick="manuelEslestirmeDuzenle('${anahtar}')" style="background:#17a2b8; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">✏️ Düzenle</button>
-            <button onclick="manuelEslestirmeSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">🗑️ Sil</button>
+            <button class="duzenle-btn" style="background:#17a2b8; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">✏️ Düzenle</button>
+            <button class="sil-btn" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">🗑️ Sil</button>
           </div>
         `;
+        
+        // Event listener'ları güvenli şekilde ekle
+        const duzenleBtn = eslestirmeDiv.querySelector('.duzenle-btn');
+        const silBtn = eslestirmeDiv.querySelector('.sil-btn');
+        
+        if (duzenleBtn && silBtn) {
+          duzenleBtn.addEventListener('click', () => {
+            console.log('🔧 Düzenle butonuna tıklandı, anahtar:', anahtar);
+            manuelEslestirmeDuzenle(anahtar);
+          });
+          
+          silBtn.addEventListener('click', () => {
+            console.log('🗑️ Sil butonuna tıklandı, anahtar:', anahtar);
+            manuelEslestirmeSil(anahtar);
+          });
+          
+          console.log('✅ Event listener\'lar eklendi, anahtar:', anahtar);
+        } else {
+          console.error('❌ Butonlar bulunamadı!', { duzenleBtn, silBtn });
+        }
+        
         div.appendChild(eslestirmeDiv);
       });
     }
