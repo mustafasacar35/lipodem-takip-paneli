@@ -1718,6 +1718,26 @@
       
       console.log('🔄 Eşleşmeyenler listesi güncellendi:', yeniEslesmeyenler.length, 'adet');
     }
+
+    // Aktif hafta index'ini al
+    function getAktifHaftaIndex() {
+      const aktifTab = document.querySelector('.hafta-tab.active');
+      if (aktifTab && aktifTab.dataset.haftaIndex !== undefined) {
+        const index = parseInt(aktifTab.dataset.haftaIndex);
+        console.log('🔍 Aktif hafta index bulundu:', index);
+        return index;
+      }
+      
+      // Fallback: En son hafta
+      if (seciliHasta?.haftalar?.length > 0) {
+        const lastIndex = seciliHasta.haftalar.length - 1;
+        console.log('⚠️ Aktif tab bulunamadı, en son hafta kullanılıyor:', lastIndex);
+        return lastIndex;
+      }
+      
+      console.error('❌ Hiç hafta bulunamadı!');
+      return 0;
+    }
     
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
