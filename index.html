@@ -9942,28 +9942,15 @@ function duzenleHafta(i) {
         }
       }
       
-      // 3. PDF dosyasını ekle (boyut kontrolü ile)
+      // 3. PDF dosyasını ekle
       if (hasPdf) {
         try {
           const base64 = hafta.pdf.split(',')[1];
-          
-          // PDF boyutunu kontrol et
-          if (!base64 || base64.trim() === '') {
-            console.warn('⚠️ Ana PDF içeriği boş, ZIP\'e eklenmiyor');
-          } else {
-            // Base64 içeriğini binary boyutuna çevir (yaklaşık)
-            const binarySize = (base64.length * 3) / 4;
-            
-            if (binarySize < 1024) { // 1 KB'den küçükse ekleme
-              console.warn(`⚠️ Ana PDF çok küçük (${binarySize} bytes), ZIP'e eklenmiyor`);
-            } else {
-              zip.file(pdfFileName, base64, {base64: true});
-              fileCount++;
-              console.log(`✅ Ana PDF eklendi (${binarySize} bytes):`, pdfFileName);
-            }
-          }
+          zip.file(pdfFileName, base64, {base64: true});
+          fileCount++;
+          console.log('✅ PDF eklendi:', pdfFileName);
         } catch (e) {
-          console.warn('⚠️ Ana PDF eklenemedi:', e);
+          console.warn('⚠️ PDF eklenemedi:', e);
         }
       }
       
@@ -10026,24 +10013,11 @@ function duzenleHafta(i) {
           
           if (pdfResponse.ok) {
             const pdfData = await pdfResponse.json();
-            
-            // PDF boyutunu kontrol et (0 KB kontrolü)
-            if (!pdfData.content || pdfData.content.trim() === '') {
-              console.warn(`⚠️ ${haftaNo}. hafta PDF içeriği boş, ZIP'e eklenmiyor`);
-            } else {
-              // Base64 içeriğini binary boyutuna çevir (yaklaşık)
-              const binarySize = (pdfData.content.length * 3) / 4; // Base64 -> binary conversion
-              
-              if (binarySize < 1024) { // 1 KB'den küçükse ekle
-                console.warn(`⚠️ ${haftaNo}. hafta PDF çok küçük (${binarySize} bytes), ZIP'e eklenmiyor`);
-              } else {
-                const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
-                const menuPdfName = `MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`;
-                zip.file(menuPdfName, pdfBlob);
-                fileCount++;
-                console.log(`✅ ${haftaNo}. hafta Menü PDF eklendi (${binarySize} bytes):`, menuPdfName);
-              }
-            }
+            const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+            const menuPdfName = `MENU_PDF_${hafta.pdfOrijinalIsim || hafta.pdfName || 'menu.pdf'}`;
+            zip.file(menuPdfName, pdfBlob);
+            fileCount++;
+            console.log(`✅ ${haftaNo}. hafta Menü PDF eklendi:`, menuPdfName);
           } else {
             const errorText = await pdfResponse.text();
             console.warn(`❌ ${haftaNo}. hafta PDF yanıtı başarısız:`, pdfResponse.status, errorText);
