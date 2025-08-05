@@ -3795,7 +3795,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               
               console.log('🔄 Güncel SHA alındı, tekrar kaydediliyor...');
               
-              // Tekrar dene
+              // Tekrar dene - aynı veri yapısını kullan
+              const retryKayitVerisi = {
+                version: '1.0',
+                sonGuncelleme: new Date().toISOString(),
+                eslestirmeler: manuelEslestirmeler
+              };
+              
               const retryRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
                 method: 'PUT',
                 headers: {
@@ -3804,11 +3810,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                 },
                 body: JSON.stringify({
                   message: 'Manuel eşleştirmeler güncellendi (retry)',
-                  content: encodeUTF8ToBase64({
-                    version: '1.0',
-                    sonGuncelleme: new Date().toISOString(),
-                    eslestirmeler: manuelEslestirmeler
-                  }),
+                  content: encodeUTF8ToBase64(retryKayitVerisi),
                   branch,
                   sha: guncelSha
                 })
