@@ -3779,6 +3779,54 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
       } catch (error) {
         console.error('GitHub kaydetme hatası:', error);
+        
+        // SHA conflict hatası varsa dosyayı tekrar çek ve tekrar dene
+        if (error.message && error.message.includes('but expected')) {
+          console.log('🔄 SHA conflict, tekrar deneniyor...');
+          try {
+            // En güncel SHA'yı al
+            const sharedResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+              headers: { 'Authorization': `token ${token}` }
+            });
+            
+            if (sharedResp.ok) {
+              const sharedData = await sharedResp.json();
+              const guncelSha = sharedData.sha;
+              
+              console.log('🔄 Güncel SHA alındı, tekrar kaydediliyor...');
+              
+              // Tekrar dene
+              const retryRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `token ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: 'Manuel eşleştirmeler güncellendi (retry)',
+                  content: encodeUTF8ToBase64({
+                    version: '1.0',
+                    sonGuncelleme: new Date().toISOString(),
+                    eslestirmeler: manuelEslestirmeler
+                  }),
+                  branch,
+                  sha: guncelSha
+                })
+              });
+              
+              if (retryRes.ok) {
+                localStorage.setItem('lastGithubUpdate', Date.now().toString());
+                if (!sessizKaydetme) {
+                  manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi! (retry)', 'success');
+                }
+                return;
+              }
+            }
+          } catch (retryError) {
+            console.error('❌ Retry de başarısız:', retryError);
+          }
+        }
+        
         if (!sessizKaydetme) {
           manuelEslestirmeStatusGoster(`❌ GitHub kaydetme hatası: ${error.message}`, 'error');
         }
