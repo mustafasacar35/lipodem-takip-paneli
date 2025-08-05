@@ -9397,20 +9397,46 @@ function duzenleHafta(i) {
         tarifSpan.style.cursor = 'pointer';
         tarifSpan.style.textDecoration = 'underline';
         tarifSpan.style.color = '#007bff';
+        tarifSpan.style.position = 'relative';
+        tarifSpan.style.zIndex = '999';
+        tarifSpan.style.display = 'inline-block';
+        tarifSpan.style.padding = '2px 4px';
         tarifSpan.title = 'Tıkla ve manuel eşleştirme panelini aç';
         
         // Tıklama olayı - Manuel eşleştirme panelini aç ve bilgileri doldur
-        tarifSpan.onclick = () => {
-          console.log('🔧 Tarif ismine tıklandı:', tarif, grup.kartlar);
+        tarifSpan.onclick = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          console.log('� TARIF İSMİNE TIKLANDI!');
+          console.log('�🔧 Tarif ismine tıklandı:', tarif, grup.kartlar);
           console.log('🔧 eslesenTarifManuelEslestir fonksiyonu mevcut mu?', typeof eslesenTarifManuelEslestir);
-          try {
-            eslesenTarifManuelEslestir(tarif, grup.kartlar);
-          } catch (error) {
-            console.error('❌ eslesenTarifManuelEslestir hatası:', error);
-            alert('Düzenleme paneli açılırken hata oluştu: ' + error.message);
+          
+          if (typeof eslesenTarifManuelEslestir === 'function') {
+            try {
+              console.log('🎯 eslesenTarifManuelEslestir çağrılıyor...');
+              eslesenTarifManuelEslestir(tarif, grup.kartlar);
+            } catch (error) {
+              console.error('❌ eslesenTarifManuelEslestir hatası:', error);
+              alert('Düzenleme paneli açılırken hata oluştu: ' + error.message);
+            }
+          } else {
+            console.error('❌ eslesenTarifManuelEslestir fonksiyonu tanımlı değil!');
+            alert('Düzenleme fonksiyonu henüz yüklenmedi, lütfen sayfayı yenileyin.');
           }
         };
         
+        // Hover efektleri
+        tarifSpan.onmouseenter = () => {
+          tarifSpan.style.backgroundColor = '#e3f2fd';
+          tarifSpan.style.borderRadius = '3px';
+          console.log('🖱️ Mouse tarif üzerine geldi:', tarif);
+        };
+        
+        tarifSpan.onmouseleave = () => {
+          tarifSpan.style.backgroundColor = 'transparent';
+          console.log('🖱️ Mouse tarif üzerinden ayrıldı:', tarif);
+        };
+
         // Full p elementi oluştur (innerHTML += kullanmadan)
         p.appendChild(tarifSpan);
         
