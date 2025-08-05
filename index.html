@@ -1630,6 +1630,10 @@
         // Sistem yüklendikten sonra yemek analizini başlat
         setTimeout(() => {
           updateYemekAnalizi();
+          // Eşleşmeyenler listesini de güncelle
+          setTimeout(() => {
+            eslesmeyenlerListesiniGuncelle();
+          }, 500);
         }, 1500); // Tüm veriler yüklenmesi için 1.5 saniye bekle
         
       }).catch(error => {
@@ -3002,6 +3006,41 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       document.getElementById('manuelEslestirmePanel').style.display = 'block';
     }
 
+    // Eşleşmeyen tariften direkt manuel eşleştirme
+    async function eslesmeyenTarifManuelEslestir(tarifAdi) {
+      console.log('🔗 Eşleşmeyen tarif için manuel eşleştirme başlatılıyor:', tarifAdi);
+      
+      // Manuel eşleştirme panelini göster
+      await manuelEslestirmePaneliGoster();
+      
+      // Sol kutucuğa tarif adını doldur
+      const yeniTarifInput = document.getElementById('manuelTarifAdi');
+      if (yeniTarifInput) {
+        yeniTarifInput.value = tarifAdi;
+        yeniTarifInput.focus();
+      }
+      
+      // Sağ tarafta arama kutucuğunu temizle (kullanıcı arayacak)
+      const kartAramaInput = document.getElementById('eskiKartArama');
+      if (kartAramaInput) {
+        kartAramaInput.value = '';
+        kartAramaInput.placeholder = `"${tarifAdi}" için eşleşecek kartı ara...`;
+      }
+      
+      // Kullanıcıya bilgilendirme
+      const statusDiv = document.getElementById('manuelEslestirmeStatus');
+      if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        statusDiv.style.border = '1px solid #bee5eb';
+        statusDiv.innerHTML = `
+          <strong>🎯 Eşleşmeyen Tarif Seçildi:</strong> "${tarifAdi}"<br>
+          <small>Sağdaki arama kutusundan uygun kartı bulup eşleştirin. Eşleştirme sonrası bu tarif "Eşleşmeyenler" listesinden kaldırılacak.</small>
+        `;
+      }
+    }
+
     // Manuel eşleştirme paneli için dinamik kart arama
     function manuelEslestirmeKartAra(aramaMetni) {
       console.log('🔍 Manuel eşleştirme kart arama:', aramaMetni);
@@ -3177,6 +3216,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const duzeltilmisMetin = karakterDuzelt(tarifAdi);
       manuelEslestirmeStatusGoster(`✅ Eşleştirme eklendi! "${duzeltilmisMetin}" → ${secilenKartlar.length} kart`, 'success');
       
+      // Eşleşmeyenler listesini güncelle - eklenen tarifi kaldır
+      eslesmeyenlerListesiniGuncelle();
+      
       // Formu temizle
       document.getElementById('manuelTarifAdi').value = '';
       document.querySelectorAll('#manuelKartListesi input[type="checkbox"]').forEach(cb => cb.checked = false);
@@ -3189,6 +3231,120 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
       manuelEslestirmeStatusGoster('Tüm manuel eşleştirmeler temizlendi.', 'success');
+    }
+
+    function manuelEslestirmeListesiniGoster() {
+      const div = document.getElementById('manuelEslestirmeListesi');
+      div.innerHTML = '';
+      
+      const anahtarlar = Object.keys(manuelEslestirmeler);
+      if (anahtarlar.length === 0) {
+        div.innerHTML = '<em>Henüz manuel eşleştirme yok</em>';
+        return;
+      }
+
+    // Eşleşmeyenler listesini güncelle - manuel eşleştirme sonrası
+    function eslesmeyenlerListesiniGuncelle() {
+      const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
+      const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
+      
+      if (!eslesmeyenlerContent || !eslesmeyenlerBaslik) {
+        console.log('🔍 Eşleşmeyenler DOM elementleri bulunamadı');
+        return;
+      }
+      
+      // Mevcut eşleşmeyen tarifleri tekrar kontrol et
+      const aktifHasta = seciliHasta;
+      if (!aktifHasta || !aktifHasta.haftalar) {
+        console.log('🔍 Aktif hasta veya hafta verisi yok');
+        return;
+      }
+      
+      let yeniEslesmeyenler = [];
+      
+      // Tüm haftalardaki tarifleri topla ve eşleşmeyenleri bul
+      aktifHasta.haftalar.forEach(hafta => {
+        if (hafta.tarifler && hafta.tarifler.length > 0) {
+          hafta.tarifler.forEach(tarif => {
+            // Normalize et
+            function normalizeLocal(str) {
+              return str
+                .toLowerCase()
+                .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+                .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+                .replace(/i̇/g, 'i')
+                .replace(/[_*\/()]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/[^a-z0-9\s]/g, '')
+                .trim();
+            }
+            
+            const normalizedTarif = normalizeLocal(tarif);
+            
+            // Otomatik eşleşme kontrolü
+            const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
+              const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
+              return normalizedKart.includes(normalizedTarif) || 
+                     normalizedTarif.includes(normalizedKart) ||
+                     normalizedKart === normalizedTarif;
+            });
+            
+            // Manuel eşleşme kontrolü  
+            const manuelEslesen = manuelEslestirmeler[normalizedTarif];
+            
+            // Yasak kural kontrolü
+            const yasakMi = eslesmemeKurallari[normalizedTarif];
+            
+            // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
+            if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
+              yeniEslesmeyenler.push(tarif);
+            }
+          });
+        }
+      });
+      
+      // UI'ı güncelle
+      if (yeniEslesmeyenler.length > 0) {
+        eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${yeniEslesmeyenler.length})`;
+        eslesmeyenlerContent.innerHTML = '';
+        
+        yeniEslesmeyenler.forEach(tarif => {
+          const p = document.createElement('p');
+          p.textContent = tarif;
+          p.style.color = '#dc3545';
+          p.style.margin = '6px 0';
+          p.style.padding = '4px 8px';
+          p.style.background = '#fff5f5';
+          p.style.borderLeft = '3px solid #dc3545';
+          p.style.borderRadius = '4px';
+          p.style.cursor = 'pointer';
+          p.style.transition = 'background-color 0.2s';
+          p.title = 'Tıkla ve manuel eşleştirme yap';
+          
+          p.onmouseenter = () => p.style.background = '#ffe6e6';
+          p.onmouseleave = () => p.style.background = '#fff5f5';
+          p.onclick = () => eslesmeyenTarifManuelEslestir(tarif);
+          
+          eslesmeyenlerContent.appendChild(p);
+        });
+      } else {
+        eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
+        eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">🎉 Tüm tarifler eşleştirildi!</div>';
+      }
+      
+      console.log('🔄 Eşleşmeyenler listesi güncellendi:', yeniEslesmeyenler.length, 'adet');
+    }
+
+    function manuelEslestirmeSil(anahtar) {
+      if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
+      
+      delete manuelEslestirmeler[anahtar];
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      manuelEslestirmeStatusGoster('Eşleştirme silindi.', 'success');
+      
+      // Eşleştirme silindiğinde eşleşmeyenler listesini güncelle
+      eslesmeyenlerListesiniGuncelle();
     }
 
     function manuelEslestirmeListesiniGoster() {
@@ -3238,11 +3394,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         div.appendChild(eslestirmeDiv);
       });
     }
-
-    function manuelEslestirmeSil(anahtar) {
-      if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
-      
-      delete manuelEslestirmeler[anahtar];
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
       manuelEslestirmeStatusGoster('Eşleştirme silindi.', 'success');
@@ -5084,6 +5235,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Hafta tablarını göster
           gosterHaftalar();
+          
+          // Eşleşmeyenler listesini güncelle (hasta değiştiğinde)
+          setTimeout(() => {
+            eslesmeyenlerListesiniGuncelle();
+          }, 1000);
           
         } else {
           throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
@@ -8931,6 +9087,19 @@ function duzenleHafta(i) {
         p.style.background = '#fff5f5';
         p.style.borderLeft = '3px solid #dc3545';
         p.style.borderRadius = '4px';
+        p.style.cursor = 'pointer';
+        p.style.transition = 'background-color 0.2s';
+        p.title = 'Tıkla ve manuel eşleştirme yap';
+        
+        // Hover efekti
+        p.onmouseenter = () => p.style.background = '#ffe6e6';
+        p.onmouseleave = () => p.style.background = '#fff5f5';
+        
+        // Tıklama olayı - Manuel eşleştirme panelini aç ve tarif adını doldur
+        p.onclick = () => {
+          eslesmeyenTarifManuelEslestir(tarif);
+        };
+        
         eslesmeyenlerContent.appendChild(p);
       });
     }
