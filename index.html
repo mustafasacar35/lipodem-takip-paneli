@@ -9183,10 +9183,15 @@ function duzenleHafta(i) {
   }
 
   const hafta = getHaftaListesi()[i];
+  console.log('🚀 otomatikEsleHafta başlatıldı, hafta index:', i, 'hafta:', hafta);
+  
   const eslesenDiv = document.getElementById('eslesenKartlar_' + i);
+  console.log('🔍 eslesenDiv bulundu mu?', !!eslesenDiv, eslesenDiv);
   
   // DOM element kontrolü - çoklu PDF işleminde element olmayabilir
   const domElementMevcut = eslesenDiv !== null;
+  console.log('🔍 domElementMevcut:', domElementMevcut);
+  
   if (domElementMevcut) {
     eslesenDiv.innerHTML = '';
   }
@@ -9374,9 +9379,12 @@ function duzenleHafta(i) {
 
   // Sonuçları göster (sadece DOM element varsa)
   if (domElementMevcut) {
+    console.log('🔧 DOM element mevcut, sonuçlar gösteriliyor. Eşleşen kartlar:', eslesenKartlarListesi.length);
+    
     if (eslesenKartlarListesi.length === 0) {
       eslesenDiv.innerHTML = '<p>Eşleşme bulunamadı.</p>';
     } else {
+      console.log('🔧 Eşleşen kartlar var, tarifleri grupluyoruz...');
       // Tarifleri grupla ve göster
       const tarifGruplari = {};
       eslesenKartlarListesi.forEach(({ tarif, kart, tip }) => {
@@ -9385,6 +9393,8 @@ function duzenleHafta(i) {
         }
         tarifGruplari[tarif].kartlar.push(kart);
       });
+      
+      console.log('🔧 Tarif grupları oluşturuldu:', Object.keys(tarifGruplari));
 
       Object.keys(tarifGruplari).forEach(tarif => {
         console.log('🔧 Tarif grubu oluşturuluyor:', tarif);
