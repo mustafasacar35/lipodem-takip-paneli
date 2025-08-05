@@ -1875,8 +1875,25 @@
           if (!lastUpdate || (now - parseInt(lastUpdate)) > fiveMinutes) {
             console.log('⏰ Cache eski, GitHub\'tan yenileniyor...');
             
-            await manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
-            await eslesmemeKurallariniGitHubYukle(true); // sessiz yükleme
+            // GitHub token kontrolü
+            const token = document.getElementById('githubToken').value.trim();
+            if (!token) {
+              console.warn('⚠️ GitHub token yok - Manuel eşleştirme ve yasak kuralları yüklenemedi');
+              console.log('💡 Çözüm: GitHub token girin veya localStorage\'dan yüklenecek');
+            } else {
+              console.log('🔑 GitHub token mevcut, veriler yükleniyor...');
+              
+              await manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
+              await eslesmemeKurallariniGitHubYukle(true); // sessiz yükleme
+              
+              console.log('✅ GitHub data klasörü verileri yüklendi:', Object.keys(manuelEslestirmeler).length, 'manuel eşleştirme,', Object.keys(eslesmemeKurallari).length, 'yasak');
+            }
+            
+            // Token olmasa bile public GitHub dosyalarını dene
+            if (!token || Object.keys(manuelEslestirmeler).length === 0) {
+              console.log('🌐 Public GitHub dosyaları deneniyor...');
+              await loadPublicGitHubData();
+            }
             
             // Hasta verilerini de GitHub'dan yükle
             await loadHastaDataFromGitHub(true); // sessiz yükleme
@@ -1897,6 +1914,62 @@
       console.log('📊 Yüklenen veriler:');
       console.log('- Manuel eşleştirmeler:', Object.keys(manuelEslestirmeler).length, 'adet');
       console.log('- Eşleşme yasakları:', Object.keys(eslesmemeKurallari).length, 'adet');
+    }
+
+    // Public GitHub dosyalarını token olmadan yükle
+    async function loadPublicGitHubData() {
+      try {
+        console.log('📥 Public manuel eşleştirmeler yükleniyor...');
+        const manuelUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json';
+        
+        try {
+          const manuelResp = await fetch(manuelUrl);
+          if (manuelResp.ok) {
+            const manuelData = await manuelResp.json();
+            if (manuelData.eslestirmeler) {
+              manuelEslestirmeler = manuelData.eslestirmeler;
+            } else {
+              manuelEslestirmeler = manuelData;
+            }
+            console.log('✅ Public manuel eşleştirmeler yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
+          } else {
+            console.warn('⚠️ Public manuel eşleştirmeler yüklenemedi:', manuelResp.status);
+          }
+        } catch (manuelError) {
+          console.warn('⚠️ Public manuel eşleştirme hatası:', manuelError.message);
+        }
+
+        console.log('📥 Public yasak kuralları yükleniyor...');
+        const yasakUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/eslesmeme_kurallari.json';
+        
+        try {
+          const yasakResp = await fetch(yasakUrl);
+          if (yasakResp.ok) {
+            const yasakData = await yasakResp.json();
+            if (yasakData.kurallar) {
+              eslesmemeKurallari = yasakData.kurallar;
+            } else {
+              eslesmemeKurallari = yasakData;
+            }
+            console.log('✅ Public yasak kuralları yüklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
+          } else {
+            console.warn('⚠️ Public yasak kuralları yüklenemedi:', yasakResp.status);
+          }
+        } catch (yasakError) {
+          console.warn('⚠️ Public yasak kuralı hatası:', yasakError.message);
+        }
+
+        // UI'yi güncelle
+        if (typeof manuelEslestirmeListesiniGoster === 'function') {
+          manuelEslestirmeListesiniGoster();
+        }
+        if (typeof eslesmemeKurallariniGoster === 'function') {
+          eslesmemeKurallariniGoster();
+        }
+
+      } catch (error) {
+        console.error('❌ Public GitHub data yükleme hatası:', error);
+      }
     }
 
     // GitHub'dan hasta verilerini yükle (YENİ SİSTEM)
