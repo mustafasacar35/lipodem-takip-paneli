@@ -3511,19 +3511,31 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       if (!window.tumKartListesi) return;
       
-      // Arama metnini kelimelere ayır
-      const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0);
+      // Arama metnini kelimelere ayır ve türkçe karakterleri normalize et
+      const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0)
+        .map(kelime => karakterDuzelt(kelime.toLowerCase()));
+      
+      console.log('🔍 Arama kelimeleri:', aramaKelimeleri);
       
       // Filtreleme fonksiyonu
       function kartEslesiyorMu(kartAdi) {
         if (aramaKelimeleri.length === 0) return true;
         
-        const kartMetni = kartAdi.toLowerCase()
+        const kartMetni = karakterDuzelt(kartAdi.toLowerCase())
           .replace(/\.(jpg|jpeg|png)$/i, '') // dosya uzantısını kaldır
           .replace(/_/g, ' '); // alt çizgileri boşluğa çevir
         
+        console.log(`🔎 Kart "${kartAdi}" test ediliyor: "${kartMetni}"`);
+        
         // Tüm arama kelimelerinin kart adında bulunup bulunmadığını kontrol et
-        return aramaKelimeleri.every(kelime => kartMetni.includes(kelime));
+        const eslesiyor = aramaKelimeleri.every(kelime => {
+          const eslesme = kartMetni.includes(kelime);
+          console.log(`  ✓ "${kelime}" kelimesi "${kartMetni}" içinde: ${eslesme}`);
+          return eslesme;
+        });
+        
+        console.log(`📊 "${kartAdi}" sonuç: ${eslesiyor}`);
+        return eslesiyor;
       }
       
       // Filtrelenmiş kartları ekle
@@ -3531,10 +3543,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         kartEslesiyorMu(kart.name)
       );
       
+      console.log(`📋 Filtrelenmiş kart sayısı: ${filtrelenmisKartlar.length}`);
+      
       // Eşleşme skoruna göre sırala (daha iyi eşleşenler üstte)
       filtrelenmisKartlar.sort((a, b) => {
-        const aMetni = a.name.toLowerCase().replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
-        const bMetni = b.name.toLowerCase().replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        const aMetni = karakterDuzelt(a.name.toLowerCase()).replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        const bMetni = karakterDuzelt(b.name.toLowerCase()).replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
         
         // Tam eşleşme kontrolü
         if (aramaKelimeleri.length > 0) {
@@ -3547,7 +3561,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         // Alfabetik sıralama
-        return a.name.localeCompare(b.name);
+        return a.name.localeCompare(b.name, 'tr-TR');
       });
       
       // Seçenekleri ekle
@@ -10624,12 +10638,56 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Arama metni varsa filtreleme yap
       if (aramaMetni && aramaMetni.trim().length > 0) {
-        const aramaKelimeler = aramaMetni.toLowerCase().trim().split(/\s+/);
+        const aramaKelimeler = aramaMetni.toLowerCase().trim().split(/\s+/)
+          .map(kelime => karakterDuzelt(kelime));
+        
+        console.log('🔍 Arama kelimeleri (normalize edilmiş):', aramaKelimeler);
         
         tumKartlar = tumKartlar.filter(kart => {
-          const kartAdi = kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
+          const kartAdi = karakterDuzelt(kart.replace('.jpg', '').replace(/_/g, ' ').toLowerCase());
+          
+          console.log(`🔎 Test edilen kart: "${kart}" → normalize: "${kartAdi}"`);
+          
           // Tüm arama kelimelerinin kart adında bulunması gerekiyor
-          return aramaKelimeler.every(kelime => kartAdi.includes(kelime));
+          const eslesiyor = aramaKelimeler.every(kelime => {
+            const bulundu = kartAdi.includes(kelime);
+            console.log(`  ✓ "${kelime}" kelimesi "${kartAdi}" içinde: ${bulundu}`);
+            return bulundu;
+          });
+          
+          console.log(`📊 "${kart}" filtreleme sonucu: ${eslesiyor}`);
+          return eslesiyor;
+        });
+        
+        console.log(`📋 Filtreleme sonrası kart sayısı: ${tumKartlar.length}`);
+      }
+      
+      // Sonuçları eşleşme skoruna göre sırala
+      if (aramaMetni && aramaMetni.trim().length > 0) {
+        const aramaKelimeler = aramaMetni.toLowerCase().trim().split(/\s+/)
+          .map(kelime => karakterDuzelt(kelime));
+        
+        tumKartlar.sort((a, b) => {
+          const aAdi = karakterDuzelt(a.replace('.jpg', '').replace(/_/g, ' ').toLowerCase());
+          const bAdi = karakterDuzelt(b.replace('.jpg', '').replace(/_/g, ' ').toLowerCase());
+          
+          // Tam arama metni eşleşmesi
+          const aramaTam = aramaKelimeler.join(' ');
+          const aIceriyor = aAdi.includes(aramaTam);
+          const bIceriyor = bAdi.includes(aramaTam);
+          
+          if (aIceriyor && !bIceriyor) return -1;
+          if (!aIceriyor && bIceriyor) return 1;
+          
+          // Başlangıç eşleşmesi
+          const aBaslangic = aramaKelimeler.some(kelime => aAdi.startsWith(kelime));
+          const bBaslangic = aramaKelimeler.some(kelime => bAdi.startsWith(kelime));
+          
+          if (aBaslangic && !bBaslangic) return -1;
+          if (!aBaslangic && bBaslangic) return 1;
+          
+          // Alfabetik sıralama
+          return a.localeCompare(b, 'tr-TR');
         });
       }
       
