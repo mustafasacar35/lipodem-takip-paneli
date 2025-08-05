@@ -3041,6 +3041,296 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
+    // Eşleşen tariften direkt manuel eşleştirme (düzenleme için)
+    async function eslesenTarifManuelEslestir(tarifAdi, eslesenKartlar) {
+      console.log('🔧 Eşleşen tarif için manuel eşleştirme düzenleme başlatılıyor:', tarifAdi, eslesenKartlar);
+      
+      // Kartları yükle
+      if (tariflerKlasoruGorselleri.length === 0) {
+        await tariflerKlasoruGorselleriniYukle();
+      }
+      
+      // Özel düzenleme modalı oluştur
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); z-index: 10000; 
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      modal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto;">
+          <h3 style="margin-bottom: 20px; color: #007bff;">🔧 Eşleşen Tarif Düzenle</h3>
+          
+          <div style="display:flex; gap:20px; margin-bottom:20px;">
+            <div style="flex:1;">
+              <label style="display:block; margin-bottom:5px; font-weight:bold;">PDF'deki Yemek Adı:</label>
+              <textarea id="eslesenTarifAdi" placeholder="Örn: *Kıymalı karnabahar /bamya yemeği" style="width:100%; height:80px; padding:8px; resize:vertical;">${tarifAdi}</textarea>
+              <small style="display:block; color:#666; margin-top:5px;">
+                PDF'de görünen tam metni yazın (*, / işaretleri dahil)
+              </small>
+            </div>
+            <div style="flex:1;">
+              <label style="display:block; margin-bottom:5px; font-weight:bold;">Eşleşecek Kartlar:</label>
+              <input type="text" id="eslesenKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px;" />
+              <div id="eslesenKartListesi" style="height:120px; overflow-y:auto; border:1px solid #ddd; padding:8px; background:#f8f9fa;">
+                <!-- Dinamik kartlar buraya gelecek -->
+              </div>
+              <small style="display:block; color:#666; margin-top:5px;">
+                Eşleşmesini istediğiniz kartları işaretleyin
+              </small>
+            </div>
+          </div>
+          
+          <div id="eslesenEslestirmeStatus" style="margin-bottom:15px; padding:10px; border-radius:5px; display:none;"></div>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+            <button id="eslesenKaydetBtn" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+              ✅ Güncelle
+            </button>
+            <button id="eslesenYeniKaydetBtn" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+              ➕ Yeni Kaydet
+            </button>
+            <button id="eslesenIptalBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+              ❌ İptal
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+      
+      // Kart listesini doldur
+      eslesenKartListesiniGoster('');
+      
+      // Arama işlevi
+      document.getElementById('eslesenKartArama').oninput = function() {
+        eslesenKartListesiniGoster(this.value);
+      };
+      
+      // Eşleşen kartları otomatik seç
+      setTimeout(() => {
+        const kartCheckboxes = document.querySelectorAll('#eslesenKartListesi input[type="checkbox"]');
+        const secilenKartIsimleri = eslesenKartlar.map(kart => kart.name || kart.kartResmi);
+        
+        kartCheckboxes.forEach(checkbox => {
+          const kartAdi = checkbox.getAttribute('data-kart');
+          if (secilenKartIsimleri.includes(kartAdi)) {
+            checkbox.checked = true;
+            console.log('✅ Kart otomatik seçildi:', kartAdi);
+          }
+        });
+        
+        console.log('🎯 Otomatik seçilen kartlar:', secilenKartIsimleri);
+      }, 500);
+      
+      // Buton event'leri
+      document.getElementById('eslesenKaydetBtn').onclick = () => {
+        eslesenTarifKaydet(tarifAdi, false); // Güncelleme modu
+      };
+      
+      document.getElementById('eslesenYeniKaydetBtn').onclick = () => {
+        eslesenTarifKaydet(tarifAdi, true); // Yeni eşleştirme modu
+      };
+      
+      document.getElementById('eslesenIptalBtn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+      
+      // İlk input'a odaklan
+      setTimeout(() => {
+        document.getElementById('eslesenTarifAdi').focus();
+      }, 100);
+      
+      // Global referans
+      window.currentEslesenModal = modal;
+      
+      // Bilgilendirme mesajı
+      eslesenStatusGoster(`🔧 Düzenleniyor: "${tarifAdi}" - Mevcut kartlar otomatik seçildi`, 'info');
+    }
+
+    // Eşleşen tarif kart listesi göster
+    function eslesenKartListesiniGoster(aramaMetni = '') {
+      const div = document.getElementById('eslesenKartListesi');
+      if (!div) return;
+      
+      div.innerHTML = '';
+
+      console.log('🔍 Eşleşen kart listesi gösteriliyor, arama metni:', aramaMetni);
+      
+      // Arama metnini kelimelere ayır ve türkçe karakterleri normalize et
+      const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0)
+        .map(kelime => karakterDuzelt(kelime.toLowerCase()));
+      
+      console.log('🔍 Arama kelimeleri:', aramaKelimeleri);
+
+      let filtrelenmisKartlar = tariflerKlasoruGorselleri;
+      
+      if (aramaKelimeleri.length > 0) {
+        filtrelenmisKartlar = tariflerKlasoruGorselleri.filter(kart => {
+          const kartAdi = karakterDuzelt(kart.name.toLowerCase());
+          return aramaKelimeleri.every(kelime => kartAdi.includes(kelime));
+        });
+      }
+
+      console.log(`🔍 Filtreleme sonucu: ${filtrelenmisKartlar.length}/${tariflerKlasoruGorselleri.length} kart`);
+
+      if (filtrelenmisKartlar.length === 0) {
+        div.innerHTML = '<em style="color: #666;">Arama kriterine uygun kart bulunamadı</em>';
+        return;
+      }
+
+      // İlk 50 kartı göster (performans için)
+      const gosterilecekKartlar = filtrelenmisKartlar.slice(0, 50);
+      
+      gosterilecekKartlar.forEach(kart => {
+        const label = document.createElement('label');
+        label.style.cssText = 'display: block; margin: 5px 0; cursor: pointer; padding: 4px; border-radius: 3px; transition: background 0.2s;';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.setAttribute('data-kart', kart.name);
+        checkbox.style.marginRight = '8px';
+        
+        const span = document.createElement('span');
+        span.textContent = karakterDuzelt(kart.name);
+        span.style.fontSize = '13px';
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        
+        // Hover efekti
+        label.onmouseenter = () => label.style.background = '#e9ecef';
+        label.onmouseleave = () => label.style.background = 'transparent';
+        
+        div.appendChild(label);
+      });
+      
+      if (filtrelenmisKartlar.length > 50) {
+        const info = document.createElement('div');
+        info.style.cssText = 'text-align: center; color: #666; font-size: 12px; margin-top: 10px; padding: 5px;';
+        info.textContent = `İlk 50 kart gösteriliyor (Toplam: ${filtrelenmisKartlar.length})`;
+        div.appendChild(info);
+      }
+    }
+
+    // Eşleşen tarif kaydetme
+    function eslesenTarifKaydet(orijinalTarifAdi, yeniEslestirmeMi) {
+      const yeniTarifAdi = document.getElementById('eslesenTarifAdi').value.trim();
+      const checkboxes = document.querySelectorAll('#eslesenKartListesi input[type="checkbox"]:checked');
+      const secilenKartlar = Array.from(checkboxes).map(cb => cb.getAttribute('data-kart'));
+      
+      if (!yeniTarifAdi) {
+        eslesenStatusGoster('Yemek adı boş olamaz!', 'error');
+        return;
+      }
+      
+      if (secilenKartlar.length === 0) {
+        eslesenStatusGoster('En az bir kart seçmelisiniz!', 'error');
+        return;
+      }
+      
+      // Normalize et
+      function normalize(str) {
+        return str
+          .toLowerCase()
+          .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+          .replace(/i̇/g, 'i')
+          .replace(/[_*\/()]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/[^a-z0-9\s]/g, '')
+          .trim();
+      }
+      
+      const yeniAnahtar = normalize(yeniTarifAdi);
+      const orijinalAnahtar = normalize(orijinalTarifAdi);
+      
+      if (yeniEslestirmeMi) {
+        // Yeni eşleştirme modu - eski eşleştirmeyi silme
+        if (manuelEslestirmeler[yeniAnahtar]) {
+          if (!confirm('Bu tarif adı zaten mevcut! Mevcut eşleştirmeyi güncellemek istediğinize emin misiniz?')) {
+            return;
+          }
+        }
+        
+        manuelEslestirmeler[yeniAnahtar] = {
+          orijinalMetin: yeniTarifAdi,
+          kartlar: secilenKartlar,
+          eklemeTarihi: new Date().toISOString()
+        };
+        
+        eslesenStatusGoster(`✅ Yeni eşleştirme oluşturuldu: "${yeniTarifAdi}" → ${secilenKartlar.length} kart`, 'success');
+        
+      } else {
+        // Güncelleme modu - eski eşleştirmeyi değiştir
+        if (orijinalAnahtar !== yeniAnahtar && manuelEslestirmeler[yeniAnahtar]) {
+          if (!confirm('Bu tarif adı zaten mevcut! Mevcut eşleştirmeyi güncellemek istediğinize emin misiniz?')) {
+            return;
+          }
+        }
+        
+        // Eski eşleştirmeyi sil (anahtar değişmişse)
+        if (orijinalAnahtar !== yeniAnahtar) {
+          delete manuelEslestirmeler[orijinalAnahtar];
+        }
+        
+        manuelEslestirmeler[yeniAnahtar] = {
+          orijinalMetin: yeniTarifAdi,
+          kartlar: secilenKartlar,
+          guncellemeTarihi: new Date().toISOString()
+        };
+        
+        eslesenStatusGoster(`✅ Eşleştirme güncellendi: "${yeniTarifAdi}" → ${secilenKartlar.length} kart`, 'success');
+      }
+      
+      // Kaydet ve güncelle
+      manuelEslestirmeleriKaydet();
+      manuelEslestirmeListesiniGoster();
+      eslesmeyenlerListesiniGuncelle();
+      
+      // Modal'ı kapat
+      setTimeout(() => {
+        if (window.currentEslesenModal) {
+          document.body.removeChild(window.currentEslesenModal);
+          window.currentEslesenModal = null;
+        }
+      }, 1500);
+      
+      console.log(yeniEslestirmeMi ? '✅ Yeni eşleştirme oluşturuldu' : '🔄 Eşleştirme güncellendi', yeniAnahtar);
+    }
+
+    // Eşleşen status mesajları
+    function eslesenStatusGoster(mesaj, tip) {
+      const statusDiv = document.getElementById('eslesenEslestirmeStatus');
+      if (!statusDiv) return;
+      
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = mesaj;
+      
+      switch(tip) {
+        case 'success':
+          statusDiv.style.background = '#d4edda';
+          statusDiv.style.color = '#155724';
+          statusDiv.style.border = '1px solid #c3e6cb';
+          break;
+        case 'error':
+          statusDiv.style.background = '#f8d7da';
+          statusDiv.style.color = '#721c24';
+          statusDiv.style.border = '1px solid #f5c6cb';
+          break;
+        case 'info':
+          statusDiv.style.background = '#d1ecf1';
+          statusDiv.style.color = '#0c5460';
+          statusDiv.style.border = '1px solid #bee5eb';
+          break;
+        default:
+          statusDiv.style.background = '#e2e3e5';
+          statusDiv.style.color = '#383d41';
+          statusDiv.style.border = '1px solid #d6d8db';
+      }
+    }
+
     // Manuel eşleştirme paneli için dinamik kart arama
     function manuelEslestirmeKartAra(aramaMetni) {
       console.log('🔍 Manuel eşleştirme kart arama:', aramaMetni);
@@ -9091,7 +9381,27 @@ function duzenleHafta(i) {
         const grup = tarifGruplari[tarif];
         const p = document.createElement('p');
         const kartIsimleri = grup.kartlar.map(k => k.name).join(', ');
-        p.innerHTML = `<b>${tarif}</b> → <span style="color:green;">${kartIsimleri}</span> <small style="color:blue;">(${grup.tip})</small>`;
+        
+        // Tarif adını tıklanabilir span içine al
+        const tarifSpan = document.createElement('span');
+        tarifSpan.innerHTML = `<b>${tarif}</b>`;
+        tarifSpan.style.cursor = 'pointer';
+        tarifSpan.style.textDecoration = 'underline';
+        tarifSpan.style.color = '#007bff';
+        tarifSpan.title = 'Tıkla ve manuel eşleştirme panelini aç';
+        
+        // Tıklama olayı - Manuel eşleştirme panelini aç ve bilgileri doldur
+        tarifSpan.onclick = () => {
+          eslesenTarifManuelEslestir(tarif, grup.kartlar);
+        };
+        
+        // Full p elementi oluştur (innerHTML += kullanmadan)
+        p.appendChild(tarifSpan);
+        
+        const okSpan = document.createElement('span');
+        okSpan.innerHTML = ` → <span style="color:green;">${kartIsimleri}</span> <small style="color:blue;">(${grup.tip})</small>`;
+        p.appendChild(okSpan);
+        
         eslesenDiv.appendChild(p);
         
         // Her kart için görsel ekle
