@@ -1601,6 +1601,111 @@
     // Global değişkenler
     let seciliHasta = null;
     
+    // Eşleşmeyenler listesini güncelle - manuel eşleştirme sonrası
+    function eslesmeyenlerListesiniGuncelle() {
+      const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
+      const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
+      
+      if (!eslesmeyenlerContent || !eslesmeyenlerBaslik) {
+        console.log('🔍 Eşleşmeyenler DOM elementleri bulunamadı');
+        return;
+      }
+      
+      // Mevcut eşleşmeyen tarifleri tekrar kontrol et
+      const aktifHasta = seciliHasta;
+      if (!aktifHasta || !aktifHasta.haftalar) {
+        console.log('🔍 Aktif hasta veya hafta verisi yok');
+        return;
+      }
+      
+      let yeniEslesmeyenler = [];
+      
+      // Tüm haftalardaki tarifleri topla ve eşleşmeyenleri bul
+      aktifHasta.haftalar.forEach(hafta => {
+        if (hafta.tarifler && hafta.tarifler.length > 0) {
+          hafta.tarifler.forEach(tarif => {
+            // Normalize et
+            function normalizeLocal(str) {
+              return str
+                .toLowerCase()
+                .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+                .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+                .replace(/i̇/g, 'i')
+                .replace(/[_*\/()]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/[^a-z0-9\s]/g, '')
+                .trim();
+            }
+            
+            const normalizedTarif = normalizeLocal(tarif);
+            
+            // Otomatik eşleşme kontrolü
+            const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
+              const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
+              return normalizedKart.includes(normalizedTarif) || 
+                     normalizedTarif.includes(normalizedKart) ||
+                     normalizedKart === normalizedTarif;
+            });
+            
+            // Manuel eşleşme kontrolü  
+            const manuelEslesen = manuelEslestirmeler[normalizedTarif];
+            
+            // Yasak kural kontrolü
+            const yasakMi = eslesmemeKurallari[normalizedTarif];
+            
+            // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
+            if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
+              yeniEslesmeyenler.push(tarif);
+            }
+          });
+        }
+      });
+      
+      // UI'ı güncelle
+      if (yeniEslesmeyenler.length > 0) {
+        eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${yeniEslesmeyenler.length})`;
+        eslesmeyenlerContent.innerHTML = '';
+        
+        yeniEslesmeyenler.forEach(tarif => {
+          const p = document.createElement('p');
+          p.textContent = tarif;
+          p.style.color = '#dc3545';
+          p.style.margin = '6px 0';
+          p.style.padding = '4px 8px';
+          p.style.background = '#fff5f5';
+          p.style.borderLeft = '3px solid #dc3545';
+          p.style.borderRadius = '4px';
+          p.style.cursor = 'pointer';
+          p.style.transition = 'background-color 0.2s';
+          p.title = 'Tıkla ve manuel eşleştirme yap';
+          
+          p.onmouseenter = () => p.style.background = '#ffe6e6';
+          p.onmouseleave = () => p.style.background = '#fff5f5';
+          p.onclick = () => {
+            console.log('🔗 Eşleşmeyen tarif adına tıklandı:', tarif);
+            try {
+              if (typeof eslesmeyenTarifManuelEslestir === 'function') {
+                eslesmeyenTarifManuelEslestir(tarif);
+              } else {
+                console.error('❌ eslesmeyenTarifManuelEslestir fonksiyonu bulunamadı!');
+                alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+              }
+            } catch (error) {
+              console.error('❌ Eşleşmeyen tarif tıklama hatası:', error);
+              alert('Hata: ' + error.message);
+            }
+          };
+          
+          eslesmeyenlerContent.appendChild(p);
+        });
+      } else {
+        eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
+        eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">🎉 Tüm tarifler eşleştirildi!</div>';
+      }
+      
+      console.log('🔄 Eşleşmeyenler listesi güncellendi:', yeniEslesmeyenler.length, 'adet');
+    }
+    
     // Token'ı localStorage'da sakla ve input'a yükle
     const TOKEN_KEY = 'github_api_token';
     function saveTokenToStorage() {
@@ -3300,111 +3405,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         div.innerHTML = '<em>Henüz manuel eşleştirme yok</em>';
         return;
       }
-
-    // Eşleşmeyenler listesini güncelle - manuel eşleştirme sonrası
-    function eslesmeyenlerListesiniGuncelle() {
-      const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
-      const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
-      
-      if (!eslesmeyenlerContent || !eslesmeyenlerBaslik) {
-        console.log('🔍 Eşleşmeyenler DOM elementleri bulunamadı');
-        return;
-      }
-      
-      // Mevcut eşleşmeyen tarifleri tekrar kontrol et
-      const aktifHasta = seciliHasta;
-      if (!aktifHasta || !aktifHasta.haftalar) {
-        console.log('🔍 Aktif hasta veya hafta verisi yok');
-        return;
-      }
-      
-      let yeniEslesmeyenler = [];
-      
-      // Tüm haftalardaki tarifleri topla ve eşleşmeyenleri bul
-      aktifHasta.haftalar.forEach(hafta => {
-        if (hafta.tarifler && hafta.tarifler.length > 0) {
-          hafta.tarifler.forEach(tarif => {
-            // Normalize et
-            function normalizeLocal(str) {
-              return str
-                .toLowerCase()
-                .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-                .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-                .replace(/i̇/g, 'i')
-                .replace(/[_*\/()]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .replace(/[^a-z0-9\s]/g, '')
-                .trim();
-            }
-            
-            const normalizedTarif = normalizeLocal(tarif);
-            
-            // Otomatik eşleşme kontrolü
-            const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
-              const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
-              return normalizedKart.includes(normalizedTarif) || 
-                     normalizedTarif.includes(normalizedKart) ||
-                     normalizedKart === normalizedTarif;
-            });
-            
-            // Manuel eşleşme kontrolü  
-            const manuelEslesen = manuelEslestirmeler[normalizedTarif];
-            
-            // Yasak kural kontrolü
-            const yasakMi = eslesmemeKurallari[normalizedTarif];
-            
-            // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
-            if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
-              yeniEslesmeyenler.push(tarif);
-            }
-          });
-        }
-      });
-      
-      // UI'ı güncelle
-      if (yeniEslesmeyenler.length > 0) {
-        eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${yeniEslesmeyenler.length})`;
-        eslesmeyenlerContent.innerHTML = '';
-        
-        yeniEslesmeyenler.forEach(tarif => {
-          const p = document.createElement('p');
-          p.textContent = tarif;
-          p.style.color = '#dc3545';
-          p.style.margin = '6px 0';
-          p.style.padding = '4px 8px';
-          p.style.background = '#fff5f5';
-          p.style.borderLeft = '3px solid #dc3545';
-          p.style.borderRadius = '4px';
-          p.style.cursor = 'pointer';
-          p.style.transition = 'background-color 0.2s';
-          p.title = 'Tıkla ve manuel eşleştirme yap';
-          
-          p.onmouseenter = () => p.style.background = '#ffe6e6';
-          p.onmouseleave = () => p.style.background = '#fff5f5';
-          p.onclick = () => {
-            console.log('🔗 Eşleşmeyen tarif adına tıklandı:', tarif);
-            try {
-              if (typeof eslesmeyenTarifManuelEslestir === 'function') {
-                eslesmeyenTarifManuelEslestir(tarif);
-              } else {
-                console.error('❌ eslesmeyenTarifManuelEslestir fonksiyonu bulunamadı!');
-                alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
-              }
-            } catch (error) {
-              console.error('❌ Eşleşmeyen tarif tıklama hatası:', error);
-              alert('Hata: ' + error.message);
-            }
-          };
-          
-          eslesmeyenlerContent.appendChild(p);
-        });
-      } else {
-        eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
-        eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">🎉 Tüm tarifler eşleştirildi!</div>';
-      }
-      
-      console.log('🔄 Eşleşmeyenler listesi güncellendi:', yeniEslesmeyenler.length, 'adet');
-    }
 
     function manuelEslestirmeSil(anahtar) {
       console.log('🗑️ Silme işlemi başlatıldı, anahtar:', anahtar);
@@ -12226,3 +12226,5 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
+
+  
