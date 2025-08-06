@@ -1798,7 +1798,8 @@
         
         // İlk durum snapshot'ını al
         setTimeout(() => {
-          durumGecmisineEkle('Sistem başlangıcı');
+          // Sistem başlangıcı snapshot'ı geçici olarak devre dışı (localStorage quota için)
+          // durumGecmisineEkle('Sistem başlangıcı');
           durumNavigasyonButonlariniGuncelle();
         }, 1000);
         
@@ -3113,7 +3114,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     let durumGecmisi = []; // İleri/geri sarma için geçmiş
     let gecmisIndex = -1; // Şu anki pozisyon
-    const maxGecmisBoyu = 10; // Maximum undo/redo sayısı (localStorage quota için azaltıldı)
+    const maxGecmisBoyu = 3; // Maximum undo/redo sayısı (localStorage quota için çok azaltıldı)
     
     function sayfayiYenile() {
       console.log("Sayfa yenileniyor...");
@@ -3149,45 +3150,25 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     function durumSnapshotAl() {
       const snapshot = {
         timestamp: new Date().toISOString(),
-        // Sadece temel hasta bilgilerini al (PDF'siz)
-        hastalar: hastalar ? hastalar.map(hasta => ({
-          id: hasta.id,
-          isim: hasta.isim || hasta.ad,
-          not: hasta.not,
-          arsiv: hasta.arsiv,
-          // Haftaları sadece temel bilgilerle al
-          haftalar: hasta.haftalar ? hasta.haftalar.map(hafta => ({
-            haftaNo: hafta.haftaNo,
-            baslangic: hafta.baslangic,
-            bitis: hafta.bitis,
-            gptMesaj: hafta.gptMesaj,
-            // PDF verilerini dahil etme (çok büyük)
-            tarifKartlar: hafta.tarifKartlar ? hafta.tarifKartlar.map(kart => ({
-              name: kart.name,
-              normalized: kart.normalized
-            })) : [],
-            manuelKartlar: hafta.manuelKartlar || []
-          })) : []
-        })) : [],
-        seciliHasta: seciliHasta ? {
-          id: seciliHasta.id,
-          isim: seciliHasta.isim || seciliHasta.ad
-        } : null,
+        // SADECE SEÇİLİ HASTA VE TEMEL BİLGİLER (localStorage quota için)
+        seciliHastaId: seciliHasta ? seciliHasta.id : null,
+        seciliHastaIsim: seciliHasta ? (seciliHasta.isim || seciliHasta.ad) : null,
         aktifHaftaIndex: aktifHaftaIndex,
-        manuelEslestirmeler: manuelEslestirmeler || {},
-        // Tarif kartlarını dahil etme (çok büyük)
+        // Manuel eşleştirmeler - sadece küçük olanlar
+        manuelEslestirmelerCount: Object.keys(manuelEslestirmeler || {}).length,
+        // Sadece sayısal veriler
         tarifKartlariSayisi: tarifKartlari ? tarifKartlari.length : 0,
-        version: '1.0',
-        aciklama: 'Otomatik snapshot'
+        version: '2.0-minimal',
+        aciklama: 'Minimal snapshot'
       };
       
-      console.log('📸 Durum snapshot alındı:', {
+      const snapshotSize = JSON.stringify(snapshot).length;
+      console.log('📸 MINIMAL Durum snapshot alındı:', {
         timestamp: snapshot.timestamp,
-        hastaSayisi: snapshot.hastalar.length,
-        seciliHasta: snapshot.seciliHasta,
-        manuelEslestirmeSayisi: Object.keys(snapshot.manuelEslestirmeler).length,
-        tarifKartlariSayisi: snapshot.tarifKartlariSayisi,
-        estimatedSize: JSON.stringify(snapshot).length + ' byte'
+        seciliHasta: snapshot.seciliHastaIsim,
+        aktifHaftaIndex: snapshot.aktifHaftaIndex,
+        manuelEslestirmeSayisi: snapshot.manuelEslestirmelerCount,
+        snapshotBoyutu: snapshotSize + ' byte (ULTRA MINIMAL)'
       });
       
       return snapshot;
@@ -3298,46 +3279,66 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // Snapshot'ı yükleme
     async function durumSnapshotiYukle(snapshot) {
       try {
-        console.log('🔄 Snapshot yükleniyor:', snapshot.timestamp);
+        console.log('🔄 MINIMAL Snapshot yükleniyor:', snapshot.timestamp);
         
-        // Ana verileri geri yükle
-        if (snapshot.hastalar) {
-          hastalar = JSON.parse(JSON.stringify(snapshot.hastalar));
-          // localStorage yazma işlemini güvenli hale getir
-          try {
-            localStorage.setItem('hastalar', JSON.stringify(hastalar));
-            console.log('✅ LocalStorage güncellendi');
-          } catch (storageError) {
-            console.warn('⚠️ LocalStorage yazma hatası (quota aşıldı):', storageError);
-            // LocalStorage temizle ve tekrar dene
-            try {
-              localStorage.clear();
-              localStorage.setItem('hastalar', JSON.stringify(hastalar));
-              console.log('✅ LocalStorage temizlendi ve güncellendi');
-            } catch (retryError) {
-              console.error('❌ LocalStorage yazma tamamen başarısız:', retryError);
+        // V2.0 minimal snapshot kontrolü
+        if (snapshot.version && snapshot.version.includes('minimal')) {
+          console.log('📦 Minimal snapshot tespit edildi');
+          
+          // Seçili hasta ID'si varsa bul ve yükle
+          if (snapshot.seciliHastaId) {
+            const bulunanHasta = hastalar.find(h => h.id === snapshot.seciliHastaId);
+            if (bulunanHasta) {
+              seciliHasta = bulunanHasta;
+              console.log('✅ Seçili hasta geri yüklendi:', snapshot.seciliHastaIsim);
+            } else {
+              // Hasta bulunamadıysa basit obje oluştur
+              seciliHasta = { 
+                id: snapshot.seciliHastaId, 
+                isim: snapshot.seciliHastaIsim 
+              };
+              console.log('⚠️ Hasta bulunamadı, basit obje oluşturuldu:', snapshot.seciliHastaIsim);
             }
+          } else {
+            seciliHasta = null;
+          }
+          
+          // Aktif hafta index
+          if (snapshot.aktifHaftaIndex !== undefined) {
+            aktifHaftaIndex = snapshot.aktifHaftaIndex;
+          }
+          
+          // Minimal UI güncellemesi (ağır işlemler yapmadan)
+          console.log('🔄 Minimal UI güncelleniyor...');
+          
+          // Sadece seçili hastayı güncelle
+          if (seciliHasta && typeof selectHastaYeniSistem === 'function') {
+            await selectHastaYeniSistem(seciliHasta.isim || seciliHasta.ad);
+          }
+          
+          console.log('✅ Minimal snapshot yüklendi:', {
+            timestamp: snapshot.timestamp,
+            seciliHasta: snapshot.seciliHastaIsim,
+            aktifHaftaIndex: snapshot.aktifHaftaIndex
+          });
+          
+        } else {
+          // Eski format snapshot'lar için eski mantık
+          console.log('📦 Eski format snapshot tespit edildi');
+          
+          if (snapshot.seciliHasta) {
+            seciliHasta = snapshot.seciliHasta;
+          }
+          
+          if (snapshot.aktifHaftaIndex !== undefined) {
+            aktifHaftaIndex = snapshot.aktifHaftaIndex;
+          }
+          
+          // Minimal UI güncellemesi
+          if (seciliHasta && typeof selectHastaYeniSistem === 'function') {
+            await selectHastaYeniSistem(seciliHasta.isim || seciliHasta.ad);
           }
         }
-        
-        if (snapshot.seciliHasta) {
-          seciliHasta = snapshot.seciliHasta;
-        }
-        
-        if (snapshot.aktifHaftaIndex !== undefined) {
-          aktifHaftaIndex = snapshot.aktifHaftaIndex;
-        }
-        
-        if (snapshot.manuelEslestirmeler) {
-          manuelEslestirmeler = JSON.parse(JSON.stringify(snapshot.manuelEslestirmeler));
-        }
-        
-        if (snapshot.tarifKartlari) {
-          tarifKartlari = [...snapshot.tarifKartlari];
-          window.tarifKartlari = tarifKartlari;
-        }
-        
-        // UI'ı güncelle
         console.log('🔄 UI güncelleniyor...');
         
         // Hasta listesini yenile
@@ -3375,31 +3376,39 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const oncekiBoyut = JSON.stringify(localStorage).length;
         console.log('🧹 LocalStorage temizleme başlatılıyor... Önceki boyut:', oncekiBoyut);
         
-        // Geçmiş boyutunu kontrol et ve kısalt
-        if (durumGecmisi.length > maxGecmisBoyu) {
-          const eskiGecmisBoyutu = durumGecmisi.length;
-          durumGecmisi.splice(0, durumGecmisi.length - maxGecmisBoyu);
-          gecmisIndex = Math.min(gecmisIndex, durumGecmisi.length - 1);
-          console.log(`📉 Geçmiş kısaltıldı: ${eskiGecmisBoyutu} → ${durumGecmisi.length}`);
-        }
+        // AGRESIF TEMİZLEME
+        console.log('🔥 Agresif temizleme modunda...');
         
-        // Büyük localStorage öğelerini temizle
-        const temizlenecekKeyler = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          const value = localStorage.getItem(key);
-          if (value && value.length > 50000) { // 50KB'dan büyük öğeler
-            temizlenecekKeyler.push(key);
+        // Undo/Redo geçmişini tamamen temizle
+        durumGecmisi.length = 0;
+        gecmisIndex = -1;
+        console.log('�️ Tüm undo/redo geçmişi temizlendi');
+        
+        // LocalStorage'ı tamamen temizle
+        localStorage.clear();
+        console.log('🗑️ LocalStorage tamamen temizlendi');
+        
+        // Sadece kritik verileri yeniden kaydet
+        try {
+          if (hastalar && hastalar.length > 0) {
+            localStorage.setItem('lipedem_hasta_kayitlari', JSON.stringify(hastalar));
+            console.log('✅ Hasta kayıtları yeniden kaydedildi');
           }
+          
+          const token = document.getElementById('githubToken')?.value;
+          if (token) {
+            localStorage.setItem('github_token', token);
+            console.log('✅ GitHub token yeniden kaydedildi');
+          }
+        } catch (error) {
+          console.error('❌ Kritik verileri kaydetme hatası:', error);
         }
-        
-        temizlenecekKeyler.forEach(key => {
-          console.log(`🗑️ Büyük localStorage öğesi temizleniyor: ${key} (${localStorage.getItem(key).length} byte)`);
-          localStorage.removeItem(key);
-        });
         
         const sonrakiBoyut = JSON.stringify(localStorage).length;
-        console.log('✅ LocalStorage temizlendi. Sonraki boyut:', sonrakiBoyut, 'Tasarruf:', oncekiBoyut - sonrakiBoyut);
+        console.log('✅ LocalStorage agresif temizlik tamamlandı. Boyut:', sonrakiBoyut);
+        
+        // Navigasyon butonlarını güncelle
+        durumNavigasyonButonlariniGuncelle();
         
         return true;
       } catch (error) {
@@ -3427,7 +3436,56 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
     
-    // GitHub'a tarihli snapshot kaydetme
+    // GitHub'a direkt snapshot kaydetme (tam veriyle)
+    async function githubSnapshotKaydetDirect(snapshot, aciklama) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        manuelEslestirmeStatusGoster('❌ GitHub token gerekli', 'error');
+        return;
+      }
+      
+      try {
+        // Tarih etiketi oluştur
+        const now = new Date();
+        const tarihEtiketi = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+        const dosyaAdi = `durum_${tarihEtiketi}.json`;
+        
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        const path = `data/sistem_kayit/${dosyaAdi}`;
+        const branch = 'main';
+        
+        // UTF-8 encoding
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(snapshot, null, 2))));
+        
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({
+            message: `${aciklama} - ${new Date().toLocaleString('tr-TR')}`,
+            content: content,
+            branch: branch
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ GitHub\'a direkt kayıt başarılı:', dosyaAdi);
+          manuelEslestirmeStatusGoster(`✅ GitHub'a kaydedildi: ${dosyaAdi}`, 'success');
+        } else {
+          throw new Error(`GitHub API hatası: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ GitHub direkt kayıt hatası:', error);
+        throw error;
+      }
+    }
+    
+    // GitHub'a tarihli snapshot kaydetme (ESKİ)
     async function githubSnapshotKaydet(aciklama = '') {
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
@@ -3645,16 +3703,42 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         const aciklama = prompt('Bu durumu kaydetmek için bir açıklama girin:', 'Manuel kayıt - ' + new Date().toLocaleString('tr-TR'));
         if (aciklama !== null) {
-          // Optimize edilmiş snapshot al (localStorage için değil, GitHub için)
-          const snapshot = durumSnapshotAl();
+          // GitHub için TAM SNAPSHOT (localStorage'a değil)
+          const githubSnapshot = {
+            timestamp: new Date().toISOString(),
+            aciklama: aciklama,
+            // GitHub'a tam veri kaydet
+            hastalar: hastalar || [],
+            seciliHasta: seciliHasta,
+            aktifHaftaIndex: aktifHaftaIndex,
+            manuelEslestirmeler: manuelEslestirmeler || {},
+            tarifKartlariSayisi: tarifKartlari ? tarifKartlari.length : 0,
+            version: '2.0-github-full'
+          };
           
-          // GitHub'a kaydet
-          await githubSnapshotKaydet(aciklama);
+          console.log('📤 GitHub\'a tam snapshot kaydediliyor...');
           
-          // LocalStorage'a kaydet (optimize edilmiş)
-          durumGecmisineEkle(aciklama);
+          // GitHub'a kaydet (tam veriyle)
+          await githubSnapshotKaydetDirect(githubSnapshot, aciklama);
+          
+          // LocalStorage'a sadece minimal snapshot ekle
+          const minimalSnapshot = durumSnapshotAl();
+          minimalSnapshot.aciklama = aciklama;
+          
+          // Geçmişe minimal ekle
+          durumGecmisi.push(minimalSnapshot);
+          gecmisIndex = durumGecmisi.length - 1;
+          
+          // Geçmiş boyut kontrolü
+          if (durumGecmisi.length > maxGecmisBoyu) {
+            durumGecmisi.splice(0, durumGecmisi.length - maxGecmisBoyu);
+            gecmisIndex = durumGecmisi.length - 1;
+          }
+          
+          durumNavigasyonButonlariniGuncelle();
           
           manuelEslestirmeStatusGoster('✅ Durum başarıyla kaydedildi: ' + aciklama, 'success');
+          console.log('✅ GitHub tam snapshot + minimal localStorage başarılı');
         }
       } catch (error) {
         console.error('Manuel snapshot kaydetme hatası:', error);
