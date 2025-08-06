@@ -618,6 +618,7 @@
           <div style="display:flex; gap:3px; margin-bottom:5px;">
             <button onclick="manuelSnapshotKaydet()" style="flex:1; padding:4px; font-size:10px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;" title="Anlık durumu GitHub'a kaydet">💾 Kaydet</button>
             <button onclick="snapshotListesiGoster()" style="flex:1; padding:4px; font-size:10px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;" title="Kaydedilen durumları gör">📋 Listele</button>
+            <button onclick="sayfayiYenile()" style="flex:1; padding:4px; font-size:10px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;" title="Sayfayı yenile">🔄 Yenile</button>
           </div>
           
           <!-- Otomatik Kayıt -->
@@ -3107,6 +3108,31 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     let gecmisIndex = -1; // Şu anki pozisyon
     const maxGecmisBoyu = 50; // Maximum undo/redo sayısı
     
+    function sayfayiYenile() {
+      console.log("Sayfa yenileniyor...");
+      
+      // DOM'u tamamen temizle ve yeniden yükle
+      try {
+        loadHastaListesiYeniSistem();
+        console.log("Hasta listesi yenilendi");
+        
+        if (typeof selectHastaYeniSistem === 'function' && seciliHasta) {
+          selectHastaYeniSistem(seciliHasta.id);
+          console.log("Seçili hasta restore edildi:", seciliHasta.name);
+        }
+        
+        if (typeof manuelEslestirmeListesiniGoster === 'function') {
+          manuelEslestirmeListesiniGoster();
+          console.log("Manuel eşleştirme listesi güncellendi");
+        }
+        
+        durumNavigasyonButonlariniGuncelle();
+        console.log("Sayfa başarıyla yenilendi");
+      } catch (error) {
+        console.error("Sayfa yenileme hatası:", error);
+      }
+    }
+    
     // Anlık durum snapshot'ı alma
     function durumSnapshotAl() {
       const snapshot = {
@@ -3155,41 +3181,75 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     }
     
     // Undo (Geri alma)
-    function undoDurum() {
+    async function undoDurum() {
       if (gecmisIndex > 0) {
+        console.log('⬅️ Undo işlemi başlatılıyor...');
         gecmisIndex--;
         const snapshot = durumGecmisi[gecmisIndex];
-        durumSnapshotiYukle(snapshot);
-        durumNavigasyonButonlariniGuncelle();
-        manuelEslestirmeStatusGoster(`⬅️ Geri alındı: ${snapshot.aciklama}`, 'info');
-        console.log(`⬅️ Undo: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+        
+        try {
+          await durumSnapshotiYukle(snapshot);
+          durumNavigasyonButonlariniGuncelle();
+          manuelEslestirmeStatusGoster(`⬅️ Geri alındı: ${snapshot.aciklama}`, 'info');
+          console.log(`⬅️ Undo başarılı: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+        } catch (error) {
+          console.error('❌ Undo hatası:', error);
+          gecmisIndex++; // İndeksi geri al
+          durumNavigasyonButonlariniGuncelle();
+          manuelEslestirmeStatusGoster('❌ Geri alma hatası', 'error');
+        }
       } else {
         manuelEslestirmeStatusGoster('⚠️ Geri alınacak işlem yok', 'warning');
+        console.log('⚠️ Undo: Geçmiş boş');
       }
     }
     
     // Redo (İleri alma)  
-    function redoDurum() {
+    async function redoDurum() {
       if (gecmisIndex < durumGecmisi.length - 1) {
+        console.log('➡️ Redo işlemi başlatılıyor...');
         gecmisIndex++;
         const snapshot = durumGecmisi[gecmisIndex];
-        durumSnapshotiYukle(snapshot);
-        durumNavigasyonButonlariniGuncelle();
-        manuelEslestirmeStatusGoster(`➡️ İleri alındı: ${snapshot.aciklama}`, 'info');
-        console.log(`➡️ Redo: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+        
+        try {
+          await durumSnapshotiYukle(snapshot);
+          durumNavigasyonButonlariniGuncelle();
+          manuelEslestirmeStatusGoster(`➡️ İleri alındı: ${snapshot.aciklama}`, 'info');
+          console.log(`➡️ Redo başarılı: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+        } catch (error) {
+          console.error('❌ Redo hatası:', error);
+          gecmisIndex--; // İndeksi geri al
+          durumNavigasyonButonlariniGuncelle();
+          manuelEslestirmeStatusGoster('❌ İleri alma hatası', 'error');
+        }
       } else {
         manuelEslestirmeStatusGoster('⚠️ İleri alınacak işlem yok', 'warning');
+        console.log('⚠️ Redo: İleri gitme mümkün değil');
       }
     }
     
     // Snapshot'ı yükleme
     async function durumSnapshotiYukle(snapshot) {
       try {
+        console.log('🔄 Snapshot yükleniyor:', snapshot.timestamp);
+        
         // Ana verileri geri yükle
-        hastalar = JSON.parse(JSON.stringify(snapshot.hastalar || []));
-        seciliHasta = snapshot.seciliHasta;
-        aktifHaftaIndex = snapshot.aktifHaftaIndex;
-        manuelEslestirmeler = JSON.parse(JSON.stringify(snapshot.manuelEslestirmeler || {}));
+        if (snapshot.hastalar) {
+          hastalar = JSON.parse(JSON.stringify(snapshot.hastalar));
+          localStorage.setItem('hastalar', JSON.stringify(hastalar));
+        }
+        
+        if (snapshot.seciliHasta) {
+          seciliHasta = snapshot.seciliHasta;
+        }
+        
+        if (snapshot.aktifHaftaIndex !== undefined) {
+          aktifHaftaIndex = snapshot.aktifHaftaIndex;
+        }
+        
+        if (snapshot.manuelEslestirmeler) {
+          manuelEslestirmeler = JSON.parse(JSON.stringify(snapshot.manuelEslestirmeler));
+        }
         
         if (snapshot.tarifKartlari) {
           tarifKartlari = [...snapshot.tarifKartlari];
@@ -3197,21 +3257,34 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         
         // UI'ı güncelle
-        localStorage.setItem('hastalar', JSON.stringify(hastalar));
-        await loadHastaListesiYeniSistem();
+        console.log('🔄 UI güncelleniyor...');
         
-        if (seciliHasta) {
+        // Hasta listesini yenile
+        if (typeof loadHastaListesiYeniSistem === 'function') {
+          await loadHastaListesiYeniSistem();
+        }
+        
+        // Seçili hastayı yenile
+        if (seciliHasta && typeof selectHastaYeniSistem === 'function') {
           await selectHastaYeniSistem(seciliHasta);
+        }
+        
+        // Manuel eşleştirme listesini güncelle
+        if (typeof manuelEslestirmeListesiniGoster === 'function') {
+          manuelEslestirmeListesiniGoster();
         }
         
         console.log('✅ Snapshot yüklendi:', {
           timestamp: snapshot.timestamp,
-          aciklama: snapshot.aciklama
+          aciklama: snapshot.aciklama,
+          hastaSayisi: snapshot.hastalar ? snapshot.hastalar.length : 0,
+          manuelEslestirmeSayisi: snapshot.manuelEslestirmeler ? Object.keys(snapshot.manuelEslestirmeler).length : 0
         });
         
       } catch (error) {
         console.error('❌ Snapshot yükleme hatası:', error);
-        manuelEslestirmeStatusGoster('❌ Durum geri yükleme hatası', 'error');
+        manuelEslestirmeStatusGoster('❌ Durum geri yükleme hatası: ' + error.message, 'error');
+        throw error;
       }
     }
     
@@ -3326,8 +3399,25 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         if (response.ok) {
           const fileData = await response.json();
-          const content = atob(fileData.content);
-          const snapshot = JSON.parse(content);
+          
+          // Base64 decode et
+          let content;
+          try {
+            content = atob(fileData.content.replace(/\s/g, '')); // Whitespace'leri temizle
+          } catch (decodeError) {
+            console.error('❌ Base64 decode hatası:', decodeError);
+            throw new Error('Dosya decode edilemedi');
+          }
+          
+          // JSON parse et
+          let snapshot;
+          try {
+            snapshot = JSON.parse(content);
+          } catch (parseError) {
+            console.error('❌ JSON parse hatası:', parseError);
+            console.log('📄 Ham content (ilk 200 karakter):', content.substring(0, 200));
+            throw new Error('JSON formatı geçersiz');
+          }
           
           // Geçmişe ekle
           durumGecmisineEkle(`GitHub'dan yüklendi: ${dosyaAdi}`);
@@ -3352,22 +3442,40 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const redoBtn = document.getElementById('redoBtn');
       const durumInfo = document.getElementById('durumInfo');
       
-      if (undoBtn) undoBtn.disabled = gecmisIndex <= 0;
-      if (redoBtn) redoBtn.disabled = gecmisIndex >= durumGecmisi.length - 1;
-      if (durumInfo) durumInfo.textContent = `${gecmisIndex + 1}/${durumGecmisi.length}`;
+      if (undoBtn) {
+        undoBtn.disabled = gecmisIndex <= 0;
+        undoBtn.style.opacity = gecmisIndex <= 0 ? '0.5' : '1';
+      }
+      if (redoBtn) {
+        redoBtn.disabled = gecmisIndex >= durumGecmisi.length - 1;
+        redoBtn.style.opacity = gecmisIndex >= durumGecmisi.length - 1 ? '0.5' : '1';
+      }
+      if (durumInfo) {
+        durumInfo.textContent = `${gecmisIndex + 1}/${durumGecmisi.length}`;
+      }
+      
+      console.log('🔄 Navigasyon güncellendi:', {
+        gecmisIndex: gecmisIndex,
+        toplamGecmis: durumGecmisi.length,
+        undoDisabled: gecmisIndex <= 0,
+        redoDisabled: gecmisIndex >= durumGecmisi.length - 1
+      });
     }
     
     // Klavye kısayolları için
     document.addEventListener('keydown', function(event) {
-      if (event.ctrlKey && event.key === 'z') {
-        event.preventDefault();
-        undoDurum();
-      } else if (event.ctrlKey && event.key === 'y') {
-        event.preventDefault();
-        redoDurum();
-      } else if (event.ctrlKey && event.key === 's') {
-        event.preventDefault();
-        manuelSnapshotKaydet();
+      // Eğer input/textarea'da değilsek kısayolları kullan
+      if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
+        if (event.ctrlKey && event.key === 'z' && !event.shiftKey) {
+          event.preventDefault();
+          undoDurum();
+        } else if ((event.ctrlKey && event.key === 'y') || (event.ctrlKey && event.shiftKey && event.key === 'Z')) {
+          event.preventDefault();
+          redoDurum();
+        } else if (event.ctrlKey && event.key === 's') {
+          event.preventDefault();
+          manuelSnapshotKaydet();
+        }
       }
     });
     
