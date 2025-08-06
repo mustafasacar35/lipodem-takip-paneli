@@ -3113,8 +3113,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // DOM'u tamamen temizle ve yeniden yükle
       try {
-        loadHastaListesiYeniSistem();
-        console.log("Hasta listesi yenilendi");
+        if (typeof loadHastaDataFromGitHub === 'function') {
+          loadHastaDataFromGitHub(true); // sessiz mod
+          console.log("Hasta listesi yenilendi");
+        } else if (typeof renderHastalarYeniSistem === 'function') {
+          renderHastalarYeniSistem();
+          console.log("Hasta listesi render edildi");
+        }
         
         if (typeof selectHastaYeniSistem === 'function' && seciliHasta) {
           selectHastaYeniSistem(seciliHasta.id);
@@ -3403,10 +3408,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           // Base64 decode et
           let content;
           try {
-            content = atob(fileData.content.replace(/\s/g, '')); // Whitespace'leri temizle
+            const rawContent = fileData.content.replace(/\s/g, ''); // Whitespace'leri temizle
+            if (!rawContent || rawContent.length === 0) {
+              throw new Error('Base64 içerik boş');
+            }
+            content = atob(rawContent);
           } catch (decodeError) {
             console.error('❌ Base64 decode hatası:', decodeError);
-            throw new Error('Dosya decode edilemedi');
+            throw new Error('Dosya decode edilemedi: ' + decodeError.message);
           }
           
           // JSON parse et
