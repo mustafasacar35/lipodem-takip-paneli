@@ -3412,11 +3412,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           // JSON parse et
           let snapshot;
           try {
+            // İçeriği kontrol et
+            if (!content || content.trim() === '') {
+              throw new Error('Dosya boş');
+            }
+            
+            console.log('📄 Ham content uzunluğu:', content.length);
+            console.log('📄 Ham content (ilk 100 karakter):', content.substring(0, 100));
+            
             snapshot = JSON.parse(content);
+            console.log('✅ JSON başarıyla parse edildi');
           } catch (parseError) {
             console.error('❌ JSON parse hatası:', parseError);
-            console.log('📄 Ham content (ilk 200 karakter):', content.substring(0, 200));
-            throw new Error('JSON formatı geçersiz');
+            console.log('📄 Ham content (tam):', content);
+            throw new Error(`JSON formatı geçersiz: ${parseError.message}`);
           }
           
           // Geçmişe ekle
@@ -3879,6 +3888,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
       
+      // Undo/Redo sistemi için snapshot al
+      durumGecmisineEkle(`Manuel eşleştirme eklendi: ${tarifAdi}`);
+      
       // Otomatik kayıt tetikle
       otomatikKayitTetikle(`Manuel eşleştirme eklendi: ${tarifAdi}`);
 
@@ -3941,6 +3953,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       delete manuelEslestirmeler[anahtar];
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
+      
+      // Undo/Redo sistemi için snapshot al
+      durumGecmisineEkle(`Manuel eşleştirme silindi: ${anahtar}`);
+      
       manuelEslestirmeStatusGoster('Eşleştirme silindi.', 'success');
       
       // Eşleştirme silindiğinde eşleşmeyenler listesini güncelle
@@ -5973,6 +5989,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           console.log('✅ Yeni sistemde hasta bilgileri yüklendi:', hastaDetay.isim);
           
+          // Undo/Redo sistemi için snapshot al (hasta değişimi)
+          durumGecmisineEkle(`Hasta seçildi: ${hastaDetay.isim}`);
+          
           // Hafta tablarını göster
           gosterHaftalar();
           
@@ -6145,6 +6164,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // 4. Yeni hastayı seç
           seciliHasta = yeniHasta;
+          
+          // Undo/Redo sistemi için snapshot al
+          durumGecmisineEkle(`Yeni hasta eklendi: ${duzeltilmisIsim}`);
           
           // 5. Başarı mesajı
           alert(`✅ Yeni hasta başarıyla eklendi!\n\n👤 ${duzeltilmisIsim}\n📁 Yeni sistem ile kaydedildi`);
@@ -6668,6 +6690,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         gptMesaj: ''
       });
       saveToStorage();
+      
+      // Undo/Redo sistemi için snapshot al
+      durumGecmisineEkle(`Yeni hafta eklendi: ${sonrakiHaftaNo}. hafta`);
       
       console.log('✅ Yeni hafta eklendi:', sonrakiHaftaNo, 'numaralı hafta');
       
@@ -7378,6 +7403,9 @@ async function silHafta(i) {
     
     // 4. UI'ı güncelle
     gosterHaftalar();
+    
+    // Undo/Redo sistemi için snapshot al
+    durumGecmisineEkle(`Hafta silindi: ${silinecekHafta.haftaNo}. hafta`);
     
     // 5. Hasta listesini güncelle
     if (typeof updateHastaListesi === 'function') {
@@ -9948,6 +9976,9 @@ function duzenleHafta(i) {
       const hafta = getHaftaListesi()[i];
       hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
       saveToStorage();
+      
+      // Undo/Redo sistemi için snapshot al
+      durumGecmisineEkle(`GPT mesajı kaydedildi: Hafta ${i + 1}`);
       
       console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
       
