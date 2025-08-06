@@ -591,6 +591,13 @@
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <input type="text" id="githubRepo" placeholder="GitHub Repo (owner/repo)" value="mustafasacar35/lipodem-takip-paneli" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
+        
+        <!-- Debugging Butonları -->
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+          <button onclick="sistemDurumuIzle()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Sistem Durumu</button>
+          <button onclick="localStorageTemizle()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 Storage Temizle</button>
+          <button onclick="localStorageBoyutKontrol()" style="width:100%; margin-bottom:3px; padding:4px; font-size:10px; background:#20c997; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Boyut Kontrol</button>
+        </div>
       </div>
 
       <!-- Araçlar -->
@@ -3106,7 +3113,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     let durumGecmisi = []; // İleri/geri sarma için geçmiş
     let gecmisIndex = -1; // Şu anki pozisyon
-    const maxGecmisBoyu = 50; // Maximum undo/redo sayısı
+    const maxGecmisBoyu = 10; // Maximum undo/redo sayısı (localStorage quota için azaltıldı)
     
     function sayfayiYenile() {
       console.log("Sayfa yenileniyor...");
@@ -3142,11 +3149,34 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     function durumSnapshotAl() {
       const snapshot = {
         timestamp: new Date().toISOString(),
-        hastalar: JSON.parse(JSON.stringify(hastalar || [])),
-        seciliHasta: seciliHasta,
+        // Sadece temel hasta bilgilerini al (PDF'siz)
+        hastalar: hastalar ? hastalar.map(hasta => ({
+          id: hasta.id,
+          isim: hasta.isim || hasta.ad,
+          not: hasta.not,
+          arsiv: hasta.arsiv,
+          // Haftaları sadece temel bilgilerle al
+          haftalar: hasta.haftalar ? hasta.haftalar.map(hafta => ({
+            haftaNo: hafta.haftaNo,
+            baslangic: hafta.baslangic,
+            bitis: hafta.bitis,
+            gptMesaj: hafta.gptMesaj,
+            // PDF verilerini dahil etme (çok büyük)
+            tarifKartlar: hafta.tarifKartlar ? hafta.tarifKartlar.map(kart => ({
+              name: kart.name,
+              normalized: kart.normalized
+            })) : [],
+            manuelKartlar: hafta.manuelKartlar || []
+          })) : []
+        })) : [],
+        seciliHasta: seciliHasta ? {
+          id: seciliHasta.id,
+          isim: seciliHasta.isim || seciliHasta.ad
+        } : null,
         aktifHaftaIndex: aktifHaftaIndex,
-        manuelEslestirmeler: JSON.parse(JSON.stringify(manuelEslestirmeler || {})),
-        tarifKartlari: tarifKartlari ? [...tarifKartlari] : [],
+        manuelEslestirmeler: manuelEslestirmeler || {},
+        // Tarif kartlarını dahil etme (çok büyük)
+        tarifKartlariSayisi: tarifKartlari ? tarifKartlari.length : 0,
         version: '1.0',
         aciklama: 'Otomatik snapshot'
       };
@@ -3155,10 +3185,42 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         timestamp: snapshot.timestamp,
         hastaSayisi: snapshot.hastalar.length,
         seciliHasta: snapshot.seciliHasta,
-        manuelEslestirmeSayisi: Object.keys(snapshot.manuelEslestirmeler).length
+        manuelEslestirmeSayisi: Object.keys(snapshot.manuelEslestirmeler).length,
+        tarifKartlariSayisi: snapshot.tarifKartlariSayisi,
+        estimatedSize: JSON.stringify(snapshot).length + ' byte'
       });
       
       return snapshot;
+    }
+    
+    // Sistem durumu izleme
+    function sistemDurumuIzle() {
+      console.log('🔍 SİSTEM DURUMU RAPORU:');
+      console.log('========================');
+      
+      // LocalStorage durumu
+      localStorageBoyutKontrol();
+      
+      // Geçmiş durumu
+      console.log(`📚 Geçmiş: ${durumGecmisi.length}/${maxGecmisBoyu} (Mevcut: ${gecmisIndex + 1})`);
+      
+      // Veri boyutları
+      console.log('📊 Veri Boyutları:');
+      console.log(`   Hastalar: ${hastalar ? hastalar.length : 0} adet`);
+      console.log(`   Manuel Eşleştirmeler: ${Object.keys(manuelEslestirmeler || {}).length} adet`);
+      console.log(`   Tarif Kartları: ${tarifKartlari ? tarifKartlari.length : 0} adet`);
+      
+      // Undo/Redo durumu
+      const undoMevcut = gecmisIndex > 0;
+      const redoMevcut = gecmisIndex < durumGecmisi.length - 1;
+      console.log(`🔄 Navigasyon: Undo ${undoMevcut ? '✅' : '❌'} | Redo ${redoMevcut ? '✅' : '❌'}`);
+      
+      // Buton durumları
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+      console.log(`🔘 Butonlar: Undo ${undoBtn?.disabled ? 'disabled' : 'enabled'} | Redo ${redoBtn?.disabled ? 'disabled' : 'enabled'}`);
+      
+      console.log('========================');
     }
     
     // Durum geçmişine ekleme (Undo/Redo için)
@@ -3241,7 +3303,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Ana verileri geri yükle
         if (snapshot.hastalar) {
           hastalar = JSON.parse(JSON.stringify(snapshot.hastalar));
-          localStorage.setItem('hastalar', JSON.stringify(hastalar));
+          // localStorage yazma işlemini güvenli hale getir
+          try {
+            localStorage.setItem('hastalar', JSON.stringify(hastalar));
+            console.log('✅ LocalStorage güncellendi');
+          } catch (storageError) {
+            console.warn('⚠️ LocalStorage yazma hatası (quota aşıldı):', storageError);
+            // LocalStorage temizle ve tekrar dene
+            try {
+              localStorage.clear();
+              localStorage.setItem('hastalar', JSON.stringify(hastalar));
+              console.log('✅ LocalStorage temizlendi ve güncellendi');
+            } catch (retryError) {
+              console.error('❌ LocalStorage yazma tamamen başarısız:', retryError);
+            }
+          }
         }
         
         if (snapshot.seciliHasta) {
@@ -3290,6 +3366,64 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         console.error('❌ Snapshot yükleme hatası:', error);
         manuelEslestirmeStatusGoster('❌ Durum geri yükleme hatası: ' + error.message, 'error');
         throw error;
+      }
+    }
+    
+    // LocalStorage temizleme ve optimize etme
+    function localStorageTemizle() {
+      try {
+        const oncekiBoyut = JSON.stringify(localStorage).length;
+        console.log('🧹 LocalStorage temizleme başlatılıyor... Önceki boyut:', oncekiBoyut);
+        
+        // Geçmiş boyutunu kontrol et ve kısalt
+        if (durumGecmisi.length > maxGecmisBoyu) {
+          const eskiGecmisBoyutu = durumGecmisi.length;
+          durumGecmisi.splice(0, durumGecmisi.length - maxGecmisBoyu);
+          gecmisIndex = Math.min(gecmisIndex, durumGecmisi.length - 1);
+          console.log(`📉 Geçmiş kısaltıldı: ${eskiGecmisBoyutu} → ${durumGecmisi.length}`);
+        }
+        
+        // Büyük localStorage öğelerini temizle
+        const temizlenecekKeyler = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const value = localStorage.getItem(key);
+          if (value && value.length > 50000) { // 50KB'dan büyük öğeler
+            temizlenecekKeyler.push(key);
+          }
+        }
+        
+        temizlenecekKeyler.forEach(key => {
+          console.log(`🗑️ Büyük localStorage öğesi temizleniyor: ${key} (${localStorage.getItem(key).length} byte)`);
+          localStorage.removeItem(key);
+        });
+        
+        const sonrakiBoyut = JSON.stringify(localStorage).length;
+        console.log('✅ LocalStorage temizlendi. Sonraki boyut:', sonrakiBoyut, 'Tasarruf:', oncekiBoyut - sonrakiBoyut);
+        
+        return true;
+      } catch (error) {
+        console.error('❌ LocalStorage temizleme hatası:', error);
+        return false;
+      }
+    }
+    
+    // LocalStorage boyut kontrolü
+    function localStorageBoyutKontrol() {
+      try {
+        const totalSize = JSON.stringify(localStorage).length;
+        const mbSize = (totalSize / 1024 / 1024).toFixed(2);
+        console.log(`📊 LocalStorage boyutu: ${mbSize} MB (${totalSize} byte)`);
+        
+        // 8MB'dan büyükse uyar (çoğu tarayıcıda limit 10MB)
+        if (totalSize > 8 * 1024 * 1024) {
+          console.warn('⚠️ LocalStorage boyutu kritik seviyede!');
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error('❌ LocalStorage boyut kontrolü hatası:', error);
+        return false;
       }
     }
     
@@ -3405,6 +3539,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (response.ok) {
           const fileData = await response.json();
           
+          // Dosya içeriği kontrolü
+          if (!fileData.content) {
+            throw new Error('Dosya içeriği boş');
+          }
+          
           // Base64 decode et
           let content;
           try {
@@ -3413,6 +3552,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               throw new Error('Base64 içerik boş');
             }
             content = atob(rawContent);
+            
+            if (!content || content.trim() === '') {
+              throw new Error('Decode edilmiş içerik boş');
+            }
           } catch (decodeError) {
             console.error('❌ Base64 decode hatası:', decodeError);
             throw new Error('Dosya decode edilemedi: ' + decodeError.message);
@@ -3499,10 +3642,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     // Manuel snapshot kaydetme (kullanıcı açıklaması ile)
     async function manuelSnapshotKaydet() {
-      const aciklama = prompt('Bu durumu kaydetmek için bir açıklama girin:', 'Manuel kayıt - ' + new Date().toLocaleString('tr-TR'));
-      if (aciklama !== null) {
-        await githubSnapshotKaydet(aciklama);
-        durumGecmisineEkle(aciklama);
+      try {
+        const aciklama = prompt('Bu durumu kaydetmek için bir açıklama girin:', 'Manuel kayıt - ' + new Date().toLocaleString('tr-TR'));
+        if (aciklama !== null) {
+          // Optimize edilmiş snapshot al (localStorage için değil, GitHub için)
+          const snapshot = durumSnapshotAl();
+          
+          // GitHub'a kaydet
+          await githubSnapshotKaydet(aciklama);
+          
+          // LocalStorage'a kaydet (optimize edilmiş)
+          durumGecmisineEkle(aciklama);
+          
+          manuelEslestirmeStatusGoster('✅ Durum başarıyla kaydedildi: ' + aciklama, 'success');
+        }
+      } catch (error) {
+        console.error('Manuel snapshot kaydetme hatası:', error);
+        manuelEslestirmeStatusGoster('❌ Snapshot kaydetme hatası: ' + error.message, 'error');
       }
     }
     
