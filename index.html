@@ -602,6 +602,29 @@
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
         <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">🔗 Manuel Eşleştirme</button>
+        
+        <!-- Durum Kaydetme ve Navigasyon Paneli -->
+        <div style="border:1px solid #ddd; border-radius:5px; padding:8px; margin-bottom:5px; background:#f8f9fa;">
+          <div style="font-weight:bold; font-size:10px; margin-bottom:5px; color:#495057;">📸 Durum Kontrol</div>
+          
+          <!-- Undo/Redo Butonları -->
+          <div style="display:flex; gap:3px; margin-bottom:5px;">
+            <button id="undoBtn" onclick="undoDurum()" style="flex:1; padding:4px; font-size:10px; background:#ffc107; color:#000; border:none; border-radius:3px; cursor:pointer;" title="Geri Al (Ctrl+Z)">⬅️ Undo</button>
+            <span id="durumInfo" style="font-size:9px; color:#6c757d; align-self:center; min-width:30px; text-align:center;">1/1</span>
+            <button id="redoBtn" onclick="redoDurum()" style="flex:1; padding:4px; font-size:10px; background:#ffc107; color:#000; border:none; border-radius:3px; cursor:pointer;" title="İleri Al (Ctrl+Y)">➡️ Redo</button>
+          </div>
+          
+          <!-- Snapshot Butonları -->
+          <div style="display:flex; gap:3px; margin-bottom:5px;">
+            <button onclick="manuelSnapshotKaydet()" style="flex:1; padding:4px; font-size:10px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;" title="Anlık durumu GitHub'a kaydet">💾 Kaydet</button>
+            <button onclick="snapshotListesiGoster()" style="flex:1; padding:4px; font-size:10px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;" title="Kaydedilen durumları gör">📋 Listele</button>
+          </div>
+          
+          <!-- Otomatik Kayıt -->
+          <label style="font-size:9px; color:#6c757d; display:flex; align-items:center; gap:3px;">
+            <input type="checkbox" id="otomatikKayit" checked style="margin:0;"> Otomatik kayıt
+          </label>
+        </div>
         <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🚫 Eşleşme Yasakları</button>
         <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">💆 Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
@@ -1764,6 +1787,12 @@
       // Sadece yeni sistemi başlat
       loadHastaDataFromGitHub().then(() => {
         console.log('✅ Yeni sistem hazır');
+        
+        // İlk durum snapshot'ını al
+        setTimeout(() => {
+          durumGecmisineEkle('Sistem başlangıcı');
+          durumNavigasyonButonlariniGuncelle();
+        }, 1000);
         
         // Sistem yüklendikten sonra yemek analizini başlat
         setTimeout(() => {
@@ -3070,6 +3099,356 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
+    // ================================
+    // 🎯 ANLIK DURUM KAYDETME VE VERSİYONLAMA SİSTEMİ
+    // ================================
+    
+    let durumGecmisi = []; // İleri/geri sarma için geçmiş
+    let gecmisIndex = -1; // Şu anki pozisyon
+    const maxGecmisBoyu = 50; // Maximum undo/redo sayısı
+    
+    // Anlık durum snapshot'ı alma
+    function durumSnapshotAl() {
+      const snapshot = {
+        timestamp: new Date().toISOString(),
+        hastalar: JSON.parse(JSON.stringify(hastalar || [])),
+        seciliHasta: seciliHasta,
+        aktifHaftaIndex: aktifHaftaIndex,
+        manuelEslestirmeler: JSON.parse(JSON.stringify(manuelEslestirmeler || {})),
+        tarifKartlari: tarifKartlari ? [...tarifKartlari] : [],
+        version: '1.0',
+        aciklama: 'Otomatik snapshot'
+      };
+      
+      console.log('📸 Durum snapshot alındı:', {
+        timestamp: snapshot.timestamp,
+        hastaSayisi: snapshot.hastalar.length,
+        seciliHasta: snapshot.seciliHasta,
+        manuelEslestirmeSayisi: Object.keys(snapshot.manuelEslestirmeler).length
+      });
+      
+      return snapshot;
+    }
+    
+    // Durum geçmişine ekleme (Undo/Redo için)
+    function durumGecmisineEkle(aciklama = 'Otomatik kayıt') {
+      const snapshot = durumSnapshotAl();
+      snapshot.aciklama = aciklama;
+      
+      // Eğer geçmişin ortasındaysak, sonrasını sil
+      if (gecmisIndex < durumGecmisi.length - 1) {
+        durumGecmisi = durumGecmisi.slice(0, gecmisIndex + 1);
+      }
+      
+      // Yeni snapshot ekle
+      durumGecmisi.push(snapshot);
+      gecmisIndex++;
+      
+      // Maksimum boyutu aş
+      if (durumGecmisi.length > maxGecmisBoyu) {
+        durumGecmisi.shift();
+        gecmisIndex--;
+      }
+      
+      durumNavigasyonButonlariniGuncelle();
+      console.log(`📚 Durum geçmişine eklendi: "${aciklama}" (${gecmisIndex + 1}/${durumGecmisi.length})`);
+    }
+    
+    // Undo (Geri alma)
+    function undoDurum() {
+      if (gecmisIndex > 0) {
+        gecmisIndex--;
+        const snapshot = durumGecmisi[gecmisIndex];
+        durumSnapshotiYukle(snapshot);
+        durumNavigasyonButonlariniGuncelle();
+        manuelEslestirmeStatusGoster(`⬅️ Geri alındı: ${snapshot.aciklama}`, 'info');
+        console.log(`⬅️ Undo: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+      } else {
+        manuelEslestirmeStatusGoster('⚠️ Geri alınacak işlem yok', 'warning');
+      }
+    }
+    
+    // Redo (İleri alma)  
+    function redoDurum() {
+      if (gecmisIndex < durumGecmisi.length - 1) {
+        gecmisIndex++;
+        const snapshot = durumGecmisi[gecmisIndex];
+        durumSnapshotiYukle(snapshot);
+        durumNavigasyonButonlariniGuncelle();
+        manuelEslestirmeStatusGoster(`➡️ İleri alındı: ${snapshot.aciklama}`, 'info');
+        console.log(`➡️ Redo: ${snapshot.aciklama} (${gecmisIndex + 1}/${durumGecmisi.length})`);
+      } else {
+        manuelEslestirmeStatusGoster('⚠️ İleri alınacak işlem yok', 'warning');
+      }
+    }
+    
+    // Snapshot'ı yükleme
+    async function durumSnapshotiYukle(snapshot) {
+      try {
+        // Ana verileri geri yükle
+        hastalar = JSON.parse(JSON.stringify(snapshot.hastalar || []));
+        seciliHasta = snapshot.seciliHasta;
+        aktifHaftaIndex = snapshot.aktifHaftaIndex;
+        manuelEslestirmeler = JSON.parse(JSON.stringify(snapshot.manuelEslestirmeler || {}));
+        
+        if (snapshot.tarifKartlari) {
+          tarifKartlari = [...snapshot.tarifKartlari];
+          window.tarifKartlari = tarifKartlari;
+        }
+        
+        // UI'ı güncelle
+        localStorage.setItem('hastalar', JSON.stringify(hastalar));
+        await loadHastaListesiYeniSistem();
+        
+        if (seciliHasta) {
+          await selectHastaYeniSistem(seciliHasta);
+        }
+        
+        console.log('✅ Snapshot yüklendi:', {
+          timestamp: snapshot.timestamp,
+          aciklama: snapshot.aciklama
+        });
+        
+      } catch (error) {
+        console.error('❌ Snapshot yükleme hatası:', error);
+        manuelEslestirmeStatusGoster('❌ Durum geri yükleme hatası', 'error');
+      }
+    }
+    
+    // GitHub'a tarihli snapshot kaydetme
+    async function githubSnapshotKaydet(aciklama = '') {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        manuelEslestirmeStatusGoster('❌ GitHub token gerekli', 'error');
+        return;
+      }
+      
+      try {
+        const snapshot = durumSnapshotAl();
+        if (aciklama) snapshot.aciklama = aciklama;
+        
+        // Tarih etiketi oluştur
+        const now = new Date();
+        const tarihEtiketi = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+        const dosyaAdi = `durum_${tarihEtiketi}.json`;
+        
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        const path = `data/sistem_kayit/${dosyaAdi}`;
+        const branch = 'main';
+        
+        // UTF-8 encoding
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(snapshot, null, 2))));
+        
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Sistem durumu kaydedildi: ${snapshot.aciklama || 'Manuel kayıt'}`,
+            content: content,
+            branch: branch
+          })
+        });
+        
+        if (response.ok) {
+          manuelEslestirmeStatusGoster(`✅ GitHub'a kaydedildi: ${dosyaAdi}`, 'success');
+          console.log('✅ GitHub snapshot kaydedildi:', dosyaAdi);
+          return dosyaAdi;
+        } else {
+          throw new Error(`GitHub kayıt hatası: ${response.status}`);
+        }
+        
+      } catch (error) {
+        console.error('❌ GitHub snapshot kaydetme hatası:', error);
+        manuelEslestirmeStatusGoster('❌ GitHub kaydetme hatası', 'error');
+      }
+    }
+    
+    // GitHub'dan kaydedilen snapshot'ları listeleme
+    async function githubSnapshotListesi() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        manuelEslestirmeStatusGoster('❌ GitHub token gerekli', 'error');
+        return [];
+      }
+      
+      try {
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        const path = 'data/sistem_kayit';
+        
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (response.ok) {
+          const files = await response.json();
+          const snapshots = files
+            .filter(file => file.name.startsWith('durum_') && file.name.endsWith('.json'))
+            .map(file => ({
+              name: file.name,
+              downloadUrl: file.download_url,
+              tarih: file.name.replace('durum_', '').replace('.json', '').replace(/_/g, ' ').replace(/-/g, ':')
+            }))
+            .sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+          
+          console.log('📋 GitHub snapshot listesi:', snapshots.length, 'kayıt');
+          return snapshots;
+        } else {
+          console.log('📂 Sistem kayıt klasörü henüz yok');
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Snapshot listesi alma hatası:', error);
+        return [];
+      }
+    }
+    
+    // GitHub'dan snapshot geri yükleme
+    async function githubSnapshotYukle(dosyaAdi) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        manuelEslestirmeStatusGoster('❌ GitHub token gerekli', 'error');
+        return;
+      }
+      
+      try {
+        const owner = 'mustafasacar35';
+        const repo = 'lipodem-takip-paneli';
+        const path = `data/sistem_kayit/${dosyaAdi}`;
+        
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (response.ok) {
+          const fileData = await response.json();
+          const content = atob(fileData.content);
+          const snapshot = JSON.parse(content);
+          
+          // Geçmişe ekle
+          durumGecmisineEkle(`GitHub'dan yüklendi: ${dosyaAdi}`);
+          
+          // Snapshot'ı yükle
+          await durumSnapshotiYukle(snapshot);
+          
+          manuelEslestirmeStatusGoster(`✅ GitHub'dan yüklendi: ${dosyaAdi}`, 'success');
+          console.log('✅ GitHub snapshot yüklendi:', dosyaAdi);
+        } else {
+          throw new Error(`Dosya bulunamadı: ${dosyaAdi}`);
+        }
+      } catch (error) {
+        console.error('❌ GitHub snapshot yükleme hatası:', error);
+        manuelEslestirmeStatusGoster('❌ Snapshot yükleme hatası', 'error');
+      }
+    }
+    
+    // Navigasyon butonlarını güncelleme
+    function durumNavigasyonButonlariniGuncelle() {
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+      const durumInfo = document.getElementById('durumInfo');
+      
+      if (undoBtn) undoBtn.disabled = gecmisIndex <= 0;
+      if (redoBtn) redoBtn.disabled = gecmisIndex >= durumGecmisi.length - 1;
+      if (durumInfo) durumInfo.textContent = `${gecmisIndex + 1}/${durumGecmisi.length}`;
+    }
+    
+    // Klavye kısayolları için
+    document.addEventListener('keydown', function(event) {
+      if (event.ctrlKey && event.key === 'z') {
+        event.preventDefault();
+        undoDurum();
+      } else if (event.ctrlKey && event.key === 'y') {
+        event.preventDefault();
+        redoDurum();
+      } else if (event.ctrlKey && event.key === 's') {
+        event.preventDefault();
+        manuelSnapshotKaydet();
+      }
+    });
+    
+    // Manuel snapshot kaydetme (kullanıcı açıklaması ile)
+    async function manuelSnapshotKaydet() {
+      const aciklama = prompt('Bu durumu kaydetmek için bir açıklama girin:', 'Manuel kayıt - ' + new Date().toLocaleString('tr-TR'));
+      if (aciklama !== null) {
+        await githubSnapshotKaydet(aciklama);
+        durumGecmisineEkle(aciklama);
+      }
+    }
+    
+    // Snapshot listesi gösterme
+    async function snapshotListesiGoster() {
+      try {
+        const snapshots = await githubSnapshotListesi();
+        
+        if (snapshots.length === 0) {
+          manuelEslestirmeStatusGoster('📂 Henüz kaydedilmiş durum yok', 'info');
+          return;
+        }
+        
+        let html = '<div style="max-height:300px; overflow-y:auto;">';
+        html += '<h4>Kaydedilen Durumlar:</h4>';
+        
+        snapshots.forEach((snapshot, index) => {
+          const tarihFormatli = new Date(snapshot.tarih).toLocaleString('tr-TR');
+          html += `
+            <div style="border:1px solid #ddd; margin:5px 0; padding:8px; border-radius:5px; background:#f8f9fa;">
+              <div style="font-weight:bold; font-size:12px;">${snapshot.name}</div>
+              <div style="font-size:10px; color:#666; margin:3px 0;">${tarihFormatli}</div>
+              <button onclick="githubSnapshotYukle('${snapshot.name}')" 
+                      style="padding:3px 8px; font-size:10px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">
+                🔄 Geri Yükle
+              </button>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+        
+        // Modal göster
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+          background: rgba(0,0,0,0.5); z-index: 10000; display: flex; 
+          align-items: center; justify-content: center;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+          background: white; padding: 20px; border-radius: 10px; 
+          max-width: 500px; max-height: 70vh; overflow-y: auto;
+        `;
+        
+        content.innerHTML = html + `
+          <div style="text-align:center; margin-top:15px;">
+            <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                    style="padding:8px 16px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">
+              Kapat
+            </button>
+          </div>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+      } catch (error) {
+        console.error('❌ Snapshot listesi hatası:', error);
+        manuelEslestirmeStatusGoster('❌ Liste yükleme hatası', 'error');
+      }
+    }
+    
+    // Otomatik kayıt tetikleyicileri
+    function otomatikKayitTetikle(aciklama) {
+      const otomatikKayit = document.getElementById('otomatikKayit');
+      if (otomatikKayit && otomatikKayit.checked) {
+        durumGecmisineEkle(aciklama);
+      }
+    }
+
     // --- Manuel Eşleştirme Paneli Fonksiyonları ---
     const MANUEL_ESLESTIRME_KEY = 'lipedem_manuel_eslestirmeler';
     let manuelEslestirmeler = {};
@@ -3391,6 +3770,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
+      
+      // Otomatik kayıt tetikle
+      otomatikKayitTetikle(`Manuel eşleştirme eklendi: ${tarifAdi}`);
 
       // Karakter düzeltme fonksiyonu
       function karakterDuzelt(text) {
