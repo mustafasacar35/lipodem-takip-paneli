@@ -407,7 +407,6 @@
         </select>
         <ul id="hastaListesi"></ul>
         <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
-        <button onclick="topluZipIndir()" style="width:100%; padding:8px; margin-top:10px; background:#ff6b35; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight: bold;">📦 TOPLU ZIP İNDİR</button>
       </div>
     </div>
 
@@ -1577,29 +1576,11 @@
     }
     
     // Hasta verisini GitHub'dan al
-    async function getHastaData(hastaId, githubRepo = null, githubToken = null) {
+    async function getHastaData(hastaId) {
       try {
-        console.log('🔍 getHastaData çağrıldı:', { hastaId, githubRepo, githubToken: !!githubToken });
-        
-        // GitHub ayarlarını al - önce parametre, sonra global, sonra input'tan
-        const repo = githubRepo || 
-                     (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null) || 
-                     (document.getElementById('githubRepo') ? document.getElementById('githubRepo').value.trim() : null) ||
-                     'mustafasacar35/lipodem-takip-paneli';
-        
-        const token = githubToken || 
-                      (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : null) || 
-                      (document.getElementById('githubToken') ? document.getElementById('githubToken').value.trim() : null);
-        
-        console.log('🔍 Çözümlenen değerler:', { repo, token: !!token });
-        
-        if (!token) {
-          throw new Error('GitHub token bulunamadı');
-        }
-        
-        const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hastaId}/hasta_data.json`, {
           headers: {
-            'Authorization': `token ${token}`
+            'Authorization': `token ${GITHUB_TOKEN}`
           }
         });
         
@@ -6999,13 +6980,7 @@ function duzenleHafta(i) {
           return;
         }
 
-        // GitHub değişkenlerini input'lardan al
-        const tokenElement = document.getElementById('githubToken');
-        const repoElement = document.getElementById('githubRepo');
-        
-        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
-        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
-        
+        // GitHub değişkenlerini kontrol et
         console.log('🔍 GITHUB_REPO:', GITHUB_REPO);
         console.log('🔍 GITHUB_TOKEN var mı:', !!GITHUB_TOKEN);
         console.log('🔍 Seçili hasta:', seciliHasta.id);
@@ -7019,7 +6994,7 @@ function duzenleHafta(i) {
         const hafta = haftalar[haftaIndex];
         console.log('🔍 Hafta bilgileri:', hafta);
         
-        const hasta = await getHastaData(seciliHasta.id, GITHUB_REPO, GITHUB_TOKEN);
+        const hasta = await getHastaData(seciliHasta.id);
         
         // ZIP dosya adını oluştur
         const tarihAraligi = `${hafta.baslangic}_${hafta.bitis}`.replace(/\./g, '_').replace(/\s/g, '_');
@@ -7197,7 +7172,7 @@ function duzenleHafta(i) {
     }
 
     // 5. hafta için Lenf Masaj PDF'si oluştur ve ZIP'e ekle
-    async function createAndAddLenfMasajPDF(zip, hasta, haftalar) {
+    async function createAndAddLenfMasajPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
         console.log('🏥 5. hafta Lenf Masaj PDF oluşturuluyor...');
         
@@ -7287,7 +7262,7 @@ function duzenleHafta(i) {
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
         const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Lenf_Masaj_Takvimi.pdf`;
-        zip.file(dosyaAdi, pdfBlob);
+        zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 5. hafta Lenf Masaj PDF ZIP\'e eklendi:', dosyaAdi);
         
@@ -7297,7 +7272,7 @@ function duzenleHafta(i) {
     }
 
     // 9. hafta için Egzersiz PDF'si oluştur ve ZIP'e ekle
-    async function createAndAddEgzersizPDF(zip, hasta, haftalar) {
+    async function createAndAddEgzersizPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
         console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...');
         
@@ -7384,7 +7359,7 @@ function duzenleHafta(i) {
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
         const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Egzersiz_Takvimi.pdf`;
-        zip.file(dosyaAdi, pdfBlob);
+        zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 9. hafta Egzersiz PDF ZIP\'e eklendi:', dosyaAdi);
         
@@ -10620,537 +10595,6 @@ function duzenleHafta(i) {
       }
     }
     
-    // TOPLU ZIP İNDİRME FONKSİYONU
-    async function topluZipIndir() {
-      try {
-        console.log('🚀 TOPLU ZIP İNDİRME başlatıldı');
-        
-        // Aktif hastaları filtrele
-        const aktifHastalar = hastaListesi.filter(hasta => !hasta.arsiv);
-        
-        if (aktifHastalar.length === 0) {
-          alert('Aktif hasta bulunamadı!');
-          return;
-        }
-        
-        console.log(`📋 ${aktifHastalar.length} aktif hasta bulundu`);
-        
-        // LocalStorage'dan hasta verilerini al
-        const STORAGE_KEY = 'lipedem_hasta_kayitlari';
-        const localStorageData = localStorage.getItem(STORAGE_KEY);
-        const localHastalar = localStorageData ? JSON.parse(localStorageData) : [];
-        
-        console.log(`💾 LocalStorage'da ${localHastalar.length} hasta verisi bulundu`);
-        
-        // Ana ZIP dosyasını oluştur
-        const anaZip = new JSZip();
-        const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '_');
-        
-        // Progress indicator
-        let islemSayisi = 0;
-        let basariliIslem = 0;
-        const toplamIslem = aktifHastalar.length;
-        
-        console.log(`🔄 ${toplamIslem} hasta için veri toplanıyor...`);
-        
-        // Her aktif hasta için
-        for (const hasta of aktifHastalar) {
-          try {
-            islemSayisi++;
-            console.log(`📂 ${islemSayisi}/${toplamIslem} - ${hasta.isim} verisi toplanıyor...`);
-            
-            // Bu hastanın LocalStorage verisini bul
-            const hastaLocalData = localHastalar.find(h => h.id === hasta.id || h.isim === hasta.isim);
-            
-            if (!hastaLocalData || !hastaLocalData.haftalar || hastaLocalData.haftalar.length === 0) {
-              console.warn(`⚠️ ${hasta.isim} için LocalStorage'da veri bulunamadı`);
-              continue;
-            }
-            
-            const haftalar = hastaLocalData.haftalar;
-            
-            // İlk hastanın verilerini debug için detaylı yazdır
-            if (islemSayisi === 2) { // ALEV KAYA için debug
-              console.log(`🔍 DEBUG - ${hasta.isim} hafta verisi:`, haftalar[0]);
-              if (haftalar[0] && haftalar[0].tarifKartlar) {
-                console.log(`🔍 DEBUG - ${hasta.isim} tarif kartları:`, haftalar[0].tarifKartlar.slice(0, 3));
-                console.log(`🔍 DEBUG - window.tarifKartlari örnek:`, window.tarifKartlari?.slice(0, 5));
-              }
-            }
-            
-            // BERİN KARADAĞ için debug (boş objeler)
-            if (islemSayisi === 6) { 
-              console.log(`🔍 DEBUG - ${hasta.isim} tarif kartları (boş objeler):`, haftalar[0]?.tarifKartlar?.slice(0, 3));
-            }
-            const sonHafta = haftalar[haftalar.length - 1];
-            const haftaNo = haftalar.length;
-            
-            console.log(`📅 ${hasta.isim} - ${haftaNo}. hafta verisi işleniyor`);
-            
-            // Hasta klasörü adını oluştur (sarı klasör)
-            const temizHastaAdi = hasta.isim.toUpperCase()
-              .replace(/\s/g, '_')
-              .replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
-                const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
-                return trMap[match] || match;
-              });
-            const hastaKlasorAdi = `${temizHastaAdi}_HAFTA_${haftaNo}`;
-            
-            // PDF dosyası varsa ekle (LocalStorage'dan)
-            if (sonHafta.pdfName || sonHafta.pdfOrijinalIsim) {
-              try {
-                // LocalStorage'da PDF verisi var mı kontrol et
-                const pdfFileName = sonHafta.pdfName || sonHafta.pdfOrijinalIsim;
-                
-                console.log(`🔍 ${hasta.isim} - PDF aranıyor: ${pdfFileName}`);
-                console.log(`📋 ${hasta.isim} - Mevcut hafta verileri:`, Object.keys(sonHafta));
-                
-                // Farklı PDF data formatlarını kontrol et
-                let pdfEklendi = false;
-                
-                if (sonHafta.pdfContent) {
-                  const pdfBlob = base64ToBlob(sonHafta.pdfContent, 'application/pdf');
-                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF pdfContent'den eklendi`);
-                  pdfEklendi = true;
-                } else if (sonHafta.pdfBase64) {
-                  const pdfBlob = base64ToBlob(sonHafta.pdfBase64, 'application/pdf');
-                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF pdfBase64'den eklendi`);
-                  pdfEklendi = true;
-                } else if (sonHafta.pdf && typeof sonHafta.pdf === 'string') {
-                  const pdfBlob = base64ToBlob(sonHafta.pdf, 'application/pdf');
-                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF pdf alanından eklendi`);
-                  pdfEklendi = true;
-                } else if (sonHafta.pdfFile) {
-                  // pdfFile blob veya base64 olabilir
-                  if (typeof sonHafta.pdfFile === 'string') {
-                    const pdfBlob = base64ToBlob(sonHafta.pdfFile, 'application/pdf');
-                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                    console.log(`✅ ${hasta.isim} - PDF pdfFile'dan (base64) eklendi`);
-                  } else {
-                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, sonHafta.pdfFile);
-                    console.log(`✅ ${hasta.isim} - PDF pdfFile'dan (blob) eklendi`);
-                  }
-                  pdfEklendi = true;
-                }
-                
-                if (!pdfEklendi) {
-                  console.log(`⚠️ ${hasta.isim} - PDF dosyası hiçbir formatta bulunamadı: ${pdfFileName}`);
-                  console.log(`📋 ${hasta.isim} - PDF araması yapılan alanlar:`, Object.keys(sonHafta).filter(k => k.includes('pdf') || k.includes('Pdf') || k.includes('PDF')));
-                  
-                  // PDF bulunamadıysa, hafta bilgileriyle yeni bir PDF oluştur
-                  try {
-                    console.log(`🔧 ${hasta.isim} - Eksik PDF için yeni PDF oluşturuluyor...`);
-                    const pdf = new jsPDF();
-                    pdf.setFont("helvetica", "bold");
-                    pdf.setFontSize(16);
-                    pdf.text(`${hasta.isim} - ${haftaNo}. Hafta`, 20, 30);
-                    
-                    pdf.setFont("helvetica", "normal");
-                    pdf.setFontSize(12);
-                    pdf.text(`Tarih: ${sonHafta.baslangic} - ${sonHafta.bitis}`, 20, 50);
-                    
-                    if (sonHafta.aciklama) {
-                      pdf.text("Açıklama:", 20, 70);
-                      const aciklamaLines = pdf.splitTextToSize(sonHafta.aciklama, 170);
-                      pdf.text(aciklamaLines, 20, 85);
-                    }
-                    
-                    if (sonHafta.tarifler) {
-                      const yPos = sonHafta.aciklama ? 120 : 90;
-                      pdf.text("Tarifler:", 20, yPos);
-                      const tarifLines = pdf.splitTextToSize(sonHafta.tarifler, 170);
-                      pdf.text(tarifLines, 20, yPos + 15);
-                    }
-                    
-                    const pdfBlob = pdf.output('blob');
-                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                    console.log(`✅ ${hasta.isim} - Yeni PDF oluşturuldu ve eklendi`);
-                    pdfEklendi = true;
-                  } catch (pdfError) {
-                    console.warn(`❌ ${hasta.isim} - Yeni PDF oluşturulamadı:`, pdfError);
-                  }
-                }
-              } catch (error) {
-                console.warn(`❌ ${hasta.isim} - PDF eklenemedi:`, error);
-              }
-            }
-            
-            // Eşleşen tarif kartları varsa ekle
-            let tarifKartlariListe = [];
-            
-            // Önce normal tarif kartlarını kontrol et
-            if (sonHafta.tarifKartlar && sonHafta.tarifKartlar.length > 0) {
-              tarifKartlariListe = sonHafta.tarifKartlar.filter(kart => 
-                kart && Object.keys(kart).length > 0 && (kart.name || kart.tarifAdi || kart.fileName)
-              );
-            }
-            
-            // Eğer tarif kartları boşsa veya geçersizse, alternatif kaynaklara bak
-            if (tarifKartlariListe.length === 0 && sonHafta.eslesenTarifler && sonHafta.eslesenTarifler.length > 0) {
-              console.log(`🔍 ${hasta.isim} - Ana tarif kartları bulunamadı, eslesenTarifler'den denenecek`);
-              tarifKartlariListe = sonHafta.eslesenTarifler.filter(kart => 
-                kart && Object.keys(kart).length > 0 && (kart.name || kart.tarifAdi || kart.fileName)
-              );
-            }
-            
-            // Eğer hala tarif kartı yoksa, tarifler text'inden tarif isimlerini çıkarmaya çalış
-            if (tarifKartlariListe.length === 0 && sonHafta.tarifler && sonHafta.tarifler.trim()) {
-              console.log(`🔍 ${hasta.isim} - Tarif kartları bulunamadı, tarifler text'inden tarif isimleri çıkarılacak`);
-              try {
-                // Tarifler text'ini satırlara böl ve her satırı tarif adı olarak kabul et
-                const tarifSatirlari = sonHafta.tarifler.split('\n').filter(satir => satir.trim().length > 3);
-                for (const tarifSatiri of tarifSatirlari) {
-                  const temizTarif = tarifSatiri.trim().replace(/^\d+\.?\s*/, '').replace(/^-\s*/, '');
-                  if (temizTarif.length > 3) {
-                    tarifKartlariListe.push({ name: temizTarif, tarifAdi: temizTarif });
-                  }
-                }
-                if (tarifKartlariListe.length > 0) {
-                  console.log(`📝 ${hasta.isim} - Tarifler text'inden ${tarifKartlariListe.length} tarif adı çıkarıldı`);
-                }
-              } catch (textParseError) {
-                console.warn(`⚠️ ${hasta.isim} - Tarifler text'i parse edilemedi:`, textParseError);
-              }
-            }
-            
-            // Tarif kartı ekleme işlemi
-            if (tarifKartlariListe.length > 0) {
-              let basariliKartSayisi = 0;
-              for (const kart of tarifKartlariListe) {
-                try {
-                  // Tarif adını belirle
-                  const tarifAdi = kart.name || kart.tarifAdi || kart.fileName;
-                  
-                  if (!tarifAdi || tarifAdi === 'undefined') {
-                    console.warn(`⚠️ ${hasta.isim} - Tarif kartı adı eksik:`, kart);
-                    continue;
-                  }
-                  
-                  // URL'i yeniden oluştur eğer eksikse
-                  let kartUrl = kart.data || kart.url;
-                  let dosyaAdi = tarifAdi;
-                  
-                  if (!kartUrl || kartUrl === 'undefined' || kartUrl.includes('undefined')) {
-                    // Eğer tarifAdi string ise, window.tarifKartlari dizisinden eşleşme ara
-                    if (typeof tarifAdi === 'string' && window.tarifKartlari && window.tarifKartlari.length > 0) {
-                      
-                      // Önce tam eşleşme ara
-                      if (window.tarifKartlari.includes(tarifAdi)) {
-                        dosyaAdi = tarifAdi;
-                      }
-                      // .jpg, .png uzantısı yoksa ekle ve ara
-                      else if (!tarifAdi.includes('.')) {
-                        if (window.tarifKartlari.includes(tarifAdi + '.jpg')) {
-                          dosyaAdi = tarifAdi + '.jpg';
-                        } else if (window.tarifKartlari.includes(tarifAdi + '.png')) {
-                          dosyaAdi = tarifAdi + '.png';
-                        } else {
-                          // Benzer isim ara (Türkçe karakter ve alt çizgi dönüştürmeleri)
-                          const normalizedTarif = tarifAdi.toLowerCase()
-                            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                            .replace(/\s+/g, '_').replace(/[()]/g, '');
-                          
-                          const benzerDosya = window.tarifKartlari.find(dosya => {
-                            const normalizedDosya = dosya.toLowerCase()
-                              .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                              .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                              .replace(/\s+/g, '_').replace(/[()]/g, '');
-                            return normalizedDosya.includes(normalizedTarif) || normalizedTarif.includes(normalizedDosya.replace(/\.(jpg|png)$/i, ''));
-                          });
-                          
-                          if (benzerDosya) {
-                            dosyaAdi = benzerDosya;
-                          } else {
-                            // Son çare: varsayılan uzantı ekle
-                            dosyaAdi = tarifAdi + '.jpg';
-                          }
-                        }
-                      }
-                    }
-                    
-                    // URL'i oluştur
-                    kartUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${dosyaAdi.replace(/\s+/g, '%20')}`;
-                  }
-                  
-                  // URL'nin geçerli olduğunu kontrol et
-                  if (kartUrl && kartUrl !== 'undefined' && !kartUrl.includes('undefined') && kartUrl.startsWith('http')) {
-                    // URL uzunluğunu kontrol et (2000 karakterden uzunsa kısalt)
-                    if (kartUrl.length > 2000) {
-                      console.warn(`⚠️ ${hasta.isim} - URL çok uzun, atlandı: ${kartUrl.substring(0, 100)}...`);
-                      continue;
-                    }
-                    
-                    try {
-                      const response = await fetch(kartUrl);
-                      if (response.ok) {
-                        const blob = await response.blob();
-                        anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${dosyaAdi}`, blob);
-                        basariliKartSayisi++;
-                      } else {
-                        console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL'si erişilemiyor (${response.status}): ${kartUrl.substring(0, 100)}...`);
-                      }
-                    } catch (fetchError) {
-                      console.warn(`⚠️ ${hasta.isim} - Fetch hatası: ${fetchError.message} - URL: ${kartUrl.substring(0, 100)}...`);
-                    }
-                  } else {
-                    console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL oluşturulamadı. Kart:`, kart);
-                  }
-                } catch (error) {
-                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, error, kart);
-                }
-              }
-              console.log(`✅ ${hasta.isim} - ${basariliKartSayisi}/${tarifKartlariListe.length} tarif kartı başarıyla eklendi`);
-            } else {
-              console.log(`⚠️ ${hasta.isim} - Hiç tarif kartı bulunamadı (ne tarifKartlar ne de eslesenTarifler)`);
-              
-              // En azından tarif listesi varsa text olarak ekle
-              if (sonHafta.tarifler && sonHafta.tarifler.trim()) {
-                anaZip.file(`${hastaKlasorAdi}/TARIF_LISTESI.txt`, sonHafta.tarifler.trim());
-                console.log(`📄 ${hasta.isim} - Tarif listesi text olarak eklendi`);
-              }
-            }
-            
-            // GPT mesajı varsa ekle
-            if (sonHafta.gptMesaj && sonHafta.gptMesaj.trim()) {
-              anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, sonHafta.gptMesaj.trim());
-              console.log(`✅ ${hasta.isim} - GPT mesajı eklendi`);
-            } else {
-              // GPT mesajı yoksa, hafta bilgileriyle basit bir mesaj oluştur
-              const alternatifMesaj = `${hasta.isim} - ${haftaNo}. Hafta Özeti\n\nTarih: ${sonHafta.baslangic} - ${sonHafta.bitis}\n\nAçıklama:\n${sonHafta.aciklama || 'Henüz açıklama eklenmemiş'}\n\nTarifler:\n${sonHafta.tarifler || 'Henüz tarif eklenmemiş'}\n\nNot: Bu mesaj sistem tarafından otomatik oluşturulmuştur.`;
-              anaZip.file(`${hastaKlasorAdi}/HAFTA_OZETI.txt`, alternatifMesaj);
-              console.log(`📝 ${hasta.isim} - Hafta özeti (alternatif mesaj) eklendi`);
-            }
-            
-            // Özel hafta kontrolleri (5. ve 9. hafta için)
-            if (haftaNo === 5 || haftaNo === 9) {
-              try {
-                // Özel hafta masaj planı PDF'si oluştur
-                console.log(`🏥 ${hasta.isim} - ${haftaNo}. hafta masaj PDF'si oluşturuluyor...`);
-                
-                // Gelişmiş masaj PDF'si oluştur
-                try {
-                  const doc = new jsPDF('p', 'mm', 'a4');
-                  
-                  // Başlık
-                  doc.setFontSize(18);
-                  doc.setFont('helvetica', 'bold');
-                  doc.text(`${hasta.isim}`, 20, 25);
-                  
-                  doc.setFontSize(14);
-                  doc.text(`${haftaNo}. HAFTA ${haftaNo === 5 ? 'LENF DRENAJ MASAJI' : 'EGZERSİZ'} PROGRAMI`, 20, 35);
-                  
-                  doc.setFontSize(12);
-                  doc.setFont('helvetica', 'normal');
-                  doc.text(`Tarih Aralığı: ${sonHafta.baslangic} - ${sonHafta.bitis}`, 20, 45);
-                  doc.text(`Program Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 20, 55);
-                  
-                  let yPos = 70;
-                  
-                  // Program detayları
-                  doc.setFont('helvetica', 'bold');
-                  doc.text(`${haftaNo === 5 ? 'MASAJ' : 'EGZERSİZ'} PROGRAMI:`, 20, yPos);
-                  yPos += 15;
-                  
-                  doc.setFont('helvetica', 'normal');
-                  if (haftaNo === 5) {
-                    // 5. hafta lenf drenaj masajı
-                    doc.text('• Günde 1 kez lenf drenaj masajı uygulanacak', 25, yPos);
-                    yPos += 10;
-                    doc.text('• Her seans 15-20 dakika sürecek', 25, yPos);
-                    yPos += 10;
-                    doc.text('• Haftalık toplam 7 seans', 25, yPos);
-                    yPos += 10;
-                    doc.text('• Masaj bölgeleri: Bacak, kalça ve karın bölgesi', 25, yPos);
-                    yPos += 15;
-                    
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('MASAJ TAKVİMİ:', 20, yPos);
-                    yPos += 15;
-                    
-                    // Haftalık takvim
-                    const gunler = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-                    gunler.forEach((gun, index) => {
-                      doc.setFont('helvetica', 'normal');
-                      doc.text(`${gun}: Lenf drenaj masajı (15-20 dk)`, 25, yPos);
-                      yPos += 8;
-                    });
-                  } else if (haftaNo === 9) {
-                    // 9. hafta egzersiz
-                    doc.text('• Günde 30 dakika egzersiz yapılacak', 25, yPos);
-                    yPos += 10;
-                    doc.text('• Haftalık 5 gün program uygulanacak', 25, yPos);
-                    yPos += 10;
-                    doc.text('• Yürüyüş, yüzme veya bisiklet tercih edilebilir', 25, yPos);
-                    yPos += 15;
-                    
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('EGZERSİZ TAKVİMİ:', 20, yPos);
-                    yPos += 15;
-                    
-                    const egzersizGunleri = ['Pazartesi', 'Çarşamba', 'Cuma', 'Cumartesi', 'Pazar'];
-                    egzersizGunleri.forEach((gun) => {
-                      doc.setFont('helvetica', 'normal');
-                      doc.text(`${gun}: 30 dakika egzersiz`, 25, yPos);
-                      yPos += 8;
-                    });
-                  }
-                  
-                  // Notlar
-                  yPos += 10;
-                  doc.setFont('helvetica', 'bold');
-                  doc.text('ÖNEMLI NOTLAR:', 20, yPos);
-                  yPos += 15;
-                  
-                  doc.setFont('helvetica', 'normal');
-                  if (haftaNo === 5) {
-                    doc.text('• Masaj sırasında çok fazla baskı uygulamayın', 25, yPos);
-                    yPos += 8;
-                    doc.text('• Kalp yönünde dairesel hareketler yapın', 25, yPos);
-                    yPos += 8;
-                    doc.text('• Herhangi bir rahatsızlık hissettiğinizde durdurun', 25, yPos);
-                  } else {
-                    doc.text('• Egzersiz öncesi ısınma, sonrası soğuma yapın', 25, yPos);
-                    yPos += 8;
-                    doc.text('• Bol su tüketin', 25, yPos);
-                    yPos += 8;
-                    doc.text('• Yorgunluk hissettiğinizde dinlenin', 25, yPos);
-                  }
-                  
-                  // Hafta açıklaması varsa ekle
-                  if (sonHafta.aciklama) {
-                    yPos += 15;
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('HAFTA AÇIKLAMASI:', 20, yPos);
-                    yPos += 10;
-                    
-                    doc.setFont('helvetica', 'normal');
-                    const aciklamaLines = doc.splitTextToSize(sonHafta.aciklama, 170);
-                    doc.text(aciklamaLines, 20, yPos);
-                  }
-                  
-                  const masajPdfBlob = doc.output('blob');
-                  anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
-                  console.log(`✅ ${hasta.isim} - Gelişmiş masaj planı PDF'si eklendi`);
-                } catch (advancedPdfError) {
-                  console.warn(`⚠️ ${hasta.isim} - Gelişmiş PDF oluşturulamadı, basit versiyon denenecek:`, advancedPdfError);
-                  
-                  // Geri dönüş: basit masaj PDF'si
-                  const masajPdfBlob = await createLenfMasajPDFBlob(hastaLocalData, haftalar);
-                  if (masajPdfBlob) {
-                    anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
-                    console.log(`✅ ${hasta.isim} - Basit masaj planı PDF'si eklendi`);
-                  }
-                }
-              } catch (error) {
-                console.warn(`❌ ${hasta.isim} - Masaj planı PDF'si eklenemedi:`, error);
-              }
-            }
-            
-            // Hasta özet bilgisi dosyası - KALDIRILDI (gereksiz)
-            
-            basariliIslem++;
-            console.log(`✅ ${hasta.isim} - Klasör hazırlandı`);
-            
-          } catch (error) {
-            console.error(`❌ ${hasta.isim} işlenirken hata:`, error);
-          }
-        }
-        
-        console.log(`📦 ZIP dosyası oluşturuluyor... (${basariliIslem}/${toplamIslem} hasta başarılı)`);
-        
-        // ZIP dosyasını oluştur ve indir
-        anaZip.generateAsync({type: 'blob'}).then(function(content) {
-          const zipAdi = `LIPODEM_TOPLU_EXPORT_${tarih}.zip`;
-          
-          const url = URL.createObjectURL(content);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = zipAdi;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          
-          console.log(`✅ TOPLU ZIP İNDİRME tamamlandı: ${zipAdi}`);
-          alert(`${basariliIslem}/${aktifHastalar.length} hastanın verileri başarıyla indirildi!\\n\\nDosya: ${zipAdi}`);
-          
-        }).catch(function(error) {
-          console.error('❌ ZIP oluşturma hatası:', error);
-          alert('ZIP dosyası oluşturulurken hata oluştu: ' + error.message);
-        });
-        
-      } catch (error) {
-        console.error('❌ TOPLU ZIP genel hatası:', error);
-        alert('Toplu ZIP indirme hatası: ' + error.message);
-      }
-    }
-    
-    // Masaj planı PDF'si oluşturma yardımcı fonksiyonu
-    async function createLenfMasajPDFBlob(hastaData, haftalar) {
-      try {
-        // jsPDF kontrolü
-        let jsPDFLib;
-        if (typeof window.jspdf !== 'undefined') {
-          jsPDFLib = window.jspdf.jsPDF;
-        } else if (typeof jsPDF !== 'undefined') {
-          jsPDFLib = jsPDF;
-        } else {
-          console.warn('jsPDF bulunamadı, masaj planı PDF\'si oluşturulamayacak');
-          return null;
-        }
-        
-        const doc = new jsPDFLib('p', 'mm', 'a4');
-        
-        // PDF içeriğini oluştur (basitleştirilmiş versiyon)
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        
-        const temizHastaAdi = turkceKarakterDuzelt(hastaData.isim);
-        doc.text(`${temizHastaAdi.toUpperCase()}`, 20, 20);
-        
-        doc.setFontSize(12);
-        doc.text('LENF DRENAJ MASAJI PROGRAMI', 20, 30);
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 20, 40);
-        doc.text(`Hafta: ${haftalar.length}`, 20, 50);
-        
-        // Basit program açıklaması
-        let currentY = 60;
-        doc.text('UYGULAMA PROGRAMI:', 20, currentY);
-        currentY += 10;
-        
-        if (haftalar.length <= 6) {
-          doc.text('- Günde 2 kez lenf masajı uygulanacak', 20, currentY);
-          currentY += 7;
-          doc.text('- Sabah ve akşam 15-20 dakika', 20, currentY);
-        } else if (haftalar.length <= 8) {
-          doc.text('- Günde 1 kez lenf masajı uygulanacak', 20, currentY);
-          currentY += 7;
-          doc.text('- Sabah 15-20 dakika', 20, currentY);
-        } else {
-          doc.text('- Haftada 3 gün lenf masajı + günlük egzersiz', 20, currentY);
-          currentY += 7;
-          doc.text('- Pazartesi, Çarşamba, Cuma masaj', 20, currentY);
-        }
-        
-        // PDF'yi blob olarak döndür
-        return doc.output('blob');
-        
-      } catch (error) {
-        console.error('Masaj planı PDF oluşturma hatası:', error);
-        return null;
-      }
-    }
-    
-    // Toplu zip fonksiyonunu global scope'a ekle
-    window.topluZipIndir = topluZipIndir;
-    
     window.zipEslesenGorseller = zipEslesenGorseller;
     window.generatePatientPDF = generatePatientPDF;
     
@@ -11639,6 +11083,52 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         console.warn('⚠️ Yeni sistem yüklenemedi, boş sistem başlatılıyor:', error.message);
         hastaListesi = [];
         renderHastalarYeniSistem();
+      }
+      
+      // Toplu ZIP butonunu ekle
+      ekleTopluZipButonu();
+    }
+    
+    // Toplu ZIP butonunu sidebar'a ekle
+    function ekleTopluZipButonu() {
+      const sidebarButtons = document.getElementById('sidebarButtons');
+      if (sidebarButtons) {
+        const topluZipButton = document.createElement('button');
+        topluZipButton.innerHTML = '🗜️ TOPLU ZIP İNDİR';
+        topluZipButton.title = 'Tüm aktif hastaların en son hafta tablarını tek ZIP dosyasında indir';
+        topluZipButton.style.cssText = `
+          width: 100%; 
+          padding: 12px; 
+          font-size: 14px; 
+          font-weight: bold; 
+          background: linear-gradient(45deg, #ff6b6b, #ee5a24); 
+          color: white; 
+          border: none; 
+          border-radius: 6px; 
+          cursor: pointer; 
+          margin-bottom: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          transition: all 0.3s ease;
+        `;
+        
+        // Hover efekti için
+        topluZipButton.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+          this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        });
+        
+        topluZipButton.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        });
+        
+        topluZipButton.onclick = function() {
+          topluZipIndir();
+        };
+        
+        // Butonu sidebar'a ekle
+        sidebarButtons.appendChild(topluZipButton);
+        console.log('✅ Toplu ZIP butonu eklendi');
       }
     }
     
@@ -12723,7 +12213,250 @@ ${mesajlar.join('\n')}
     // Global erişim için
     window.hastaSecildi = hastaSecildi;
 
-    // 📁 ANA ÇOKLU PDF FONKSİYONU
+    // �️ TOPLU ZIP FONKSİYONU
+    async function topluZipIndir() {
+      try {
+        console.log('🚀 Toplu ZIP indirme başlatıldı');
+        
+        // GitHub token kontrolü
+        const tokenElement = document.getElementById('githubToken');
+        const repoElement = document.getElementById('githubRepo');
+        
+        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
+        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
+        
+        if (!GITHUB_TOKEN) {
+          alert('GitHub token ayarlanmamış. Lütfen önce GitHub token\'ınızı girin.');
+          return;
+        }
+        
+        // Hasta listesini al (yalnızca aktif hastalar)
+        const hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+        const aktifHastalar = hastalar.filter(hasta => !hasta.arsiv);
+        
+        if (aktifHastalar.length === 0) {
+          alert('Aktif hasta bulunamadı!');
+          return;
+        }
+        
+        console.log(`📊 ${aktifHastalar.length} aktif hasta bulundu`);
+        
+        // Ana ZIP dosyasını oluştur
+        const anaZip = new JSZip();
+        const bugununTarihi = new Date().toISOString().slice(0,10);
+        const anaZipAdi = `TOPLU_HASTA_ZIP_${bugununTarihi}.zip`;
+        
+        // Progress gösterimi
+        const progressDiv = document.createElement('div');
+        progressDiv.style.cssText = `
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 10000; min-width: 400px; text-align: center;
+        `;
+        progressDiv.innerHTML = `
+          <h3>🗜️ Toplu ZIP Hazırlanıyor...</h3>
+          <div id="progressBar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+            <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(45deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+          </div>
+          <div id="progressText">0 / ${aktifHastalar.length}</div>
+          <div id="currentHasta" style="margin-top: 10px; font-weight: bold; color: #666;"></div>
+        `;
+        document.body.appendChild(progressDiv);
+        
+        let basariliHastalar = 0;
+        let hataliHastalar = 0;
+        
+        // Her hasta için işlem yap
+        for (let i = 0; i < aktifHastalar.length; i++) {
+          const hasta = aktifHastalar[i];
+          
+          // Progress güncelle
+          const progress = ((i + 1) / aktifHastalar.length) * 100;
+          document.getElementById('progressFill').style.width = progress + '%';
+          document.getElementById('progressText').textContent = `${i + 1} / ${aktifHastalar.length}`;
+          document.getElementById('currentHasta').textContent = `İşleniyor: ${hasta.isim}`;
+          
+          try {
+            console.log(`👤 ${hasta.isim} işleniyor...`);
+            
+            // Hasta verilerini al
+            const hastaData = await getHastaData(hasta.id);
+            if (!hastaData || !hastaData.haftalar) {
+              console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
+              hataliHastalar++;
+              continue;
+            }
+            
+            // En büyük hafta numarasını bul
+            const haftalar = hastaData.haftalar || [];
+            let enBuyukHafta = null;
+            let enBuyukHaftaNo = 0;
+            
+            haftalar.forEach(hafta => {
+              const haftaNo = hafta.haftaNo || 0;
+              if (haftaNo > enBuyukHaftaNo) {
+                enBuyukHaftaNo = haftaNo;
+                enBuyukHafta = hafta;
+              }
+            });
+            
+            if (!enBuyukHafta) {
+              console.warn(`⚠️ ${hasta.isim} için hafta verisi bulunamadı`);
+              hataliHastalar++;
+              continue;
+            }
+            
+            console.log(`📅 ${hasta.isim} - En büyük hafta: ${enBuyukHaftaNo}`);
+            
+            // Hasta klasörü oluştur (sarı klasör)
+            const hastaKlasorAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+              const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
+              return trMap[match] || match;
+            });
+            
+            // Menü PDF'sini ekle
+            if (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim)) {
+              try {
+                const pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
+                const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${enBuyukHaftaNo}_${pdfFileName}`;
+                
+                const pdfResponse = await fetch(pdfUrl, {
+                  headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                
+                if (pdfResponse.ok) {
+                  const pdfData = await pdfResponse.json();
+                  const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - Menü PDF eklendi`);
+                }
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Menü PDF eklenemedi:`, error);
+              }
+            }
+            
+            // Tarif kartlarını ekle
+            if (enBuyukHafta.tarifKartlar && enBuyukHafta.tarifKartlar.length > 0) {
+              for (const kart of enBuyukHafta.tarifKartlar) {
+                try {
+                  const response = await fetch(kart.data);
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${kart.name}`, blob);
+                  }
+                } catch (error) {
+                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, kart.name);
+                }
+              }
+            }
+            
+            // Manuel kartları ekle
+            if (enBuyukHafta.manuelKartlar && enBuyukHafta.manuelKartlar.length > 0) {
+              for (const kart of enBuyukHafta.manuelKartlar) {
+                try {
+                  const response = await fetch(kart.data);
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    anaZip.file(`${hastaKlasorAdi}/MANUEL_TARIF_${kart.name}`, blob);
+                  }
+                } catch (error) {
+                  console.warn(`❌ ${hasta.isim} - Manuel kart eklenemedi:`, kart.name);
+                }
+              }
+            }
+            
+            // Çoklu PDF kartlarını ekle
+            if (enBuyukHafta.cokluPdfVerileri && enBuyukHafta.cokluPdfVerileri.length > 0) {
+              for (const veri of enBuyukHafta.cokluPdfVerileri) {
+                if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
+                  for (const kart of veri.tarifKartlar) {
+                    try {
+                      const response = await fetch(kart.data);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        anaZip.file(`${hastaKlasorAdi}/COKLU_PDF_${kart.name}`, blob);
+                      }
+                    } catch (error) {
+                      console.warn(`❌ ${hasta.isim} - Çoklu PDF kartı eklenemedi:`, kart.name);
+                    }
+                  }
+                }
+              }
+            }
+            
+            // GPT mesajını ekle
+            if (enBuyukHafta.gptMesaj && enBuyukHafta.gptMesaj.trim()) {
+              anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, enBuyukHafta.gptMesaj.trim());
+            }
+            
+            // Lenf masajı planını ekle (5. hafta için)
+            if (enBuyukHaftaNo === 5) {
+              try {
+                await createAndAddLenfMasajPDF(anaZip, hastaData, haftalar, `${hastaKlasorAdi}/`);
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Lenf masajı planı eklenemedi:`, error);
+              }
+            }
+            
+            // Egzersiz planını ekle (9. hafta için)
+            if (enBuyukHaftaNo === 9) {
+              try {
+                await createAndAddEgzersizPDF(anaZip, hastaData, haftalar, `${hastaKlasorAdi}/`);
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Egzersiz planı eklenemedi:`, error);
+              }
+            }
+            
+            basariliHastalar++;
+            console.log(`✅ ${hasta.isim} başarıyla işlendi`);
+            
+          } catch (error) {
+            console.error(`❌ ${hasta.isim} işlenirken hata:`, error);
+            hataliHastalar++;
+          }
+          
+          // Küçük delay (performans için)
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Progress'i kapat
+        document.body.removeChild(progressDiv);
+        
+        if (basariliHastalar === 0) {
+          alert('Hiçbir hasta başarıyla işlenemedi!');
+          return;
+        }
+        
+        // ZIP dosyasını oluştur ve indir
+        console.log('🗜️ ZIP dosyası oluşturuluyor...');
+        const zipBlob = await anaZip.generateAsync({type: 'blob'});
+        
+        // İndirme işlemi
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = anaZipAdi;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Başarı mesajı
+        alert(`🎉 Toplu ZIP başarıyla oluşturuldu!\n\n` +
+              `✅ Başarılı: ${basariliHastalar} hasta\n` +
+              `❌ Hatalı: ${hataliHastalar} hasta\n\n` +
+              `Dosya adı: ${anaZipAdi}`);
+        
+        console.log('🎉 Toplu ZIP işlemi tamamlandı!');
+        
+      } catch (error) {
+        console.error('❌ Toplu ZIP hatası:', error);
+        alert('Toplu ZIP oluşturulurken hata oluştu: ' + error.message);
+      }
+    }
+    
+    // Global erişim için
+    window.topluZipIndir = topluZipIndir;
+
+    // �📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
