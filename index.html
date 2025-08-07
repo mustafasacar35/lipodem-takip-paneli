@@ -7242,6 +7242,28 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(haftalar[4].baslangic);
         }
 
+        // 5. haftanın ilk pazartesi günü olacak şekilde hizala
+        console.log('🔍 5. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
+        const gunNo = baslangicTarihi.getDay();
+        console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
+        
+        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        let pazartesiyeKadarGun = 0;
+        if (gunNo === 0) { // Pazar
+          pazartesiyeKadarGun = 6; // 6 gün geriye git
+        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
+          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        }
+        
+        // 5. haftanın pazartesi günü
+        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        console.log('🔍 5. hafta pazartesi:', besinciHaftaPazartesi.toLocaleDateString('tr-TR'));
+        
+        // Bu tarihi referans olarak kullan
+        baslangicTarihi = besinciHaftaPazartesi;
+
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
@@ -7512,6 +7534,28 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
         }
 
+        // 9. haftanın ilk pazartesi günü olacak şekilde hizala
+        console.log('🔍 9. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
+        const gunNo = baslangicTarihi.getDay();
+        console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
+        
+        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        let pazartesiyeKadarGun = 0;
+        if (gunNo === 0) { // Pazar
+          pazartesiyeKadarGun = 6; // 6 gün geriye git
+        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
+          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        }
+        
+        // 9. haftanın pazartesi günü
+        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        console.log('🔍 9. hafta pazartesi:', dokuzuncuHaftaPazartesi.toLocaleDateString('tr-TR'));
+        
+        // Bu tarihi referans olarak kullan
+        baslangicTarihi = dokuzuncuHaftaPazartesi;
+
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
@@ -7569,7 +7613,15 @@ function duzenleHafta(i) {
         // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
+          
+          // 9. haftayı referans alarak diğer hafta başlangıçlarını hesapla
+          // 5. hafta: 9. haftadan 4 hafta önce (-4 * 7 gün)
+          // 6. hafta: 9. haftadan 3 hafta önce (-3 * 7 gün)
+          // ...
+          // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
+          // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
+          const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
@@ -10170,6 +10222,28 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
         
+        // 5. haftanın ilk pazartesi günü olacak şekilde hizala
+        console.log('🔍 Tekli lenf masaj - 5. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
+        const gunNo = baslangicTarihi.getDay();
+        console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
+        
+        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        let pazartesiyeKadarGun = 0;
+        if (gunNo === 0) { // Pazar
+          pazartesiyeKadarGun = 6; // 6 gün geriye git
+        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
+          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        }
+        
+        // 5. haftanın pazartesi günü
+        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        console.log('🔍 Tekli lenf masaj - 5. hafta pazartesi:', besinciHaftaPazartesi.toLocaleDateString('tr-TR'));
+        
+        // Bu tarihi referans olarak kullan
+        const hizalanmisBaslangic = besinciHaftaPazartesi;
+        
         // 5. haftanın başlangıcı
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
@@ -10177,7 +10251,7 @@ function duzenleHafta(i) {
         // 8 haftalık lenf masaj programı (ZIP sistemindeki gibi)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const haftaBaslangic = new Date(hizalanmisBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
@@ -10418,6 +10492,28 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
+        // 9. haftanın ilk pazartesi günü olacak şekilde hizala
+        console.log('🔍 Tekli egzersiz - 9. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
+        const gunNo = baslangicTarihi.getDay();
+        console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
+        
+        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        let pazartesiyeKadarGun = 0;
+        if (gunNo === 0) { // Pazar
+          pazartesiyeKadarGun = 6; // 6 gün geriye git
+        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
+          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        }
+        
+        // 9. haftanın pazartesi günü
+        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        console.log('🔍 Tekli egzersiz - 9. hafta pazartesi:', dokuzuncuHaftaPazartesi.toLocaleDateString('tr-TR'));
+        
+        // Bu tarihi referans olarak kullan
+        const hizalanmisBaslangic = dokuzuncuHaftaPazartesi;
+        
         // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
@@ -10425,7 +10521,15 @@ function duzenleHafta(i) {
         // 8 haftalık program (5-12. haftalar) - ZIP sistemindeki gibi
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
+          
+          // 9. haftayı referans alarak diğer hafta başlangıçlarını hesapla
+          // 5. hafta: 9. haftadan 4 hafta önce (-4 * 7 gün)
+          // 6. hafta: 9. haftadan 3 hafta önce (-3 * 7 gün)
+          // ...
+          // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
+          // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
+          const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+          const haftaBaslangic = new Date(hizalanmisBaslangic.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
