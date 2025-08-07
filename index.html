@@ -5370,6 +5370,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Sidebar'daki hasta sayılarını güncelle
         await guncelleHastaSayilari();
         
+        // Toplu ZIP butonunu ekle
+        ekleTopluZipButonu();
+        
       } catch (error) {
         console.error('❌ Yeni sistem hasta listesi yükleme hatası:', error);
         ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #dc3545;">Hasta listesi yüklenemedi</li>';
@@ -11093,7 +11096,13 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     function ekleTopluZipButonu() {
       const sidebarButtons = document.getElementById('sidebarButtons');
       if (sidebarButtons) {
+        // Eğer buton zaten varsa tekrar ekleme
+        if (sidebarButtons.querySelector('.toplu-zip-button')) {
+          return;
+        }
+        
         const topluZipButton = document.createElement('button');
+        topluZipButton.className = 'toplu-zip-button';
         topluZipButton.innerHTML = '🗜️ TOPLU ZIP İNDİR';
         topluZipButton.title = 'Tüm aktif hastaların en son hafta tablarını tek ZIP dosyasında indir';
         topluZipButton.style.cssText = `
