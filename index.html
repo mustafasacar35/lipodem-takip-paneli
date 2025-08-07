@@ -7242,23 +7242,25 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(haftalar[4].baslangic);
         }
 
-        // 5. haftanın ilk pazartesi günü olacak şekilde hizala
+        // 5. haftanın aynı hafta içindeki pazartesi gününü bul
         console.log('🔍 5. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
         
         // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
         const gunNo = baslangicTarihi.getDay();
         console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
         
-        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        // O haftanın pazartesi gününe git
         let pazartesiyeKadarGun = 0;
-        if (gunNo === 0) { // Pazar
-          pazartesiyeKadarGun = 6; // 6 gün geriye git
-        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
-          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        if (gunNo === 1) { // Zaten pazartesi
+          pazartesiyeKadarGun = 0;
+        } else if (gunNo === 0) { // Pazar ise, önceki haftanın pazartesi (-6 gün)
+          pazartesiyeKadarGun = -6;
+        } else { // Salı(2), Çarşamba(3), Perşembe(4), Cuma(5), Cumartesi(6)
+          pazartesiyeKadarGun = -(gunNo - 1); // Aynı haftanın pazartesi
         }
         
         // 5. haftanın pazartesi günü
-        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() + (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
         console.log('🔍 5. hafta pazartesi:', besinciHaftaPazartesi.toLocaleDateString('tr-TR'));
         
         // Bu tarihi referans olarak kullan
@@ -7534,23 +7536,25 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
         }
 
-        // 9. haftanın ilk pazartesi günü olacak şekilde hizala
+        // 9. haftanın aynı hafta içindeki pazartesi gününü bul
         console.log('🔍 9. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
         
         // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
         const gunNo = baslangicTarihi.getDay();
         console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
         
-        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        // O haftanın pazartesi gününe git
         let pazartesiyeKadarGun = 0;
-        if (gunNo === 0) { // Pazar
-          pazartesiyeKadarGun = 6; // 6 gün geriye git
-        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
-          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        if (gunNo === 1) { // Zaten pazartesi
+          pazartesiyeKadarGun = 0;
+        } else if (gunNo === 0) { // Pazar ise, önceki haftanın pazartesi (-6 gün)
+          pazartesiyeKadarGun = -6;
+        } else { // Salı(2), Çarşamba(3), Perşembe(4), Cuma(5), Cumartesi(6)
+          pazartesiyeKadarGun = -(gunNo - 1); // Aynı haftanın pazartesi
         }
         
         // 9. haftanın pazartesi günü
-        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() + (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
         console.log('🔍 9. hafta pazartesi:', dokuzuncuHaftaPazartesi.toLocaleDateString('tr-TR'));
         
         // Bu tarihi referans olarak kullan
@@ -10222,23 +10226,25 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
         
-        // 5. haftanın ilk pazartesi günü olacak şekilde hizala
+        // 5. haftanın aynı hafta içindeki pazartesi gününü bul
         console.log('🔍 Tekli lenf masaj - 5. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
         
         // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
         const gunNo = baslangicTarihi.getDay();
         console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
         
-        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        // O haftanın pazartesi gününe git
         let pazartesiyeKadarGun = 0;
-        if (gunNo === 0) { // Pazar
-          pazartesiyeKadarGun = 6; // 6 gün geriye git
-        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
-          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        if (gunNo === 1) { // Zaten pazartesi
+          pazartesiyeKadarGun = 0;
+        } else if (gunNo === 0) { // Pazar ise, önceki haftanın pazartesi (-6 gün)
+          pazartesiyeKadarGun = -6;
+        } else { // Salı(2), Çarşamba(3), Perşembe(4), Cuma(5), Cumartesi(6)
+          pazartesiyeKadarGun = -(gunNo - 1); // Aynı haftanın pazartesi
         }
         
         // 5. haftanın pazartesi günü
-        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        const besinciHaftaPazartesi = new Date(baslangicTarihi.getTime() + (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
         console.log('🔍 Tekli lenf masaj - 5. hafta pazartesi:', besinciHaftaPazartesi.toLocaleDateString('tr-TR'));
         
         // Bu tarihi referans olarak kullan
@@ -10492,23 +10498,25 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
-        // 9. haftanın ilk pazartesi günü olacak şekilde hizala
+        // 9. haftanın aynı hafta içindeki pazartesi gününü bul
         console.log('🔍 Tekli egzersiz - 9. hafta ham başlangıç:', baslangicTarihi.toLocaleDateString('tr-TR'));
         
         // Haftanın hangi günü olduğunu bul (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
         const gunNo = baslangicTarihi.getDay();
         console.log('🔍 Başlangıç günü (0=Paz, 1=Pzt):', gunNo);
         
-        // Pazartesi gününe kadar kaç gün geriye gidilmesi gerektiğini hesapla
+        // O haftanın pazartesi gününe git
         let pazartesiyeKadarGun = 0;
-        if (gunNo === 0) { // Pazar
-          pazartesiyeKadarGun = 6; // 6 gün geriye git
-        } else { // Pazartesi=1, Salı=2, ..., Cumartesi=6
-          pazartesiyeKadarGun = gunNo - 1; // Pazartesi=0, Salı=1, ...
+        if (gunNo === 1) { // Zaten pazartesi
+          pazartesiyeKadarGun = 0;
+        } else if (gunNo === 0) { // Pazar ise, önceki haftanın pazartesi (-6 gün)
+          pazartesiyeKadarGun = -6;
+        } else { // Salı(2), Çarşamba(3), Perşembe(4), Cuma(5), Cumartesi(6)
+          pazartesiyeKadarGun = -(gunNo - 1); // Aynı haftanın pazartesi
         }
         
         // 9. haftanın pazartesi günü
-        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() - (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
+        const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime() + (pazartesiyeKadarGun * 24 * 60 * 60 * 1000));
         console.log('🔍 Tekli egzersiz - 9. hafta pazartesi:', dokuzuncuHaftaPazartesi.toLocaleDateString('tr-TR'));
         
         // Bu tarihi referans olarak kullan
