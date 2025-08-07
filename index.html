@@ -1577,11 +1577,25 @@
     }
     
     // Hasta verisini GitHub'dan al
-    async function getHastaData(hastaId) {
+    async function getHastaData(hastaId, githubRepo = null, githubToken = null) {
       try {
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hastaId}/hasta_data.json`, {
+        // GitHub ayarlarını al - önce parametre, sonra global, sonra input'tan
+        const repo = githubRepo || 
+                     (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null) || 
+                     (document.getElementById('githubRepo') ? document.getElementById('githubRepo').value.trim() : null) ||
+                     'mustafasacar35/lipodem-takip-paneli';
+        
+        const token = githubToken || 
+                      (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : null) || 
+                      (document.getElementById('githubToken') ? document.getElementById('githubToken').value.trim() : null);
+        
+        if (!token) {
+          throw new Error('GitHub token bulunamadı');
+        }
+        
+        const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`
+            'Authorization': `token ${token}`
           }
         });
         
@@ -6981,7 +6995,13 @@ function duzenleHafta(i) {
           return;
         }
 
-        // GitHub değişkenlerini kontrol et
+        // GitHub değişkenlerini input'lardan al
+        const tokenElement = document.getElementById('githubToken');
+        const repoElement = document.getElementById('githubRepo');
+        
+        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
+        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
+        
         console.log('🔍 GITHUB_REPO:', GITHUB_REPO);
         console.log('🔍 GITHUB_TOKEN var mı:', !!GITHUB_TOKEN);
         console.log('🔍 Seçili hasta:', seciliHasta.id);
@@ -6995,7 +7015,7 @@ function duzenleHafta(i) {
         const hafta = haftalar[haftaIndex];
         console.log('🔍 Hafta bilgileri:', hafta);
         
-        const hasta = await getHastaData(seciliHasta.id);
+        const hasta = await getHastaData(seciliHasta.id, GITHUB_REPO, GITHUB_TOKEN);
         
         // ZIP dosya adını oluştur
         const tarihAraligi = `${hafta.baslangic}_${hafta.bitis}`.replace(/\./g, '_').replace(/\s/g, '_');
@@ -10640,7 +10660,7 @@ function duzenleHafta(i) {
             console.log(`📂 ${islemSayisi}/${toplamIslem} - ${hasta.isim} verisi toplanıyor...`);
             
             // Bu hastanın verilerini yükle
-            const hastaData = await getHastaData(hasta.id);
+            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN);
             if (!hastaData || !hastaData.haftalar) {
               console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
               continue;
