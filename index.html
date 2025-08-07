@@ -407,6 +407,7 @@
         </select>
         <ul id="hastaListesi"></ul>
         <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
+        <button onclick="topluZipIndir()" style="width:100%; padding:8px; margin-top:10px; background:#ff6b35; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight: bold;">📦 TOPLU ZIP İNDİR</button>
       </div>
     </div>
 
@@ -10595,6 +10596,239 @@ function duzenleHafta(i) {
       }
     }
     
+    // TOPLU ZIP İNDİRME FONKSİYONU
+    async function topluZipIndir() {
+      try {
+        console.log('🚀 TOPLU ZIP İNDİRME başlatıldı');
+        
+        // Aktif hastaları filtrele
+        const aktifHastalar = hastaListesi.filter(hasta => !hasta.arsiv);
+        
+        if (aktifHastalar.length === 0) {
+          alert('Aktif hasta bulunamadı!');
+          return;
+        }
+        
+        console.log(`📋 ${aktifHastalar.length} aktif hasta bulundu`);
+        
+        // GitHub değişkenlerini input'lardan al
+        const tokenElement = document.getElementById('githubToken');
+        const repoElement = document.getElementById('githubRepo');
+        
+        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
+        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
+        
+        if (!GITHUB_TOKEN) {
+          alert('GitHub token ayarlanmamış! Lütfen ayarları kontrol edin.');
+          return;
+        }
+        
+        // Ana ZIP dosyasını oluştur
+        const anaZip = new JSZip();
+        const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '_');
+        
+        // Progress indicator
+        let islemSayisi = 0;
+        const toplamIslem = aktifHastalar.length;
+        
+        console.log(`🔄 ${toplamIslem} hasta için veri toplanıyor...`);
+        
+        // Her aktif hasta için
+        for (const hasta of aktifHastalar) {
+          try {
+            islemSayisi++;
+            console.log(`📂 ${islemSayisi}/${toplamIslem} - ${hasta.isim} verisi toplanıyor...`);
+            
+            // Bu hastanın verilerini yükle
+            const hastaData = await getHastaData(hasta.id);
+            if (!hastaData || !hastaData.haftalar) {
+              console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
+              continue;
+            }
+            
+            // Hastanın son haftasını bul
+            const haftalar = hastaData.haftalar || [];
+            if (haftalar.length === 0) {
+              console.warn(`⚠️ ${hasta.isim} için hafta kaydı bulunamadı`);
+              continue;
+            }
+            
+            const sonHafta = haftalar[haftalar.length - 1];
+            const haftaNo = haftalar.length;
+            
+            console.log(`📅 ${hasta.isim} - ${haftaNo}. hafta verisi işleniyor`);
+            
+            // Hasta klasörü adını oluştur (sarı klasör)
+            const temizHastaAdi = hasta.isim.toUpperCase()
+              .replace(/\s/g, '_')
+              .replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+                const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
+                return trMap[match] || match;
+              });
+            const hastaKlasorAdi = `${temizHastaAdi}_HAFTA_${haftaNo}`;
+            
+            // PDF dosyası varsa ekle
+            if (sonHafta.pdfName || sonHafta.pdfOrijinalIsim) {
+              try {
+                const pdfFileName = sonHafta.pdfName || sonHafta.pdfOrijinalIsim;
+                const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${haftaNo}_${pdfFileName}`;
+                
+                const pdfResponse = await fetch(pdfUrl, {
+                  headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                
+                if (pdfResponse.ok) {
+                  const pdfData = await pdfResponse.json();
+                  const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${sonHafta.pdfOrijinalIsim || sonHafta.pdfName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - PDF eklendi`);
+                }
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - PDF eklenemedi:`, error);
+              }
+            }
+            
+            // Eşleşen tarif kartları varsa ekle
+            if (sonHafta.tarifKartlar && sonHafta.tarifKartlar.length > 0) {
+              for (const kart of sonHafta.tarifKartlar) {
+                try {
+                  const response = await fetch(kart.data);
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${kart.name}`, blob);
+                  }
+                } catch (error) {
+                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi: ${kart.name}`);
+                }
+              }
+              console.log(`✅ ${hasta.isim} - ${sonHafta.tarifKartlar.length} tarif kartı eklendi`);
+            }
+            
+            // GPT mesajı varsa ekle
+            if (sonHafta.gptMesaj && sonHafta.gptMesaj.trim()) {
+              anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, sonHafta.gptMesaj.trim());
+              console.log(`✅ ${hasta.isim} - GPT mesajı eklendi`);
+            }
+            
+            // Özel hafta kontrolleri (5. ve 9. hafta için)
+            if (haftaNo === 5 || haftaNo === 9) {
+              try {
+                // Özel hafta masaj planı PDF'si oluştur
+                console.log(`🏥 ${hasta.isim} - ${haftaNo}. hafta masaj PDF'si oluşturuluyor...`);
+                
+                // Masaj PDF'sini oluştur ve zip'e ekle
+                const masajPdfBlob = await createLenfMasajPDFBlob(hastaData, haftalar);
+                if (masajPdfBlob) {
+                  anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
+                  console.log(`✅ ${hasta.isim} - Masaj planı PDF'si eklendi`);
+                }
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Masaj planı PDF'si eklenemedi:`, error);
+              }
+            }
+            
+            // Hasta özet bilgisi dosyası ekle
+            const ozetBilgi = `HASTA: ${hasta.isim}\nHAFTA: ${haftaNo}\nTARİH: ${sonHafta.baslangic} - ${sonHafta.bitis}\n\nAÇIKLAMA:\n${sonHafta.aciklama || 'Açıklama yok'}\n\nTARİFLER:\n${sonHafta.tarifler || 'Tarif bilgisi yok'}`;
+            anaZip.file(`${hastaKlasorAdi}/HASTA_OZETI.txt`, ozetBilgi);
+            
+            console.log(`✅ ${hasta.isim} - Klasör hazırlandı`);
+            
+          } catch (error) {
+            console.error(`❌ ${hasta.isim} işlenirken hata:`, error);
+          }
+        }
+        
+        console.log('📦 ZIP dosyası oluşturuluyor...');
+        
+        // ZIP dosyasını oluştur ve indir
+        anaZip.generateAsync({type: 'blob'}).then(function(content) {
+          const zipAdi = `LIPODEM_TOPLU_EXPORT_${tarih}.zip`;
+          
+          const url = URL.createObjectURL(content);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = zipAdi;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          console.log(`✅ TOPLU ZIP İNDİRME tamamlandı: ${zipAdi}`);
+          alert(`${aktifHastalar.length} hastanın verileri başarıyla indirildi!\\n\\nDosya: ${zipAdi}`);
+          
+        }).catch(function(error) {
+          console.error('❌ ZIP oluşturma hatası:', error);
+          alert('ZIP dosyası oluşturulurken hata oluştu: ' + error.message);
+        });
+        
+      } catch (error) {
+        console.error('❌ TOPLU ZIP genel hatası:', error);
+        alert('Toplu ZIP indirme hatası: ' + error.message);
+      }
+    }
+    
+    // Masaj planı PDF'si oluşturma yardımcı fonksiyonu
+    async function createLenfMasajPDFBlob(hastaData, haftalar) {
+      try {
+        // jsPDF kontrolü
+        let jsPDFLib;
+        if (typeof window.jspdf !== 'undefined') {
+          jsPDFLib = window.jspdf.jsPDF;
+        } else if (typeof jsPDF !== 'undefined') {
+          jsPDFLib = jsPDF;
+        } else {
+          console.warn('jsPDF bulunamadı, masaj planı PDF\'si oluşturulamayacak');
+          return null;
+        }
+        
+        const doc = new jsPDFLib('p', 'mm', 'a4');
+        
+        // PDF içeriğini oluştur (basitleştirilmiş versiyon)
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        
+        const temizHastaAdi = turkceKarakterDuzelt(hastaData.isim);
+        doc.text(`${temizHastaAdi.toUpperCase()}`, 20, 20);
+        
+        doc.setFontSize(12);
+        doc.text('LENF DRENAJ MASAJI PROGRAMI', 20, 30);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 20, 40);
+        doc.text(`Hafta: ${haftalar.length}`, 20, 50);
+        
+        // Basit program açıklaması
+        let currentY = 60;
+        doc.text('UYGULAMA PROGRAMI:', 20, currentY);
+        currentY += 10;
+        
+        if (haftalar.length <= 6) {
+          doc.text('- Günde 2 kez lenf masajı uygulanacak', 20, currentY);
+          currentY += 7;
+          doc.text('- Sabah ve akşam 15-20 dakika', 20, currentY);
+        } else if (haftalar.length <= 8) {
+          doc.text('- Günde 1 kez lenf masajı uygulanacak', 20, currentY);
+          currentY += 7;
+          doc.text('- Sabah 15-20 dakika', 20, currentY);
+        } else {
+          doc.text('- Haftada 3 gün lenf masajı + günlük egzersiz', 20, currentY);
+          currentY += 7;
+          doc.text('- Pazartesi, Çarşamba, Cuma masaj', 20, currentY);
+        }
+        
+        // PDF'yi blob olarak döndür
+        return doc.output('blob');
+        
+      } catch (error) {
+        console.error('Masaj planı PDF oluşturma hatası:', error);
+        return null;
+      }
+    }
+    
+    // Toplu zip fonksiyonunu global scope'a ekle
+    window.topluZipIndir = topluZipIndir;
+    
     window.zipEslesenGorseller = zipEslesenGorseller;
     window.generatePatientPDF = generatePatientPDF;
     
@@ -12346,3 +12580,4 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
+
