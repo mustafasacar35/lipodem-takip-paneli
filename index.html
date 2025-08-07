@@ -10635,18 +10635,6 @@ function duzenleHafta(i) {
         
         console.log(`📋 ${aktifHastalar.length} aktif hasta bulundu`);
         
-        // GitHub değişkenlerini input'lardan al
-        const tokenElement = document.getElementById('githubToken');
-        const repoElement = document.getElementById('githubRepo');
-        
-        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
-        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
-        
-        if (!GITHUB_TOKEN) {
-          alert('GitHub token ayarlanmamış! Lütfen ayarları kontrol edin.');
-          return;
-        }
-        
         // LocalStorage'dan hasta verilerini al
         const STORAGE_KEY = 'lipedem_hasta_kayitlari';
         const localStorageData = localStorage.getItem(STORAGE_KEY);
@@ -10694,21 +10682,19 @@ function duzenleHafta(i) {
               });
             const hastaKlasorAdi = `${temizHastaAdi}_HAFTA_${haftaNo}`;
             
-            // PDF dosyası varsa ekle
+            // PDF dosyası varsa ekle (LocalStorage'dan)
             if (sonHafta.pdfName || sonHafta.pdfOrijinalIsim) {
               try {
+                // LocalStorage'da PDF verisi var mı kontrol et
                 const pdfFileName = sonHafta.pdfName || sonHafta.pdfOrijinalIsim;
-                const pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${haftaNo}_${pdfFileName}`;
                 
-                const pdfResponse = await fetch(pdfUrl, {
-                  headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
-                
-                if (pdfResponse.ok) {
-                  const pdfData = await pdfResponse.json();
-                  const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
-                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${sonHafta.pdfOrijinalIsim || sonHafta.pdfName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF eklendi`);
+                // LocalStorage'da base64 PDF verisi olabilir
+                if (sonHafta.pdfContent) {
+                  const pdfBlob = base64ToBlob(sonHafta.pdfContent, 'application/pdf');
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - PDF LocalStorage'dan eklendi`);
+                } else {
+                  console.log(`⚠️ ${hasta.isim} - PDF dosyası LocalStorage'da bulunamadı: ${pdfFileName}`);
                 }
               } catch (error) {
                 console.warn(`❌ ${hasta.isim} - PDF eklenemedi:`, error);
@@ -10719,13 +10705,28 @@ function duzenleHafta(i) {
             if (sonHafta.tarifKartlar && sonHafta.tarifKartlar.length > 0) {
               for (const kart of sonHafta.tarifKartlar) {
                 try {
-                  const response = await fetch(kart.data);
-                  if (response.ok) {
-                    const blob = await response.blob();
-                    anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${kart.name}`, blob);
+                  // URL'i yeniden oluştur eğer eksikse
+                  let kartUrl = kart.data || kart.url;
+                  
+                  if (!kartUrl || kartUrl === 'undefined') {
+                    // URL'i tarif adından yeniden oluştur
+                    kartUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.name}`;
+                  }
+                  
+                  // URL'nin geçerli olduğunu kontrol et
+                  if (kartUrl && kartUrl !== 'undefined' && kartUrl.startsWith('http')) {
+                    const response = await fetch(kartUrl);
+                    if (response.ok) {
+                      const blob = await response.blob();
+                      anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${kart.name}`, blob);
+                    } else {
+                      console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL'si erişilemiyor: ${kartUrl}`);
+                    }
+                  } else {
+                    console.warn(`⚠️ ${hasta.isim} - Tarif kartı veri eksik: ${kart.name}`);
                   }
                 } catch (error) {
-                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi: ${kart.name}`);
+                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi: ${kart.name}`, error);
                 }
               }
               console.log(`✅ ${hasta.isim} - ${sonHafta.tarifKartlar.length} tarif kartı eklendi`);
