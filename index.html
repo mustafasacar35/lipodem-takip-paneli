@@ -10674,7 +10674,13 @@ function duzenleHafta(i) {
               console.log(`🔍 DEBUG - ${hasta.isim} hafta verisi:`, haftalar[0]);
               if (haftalar[0] && haftalar[0].tarifKartlar) {
                 console.log(`🔍 DEBUG - ${hasta.isim} tarif kartları:`, haftalar[0].tarifKartlar.slice(0, 3));
+                console.log(`🔍 DEBUG - window.tarifKartlari örnek:`, window.tarifKartlari?.slice(0, 5));
               }
+            }
+            
+            // BERİN KARADAĞ için debug (boş objeler)
+            if (islemSayisi === 6) { 
+              console.log(`🔍 DEBUG - ${hasta.isim} tarif kartları (boş objeler):`, haftalar[0]?.tarifKartlar?.slice(0, 3));
             }
             const sonHafta = haftalar[haftalar.length - 1];
             const haftaNo = haftalar.length;
@@ -10738,31 +10744,49 @@ function duzenleHafta(i) {
                   
                   // URL'i yeniden oluştur eğer eksikse
                   let kartUrl = kart.data || kart.url;
+                  let dosyaAdi = tarifAdi;
                   
                   if (!kartUrl || kartUrl === 'undefined' || kartUrl.includes('undefined')) {
                     // Eğer tarifAdi string ise, window.tarifKartlari dizisinden eşleşme ara
                     if (typeof tarifAdi === 'string' && window.tarifKartlari && window.tarifKartlari.length > 0) {
-                      // .jpg, .png uzantısı yoksa ekle
-                      let tarifDosyaAdi = tarifAdi;
-                      if (!tarifDosyaAdi.includes('.')) {
-                        // Önce .jpg dene
-                        if (window.tarifKartlari.includes(tarifDosyaAdi + '.jpg')) {
-                          tarifDosyaAdi += '.jpg';
-                        } else if (window.tarifKartlari.includes(tarifDosyaAdi + '.png')) {
-                          tarifDosyaAdi += '.png';
-                        }
-                      }
                       
-                      // window.tarifKartlari dizisinde varsa URL oluştur
-                      if (window.tarifKartlari.includes(tarifDosyaAdi)) {
-                        kartUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${tarifDosyaAdi}`;
+                      // Önce tam eşleşme ara
+                      if (window.tarifKartlari.includes(tarifAdi)) {
+                        dosyaAdi = tarifAdi;
+                      }
+                      // .jpg, .png uzantısı yoksa ekle ve ara
+                      else if (!tarifAdi.includes('.')) {
+                        if (window.tarifKartlari.includes(tarifAdi + '.jpg')) {
+                          dosyaAdi = tarifAdi + '.jpg';
+                        } else if (window.tarifKartlari.includes(tarifAdi + '.png')) {
+                          dosyaAdi = tarifAdi + '.png';
+                        } else {
+                          // Benzer isim ara (Türkçe karakter ve alt çizgi dönüştürmeleri)
+                          const normalizedTarif = tarifAdi.toLowerCase()
+                            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                            .replace(/\s+/g, '_').replace(/[()]/g, '');
+                          
+                          const benzerDosya = window.tarifKartlari.find(dosya => {
+                            const normalizedDosya = dosya.toLowerCase()
+                              .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                              .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                              .replace(/\s+/g, '_').replace(/[()]/g, '');
+                            return normalizedDosya.includes(normalizedTarif) || normalizedTarif.includes(normalizedDosya.replace(/\.(jpg|png)$/i, ''));
+                          });
+                          
+                          if (benzerDosya) {
+                            dosyaAdi = benzerDosya;
+                          } else {
+                            // Son çare: varsayılan uzantı ekle
+                            dosyaAdi = tarifAdi + '.jpg';
+                          }
+                        }
                       }
                     }
                     
-                    // Hala URL yoksa genel olarak oluştur
-                    if (!kartUrl) {
-                      kartUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${tarifAdi}`;
-                    }
+                    // URL'i oluştur
+                    kartUrl = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${dosyaAdi.replace(/\s+/g, '%20')}`;
                   }
                   
                   // URL'nin geçerli olduğunu kontrol et
@@ -10770,7 +10794,7 @@ function duzenleHafta(i) {
                     const response = await fetch(kartUrl);
                     if (response.ok) {
                       const blob = await response.blob();
-                      anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${tarifAdi}`, blob);
+                      anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${dosyaAdi}`, blob);
                       basariliKartSayisi++;
                     } else {
                       console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL'si erişilemiyor: ${kartUrl}`);
