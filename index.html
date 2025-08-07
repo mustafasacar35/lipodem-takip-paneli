@@ -10739,6 +10739,39 @@ function duzenleHafta(i) {
                 if (!pdfEklendi) {
                   console.log(`⚠️ ${hasta.isim} - PDF dosyası hiçbir formatta bulunamadı: ${pdfFileName}`);
                   console.log(`📋 ${hasta.isim} - PDF araması yapılan alanlar:`, Object.keys(sonHafta).filter(k => k.includes('pdf') || k.includes('Pdf') || k.includes('PDF')));
+                  
+                  // PDF bulunamadıysa, hafta bilgileriyle yeni bir PDF oluştur
+                  try {
+                    console.log(`🔧 ${hasta.isim} - Eksik PDF için yeni PDF oluşturuluyor...`);
+                    const pdf = new jsPDF();
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setFontSize(16);
+                    pdf.text(`${hasta.isim} - ${haftaNo}. Hafta`, 20, 30);
+                    
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setFontSize(12);
+                    pdf.text(`Tarih: ${sonHafta.baslangic} - ${sonHafta.bitis}`, 20, 50);
+                    
+                    if (sonHafta.aciklama) {
+                      pdf.text("Açıklama:", 20, 70);
+                      const aciklamaLines = pdf.splitTextToSize(sonHafta.aciklama, 170);
+                      pdf.text(aciklamaLines, 20, 85);
+                    }
+                    
+                    if (sonHafta.tarifler) {
+                      const yPos = sonHafta.aciklama ? 120 : 90;
+                      pdf.text("Tarifler:", 20, yPos);
+                      const tarifLines = pdf.splitTextToSize(sonHafta.tarifler, 170);
+                      pdf.text(tarifLines, 20, yPos + 15);
+                    }
+                    
+                    const pdfBlob = pdf.output('blob');
+                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                    console.log(`✅ ${hasta.isim} - Yeni PDF oluşturuldu ve eklendi`);
+                    pdfEklendi = true;
+                  } catch (pdfError) {
+                    console.warn(`❌ ${hasta.isim} - Yeni PDF oluşturulamadı:`, pdfError);
+                  }
                 }
               } catch (error) {
                 console.warn(`❌ ${hasta.isim} - PDF eklenemedi:`, error);
@@ -10761,6 +10794,26 @@ function duzenleHafta(i) {
               tarifKartlariListe = sonHafta.eslesenTarifler.filter(kart => 
                 kart && Object.keys(kart).length > 0 && (kart.name || kart.tarifAdi || kart.fileName)
               );
+            }
+            
+            // Eğer hala tarif kartı yoksa, tarifler text'inden tarif isimlerini çıkarmaya çalış
+            if (tarifKartlariListe.length === 0 && sonHafta.tarifler && sonHafta.tarifler.trim()) {
+              console.log(`🔍 ${hasta.isim} - Tarif kartları bulunamadı, tarifler text'inden tarif isimleri çıkarılacak`);
+              try {
+                // Tarifler text'ini satırlara böl ve her satırı tarif adı olarak kabul et
+                const tarifSatirlari = sonHafta.tarifler.split('\n').filter(satir => satir.trim().length > 3);
+                for (const tarifSatiri of tarifSatirlari) {
+                  const temizTarif = tarifSatiri.trim().replace(/^\d+\.?\s*/, '').replace(/^-\s*/, '');
+                  if (temizTarif.length > 3) {
+                    tarifKartlariListe.push({ name: temizTarif, tarifAdi: temizTarif });
+                  }
+                }
+                if (tarifKartlariListe.length > 0) {
+                  console.log(`📝 ${hasta.isim} - Tarifler text'inden ${tarifKartlariListe.length} tarif adı çıkarıldı`);
+                }
+              } catch (textParseError) {
+                console.warn(`⚠️ ${hasta.isim} - Tarifler text'i parse edilemedi:`, textParseError);
+              }
             }
             
             // Tarif kartı ekleme işlemi
@@ -10865,6 +10918,11 @@ function duzenleHafta(i) {
             if (sonHafta.gptMesaj && sonHafta.gptMesaj.trim()) {
               anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, sonHafta.gptMesaj.trim());
               console.log(`✅ ${hasta.isim} - GPT mesajı eklendi`);
+            } else {
+              // GPT mesajı yoksa, hafta bilgileriyle basit bir mesaj oluştur
+              const alternatifMesaj = `${hasta.isim} - ${haftaNo}. Hafta Özeti\n\nTarih: ${sonHafta.baslangic} - ${sonHafta.bitis}\n\nAçıklama:\n${sonHafta.aciklama || 'Henüz açıklama eklenmemiş'}\n\nTarifler:\n${sonHafta.tarifler || 'Henüz tarif eklenmemiş'}\n\nNot: Bu mesaj sistem tarafından otomatik oluşturulmuştur.`;
+              anaZip.file(`${hastaKlasorAdi}/HAFTA_OZETI.txt`, alternatifMesaj);
+              console.log(`📝 ${hasta.isim} - Hafta özeti (alternatif mesaj) eklendi`);
             }
             
             // Özel hafta kontrolleri (5. ve 9. hafta için)
@@ -10873,11 +10931,119 @@ function duzenleHafta(i) {
                 // Özel hafta masaj planı PDF'si oluştur
                 console.log(`🏥 ${hasta.isim} - ${haftaNo}. hafta masaj PDF'si oluşturuluyor...`);
                 
-                // Masaj PDF'sini oluştur ve zip'e ekle
-                const masajPdfBlob = await createLenfMasajPDFBlob(hastaLocalData, haftalar);
-                if (masajPdfBlob) {
+                // Gelişmiş masaj PDF'si oluştur
+                try {
+                  const doc = new jsPDF('p', 'mm', 'a4');
+                  
+                  // Başlık
+                  doc.setFontSize(18);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(`${hasta.isim}`, 20, 25);
+                  
+                  doc.setFontSize(14);
+                  doc.text(`${haftaNo}. HAFTA ${haftaNo === 5 ? 'LENF DRENAJ MASAJI' : 'EGZERSİZ'} PROGRAMI`, 20, 35);
+                  
+                  doc.setFontSize(12);
+                  doc.setFont('helvetica', 'normal');
+                  doc.text(`Tarih Aralığı: ${sonHafta.baslangic} - ${sonHafta.bitis}`, 20, 45);
+                  doc.text(`Program Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 20, 55);
+                  
+                  let yPos = 70;
+                  
+                  // Program detayları
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(`${haftaNo === 5 ? 'MASAJ' : 'EGZERSİZ'} PROGRAMI:`, 20, yPos);
+                  yPos += 15;
+                  
+                  doc.setFont('helvetica', 'normal');
+                  if (haftaNo === 5) {
+                    // 5. hafta lenf drenaj masajı
+                    doc.text('• Günde 1 kez lenf drenaj masajı uygulanacak', 25, yPos);
+                    yPos += 10;
+                    doc.text('• Her seans 15-20 dakika sürecek', 25, yPos);
+                    yPos += 10;
+                    doc.text('• Haftalık toplam 7 seans', 25, yPos);
+                    yPos += 10;
+                    doc.text('• Masaj bölgeleri: Bacak, kalça ve karın bölgesi', 25, yPos);
+                    yPos += 15;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('MASAJ TAKVİMİ:', 20, yPos);
+                    yPos += 15;
+                    
+                    // Haftalık takvim
+                    const gunler = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+                    gunler.forEach((gun, index) => {
+                      doc.setFont('helvetica', 'normal');
+                      doc.text(`${gun}: Lenf drenaj masajı (15-20 dk)`, 25, yPos);
+                      yPos += 8;
+                    });
+                  } else if (haftaNo === 9) {
+                    // 9. hafta egzersiz
+                    doc.text('• Günde 30 dakika egzersiz yapılacak', 25, yPos);
+                    yPos += 10;
+                    doc.text('• Haftalık 5 gün program uygulanacak', 25, yPos);
+                    yPos += 10;
+                    doc.text('• Yürüyüş, yüzme veya bisiklet tercih edilebilir', 25, yPos);
+                    yPos += 15;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('EGZERSİZ TAKVİMİ:', 20, yPos);
+                    yPos += 15;
+                    
+                    const egzersizGunleri = ['Pazartesi', 'Çarşamba', 'Cuma', 'Cumartesi', 'Pazar'];
+                    egzersizGunleri.forEach((gun) => {
+                      doc.setFont('helvetica', 'normal');
+                      doc.text(`${gun}: 30 dakika egzersiz`, 25, yPos);
+                      yPos += 8;
+                    });
+                  }
+                  
+                  // Notlar
+                  yPos += 10;
+                  doc.setFont('helvetica', 'bold');
+                  doc.text('ÖNEMLI NOTLAR:', 20, yPos);
+                  yPos += 15;
+                  
+                  doc.setFont('helvetica', 'normal');
+                  if (haftaNo === 5) {
+                    doc.text('• Masaj sırasında çok fazla baskı uygulamayın', 25, yPos);
+                    yPos += 8;
+                    doc.text('• Kalp yönünde dairesel hareketler yapın', 25, yPos);
+                    yPos += 8;
+                    doc.text('• Herhangi bir rahatsızlık hissettiğinizde durdurun', 25, yPos);
+                  } else {
+                    doc.text('• Egzersiz öncesi ısınma, sonrası soğuma yapın', 25, yPos);
+                    yPos += 8;
+                    doc.text('• Bol su tüketin', 25, yPos);
+                    yPos += 8;
+                    doc.text('• Yorgunluk hissettiğinizde dinlenin', 25, yPos);
+                  }
+                  
+                  // Hafta açıklaması varsa ekle
+                  if (sonHafta.aciklama) {
+                    yPos += 15;
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('HAFTA AÇIKLAMASI:', 20, yPos);
+                    yPos += 10;
+                    
+                    doc.setFont('helvetica', 'normal');
+                    const aciklamaLines = doc.splitTextToSize(sonHafta.aciklama, 170);
+                    doc.text(aciklamaLines, 20, yPos);
+                  }
+                  
+                  const masajPdfBlob = doc.output('blob');
                   anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
-                  console.log(`✅ ${hasta.isim} - Masaj planı PDF'si eklendi`);
+                  console.log(`✅ ${hasta.isim} - Gelişmiş masaj planı PDF'si eklendi`);
+                } catch (advancedPdfError) {
+                  console.warn(`⚠️ ${hasta.isim} - Gelişmiş PDF oluşturulamadı, basit versiyon denenecek:`, advancedPdfError);
+                  
+                  // Geri dönüş: basit masaj PDF'si
+                  const masajPdfBlob = await createLenfMasajPDFBlob(hastaLocalData, haftalar);
+                  if (masajPdfBlob) {
+                    anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
+                    console.log(`✅ ${hasta.isim} - Basit masaj planı PDF'si eklendi`);
+                  }
                 }
               } catch (error) {
                 console.warn(`❌ ${hasta.isim} - Masaj planı PDF'si eklenemedi:`, error);
