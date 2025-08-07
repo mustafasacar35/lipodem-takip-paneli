@@ -1575,8 +1575,8 @@
       }
     }
     
-    // Hasta verisini GitHub'dan al
-    async function getHastaData(hastaId, githubRepo = null, githubToken = null) {
+    // Hasta verisini GitHub'dan al (Yeni Sistem Uyumlu)
+    async function getHastaData(hastaId, githubRepo = null, githubToken = null, hastaIsim = null) {
       try {
         // Parametrelerden veya global değişkenlerden al
         const repo = githubRepo || (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null);
@@ -1586,16 +1586,57 @@
           throw new Error('GitHub repo veya token eksik');
         }
         
-        const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
-          headers: {
-            'Authorization': `token ${token}`
-          }
-        });
+        // Yeni sistem: hasta_ID_ISIM.json formatında dosya ara
+        const dosyaAdlari = [];
         
-        if (response.ok) {
-          const data = await response.json();
-          const content = decodeBase64UTF8(data.content);
-          return JSON.parse(content);
+        if (hastaIsim) {
+          dosyaAdlari.push(generateFileName({ id: hastaId, isim: hastaIsim }));
+          dosyaAdlari.push(generateFileName({ id: hastaId, isim: turkceKarakterDuzelt(hastaIsim) }));
+          dosyaAdlari.push(generateFileName({ isim: hastaIsim }));
+          dosyaAdlari.push(generateFileName({ isim: turkceKarakterDuzelt(hastaIsim) }));
+        }
+        
+        // Çift entryleri kaldır
+        const benzersizDosyaAdlari = [...new Set(dosyaAdlari)];
+        
+        console.log('🔍 Hasta verisi aranan dosyalar:', benzersizDosyaAdlari);
+        
+        // Her dosya adını dene
+        for (const dosyaAdi of benzersizDosyaAdlari) {
+          try {
+            const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${dosyaAdi}`, {
+              headers: {
+                'Authorization': `token ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const content = decodeBase64UTF8(data.content);
+              console.log(`✅ Hasta verisi bulundu: ${dosyaAdi}`);
+              return JSON.parse(content);
+            }
+          } catch (e) {
+            console.log(`❌ Dosya bulunamadı: ${dosyaAdi}`);
+          }
+        }
+        
+        // Eski sistem de deneyelim (backward compatibility)
+        try {
+          const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
+            headers: {
+              'Authorization': `token ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const content = decodeBase64UTF8(data.content);
+            console.log(`✅ Hasta verisi eski sistemde bulundu: ${hastaId}/hasta_data.json`);
+            return JSON.parse(content);
+          }
+        } catch (e) {
+          console.log(`❌ Eski sistem de bulunamadı: ${hastaId}/hasta_data.json`);
         }
         
         throw new Error('Hasta verisi bulunamadı');
@@ -12304,7 +12345,7 @@ ${mesajlar.join('\n')}
             console.log(`👤 ${hasta.isim} işleniyor...`);
             
             // Hasta verilerini al
-            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN);
+            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN, hasta.isim);
             if (!hastaData || !hastaData.haftalar) {
               console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
               hataliHastalar++;
