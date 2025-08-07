@@ -12386,28 +12386,30 @@ ${mesajlar.join('\n')}
                 
                 console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
                 
-                // Doğru GitHub API URL'ini oluştur
+                // Raw GitHub URL'sini kullan
                 let pdfUrl;
                 if (enBuyukHafta.githubUrl) {
-                  // githubUrl varsa GitHub API formatına çevir
-                  pdfUrl = enBuyukHafta.githubUrl.replace('github.com', 'api.github.com/repos').replace('/blob/', '/contents/');
+                  // githubUrl varsa raw formatına çevir
+                  pdfUrl = enBuyukHafta.githubUrl
+                    .replace('github.com', 'raw.githubusercontent.com')
+                    .replace('/blob/', '/');
                 } else if (enBuyukHafta.indirmeUrl) {
-                  // indirmeUrl varsa GitHub API formatına çevir
-                  pdfUrl = enBuyukHafta.indirmeUrl.replace('github.com', 'api.github.com/repos').replace('/blob/', '/contents/');
+                  // indirmeUrl varsa raw formatına çevir
+                  pdfUrl = enBuyukHafta.indirmeUrl
+                    .replace('github.com', 'raw.githubusercontent.com')
+                    .replace('/blob/', '/');
                 } else {
-                  // Standart format ile dene
-                  pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${enBuyukHaftaNo}_${pdfFileName}`;
+                  // Standart raw format ile dene
+                  const encodedFileName = encodeURIComponent(pdfFileName);
+                  pdfUrl = `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/pdfs/${encodedFileName}`;
                 }
                 
                 console.log(`� PDF URL: ${pdfUrl}`);
                 
-                const pdfResponse = await fetch(pdfUrl, {
-                  headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
+                const pdfResponse = await fetch(pdfUrl);
                 
                 if (pdfResponse.ok) {
-                  const pdfData = await pdfResponse.json();
-                  const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                  const pdfBlob = await pdfResponse.blob();
                   anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
                   console.log(`✅ ${hasta.isim} - Menü PDF eklendi: ${pdfFileName}`);
                 } else {
