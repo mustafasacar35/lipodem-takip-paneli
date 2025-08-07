@@ -1576,11 +1576,19 @@
     }
     
     // Hasta verisini GitHub'dan al
-    async function getHastaData(hastaId) {
+    async function getHastaData(hastaId, githubRepo = null, githubToken = null) {
       try {
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hastaId}/hasta_data.json`, {
+        // Parametrelerden veya global değişkenlerden al
+        const repo = githubRepo || (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null);
+        const token = githubToken || (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : null);
+        
+        if (!repo || !token) {
+          throw new Error('GitHub repo veya token eksik');
+        }
+        
+        const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`
+            'Authorization': `token ${token}`
           }
         });
         
@@ -12239,9 +12247,13 @@ ${mesajlar.join('\n')}
           return;
         }
         
-        // Hasta listesini al (yalnızca aktif hastalar)
-        const hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
-        const aktifHastalar = hastalar.filter(hasta => !hasta.arsiv);
+        // Hasta listesini al (GitHub'dan yüklenen global listeyi kullan)
+        if (!window.hastaListesi || window.hastaListesi.length === 0) {
+          alert('Hasta listesi yüklenmemiş! Lütfen sayfayı yenileyin ve hasta listesinin yüklenmesini bekleyin.');
+          return;
+        }
+        
+        const aktifHastalar = window.hastaListesi.filter(hasta => !hasta.arsiv);
         
         if (aktifHastalar.length === 0) {
           alert('Aktif hasta bulunamadı!');
@@ -12289,7 +12301,7 @@ ${mesajlar.join('\n')}
             console.log(`👤 ${hasta.isim} işleniyor...`);
             
             // Hasta verilerini al
-            const hastaData = await getHastaData(hasta.id);
+            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN);
             if (!hastaData || !hastaData.haftalar) {
               console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
               hataliHastalar++;
