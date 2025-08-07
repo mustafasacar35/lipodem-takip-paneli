@@ -10705,18 +10705,40 @@ function duzenleHafta(i) {
                 console.log(`🔍 ${hasta.isim} - PDF aranıyor: ${pdfFileName}`);
                 console.log(`📋 ${hasta.isim} - Mevcut hafta verileri:`, Object.keys(sonHafta));
                 
-                // LocalStorage'da base64 PDF verisi olabilir
+                // Farklı PDF data formatlarını kontrol et
+                let pdfEklendi = false;
+                
                 if (sonHafta.pdfContent) {
                   const pdfBlob = base64ToBlob(sonHafta.pdfContent, 'application/pdf');
                   anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF LocalStorage'dan eklendi`);
+                  console.log(`✅ ${hasta.isim} - PDF pdfContent'den eklendi`);
+                  pdfEklendi = true;
                 } else if (sonHafta.pdfBase64) {
                   const pdfBlob = base64ToBlob(sonHafta.pdfBase64, 'application/pdf');
                   anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
-                  console.log(`✅ ${hasta.isim} - PDF base64'den eklendi`);
-                } else {
-                  console.log(`⚠️ ${hasta.isim} - PDF dosyası LocalStorage'da bulunamadı: ${pdfFileName}`);
-                  console.log(`📋 ${hasta.isim} - Hafta anahtarları:`, Object.keys(sonHafta).filter(k => k.includes('pdf') || k.includes('Pdf') || k.includes('PDF')));
+                  console.log(`✅ ${hasta.isim} - PDF pdfBase64'den eklendi`);
+                  pdfEklendi = true;
+                } else if (sonHafta.pdf && typeof sonHafta.pdf === 'string') {
+                  const pdfBlob = base64ToBlob(sonHafta.pdf, 'application/pdf');
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - PDF pdf alanından eklendi`);
+                  pdfEklendi = true;
+                } else if (sonHafta.pdfFile) {
+                  // pdfFile blob veya base64 olabilir
+                  if (typeof sonHafta.pdfFile === 'string') {
+                    const pdfBlob = base64ToBlob(sonHafta.pdfFile, 'application/pdf');
+                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                    console.log(`✅ ${hasta.isim} - PDF pdfFile'dan (base64) eklendi`);
+                  } else {
+                    anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, sonHafta.pdfFile);
+                    console.log(`✅ ${hasta.isim} - PDF pdfFile'dan (blob) eklendi`);
+                  }
+                  pdfEklendi = true;
+                }
+                
+                if (!pdfEklendi) {
+                  console.log(`⚠️ ${hasta.isim} - PDF dosyası hiçbir formatta bulunamadı: ${pdfFileName}`);
+                  console.log(`📋 ${hasta.isim} - PDF araması yapılan alanlar:`, Object.keys(sonHafta).filter(k => k.includes('pdf') || k.includes('Pdf') || k.includes('PDF')));
                 }
               } catch (error) {
                 console.warn(`❌ ${hasta.isim} - PDF eklenemedi:`, error);
@@ -10724,16 +10746,28 @@ function duzenleHafta(i) {
             }
             
             // Eşleşen tarif kartları varsa ekle
+            let tarifKartlariListe = [];
+            
+            // Önce normal tarif kartlarını kontrol et
             if (sonHafta.tarifKartlar && sonHafta.tarifKartlar.length > 0) {
+              tarifKartlariListe = sonHafta.tarifKartlar.filter(kart => 
+                kart && Object.keys(kart).length > 0 && (kart.name || kart.tarifAdi || kart.fileName)
+              );
+            }
+            
+            // Eğer tarif kartları boşsa veya geçersizse, alternatif kaynaklara bak
+            if (tarifKartlariListe.length === 0 && sonHafta.eslesenTarifler && sonHafta.eslesenTarifler.length > 0) {
+              console.log(`🔍 ${hasta.isim} - Ana tarif kartları bulunamadı, eslesenTarifler'den denenecek`);
+              tarifKartlariListe = sonHafta.eslesenTarifler.filter(kart => 
+                kart && Object.keys(kart).length > 0 && (kart.name || kart.tarifAdi || kart.fileName)
+              );
+            }
+            
+            // Tarif kartı ekleme işlemi
+            if (tarifKartlariListe.length > 0) {
               let basariliKartSayisi = 0;
-              for (const kart of sonHafta.tarifKartlar) {
+              for (const kart of tarifKartlariListe) {
                 try {
-                  // Kart nesnesinin geçerli olup olmadığını kontrol et
-                  if (!kart || (!kart.name && !kart.tarifAdi)) {
-                    console.warn(`⚠️ ${hasta.isim} - Geçersiz tarif kartı verisi:`, kart);
-                    continue;
-                  }
-                  
                   // Tarif adını belirle
                   const tarifAdi = kart.name || kart.tarifAdi || kart.fileName;
                   
@@ -10791,13 +10825,23 @@ function duzenleHafta(i) {
                   
                   // URL'nin geçerli olduğunu kontrol et
                   if (kartUrl && kartUrl !== 'undefined' && !kartUrl.includes('undefined') && kartUrl.startsWith('http')) {
-                    const response = await fetch(kartUrl);
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${dosyaAdi}`, blob);
-                      basariliKartSayisi++;
-                    } else {
-                      console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL'si erişilemiyor: ${kartUrl}`);
+                    // URL uzunluğunu kontrol et (2000 karakterden uzunsa kısalt)
+                    if (kartUrl.length > 2000) {
+                      console.warn(`⚠️ ${hasta.isim} - URL çok uzun, atlandı: ${kartUrl.substring(0, 100)}...`);
+                      continue;
+                    }
+                    
+                    try {
+                      const response = await fetch(kartUrl);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${dosyaAdi}`, blob);
+                        basariliKartSayisi++;
+                      } else {
+                        console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL'si erişilemiyor (${response.status}): ${kartUrl.substring(0, 100)}...`);
+                      }
+                    } catch (fetchError) {
+                      console.warn(`⚠️ ${hasta.isim} - Fetch hatası: ${fetchError.message} - URL: ${kartUrl.substring(0, 100)}...`);
                     }
                   } else {
                     console.warn(`⚠️ ${hasta.isim} - Tarif kartı URL oluşturulamadı. Kart:`, kart);
@@ -10806,7 +10850,15 @@ function duzenleHafta(i) {
                   console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, error, kart);
                 }
               }
-              console.log(`✅ ${hasta.isim} - ${basariliKartSayisi}/${sonHafta.tarifKartlar.length} tarif kartı başarıyla eklendi`);
+              console.log(`✅ ${hasta.isim} - ${basariliKartSayisi}/${tarifKartlariListe.length} tarif kartı başarıyla eklendi`);
+            } else {
+              console.log(`⚠️ ${hasta.isim} - Hiç tarif kartı bulunamadı (ne tarifKartlar ne de eslesenTarifler)`);
+              
+              // En azından tarif listesi varsa text olarak ekle
+              if (sonHafta.tarifler && sonHafta.tarifler.trim()) {
+                anaZip.file(`${hastaKlasorAdi}/TARIF_LISTESI.txt`, sonHafta.tarifler.trim());
+                console.log(`📄 ${hasta.isim} - Tarif listesi text olarak eklendi`);
+              }
             }
             
             // GPT mesajı varsa ekle
@@ -10832,9 +10884,7 @@ function duzenleHafta(i) {
               }
             }
             
-            // Hasta özet bilgisi dosyası ekle
-            const ozetBilgi = `HASTA: ${hasta.isim}\nHAFTA: ${haftaNo}\nTARİH: ${sonHafta.baslangic} - ${sonHafta.bitis}\n\nAÇIKLAMA:\n${sonHafta.aciklama || 'Açıklama yok'}\n\nTARİFLER:\n${sonHafta.tarifler || 'Tarif bilgisi yok'}`;
-            anaZip.file(`${hastaKlasorAdi}/HASTA_OZETI.txt`, ozetBilgi);
+            // Hasta özet bilgisi dosyası - KALDIRILDI (gereksiz)
             
             basariliIslem++;
             console.log(`✅ ${hasta.isim} - Klasör hazırlandı`);
