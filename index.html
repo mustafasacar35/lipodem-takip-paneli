@@ -7226,7 +7226,7 @@ function duzenleHafta(i) {
     // 5. hafta için Lenf Masaj PDF'si oluştur ve ZIP'e ekle
     async function createAndAddLenfMasajPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
-        console.log('🏥 5. hafta Lenf Masaj PDF oluşturuluyor...');
+        console.log('🤲 5. hafta Lenf Masaj PDF oluşturuluyor...', { hasta: hasta.isim });
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7242,7 +7242,7 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(haftalar[4].baslangic);
         }
 
-        // PDF oluştur
+        // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
           console.error('❌ jsPDF constructor bulunamadı');
@@ -7251,82 +7251,248 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
-        const doc = new jsPDF();
+        const doc = new jsPDF('p', 'mm', 'a4'); // Tekli tab versiyonuyla aynı format
         
-        // Türkçe font desteği
-        doc.addFont('https://fonts.googleapis.com/css?family=Roboto', 'Roboto', 'normal');
-        doc.setFont('helvetica');
+        // Hasta adını ASCII'ye çevir (tekli tab versiyonuyla aynı)
+        console.log('🔍 Orijinal hasta adı:', hasta.isim);
+        const asciiHastaAdi = hasta.isim
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
-        // Başlık
-        doc.setFontSize(16);
-        doc.setTextColor(40, 44, 52);
-        doc.text('LENF DRENAJ MASAJI TAKVIMI', 20, 35);
+        // Başlık - tekli tab versiyonuyla aynı
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
         
-        // Hasta bilgileri
+        const title = `${asciiHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
         doc.setFontSize(12);
-        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
-        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        doc.setTextColor(0, 0, 0);
         
-        // Haftalık program oluştur (5. haftadan başlayarak 8 hafta)
-        let yPos = 90;
-        doc.setFontSize(10);
+        // Lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Lenf Drenaj Masaji Uygulama Programi';
         
-        for (let hafta = 5; hafta <= 12; hafta++) {
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 5) * 7 * 24 * 60 * 60 * 1000));
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu - tekli tab versiyonuyla aynı
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
+        
+        // 5. haftanın başlangıcı
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
-          doc.setFontSize(12);
-          doc.setTextColor(0, 123, 255);
-          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
-          yPos += 15;
-          
-          doc.setFontSize(10);
-          doc.setTextColor(0, 0, 0);
-          
-          // Hafta programı
-          if (hafta >= 5 && hafta <= 6) {
-            // İlk 2 hafta: Günde 2 kez
-            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 10;
-            doc.text('• Akşam: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
-          } else if (hafta >= 7 && hafta <= 8) {
-            // Sonraki 2 hafta: Günde 1 kez
-            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
-          } else if (hafta >= 9 && hafta <= 10) {
-            // 9-10. hafta: Günaşırı
-            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
-            yPos += 10;
-            doc.text('  Lenf masajı (20 dk)', 30, yPos);
-            yPos += 15;
-          } else if (hafta >= 11 && hafta <= 12) {
-            // Son 2 hafta: Salı, Cuma
-            doc.text('• Salı, Cuma: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
-          }
-          
-          if (yPos > 250) {
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
             doc.addPage();
-            yPos = 30;
+            currentY = 20;
           }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 5. hafta PDF'si için 9-12. haftalar soluk renkte olsun
+          if (gercekHaftaNo >= 9) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - tekli tab versiyonuyla aynı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - tekli tab versiyonuyla aynı
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Uygulama kontrolü - lenf masajı versiyonu (tekli tab versiyonuyla aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else {
+              // 9-12. haftalar: lenf masajı yok (egzersiz başlamış)
+              sabahUygulama = '-';
+              aksamUygulama = '-';
+            }
+            
+            zipTableStartX = 15;
+            
+            // 5. hafta PDF'si için 5-8. haftalar yeşil check'li olsun
+            if (gercekHaftaNo <= 8) {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            } else {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            
+            // 5. hafta PDF'si ve aktif haftalar (5-8) yeşil check simgesi ekle
+            if (gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi normal renkte yaz
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Gelecek haftalar için tarih soluk renkte
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
         }
         
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
-        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Lenf_Masaj_Takvimi.pdf`;
+        const dosyaAdi = `${asciiHastaAdi}_Lenf_Masaj_Takvimi.pdf`;
         zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 5. hafta Lenf Masaj PDF ZIP\'e eklendi:', dosyaAdi);
         
       } catch (error) {
-        console.error('❌ Lenf masaj PDF oluşturma hatası:', error);
+        console.error('❌ Lenf Masaj PDF oluşturma hatası:', error);
       }
     }
 
-    // 9. hafta için Egzersiz PDF'si oluştur ve ZIP'e ekle
     async function createAndAddEgzersizPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
-        console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...');
+        console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...', { hasta: hasta.isim });
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7346,7 +7512,7 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
         }
 
-        // PDF oluştur
+        // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
           console.error('❌ jsPDF constructor bulunamadı');
@@ -7355,62 +7521,252 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
-        const doc = new jsPDF();
+        const doc = new jsPDF('p', 'mm', 'a4'); // Tekli tab versiyonuyla aynı format
         
-        doc.setFont('helvetica');
+        // Hasta adını ASCII'ye çevir (tekli tab versiyonuyla aynı)
+        console.log('🔍 Orijinal hasta adı:', hasta.isim);
+        const asciiHastaAdi = hasta.isim
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
-        // Başlık
-        doc.setFontSize(16);
-        doc.setTextColor(40, 44, 52);
-        doc.text('EGZERSIZ TAKVIMI', 20, 35);
+        // Başlık - tekli tab versiyonuyla aynı
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
         
-        // Hasta bilgileri
+        const title = `${asciiHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
         doc.setFontSize(12);
-        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
-        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        doc.setTextColor(0, 0, 0);
         
-        // Haftalık program oluştur (9. haftadan başlayarak 4 hafta)
-        let yPos = 90;
-        doc.setFontSize(10);
+        // Egzersiz + lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi';
         
-        for (let hafta = 9; hafta <= 12; hafta++) {
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 9) * 7 * 24 * 60 * 60 * 1000));
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu - tekli tab versiyonuyla aynı
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
+        
+        // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
+          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
           
-          doc.setFontSize(12);
-          doc.setTextColor(0, 123, 255);
-          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
-          yPos += 15;
-          
-          doc.setFontSize(10);
-          doc.setTextColor(0, 0, 0);
-          
-          if (hafta >= 9 && hafta <= 10) {
-            // 9-10. hafta
-            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
-            yPos += 10;
-            doc.text('  Sabah: Lenf masajı + Akşam: Egzersiz', 30, yPos);
-            yPos += 10;
-            doc.text('• Salı, Perşembe, Cumartesi:', 25, yPos);
-            yPos += 10;
-            doc.text('  Sadece akşam egzersiz', 30, yPos);
-            yPos += 15;
-          } else if (hafta >= 11 && hafta <= 12) {
-            // 11-12. hafta
-            doc.text('• Salı, Cuma: Lenf masajı + Akşam egzersiz', 25, yPos);
-            yPos += 10;
-            doc.text('• Diğer günler: Sadece akşam egzersiz', 25, yPos);
-            yPos += 15;
-          }
-          
-          if (yPos > 250) {
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
             doc.addPage();
-            yPos = 30;
+            currentY = 20;
           }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+          if (gercekHaftaNo <= 8) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - tekli tab versiyonuyla aynı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - tekli tab versiyonuyla aynı
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Uygulama kontrolü - egzersiz dahil versiyonu (tekli tab versiyonuyla aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else if (lenfHaftaIndex < 6) {
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + egzersiz
+              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            } else {
+              // Son 2 hafta (11-12): Haftada 2 gün lenf masajı + sürekli egzersiz
+              if (gunIndex === 1 || gunIndex === 4) { // Salı, Cuma
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            }
+            
+            zipTableStartX = 15;
+            
+            // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+            if (gercekHaftaNo <= 8) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
+            if (gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi soluk renkte yaz
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Normal tarih
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
         }
         
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
-        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Egzersiz_Takvimi.pdf`;
+        const dosyaAdi = `${asciiHastaAdi}_Egzersiz_Takvimi.pdf`;
         zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 9. hafta Egzersiz PDF ZIP\'e eklendi:', dosyaAdi);
@@ -12373,8 +12729,8 @@ ${mesajlar.join('\n')}
             
             console.log(`📅 ${hasta.isim} - En büyük hafta: ${enBuyukHaftaNo}`);
             
-            // Hasta klasörü oluştur (sarı klasör)
-            const hastaKlasorAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+            // Hasta klasörü oluştur - menü PDF adını kullan
+            let hastaKlasorAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
               const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
               return trMap[match] || match;
             });
@@ -12383,6 +12739,11 @@ ${mesajlar.join('\n')}
             if (enBuyukHafta.githubUrl || enBuyukHafta.indirmeUrl || (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim))) {
               try {
                 let pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
+                
+                // Klasör adını menü PDF adıyla değiştir (MENU_ prefix'i olmadan)
+                if (pdfFileName) {
+                  hastaKlasorAdi = pdfFileName.replace('.pdf', '');
+                }
                 
                 console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
                 
