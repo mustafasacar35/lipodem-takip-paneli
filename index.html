@@ -12379,43 +12379,45 @@ ${mesajlar.join('\n')}
               return trMap[match] || match;
             });
             
-            // Tüm haftalık PDF'leri ekle
-            for (const hafta of haftalar) {
-              if (hafta.pdf && (hafta.pdfName || hafta.pdfOrijinalIsim)) {
-                try {
-                  const pdfFileName = hafta.pdfName || hafta.pdfOrijinalIsim;
-                  
-                  // Doğru GitHub URL formatını kullan
-                  let pdfUrl;
-                  if (hafta.githubUrl) {
-                    // Mevcut githubUrl varsa onu kullan
-                    pdfUrl = hafta.githubUrl;
-                  } else if (hafta.indirmeUrl) {
-                    // indirmeUrl varsa onu GitHub API formatına çevir
-                    pdfUrl = hafta.indirmeUrl.replace('github.com', 'api.github.com/repos').replace('/blob/', '/contents/');
-                  } else {
-                    // Standart format
-                    pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${hafta.haftaNo}_${pdfFileName}`;
-                  }
-                  
-                  console.log(`📄 ${hasta.isim} - Hafta ${hafta.haftaNo} PDF'i indiriliyor: ${pdfUrl}`);
-                  
-                  const pdfResponse = await fetch(pdfUrl, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                  });
-                  
-                  if (pdfResponse.ok) {
-                    const pdfData = await pdfResponse.json();
-                    const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
-                    anaZip.file(`${hastaKlasorAdi}/HAFTA_${hafta.haftaNo}_${pdfFileName}`, pdfBlob);
-                    console.log(`✅ ${hasta.isim} - Hafta ${hafta.haftaNo} PDF'i eklendi: ${pdfFileName}`);
-                  } else {
-                    console.warn(`❌ ${hasta.isim} - Hafta ${hafta.haftaNo} PDF'i indirilemedi (${pdfResponse.status}): ${pdfUrl}`);
-                  }
-                } catch (error) {
-                  console.warn(`❌ ${hasta.isim} - Hafta ${hafta.haftaNo} PDF'i eklenemedi:`, error);
+            // Sadece en büyük hafta için menü PDF'sini ekle
+            if (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim)) {
+              try {
+                const pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
+                
+                console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
+                
+                // Doğru GitHub API URL'ini oluştur
+                let pdfUrl;
+                if (enBuyukHafta.githubUrl) {
+                  // githubUrl varsa GitHub API formatına çevir
+                  pdfUrl = enBuyukHafta.githubUrl.replace('github.com', 'api.github.com/repos').replace('/blob/', '/contents/');
+                } else if (enBuyukHafta.indirmeUrl) {
+                  // indirmeUrl varsa GitHub API formatına çevir
+                  pdfUrl = enBuyukHafta.indirmeUrl.replace('github.com', 'api.github.com/repos').replace('/blob/', '/contents/');
+                } else {
+                  // Standart format ile dene
+                  pdfUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hasta.id}/hafta_${enBuyukHaftaNo}_${pdfFileName}`;
                 }
+                
+                console.log(`� PDF URL: ${pdfUrl}`);
+                
+                const pdfResponse = await fetch(pdfUrl, {
+                  headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                
+                if (pdfResponse.ok) {
+                  const pdfData = await pdfResponse.json();
+                  const pdfBlob = base64ToBlob(pdfData.content, 'application/pdf');
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - Menü PDF eklendi: ${pdfFileName}`);
+                } else {
+                  console.warn(`❌ ${hasta.isim} - Menü PDF indirilemedi (${pdfResponse.status}): ${pdfUrl}`);
+                }
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Menü PDF eklenemedi:`, error);
               }
+            } else {
+              console.log(`ℹ️ ${hasta.isim} - En büyük hafta için PDF verisi yok`);
             }
             
             // Tarif kartlarını ekle
