@@ -7288,7 +7288,34 @@ function duzenleHafta(i) {
         console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
         console.log('🔍 5. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
 
-        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        // menuPdfler objesinden tarih bilgisini çek
+        let tabBaslangici = haftaBaslangici;
+        if (window.menuPdfler) {
+            for (const [key, value] of Object.entries(window.menuPdfler)) {
+                if (key.includes(hasta.isim) && key.includes('5. HAFTA')) {
+                    console.log('🔍 Bulunan PDF anahtarı:', key);
+                    const tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s+(\w+)/);
+                    if (tarihMatch) {
+                        const gun = parseInt(tarihMatch[1]);
+                        const ayAdi = tarihMatch[3];
+                        const ayNumarasi = {
+                            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
+                            'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
+                            'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                        }[ayAdi];
+                        
+                        if (ayNumarasi !== undefined) {
+                            tabBaslangici = new Date(2025, ayNumarasi, gun);
+                            console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Tab başlangıç tarihi kullan
+        haftaBaslangici = tabBaslangici;
         console.log('🔍 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
         
         // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
@@ -7611,6 +7638,36 @@ function duzenleHafta(i) {
           console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
         }
         console.log('🔍 9. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
+
+        // menuPdfler objesinden tarih bilgisini çek
+        let tabBaslangici = haftaBaslangici;
+        if (window.menuPdfler) {
+            for (const [key, value] of Object.entries(window.menuPdfler)) {
+                if (key.includes(hasta.isim) && key.includes('9. HAFTA')) {
+                    console.log('🔍 Bulunan PDF anahtarı:', key);
+                    const tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s+(\w+)/);
+                    if (tarihMatch) {
+                        const gun = parseInt(tarihMatch[1]);
+                        const ayAdi = tarihMatch[3];
+                        const ayNumarasi = {
+                            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
+                            'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
+                            'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                        }[ayAdi];
+                        
+                        if (ayNumarasi !== undefined) {
+                            tabBaslangici = new Date(2025, ayNumarasi, gun);
+                            console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Tab başlangıç tarihi kullan
+        haftaBaslangici = tabBaslangici;
+        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
 
         // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
         console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
