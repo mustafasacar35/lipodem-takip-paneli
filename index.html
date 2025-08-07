@@ -7242,11 +7242,10 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(haftalar[4].baslangic);
         }
 
-        // Tab başlangıç tarihini tam olarak kullan - hiç değiştirme
-        console.log('🔍 5. hafta tab başlangıç tarihi (direkt kullanım):', baslangicTarihi.toLocaleDateString('tr-TR'));
-        console.log('🔍 Bu tarih hangi gün:', ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][baslangicTarihi.getDay()]);
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
         
-        // Bu tarihi değiştirmeden direkt kullan
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -7518,11 +7517,10 @@ function duzenleHafta(i) {
           baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
         }
 
-        // Tab başlangıç tarihini tam olarak kullan - hiç değiştirme
-        console.log('🔍 9. hafta tab başlangıç tarihi (direkt kullanım):', baslangicTarihi.toLocaleDateString('tr-TR'));
-        console.log('🔍 Bu tarih hangi gün:', ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][baslangicTarihi.getDay()]);
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
         
-        // Bu tarihi değiştirmeden direkt kullan
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -8690,13 +8688,8 @@ function duzenleHafta(i) {
         console.log('🔍 Başlangıç tarihi hesaplanıyor...');
         const baslangicTarihi = new Date(baslangicHafta.baslangic);
         
-        // Başlangıç tarihinin pazartesi olmasını garanti altına al
-        const haftaGunu = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
-        if (haftaGunu !== 1) { // Eğer pazartesi değilse
-          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
-          baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
-        }
-        console.log('✅ Başlangıç tarihi (Pazartesi):', baslangicTarihi);
+        // Tab başlangıç tarihini olduğu gibi kullan - zaten doğru tarihlendirilmiş
+        console.log('✅ Başlangıç tarihi (tab tarihinden):', baslangicTarihi);
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -8707,14 +8700,20 @@ function duzenleHafta(i) {
           // 9. hafta özel modunda 5. haftadan başla (5,6,7,8,9,10,11,12), normal modda belirtilen haftadan
           const gercekHaftaNo = dokuzuncuHaftaOzelModu ? (lenfHaftaIndex + 5) : (lenfHaftaIndex + (belirliHaftaNo || 5));
           
-          // Tarih hesaplaması: 9. hafta özel modunda, 9. haftanın pazartesi günü referans alınır
+          // Tarih hesaplaması düzeltildi
           let haftaBaslangic;
           if (dokuzuncuHaftaOzelModu) {
-            // 9. haftanın pazartesi gününden geriye/ileriye doğru hesapla
-            const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime());
-            const haftaFarki = lenfHaftaIndex - 4; // 9. hafta = index 4, yani 0 fark
-            haftaBaslangic = new Date(dokuzuncuHaftaPazartesi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+            // 9. hafta özel modu: 5. haftadan başlayarak 8 hafta göster
+            // baslangicTarihi = 9. hafta başlangıç tarihi
+            // 5. hafta = 9. haftadan 4 hafta önce
+            // 6. hafta = 9. haftadan 3 hafta önce
+            // ...
+            // 9. hafta = 9. haftadan 0 hafta önce
+            // 10. hafta = 9. haftadan 1 hafta sonra
+            const haftaFarki = (lenfHaftaIndex + 5) - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+            haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           } else {
+            // Normal mod: başlangıç tarihinden itibaren hafta hafta ilerle
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           }
           
@@ -10190,11 +10189,10 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
         
-        // Tab başlangıç tarihini tam olarak kullan - hiç değiştirme
-        console.log('🔍 Tekli lenf masaj - 5. hafta tab başlangıç tarihi (direkt kullanım):', baslangicTarihi.toLocaleDateString('tr-TR'));
-        console.log('🔍 Bu tarih hangi gün:', ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][baslangicTarihi.getDay()]);
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 Tekli lenf masaj - 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
         
-        // Bu tarihi değiştirmeden direkt kullan
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
         const hizalanmisBaslangic = baslangicTarihi;
         
         // 5. haftanın başlangıcı
@@ -10445,11 +10443,10 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
-        // Tab başlangıç tarihini tam olarak kullan - hiç değiştirme
-        console.log('🔍 Tekli egzersiz - 9. hafta tab başlangıç tarihi (direkt kullanım):', baslangicTarihi.toLocaleDateString('tr-TR'));
-        console.log('🔍 Bu tarih hangi gün:', ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][baslangicTarihi.getDay()]);
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 Tekli egzersiz - 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
         
-        // Bu tarihi değiştirmeden direkt kullan
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
         const hizalanmisBaslangic = baslangicTarihi;
         
         // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
