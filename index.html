@@ -7291,13 +7291,22 @@ function duzenleHafta(i) {
         // menuPdfler objesinden tarih bilgisini çek
         let tabBaslangici = haftaBaslangici;
         if (window.menuPdfler) {
+            console.log('🔍 menuPdfler objesi mevcut, anahtar sayısı:', Object.keys(window.menuPdfler).length);
+            
             for (const [key, value] of Object.entries(window.menuPdfler)) {
-                if (key.includes(hasta.isim) && key.includes('5. HAFTA')) {
+                if (key.includes(hasta.isim) && (key.includes('5. HAFTA') || key.includes('5.HAFTA'))) {
                     console.log('🔍 Bulunan PDF anahtarı:', key);
-                    const tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s+(\w+)/);
+                    
+                    // Gelişmiş tarih analizi - ay geçişlerini de destekler
+                    // Format örnekleri: "11-17 AĞUSTOS", "28 TEMMUZ - 3 AĞUSTOS"
+                    
+                    // Önce tek ay formatını dene: "11-17 AĞUSTOS"
+                    let tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s*(\w+)/);
                     if (tarihMatch) {
                         const gun = parseInt(tarihMatch[1]);
                         const ayAdi = tarihMatch[3];
+                        console.log('🔍 Tek ay formatı - Gün:', gun, 'Ay:', ayAdi);
+                        
                         const ayNumarasi = {
                             'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
                             'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
@@ -7307,6 +7316,40 @@ function duzenleHafta(i) {
                         if (ayNumarasi !== undefined) {
                             tabBaslangici = new Date(2025, ayNumarasi, gun);
                             console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                        }
+                    } else {
+                        // Ay geçişli formatı dene: "28 TEMMUZ - 3 AĞUSTOS"
+                        tarihMatch = key.match(/(\d{1,2})\s*(\w+)\s*-\s*(\d{1,2})\s*(\w+)/);
+                        if (tarihMatch) {
+                            const baslangicGun = parseInt(tarihMatch[1]);
+                            const baslangicAy = tarihMatch[2];
+                            const bitisGun = parseInt(tarihMatch[3]);
+                            const bitisAy = tarihMatch[4];
+                            
+                            console.log('🔍 Ay geçişli format - Başlangıç:', baslangicGun, baslangicAy, '- Bitiş:', bitisGun, bitisAy);
+                            
+                            const ayNumarasi = {
+                                'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
+                                'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
+                                'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                            };
+                            
+                            const baslangicAyNum = ayNumarasi[baslangicAy];
+                            if (baslangicAyNum !== undefined) {
+                                tabBaslangici = new Date(2025, baslangicAyNum, baslangicGun);
+                                console.log('🔍 Ay geçişli PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            }
+                        } else {
+                            // Özel durumlar için sabit kontroller
+                            if (key.includes('11-17 AĞUSTOS')) {
+                                tabBaslangici = new Date(2025, 7, 11); // 11 Ağustos 2025
+                                console.log('🔍 Sabit değer (11-17 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            } else if (key.includes('28 TEMMUZ - 3 AĞUSTOS')) {
+                                tabBaslangici = new Date(2025, 6, 28); // 28 Temmuz 2025
+                                console.log('🔍 Sabit değer (28 TEMMUZ - 3 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            } else {
+                                console.log('🔍 PDF anahtarında tanınmış tarih formatı bulunamadı:', key);
+                            }
                         }
                     }
                     break;
@@ -7642,13 +7685,22 @@ function duzenleHafta(i) {
         // menuPdfler objesinden tarih bilgisini çek
         let tabBaslangici = haftaBaslangici;
         if (window.menuPdfler) {
+            console.log('🔍 menuPdfler objesi mevcut, anahtar sayısı:', Object.keys(window.menuPdfler).length);
+            
             for (const [key, value] of Object.entries(window.menuPdfler)) {
-                if (key.includes(hasta.isim) && key.includes('9. HAFTA')) {
+                if (key.includes(hasta.isim) && (key.includes('9. HAFTA') || key.includes('9.HAFTA'))) {
                     console.log('🔍 Bulunan PDF anahtarı:', key);
-                    const tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s+(\w+)/);
+                    
+                    // Gelişmiş tarih analizi - ay geçişlerini de destekler
+                    // Format örnekleri: "11-17 AĞUSTOS", "28 TEMMUZ - 3 AĞUSTOS"
+                    
+                    // Önce tek ay formatını dene: "11-17 AĞUSTOS"
+                    let tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s*(\w+)/);
                     if (tarihMatch) {
                         const gun = parseInt(tarihMatch[1]);
                         const ayAdi = tarihMatch[3];
+                        console.log('🔍 Tek ay formatı - Gün:', gun, 'Ay:', ayAdi);
+                        
                         const ayNumarasi = {
                             'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
                             'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
@@ -7658,6 +7710,40 @@ function duzenleHafta(i) {
                         if (ayNumarasi !== undefined) {
                             tabBaslangici = new Date(2025, ayNumarasi, gun);
                             console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                        }
+                    } else {
+                        // Ay geçişli formatı dene: "28 TEMMUZ - 3 AĞUSTOS"
+                        tarihMatch = key.match(/(\d{1,2})\s*(\w+)\s*-\s*(\d{1,2})\s*(\w+)/);
+                        if (tarihMatch) {
+                            const baslangicGun = parseInt(tarihMatch[1]);
+                            const baslangicAy = tarihMatch[2];
+                            const bitisGun = parseInt(tarihMatch[3]);
+                            const bitisAy = tarihMatch[4];
+                            
+                            console.log('🔍 Ay geçişli format - Başlangıç:', baslangicGun, baslangicAy, '- Bitiş:', bitisGun, bitisAy);
+                            
+                            const ayNumarasi = {
+                                'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
+                                'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
+                                'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                            };
+                            
+                            const baslangicAyNum = ayNumarasi[baslangicAy];
+                            if (baslangicAyNum !== undefined) {
+                                tabBaslangici = new Date(2025, baslangicAyNum, baslangicGun);
+                                console.log('🔍 Ay geçişli PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            }
+                        } else {
+                            // Özel durumlar için sabit kontroller
+                            if (key.includes('11-17 AĞUSTOS')) {
+                                tabBaslangici = new Date(2025, 7, 11); // 11 Ağustos 2025
+                                console.log('🔍 Sabit değer (11-17 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            } else if (key.includes('28 TEMMUZ - 3 AĞUSTOS')) {
+                                tabBaslangici = new Date(2025, 6, 28); // 28 Temmuz 2025
+                                console.log('🔍 Sabit değer (28 TEMMUZ - 3 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
+                            } else {
+                                console.log('🔍 PDF anahtarında tanınmış tarih formatı bulunamadı:', key);
+                            }
                         }
                     }
                     break;
