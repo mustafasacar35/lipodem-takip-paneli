@@ -12247,13 +12247,16 @@ ${mesajlar.join('\n')}
           return;
         }
         
-        // Hasta listesini al (GitHub'dan yüklenen global listeyi kullan)
-        if (!window.hastaListesi || window.hastaListesi.length === 0) {
-          alert('Hasta listesi yüklenmemiş! Lütfen sayfayı yenileyin ve hasta listesinin yüklenmesini bekleyin.');
+        // Hasta listesini al (GitHub'dan direkt yükle)
+        console.log('📋 Hasta listesi yükleniyor...');
+        const tumHastalar = await hastaListesiYukle();
+        
+        if (!tumHastalar || tumHastalar.length === 0) {
+          alert('Hasta listesi yüklenmemiş! Lütfen GitHub token\'ınızı kontrol edin.');
           return;
         }
         
-        const aktifHastalar = window.hastaListesi.filter(hasta => !hasta.arsiv);
+        const aktifHastalar = tumHastalar.filter(hasta => !hasta.arsiv);
         
         if (aktifHastalar.length === 0) {
           alert('Aktif hasta bulunamadı!');
