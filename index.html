@@ -5345,8 +5345,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           haftaSpan.style.cssText = `color: ${renkSemasi.borderColor}; font-weight: bold; font-size: 11px;`; // Border renginde ve bold
           if (hasta.maxHafta > 0) {
             haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
-            // DEBUG: Hafta numarası hesaplama detayı
-            console.log(`🔍 ${hasta.hastaIsim} sidebar hafta: ${hasta.maxHafta}, hafta sayısı: ${localHasta?.haftalar?.length || 'bilinmiyor'}`);
           } else {
             haftaSpan.textContent = ` (pdf yok)`;
           }
@@ -6620,16 +6618,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         });
         
         console.log(`🎯 En büyük hafta numarası: ${enBuyukHaftaNo}, index: ${enBuyukHaftaIndex}`);
-        
-        // DEBUG: Hafta numarası tutarsızlığı kontrolü
-        const localHasta = hastalar.find(h => h && h.id === seciliHasta.id);
-        if (localHasta && localHasta.haftalar) {
-          const localMaxHafta = Math.max(...localHasta.haftalar.map(h => h.haftaNo || 0));
-          if (localMaxHafta !== enBuyukHaftaNo) {
-            console.warn(`⚠️ HAFTA NUMARASI TUTARSIZLIĞI: Sidebar=${localMaxHafta}, AktifTab=${enBuyukHaftaNo}`);
-            console.warn(`🔍 Hafta detayları:`, localHasta.haftalar.map(h => ({ index: h.index, haftaNo: h.haftaNo })));
-          }
-        }
         
         // Hafta tabının içerikleri ve eşleşen kartlar tamamen yüklendikten sonra aktif tab'ı seç
         setTimeout(() => {
