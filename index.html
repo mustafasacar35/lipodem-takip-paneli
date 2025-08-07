@@ -7236,10 +7236,49 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // 5. hafta başlangıç tarihini bul
-        let baslangicTarihi = new Date();
-        if (haftalar.length >= 5 && haftalar[4].baslangic) {
-          baslangicTarihi = new Date(haftalar[4].baslangic);
+        // Tab tarih aralığından başlangıç tarihini çıkar
+        // Menü PDF başlığını kullan: "ALEV KAYA 11-17 AĞUSTOS 5. HAFTA"
+        const menuPdfler = window.menuPdfler || {};
+        const hastaAdi = hasta.isim.toUpperCase();
+        let haftaBaslangici = new Date();
+        
+        // Hasta için PDF bilgilerini ara
+        for (const [key, value] of Object.entries(menuPdfler)) {
+            if (key.includes(hastaAdi) && key.includes('5. HAFTA')) {
+                console.log('🔍 Bulunan PDF anahtarı:', key);
+                
+                // Tarih aralığını parse et (örn: "11-17 AĞUSTOS")
+                const tarihRegex = /(\d{1,2})-(\d{1,2})\s+(\w+)/;
+                const tarihMatch = key.match(tarihRegex);
+                
+                if (tarihMatch) {
+                    const baslangicGun = parseInt(tarihMatch[1]);
+                    const ay = tarihMatch[3]; // "AĞUSTOS"
+                    const yil = new Date().getFullYear();
+                    
+                    // Ay adını sayıya çevir
+                    const aylar = {
+                        'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
+                        'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                    };
+                    
+                    if (aylar[ay] !== undefined) {
+                        haftaBaslangici = new Date(yil, aylar[ay], baslangicGun);
+                        console.log('🔍 PDF anahtarından hesaplanan başlangıç:', haftaBaslangici.toLocaleDateString('tr-TR'));
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Eğer PDF anahtarında bulunamadıysa, hasta verilerinden al
+        if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+            const hastaBaslangic = new Date(haftalar[4].baslangic);
+            console.log('🔍 Hasta verilerinden başlangıç:', hastaBaslangic.toLocaleDateString('tr-TR'));
+            // Sadece PDF anahtarından bulunamazsa hasta verisini kullan
+            if (haftaBaslangici.getTime() === new Date().setHours(0,0,0,0)) {
+                haftaBaslangici = hastaBaslangic;
+            }
         }
 
         // DEBUG: Hafta verilerini kontrol et
@@ -7247,10 +7286,10 @@ function duzenleHafta(i) {
         console.log('🔍 Toplam hafta sayısı:', haftalar.length);
         console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
-        console.log('🔍 5. hafta başlangıç parsed:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 5. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
 
         // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
-        console.log('🔍 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
         
         // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
@@ -7311,7 +7350,7 @@ function duzenleHafta(i) {
         // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
@@ -7514,14 +7553,50 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // 9. hafta başlangıç tarihini bul
-        let baslangicTarihi = new Date();
-        if (haftalar.length >= 9 && haftalar[8].baslangic) {
-          baslangicTarihi = new Date(haftalar[8].baslangic);
-        } else if (haftalar.length >= 5 && haftalar[4].baslangic) {
-          // 5. haftadan 4 hafta sonra
-          const besinciHafta = new Date(haftalar[4].baslangic);
-          baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+        // Tab tarih aralığından başlangıç tarihini çıkar
+        // Menü PDF başlığını kullan: "HASTA ADI 11-17 AĞUSTOS 9. HAFTA"
+        const menuPdfler = window.menuPdfler || {};
+        const hastaAdi = hasta.isim.toUpperCase();
+        let haftaBaslangici = new Date();
+        
+        // Hasta için PDF bilgilerini ara - 9. hafta
+        for (const [key, value] of Object.entries(menuPdfler)) {
+            if (key.includes(hastaAdi) && key.includes('9. HAFTA')) {
+                console.log('🔍 Bulunan PDF anahtarı:', key);
+                
+                // Tarih aralığını parse et (örn: "11-17 AĞUSTOS")
+                const tarihRegex = /(\d{1,2})-(\d{1,2})\s+(\w+)/;
+                const tarihMatch = key.match(tarihRegex);
+                
+                if (tarihMatch) {
+                    const baslangicGun = parseInt(tarihMatch[1]);
+                    const ay = tarihMatch[3]; // "AĞUSTOS"
+                    const yil = new Date().getFullYear();
+                    
+                    // Ay adını sayıya çevir
+                    const aylar = {
+                        'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
+                        'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
+                    };
+                    
+                    if (aylar[ay] !== undefined) {
+                        haftaBaslangici = new Date(yil, aylar[ay], baslangicGun);
+                        console.log('🔍 PDF anahtarından hesaplanan başlangıç:', haftaBaslangici.toLocaleDateString('tr-TR'));
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 9. hafta başlangıç tarihini bul - eğer PDF anahtarında bulunamadıysa
+        if (haftaBaslangici.getTime() === new Date().setHours(0,0,0,0)) {
+            if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+                haftaBaslangici = new Date(haftalar[8].baslangic);
+            } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+                // 5. haftadan 4 hafta sonra
+                const besinciHafta = new Date(haftalar[4].baslangic);
+                haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+            }
         }
 
         // DEBUG: Hafta verilerini kontrol et
@@ -7535,10 +7610,10 @@ function duzenleHafta(i) {
           console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
           console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
         }
-        console.log('🔍 9. hafta başlangıç parsed:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 9. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
 
         // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
-        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
         
         // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
@@ -7607,7 +7682,7 @@ function duzenleHafta(i) {
           // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
           // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
           const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
