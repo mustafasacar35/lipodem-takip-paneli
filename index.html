@@ -12406,18 +12406,21 @@ ${mesajlar.join('\n')}
               for (const kart of enBuyukHafta.tarifKartlar) {
                 try {
                   console.log(`🔍 ${hasta.isim} - Kart objesi:`, kart);
-                  if (!kart.data) {
-                    console.warn(`⚠️ ${hasta.isim} - Kart.data bulunamadı:`, kart);
+                  // Doğru özellik adını kullan: kartData
+                  const kartUrl = kart.kartData || kart.data;
+                  if (!kartUrl) {
+                    console.warn(`⚠️ ${hasta.isim} - Kart URL'si bulunamadı:`, kart);
                     continue;
                   }
-                  const response = await fetch(kart.data);
+                  const response = await fetch(kartUrl);
                   if (response.ok) {
                     const blob = await response.blob();
-                    anaZip.file(`${hastaKlasorAdi}/TARIF_KARTI_${kart.name}`, blob);
-                    console.log(`✅ ${hasta.isim} - Tarif kartı eklendi:`, kart.name);
+                    const fileName = kartUrl.split('/').pop() || `tarif_${kart.tarifAdi || 'kart'}.jpg`;
+                    anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                    console.log(`✅ ${hasta.isim} - Tarif kartı eklendi:`, fileName);
                   }
                 } catch (error) {
-                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, kart.name, error);
+                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
                 }
               }
             }
@@ -12427,18 +12430,21 @@ ${mesajlar.join('\n')}
               console.log(`🔍 ${hasta.isim} - Manuel kartlar:`, enBuyukHafta.manuelKartlar);
               for (const kart of enBuyukHafta.manuelKartlar) {
                 try {
-                  if (!kart.data) {
-                    console.warn(`⚠️ ${hasta.isim} - Manuel kart.data bulunamadı:`, kart);
+                  // Doğru özellik adını kullan: kartData
+                  const kartUrl = kart.kartData || kart.data;
+                  if (!kartUrl) {
+                    console.warn(`⚠️ ${hasta.isim} - Manuel kart URL'si bulunamadı:`, kart);
                     continue;
                   }
-                  const response = await fetch(kart.data);
+                  const response = await fetch(kartUrl);
                   if (response.ok) {
                     const blob = await response.blob();
-                    anaZip.file(`${hastaKlasorAdi}/MANUEL_TARIF_${kart.name}`, blob);
-                    console.log(`✅ ${hasta.isim} - Manuel kart eklendi:`, kart.name);
+                    const fileName = kartUrl.split('/').pop() || `manuel_${kart.tarifAdi || 'kart'}.jpg`;
+                    anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                    console.log(`✅ ${hasta.isim} - Manuel kart eklendi:`, fileName);
                   }
                 } catch (error) {
-                  console.warn(`❌ ${hasta.isim} - Manuel kart eklenemedi:`, kart.name, error);
+                  console.warn(`❌ ${hasta.isim} - Manuel kart eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
                 }
               }
             }
@@ -12450,18 +12456,21 @@ ${mesajlar.join('\n')}
                 if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
                   for (const kart of veri.tarifKartlar) {
                     try {
-                      if (!kart.data) {
-                        console.warn(`⚠️ ${hasta.isim} - Çoklu PDF kart.data bulunamadı:`, kart);
+                      // Doğru özellik adını kullan: kartData
+                      const kartUrl = kart.kartData || kart.data;
+                      if (!kartUrl) {
+                        console.warn(`⚠️ ${hasta.isim} - Çoklu PDF kart URL'si bulunamadı:`, kart);
                         continue;
                       }
-                      const response = await fetch(kart.data);
+                      const response = await fetch(kartUrl);
                       if (response.ok) {
                         const blob = await response.blob();
-                        anaZip.file(`${hastaKlasorAdi}/COKLU_PDF_${kart.name}`, blob);
-                        console.log(`✅ ${hasta.isim} - Çoklu PDF kartı eklendi:`, kart.name);
+                        const fileName = kartUrl.split('/').pop() || `coklu_${kart.tarifAdi || 'kart'}.jpg`;
+                        anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                        console.log(`✅ ${hasta.isim} - Çoklu PDF kartı eklendi:`, fileName);
                       }
                     } catch (error) {
-                      console.warn(`❌ ${hasta.isim} - Çoklu PDF kartı eklenemedi:`, kart.name, error);
+                      console.warn(`❌ ${hasta.isim} - Çoklu PDF kartı eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
                     }
                   }
                 }
