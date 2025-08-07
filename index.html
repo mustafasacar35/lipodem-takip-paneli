@@ -12380,9 +12380,9 @@ ${mesajlar.join('\n')}
             });
             
             // Sadece en büyük hafta için menü PDF'sini ekle
-            if (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim)) {
+            if (enBuyukHafta.githubUrl || enBuyukHafta.indirmeUrl || (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim))) {
               try {
-                const pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
+                let pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
                 
                 console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
                 
@@ -12393,11 +12393,19 @@ ${mesajlar.join('\n')}
                   pdfUrl = enBuyukHafta.githubUrl
                     .replace('github.com', 'raw.githubusercontent.com')
                     .replace('/blob/', '/');
+                  // PDF dosya adını URL'den çıkar
+                  if (!pdfFileName) {
+                    pdfFileName = decodeURIComponent(pdfUrl.split('/').pop());
+                  }
                 } else if (enBuyukHafta.indirmeUrl) {
                   // indirmeUrl varsa raw formatına çevir
                   pdfUrl = enBuyukHafta.indirmeUrl
                     .replace('github.com', 'raw.githubusercontent.com')
                     .replace('/blob/', '/');
+                  // PDF dosya adını URL'den çıkar
+                  if (!pdfFileName) {
+                    pdfFileName = decodeURIComponent(pdfUrl.split('/').pop());
+                  }
                 } else {
                   // Standart raw format ile dene
                   const encodedFileName = encodeURIComponent(pdfFileName);
@@ -12419,7 +12427,7 @@ ${mesajlar.join('\n')}
                 console.warn(`❌ ${hasta.isim} - Menü PDF eklenemedi:`, error);
               }
             } else {
-              console.log(`ℹ️ ${hasta.isim} - En büyük hafta için PDF verisi yok`);
+              console.log(`ℹ️ ${hasta.isim} - En büyük hafta için PDF verisi yok (githubUrl: ${!!enBuyukHafta.githubUrl}, indirmeUrl: ${!!enBuyukHafta.indirmeUrl}, pdf: ${!!enBuyukHafta.pdf}, pdfName: ${!!enBuyukHafta.pdfName})`);
             }
             
             // Tarif kartlarını ekle
