@@ -1579,6 +1579,8 @@
     // Hasta verisini GitHub'dan al
     async function getHastaData(hastaId, githubRepo = null, githubToken = null) {
       try {
+        console.log('🔍 getHastaData çağrıldı:', { hastaId, githubRepo, githubToken: !!githubToken });
+        
         // GitHub ayarlarını al - önce parametre, sonra global, sonra input'tan
         const repo = githubRepo || 
                      (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null) || 
@@ -1588,6 +1590,8 @@
         const token = githubToken || 
                       (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : null) || 
                       (document.getElementById('githubToken') ? document.getElementById('githubToken').value.trim() : null);
+        
+        console.log('🔍 Çözümlenen değerler:', { repo, token: !!token });
         
         if (!token) {
           throw new Error('GitHub token bulunamadı');
@@ -10643,12 +10647,20 @@ function duzenleHafta(i) {
           return;
         }
         
+        // LocalStorage'dan hasta verilerini al
+        const STORAGE_KEY = 'lipedem_hasta_kayitlari';
+        const localStorageData = localStorage.getItem(STORAGE_KEY);
+        const localHastalar = localStorageData ? JSON.parse(localStorageData) : [];
+        
+        console.log(`💾 LocalStorage'da ${localHastalar.length} hasta verisi bulundu`);
+        
         // Ana ZIP dosyasını oluştur
         const anaZip = new JSZip();
         const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '_');
         
         // Progress indicator
         let islemSayisi = 0;
+        let basariliIslem = 0;
         const toplamIslem = aktifHastalar.length;
         
         console.log(`🔄 ${toplamIslem} hasta için veri toplanıyor...`);
@@ -10659,20 +10671,15 @@ function duzenleHafta(i) {
             islemSayisi++;
             console.log(`📂 ${islemSayisi}/${toplamIslem} - ${hasta.isim} verisi toplanıyor...`);
             
-            // Bu hastanın verilerini yükle
-            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN);
-            if (!hastaData || !hastaData.haftalar) {
-              console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
+            // Bu hastanın LocalStorage verisini bul
+            const hastaLocalData = localHastalar.find(h => h.id === hasta.id || h.isim === hasta.isim);
+            
+            if (!hastaLocalData || !hastaLocalData.haftalar || hastaLocalData.haftalar.length === 0) {
+              console.warn(`⚠️ ${hasta.isim} için LocalStorage'da veri bulunamadı`);
               continue;
             }
             
-            // Hastanın son haftasını bul
-            const haftalar = hastaData.haftalar || [];
-            if (haftalar.length === 0) {
-              console.warn(`⚠️ ${hasta.isim} için hafta kaydı bulunamadı`);
-              continue;
-            }
-            
+            const haftalar = hastaLocalData.haftalar;
             const sonHafta = haftalar[haftalar.length - 1];
             const haftaNo = haftalar.length;
             
@@ -10737,7 +10744,7 @@ function duzenleHafta(i) {
                 console.log(`🏥 ${hasta.isim} - ${haftaNo}. hafta masaj PDF'si oluşturuluyor...`);
                 
                 // Masaj PDF'sini oluştur ve zip'e ekle
-                const masajPdfBlob = await createLenfMasajPDFBlob(hastaData, haftalar);
+                const masajPdfBlob = await createLenfMasajPDFBlob(hastaLocalData, haftalar);
                 if (masajPdfBlob) {
                   anaZip.file(`${hastaKlasorAdi}/MASAJ_PLANI_${haftaNo}_HAFTA.pdf`, masajPdfBlob);
                   console.log(`✅ ${hasta.isim} - Masaj planı PDF'si eklendi`);
@@ -10751,6 +10758,7 @@ function duzenleHafta(i) {
             const ozetBilgi = `HASTA: ${hasta.isim}\nHAFTA: ${haftaNo}\nTARİH: ${sonHafta.baslangic} - ${sonHafta.bitis}\n\nAÇIKLAMA:\n${sonHafta.aciklama || 'Açıklama yok'}\n\nTARİFLER:\n${sonHafta.tarifler || 'Tarif bilgisi yok'}`;
             anaZip.file(`${hastaKlasorAdi}/HASTA_OZETI.txt`, ozetBilgi);
             
+            basariliIslem++;
             console.log(`✅ ${hasta.isim} - Klasör hazırlandı`);
             
           } catch (error) {
@@ -10758,7 +10766,7 @@ function duzenleHafta(i) {
           }
         }
         
-        console.log('📦 ZIP dosyası oluşturuluyor...');
+        console.log(`📦 ZIP dosyası oluşturuluyor... (${basariliIslem}/${toplamIslem} hasta başarılı)`);
         
         // ZIP dosyasını oluştur ve indir
         anaZip.generateAsync({type: 'blob'}).then(function(content) {
@@ -10774,7 +10782,7 @@ function duzenleHafta(i) {
           URL.revokeObjectURL(url);
           
           console.log(`✅ TOPLU ZIP İNDİRME tamamlandı: ${zipAdi}`);
-          alert(`${aktifHastalar.length} hastanın verileri başarıyla indirildi!\\n\\nDosya: ${zipAdi}`);
+          alert(`${basariliIslem}/${aktifHastalar.length} hastanın verileri başarıyla indirildi!\\n\\nDosya: ${zipAdi}`);
           
         }).catch(function(error) {
           console.error('❌ ZIP oluşturma hatası:', error);
