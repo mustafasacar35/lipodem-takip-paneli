@@ -5281,11 +5281,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                       break;
                     }
                   } else if (response.status === 404) {
-                    // Hasta dosyası bulunamadı, diğer dosya adlarını dene
+                    // 404 hatası beklenen bir durum - dosya henüz oluşturulmamış olabilir
+                    console.log(`📝 GitHub'da ${dosyaAdi} dosyası bulunamadı (404) - localStorage verisi kullanılacak`);
                     continue;
+                  } else {
+                    console.warn(`⚠️ GitHub API hatası (${response.status}): ${dosyaAdi}`);
                   }
                 } catch (e) {
-                  // Sessizce geç
+                  // Network veya diğer hatalar için sessiz geçiş
+                  console.log(`📝 GitHub bağlantısı sırasında hata: ${dosyaAdi} - localStorage verisi kullanılacak`);
                 }
               }
             } catch (e) {
@@ -5468,9 +5472,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               bulunanDosya = dosyaAdi;
               console.log(`✅ Dosya bulundu: ${dosyaAdi}`);
               break;
+            } else if (response.status === 404) {
+              console.log(`📝 Dosya bulunamadı (404): ${dosyaAdi}`);
+            } else {
+              console.warn(`⚠️ GitHub API hatası (${response.status}): ${dosyaAdi}`);
             }
           } catch (e) {
-            console.log(`❌ Dosya bulunamadı: ${dosyaAdi}`);
+            console.log(`📝 Bağlantı hatası: ${dosyaAdi} - ${e.message}`);
           }
         }
         
