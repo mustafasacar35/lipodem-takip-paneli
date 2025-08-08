@@ -7236,49 +7236,16 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // Tab tarih aralığından başlangıç tarihini çıkar
-        // Menü PDF başlığını kullan: "ALEV KAYA 11-17 AĞUSTOS 5. HAFTA"
-        const menuPdfler = window.menuPdfler || {};
-        const hastaAdi = hasta.isim.toUpperCase();
+        // JSON verisinden doğrudan 5. hafta başlangıç tarihini al
         let haftaBaslangici = new Date();
         
-        // Hasta için PDF bilgilerini ara
-        for (const [key, value] of Object.entries(menuPdfler)) {
-            if (key.includes(hastaAdi) && key.includes('5. HAFTA')) {
-                console.log('🔍 Bulunan PDF anahtarı:', key);
-                
-                // Tarih aralığını parse et (örn: "11-17 AĞUSTOS")
-                const tarihRegex = /(\d{1,2})-(\d{1,2})\s+(\w+)/;
-                const tarihMatch = key.match(tarihRegex);
-                
-                if (tarihMatch) {
-                    const baslangicGun = parseInt(tarihMatch[1]);
-                    const ay = tarihMatch[3]; // "AĞUSTOS"
-                    const yil = new Date().getFullYear();
-                    
-                    // Ay adını sayıya çevir
-                    const aylar = {
-                        'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
-                        'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                    };
-                    
-                    if (aylar[ay] !== undefined) {
-                        haftaBaslangici = new Date(yil, aylar[ay], baslangicGun);
-                        console.log('🔍 PDF anahtarından hesaplanan başlangıç:', haftaBaslangici.toLocaleDateString('tr-TR'));
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Eğer PDF anahtarında bulunamadıysa, hasta verilerinden al
         if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
-            const hastaBaslangic = new Date(haftalar[4].baslangic);
-            console.log('🔍 Hasta verilerinden başlangıç:', hastaBaslangic.toLocaleDateString('tr-TR'));
-            // Sadece PDF anahtarından bulunamazsa hasta verisini kullan
-            if (haftaBaslangici.getTime() === new Date().setHours(0,0,0,0)) {
-                haftaBaslangici = hastaBaslangic;
-            }
+            haftaBaslangici = new Date(haftalar[4].baslangic);
+            console.log('✅ 5. hafta başlangıç tarihi JSON verisinden alındı:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else {
+            console.log('⚠️ 5. hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('🔍 Toplam hafta sayısı:', haftalar.length);
+            console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         }
 
         // DEBUG: Hafta verilerini kontrol et
@@ -7287,81 +7254,6 @@ function duzenleHafta(i) {
         console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
         console.log('🔍 5. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
-
-        // menuPdfler objesinden tarih bilgisini çek
-        let tabBaslangici = haftaBaslangici;
-        if (window.menuPdfler) {
-            console.log('🔍 menuPdfler objesi mevcut, anahtar sayısı:', Object.keys(window.menuPdfler).length);
-            
-            for (const [key, value] of Object.entries(window.menuPdfler)) {
-                if (key.includes(hasta.isim) && (key.includes('5. HAFTA') || key.includes('5.HAFTA'))) {
-                    console.log('🔍 Bulunan PDF anahtarı:', key);
-                    
-                    // Gelişmiş tarih analizi - ay geçişlerini de destekler
-                    // Format örnekleri: "11-17 AĞUSTOS", "28 TEMMUZ - 3 AĞUSTOS"
-                    
-                    // Önce tek ay formatını dene: "11-17 AĞUSTOS"
-                    let tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s*(\w+)/);
-                    if (tarihMatch) {
-                        const gun = parseInt(tarihMatch[1]);
-                        const ayAdi = tarihMatch[3];
-                        console.log('🔍 Tek ay formatı - Gün:', gun, 'Ay:', ayAdi);
-                        
-                        const ayNumarasi = {
-                            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
-                            'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
-                            'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                        }[ayAdi];
-                        
-                        if (ayNumarasi !== undefined) {
-                            tabBaslangici = new Date(2025, ayNumarasi, gun);
-                            console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                        }
-                    } else {
-                        // Ay geçişli formatı dene: "28 TEMMUZ - 3 AĞUSTOS"
-                        tarihMatch = key.match(/(\d{1,2})\s*(\w+)\s*-\s*(\d{1,2})\s*(\w+)/);
-                        if (tarihMatch) {
-                            const baslangicGun = parseInt(tarihMatch[1]);
-                            const baslangicAy = tarihMatch[2];
-                            const bitisGun = parseInt(tarihMatch[3]);
-                            const bitisAy = tarihMatch[4];
-                            
-                            console.log('🔍 Ay geçişli format - Başlangıç:', baslangicGun, baslangicAy, '- Bitiş:', bitisGun, bitisAy);
-                            
-                            const ayNumarasi = {
-                                'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
-                                'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
-                                'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                            };
-                            
-                            const baslangicAyNum = ayNumarasi[baslangicAy];
-                            if (baslangicAyNum !== undefined) {
-                                tabBaslangici = new Date(2025, baslangicAyNum, baslangicGun);
-                                console.log('🔍 Ay geçişli PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            }
-                        } else {
-                            // Özel durumlar için sabit kontroller
-                            if (key.includes('11-17 AĞUSTOS')) {
-                                tabBaslangici = new Date(2025, 7, 11); // 11 Ağustos 2025
-                                console.log('🔍 Sabit değer (11-17 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            } else if (key.includes('28 TEMMUZ - 3 AĞUSTOS')) {
-                                tabBaslangici = new Date(2025, 6, 28); // 28 Temmuz 2025
-                                console.log('🔍 Sabit değer (28 TEMMUZ - 3 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            } else {
-                                console.log('🔍 PDF anahtarında tanınmış tarih formatı bulunamadı:', key);
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        
-        // Tab başlangıç tarihi kullan
-        haftaBaslangici = tabBaslangici;
-        console.log('🔍 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
-        
-        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -7623,50 +7515,21 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // Tab tarih aralığından başlangıç tarihini çıkar
-        // Menü PDF başlığını kullan: "HASTA ADI 11-17 AĞUSTOS 9. HAFTA"
-        const menuPdfler = window.menuPdfler || {};
-        const hastaAdi = hasta.isim.toUpperCase();
+        // JSON verisinden doğrudan 9. hafta başlangıç tarihini al
         let haftaBaslangici = new Date();
         
-        // Hasta için PDF bilgilerini ara - 9. hafta
-        for (const [key, value] of Object.entries(menuPdfler)) {
-            if (key.includes(hastaAdi) && key.includes('9. HAFTA')) {
-                console.log('🔍 Bulunan PDF anahtarı:', key);
-                
-                // Tarih aralığını parse et (örn: "11-17 AĞUSTOS")
-                const tarihRegex = /(\d{1,2})-(\d{1,2})\s+(\w+)/;
-                const tarihMatch = key.match(tarihRegex);
-                
-                if (tarihMatch) {
-                    const baslangicGun = parseInt(tarihMatch[1]);
-                    const ay = tarihMatch[3]; // "AĞUSTOS"
-                    const yil = new Date().getFullYear();
-                    
-                    // Ay adını sayıya çevir
-                    const aylar = {
-                        'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3, 'MAYIS': 4, 'HAZİRAN': 5,
-                        'TEMMUZ': 6, 'AĞUSTOS': 7, 'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                    };
-                    
-                    if (aylar[ay] !== undefined) {
-                        haftaBaslangici = new Date(yil, aylar[ay], baslangicGun);
-                        console.log('🔍 PDF anahtarından hesaplanan başlangıç:', haftaBaslangici.toLocaleDateString('tr-TR'));
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // 9. hafta başlangıç tarihini bul - eğer PDF anahtarında bulunamadıysa
-        if (haftaBaslangici.getTime() === new Date().setHours(0,0,0,0)) {
-            if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
-                haftaBaslangici = new Date(haftalar[8].baslangic);
-            } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
-                // 5. haftadan 4 hafta sonra
-                const besinciHafta = new Date(haftalar[4].baslangic);
-                haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
-            }
+        if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+            // 9. hafta verisi mevcut
+            haftaBaslangici = new Date(haftalar[8].baslangic);
+            console.log('✅ 9. hafta başlangıç tarihi JSON verisinden alındı:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+            // 5. haftadan 4 hafta sonrasını hesapla
+            const besinciHafta = new Date(haftalar[4].baslangic);
+            haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+            console.log('✅ 9. hafta başlangıç tarihi 5. haftadan hesaplandı:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else {
+            console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('🔍 Toplam hafta sayısı:', haftalar.length);
         }
 
         // DEBUG: Hafta verilerini kontrol et
@@ -7681,84 +7544,6 @@ function duzenleHafta(i) {
           console.log('🔍 5. hafta başlangıç raw:', haftalar[4]?.baslangic);
         }
         console.log('🔍 9. hafta başlangıç parsed:', haftaBaslangici.toLocaleDateString('tr-TR'));
-
-        // menuPdfler objesinden tarih bilgisini çek
-        let tabBaslangici = haftaBaslangici;
-        if (window.menuPdfler) {
-            console.log('🔍 menuPdfler objesi mevcut, anahtar sayısı:', Object.keys(window.menuPdfler).length);
-            
-            for (const [key, value] of Object.entries(window.menuPdfler)) {
-                if (key.includes(hasta.isim) && (key.includes('9. HAFTA') || key.includes('9.HAFTA'))) {
-                    console.log('🔍 Bulunan PDF anahtarı:', key);
-                    
-                    // Gelişmiş tarih analizi - ay geçişlerini de destekler
-                    // Format örnekleri: "11-17 AĞUSTOS", "28 TEMMUZ - 3 AĞUSTOS"
-                    
-                    // Önce tek ay formatını dene: "11-17 AĞUSTOS"
-                    let tarihMatch = key.match(/(\d{1,2})-(\d{1,2})\s*(\w+)/);
-                    if (tarihMatch) {
-                        const gun = parseInt(tarihMatch[1]);
-                        const ayAdi = tarihMatch[3];
-                        console.log('🔍 Tek ay formatı - Gün:', gun, 'Ay:', ayAdi);
-                        
-                        const ayNumarasi = {
-                            'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
-                            'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
-                            'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                        }[ayAdi];
-                        
-                        if (ayNumarasi !== undefined) {
-                            tabBaslangici = new Date(2025, ayNumarasi, gun);
-                            console.log('🔍 PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                        }
-                    } else {
-                        // Ay geçişli formatı dene: "28 TEMMUZ - 3 AĞUSTOS"
-                        tarihMatch = key.match(/(\d{1,2})\s*(\w+)\s*-\s*(\d{1,2})\s*(\w+)/);
-                        if (tarihMatch) {
-                            const baslangicGun = parseInt(tarihMatch[1]);
-                            const baslangicAy = tarihMatch[2];
-                            const bitisGun = parseInt(tarihMatch[3]);
-                            const bitisAy = tarihMatch[4];
-                            
-                            console.log('🔍 Ay geçişli format - Başlangıç:', baslangicGun, baslangicAy, '- Bitiş:', bitisGun, bitisAy);
-                            
-                            const ayNumarasi = {
-                                'OCAK': 0, 'ŞUBAT': 1, 'MART': 2, 'NİSAN': 3,
-                                'MAYIS': 4, 'HAZİRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7,
-                                'EYLÜL': 8, 'EKİM': 9, 'KASIM': 10, 'ARALIK': 11
-                            };
-                            
-                            const baslangicAyNum = ayNumarasi[baslangicAy];
-                            if (baslangicAyNum !== undefined) {
-                                tabBaslangici = new Date(2025, baslangicAyNum, baslangicGun);
-                                console.log('🔍 Ay geçişli PDF anahtarından hesaplanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            }
-                        } else {
-                            // Özel durumlar için sabit kontroller
-                            if (key.includes('11-17 AĞUSTOS')) {
-                                tabBaslangici = new Date(2025, 7, 11); // 11 Ağustos 2025
-                                console.log('🔍 Sabit değer (11-17 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            } else if (key.includes('28 TEMMUZ - 3 AĞUSTOS')) {
-                                tabBaslangici = new Date(2025, 6, 28); // 28 Temmuz 2025
-                                console.log('🔍 Sabit değer (28 TEMMUZ - 3 AĞUSTOS) olarak ayarlanan başlangıç:', tabBaslangici.toLocaleDateString('tr-TR'));
-                            } else {
-                                console.log('🔍 PDF anahtarında tanınmış tarih formatı bulunamadı:', key);
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        
-        // Tab başlangıç tarihi kullan
-        haftaBaslangici = tabBaslangici;
-        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
-
-        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
-        console.log('🔍 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', haftaBaslangici.toLocaleDateString('tr-TR'));
-        
-        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
