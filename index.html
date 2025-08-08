@@ -7050,6 +7050,7 @@ function duzenleHafta(i) {
         console.log('🔍 Seçili hasta:', seciliHasta.id);
 
         const haftalar = getHaftaListesi();
+        console.log('🔍 ZIP: getHaftaListesi() döndürdü:', JSON.stringify(haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })), null, 2));
         if (!haftalar[haftaIndex]) {
           alert('Hafta bulunamadı!');
           return;
@@ -7543,6 +7544,7 @@ function duzenleHafta(i) {
     async function createAndAddEgzersizPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
         console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...', { hasta: hasta.isim });
+        console.log('🔍 EGZERSIZ PDF DEBUG: Gelen haftalar verisi:', JSON.stringify(haftalar.slice(0, 10).map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })), null, 2));
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7556,10 +7558,15 @@ function duzenleHafta(i) {
         let haftaBaslangici = new Date();
         let dokuzuncuHafta = null;
         
+        console.log('🔍 EGZERSIZ PDF: Toplam hafta sayısı:', haftalar.length);
+        console.log('🔍 EGZERSIZ PDF: Hafta numaraları:', haftalar.map(h => ({ index: haftalar.indexOf(h), haftaNo: h.haftaNo, baslangic: h.baslangic })));
+        
         // 9. hafta verisi için hafta numarasına göre ara
         for (let i = 0; i < haftalar.length; i++) {
+            console.log(`🔍 EGZERSIZ PDF: Hafta ${i} kontrolü - haftaNo: ${haftalar[i].haftaNo}, aranan: 9`);
             if (haftalar[i].haftaNo === 9) {
                 dokuzuncuHafta = haftalar[i];
+                console.log('🎯 EGZERSIZ PDF: 9. hafta BULUNDU!', dokuzuncuHafta);
                 break;
             }
         }
