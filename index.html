@@ -8910,26 +8910,32 @@ function duzenleHafta(i) {
         
         console.log('🔍 Hafta verilerini belirleniyor...');
         // Başlangıç haftasını belirle
-        let baslangicHaftaIndex;
         let baslangicHafta;
         
         if (dokuzuncuHaftaOzelModu) {
-          // 9. hafta özel modu: 4 hafta geriden başla (5. haftadan başla)
-          baslangicHaftaIndex = 4; // 5. hafta = index 4
-          console.log('🎯 9. hafta özel modu: 5. haftadan başlayacak (4 hafta geri)');
+          // 9. hafta özel modu: 9. haftayı bul
+          console.log('🎯 9. hafta özel modu: 9. hafta aranıyor...');
+          baslangicHafta = haftalar.find(h => h.haftaNo === 9);
+          if (!baslangicHafta) {
+            console.log('⚠️ 9. hafta bulunamadı, mevcut en büyük hafta kullanılacak');
+            baslangicHafta = haftalar[haftalar.length - 1];
+          } else {
+            console.log('✅ 9. hafta bulundu:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
+          }
+        } else if (belirliHaftaNo) {
+          // Belirli hafta numarası ile arama yap
+          console.log('🔍 Belirli hafta aranıyor, haftaNo:', belirliHaftaNo);
+          baslangicHafta = haftalar.find(h => h.haftaNo === belirliHaftaNo);
+          if (!baslangicHafta) {
+            console.log('⚠️ Belirtilen hafta bulunamadı, mevcut en büyük hafta kullanılacak');
+            baslangicHafta = haftalar[haftalar.length - 1];
+          } else {
+            console.log('✅ Belirtilen hafta bulundu:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
+          }
         } else {
-          // Normal mod
-          baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
-        }
-        
-        if (baslangicHaftaIndex < haftalar.length) {
-          // Belirtilen hafta mevcut
-          baslangicHafta = haftalar[baslangicHaftaIndex];
-          console.log('✅ Belirtilen hafta bulundu:', baslangicHafta);
-        } else {
-          // Belirtilen hafta yok, mevcut ilk haftayı kullan
-          baslangicHafta = haftalar[0];
-          console.log('⚠️ Belirtilen hafta yok, ilk hafta kullanılıyor:', baslangicHafta);
+          // Varsayılan: mevcut son haftayı kullan
+          baslangicHafta = haftalar[haftalar.length - 1];
+          console.log('🔄 Varsayılan hafta kullanılıyor:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
         }
         
         console.log('🔍 Başlangıç tarihi hesaplanıyor...');
@@ -8942,26 +8948,38 @@ function duzenleHafta(i) {
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
-        const haftaSayisi = dokuzuncuHaftaOzelModu ? 8 : 8; // 9. hafta özel modunda 8 hafta (5-12), normal modda 8 hafta
+        const haftaSayisi = dokuzuncuHaftaOzelModu ? 8 : 8; // Her durumda 8 hafta
+        
+        console.log('🔍 PDF oluşturma parametreleri:', {
+          dokuzuncuHaftaOzelModu,
+          belirliHaftaNo,
+          haftaSayisi,
+          baslangicHaftaNo: baslangicHafta.haftaNo,
+          baslangicTarihi: baslangicHafta.baslangic
+        });
+        
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < haftaSayisi; lenfHaftaIndex++) {
-          // 9. hafta özel modunda 5. haftadan başla (5,6,7,8,9,10,11,12), normal modda belirtilen haftadan
-          const gercekHaftaNo = dokuzuncuHaftaOzelModu ? (lenfHaftaIndex + 5) : (lenfHaftaIndex + (belirliHaftaNo || 5));
-          
-          // Tarih hesaplaması düzeltildi
+          // Hafta numarası hesapla
+          let gercekHaftaNo;
           let haftaBaslangic;
+          
           if (dokuzuncuHaftaOzelModu) {
-            // 9. hafta özel modu: 5. haftadan başlayarak 8 hafta göster
-            // baslangicTarihi = 9. hafta başlangıç tarihi
-            // 5. hafta = 9. haftadan 4 hafta önce
-            // 6. hafta = 9. haftadan 3 hafta önce
-            // ...
-            // 9. hafta = 9. haftadan 0 hafta önce
-            // 10. hafta = 9. haftadan 1 hafta sonra
-            const haftaFarki = (lenfHaftaIndex + 5) - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+            // 9. hafta özel modu: 5-12. haftalar (8 hafta)
+            gercekHaftaNo = lenfHaftaIndex + 5; // 5, 6, 7, 8, 9, 10, 11, 12
+            
+            // 9. haftayı referans alarak diğer hafta tarihlerini hesapla
+            const haftaFarki = gercekHaftaNo - baslangicHafta.haftaNo; // 5.hafta=-4, 6.hafta=-3, ..., 9.hafta=0, 10.hafta=+1
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+            
+            console.log(`🔍 9. hafta modu - ${gercekHaftaNo}. hafta: farki=${haftaFarki}, tarih=${haftaBaslangic.toLocaleDateString('tr-TR')}`);
           } else {
-            // Normal mod: başlangıç tarihinden itibaren hafta hafta ilerle
+            // Normal mod: belirtilen haftadan başlayarak 8 hafta
+            gercekHaftaNo = lenfHaftaIndex + baslangicHafta.haftaNo;
+            
+            // Başlangıç haftasından itibaren hafta hafta ilerle  
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+            
+            console.log(`🔍 Normal mod - ${gercekHaftaNo}. hafta: index=${lenfHaftaIndex}, tarih=${haftaBaslangic.toLocaleDateString('tr-TR')}`);
           }
           
           // Hafta başlığı
