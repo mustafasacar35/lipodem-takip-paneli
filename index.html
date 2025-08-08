@@ -1094,6 +1094,130 @@
       return duzeltmeSayisi;
     }
 
+    // 🤖 OTOMATİK HAFTA TARİH DÜZELTME SİSTEMİ
+    function otomatikHaftaTarihDuzeltmeSistemi() {
+      console.log('🤖 Otomatik hafta tarih düzeltme sistemi başlatılıyor...');
+      
+      // Hafta bazında doğru tarih kalıplarını tanımla
+      const haftaTarihKaliplari = {
+        1: { gun: 1, offset: 0 },   // 1. hafta: Pazartesi'den başlar
+        2: { gun: 1, offset: 7 },   // 2. hafta: 1. haftadan 7 gün sonra
+        3: { gun: 1, offset: 14 },  // 3. hafta: 1. haftadan 14 gün sonra
+        4: { gun: 1, offset: 21 },  // 4. hafta: 1. haftadan 21 gün sonra
+        5: { gun: 1, offset: 28 },  // 5. hafta: 1. haftadan 28 gün sonra
+        6: { gun: 1, offset: 35 },  // 6. hafta: 1. haftadan 35 gün sonra
+        7: { gun: 1, offset: 42 },  // 7. hafta: 1. haftadan 42 gün sonra
+        8: { gun: 1, offset: 49 },  // 8. hafta: 1. haftadan 49 gün sonra
+        9: { gun: 1, offset: 56 },  // 9. hafta: 1. haftadan 56 gün sonra
+        10: { gun: 1, offset: 63 }, // 10. hafta: 1. haftadan 63 gün sonra
+        11: { gun: 1, offset: 70 }, // 11. hafta: 1. haftadan 70 gün sonra
+        12: { gun: 1, offset: 77 }  // 12. hafta: 1. haftadan 77 gün sonra
+      };
+      
+      let toplamDuzeltme = 0;
+      let hataliHastalar = [];
+      
+      // Tüm aktif hastaları kontrol et
+      hastalar.forEach(hasta => {
+        if (!hasta.arsiv && hasta.haftalar) {
+          
+          let hastaDuzeltmeSayisi = 0;
+          let referansTarih = null;
+          
+          // Önce 1. haftayı referans olarak bul
+          const birincihafta = hasta.haftalar.find(h => h.haftaNo === 1);
+          if (birincihafta && birincihafta.baslangic) {
+            referansTarih = new Date(birincihafta.baslangic);
+            console.log(`📅 ${hasta.isim || hasta.ad} için referans tarih: ${birincihafta.baslangic}`);
+          }
+          
+          // Eğer 1. hafta yoksa, mevcut haftalardan referans hesapla
+          if (!referansTarih) {
+            // En düşük hafta numarasını bul ve o haftadan referans hesapla
+            const enDusukHafta = hasta.haftalar.reduce((min, hafta) => 
+              hafta.haftaNo < min.haftaNo ? hafta : min
+            );
+            
+            if (enDusukHafta && enDusukHafta.baslangic) {
+              const haftaTarih = new Date(enDusukHafta.baslangic);
+              const geriGunSayisi = (enDusukHafta.haftaNo - 1) * 7;
+              referansTarih = new Date(haftaTarih.getTime() - (geriGunSayisi * 24 * 60 * 60 * 1000));
+              console.log(`📅 ${hasta.isim || hasta.ad} için ${enDusukHafta.haftaNo}. haftadan hesaplanan referans: ${referansTarih.toISOString().split('T')[0]}`);
+            }
+          }
+          
+          // Referans tarih bulunduysa, tüm haftalardaki hataları düzelt
+          if (referansTarih) {
+            hasta.haftalar.forEach(hafta => {
+              const kalip = haftaTarihKaliplari[hafta.haftaNo];
+              if (kalip) {
+                // Doğru başlangıç tarihini hesapla
+                const dogrusBaslangic = new Date(referansTarih.getTime() + (kalip.offset * 24 * 60 * 60 * 1000));
+                const dogrusBitis = new Date(dogrusBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)); // 6 gün sonra
+                
+                const dogrusBaslangicStr = dogrusBaslangic.toISOString().split('T')[0];
+                const dogrusBitisStr = dogrusBitis.toISOString().split('T')[0];
+                
+                // Mevcut tarihlerle karşılaştır
+                const mevcutBaslangic = hafta.baslangic;
+                const mevcutBitis = hafta.bitis;
+                
+                if (mevcutBaslangic !== dogrusBaslangicStr || mevcutBitis !== dogrusBitisStr) {
+                  console.log(`🔧 ${hasta.isim || hasta.ad} - ${hafta.haftaNo}. hafta düzeltiliyor:`);
+                  console.log(`   Eski: ${mevcutBaslangic} - ${mevcutBitis}`);
+                  console.log(`   Yeni: ${dogrusBaslangicStr} - ${dogrusBitisStr}`);
+                  
+                  hafta.baslangic = dogrusBaslangicStr;
+                  hafta.bitis = dogrusBitisStr;
+                  
+                  hastaDuzeltmeSayisi++;
+                  toplamDuzeltme++;
+                }
+              }
+            });
+          } else {
+            console.log(`⚠️ ${hasta.isim || hasta.ad} için referans tarih bulunamadı`);
+            hataliHastalar.push(hasta.isim || hasta.ad);
+          }
+          
+          if (hastaDuzeltmeSayisi > 0) {
+            console.log(`✅ ${hasta.isim || hasta.ad} için ${hastaDuzeltmeSayisi} hafta düzeltildi`);
+          }
+        }
+      });
+      
+      // Sonuçları göster
+      if (toplamDuzeltme > 0) {
+        saveToStorage();
+        console.log(`✅ Otomatik düzeltme tamamlandı: ${toplamDuzeltme} hafta tarihi düzeltildi`);
+        
+        // Aktif hastanın tablarını yenile
+        if (seciliHasta) {
+          gosterHaftalar();
+        }
+        
+        let mesaj = `🤖 Otomatik Düzeltme Tamamlandı!\n\n`;
+        mesaj += `✅ ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi\n`;
+        
+        if (hataliHastalar.length > 0) {
+          mesaj += `\n⚠️ Referans tarih bulunamayan hastalar:\n${hataliHastalar.join(', ')}`;
+        }
+        
+        alert(mesaj);
+      } else {
+        console.log('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
+        
+        let mesaj = `ℹ️ Düzeltme Gerekmiyor\n\n`;
+        mesaj += `Tüm hafta tarihleri zaten doğru görünüyor.`;
+        
+        if (hataliHastalar.length > 0) {
+          mesaj += `\n\n⚠️ Referans tarih bulunamayan hastalar:\n${hataliHastalar.join(', ')}`;
+        }
+        
+        alert(mesaj);
+      }
+    }
+
     // 🔧 TOPLU HAFTA TARİHİ DÜZELTME FONKSİYONU
     function topluHaftaTarihiDuzelt() {
       console.log('🔧 Toplu hafta tarih düzeltme başlatılıyor...');
@@ -11887,8 +12011,53 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           
           sidebarButtons.appendChild(haftaDuzeltButton);
           console.log('✅ Hafta tarih düzeltme butonu eklendi');
+        }
+        
+        // 🤖 Otomatik hafta tarih düzeltme butonu ekle
+        if (!sidebarButtons.querySelector('.otomatik-duzeltme-button')) {
+          const otomatikDuzeltmeButton = document.createElement('button');
+          otomatikDuzeltmeButton.className = 'otomatik-duzeltme-button';
+          otomatikDuzeltmeButton.innerHTML = '🤖 OTOMATİK DÜZELTME';
+          otomatikDuzeltmeButton.title = 'Tüm hafta tarihlerini otomatik olarak düzelt (akıllı sistem)';
+          otomatikDuzeltmeButton.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          `;
           
-          // 🔍 Debug butonu ekle
+          otomatikDuzeltmeButton.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+            this.style.background = 'linear-gradient(45deg, #218838, #1e7e34)';
+          });
+          
+          otomatikDuzeltmeButton.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            this.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+          });
+          
+          otomatikDuzeltmeButton.onclick = function() {
+            if (confirm('🤖 Otomatik hafta tarih düzeltme sistemi çalıştırılacak.\n\nBu işlem tüm hastaların hafta tarihlerini kontrol edip düzeltecek.\n\nDevam etmek istiyor musunuz?')) {
+              otomatikHaftaTarihDuzeltmeSistemi();
+            }
+          };
+          
+          sidebarButtons.appendChild(otomatikDuzeltmeButton);
+          console.log('✅ Otomatik düzeltme butonu eklendi');
+        }
+        
+        // 🔍 Debug butonu ekle
+        if (!sidebarButtons.querySelector('.debug-button')) {
           const debugButton = document.createElement('button');
           debugButton.className = 'debug-button';
           debugButton.innerHTML = '🔍 HAFTA DEBUG';
@@ -13329,6 +13498,8 @@ ${mesajlar.join('\n')}
     
     // Global erişim için
     window.topluZipIndir = topluZipIndir;
+    window.otomatikHaftaTarihDuzeltmeSistemi = otomatikHaftaTarihDuzeltmeSistemi;
+    window.topluHaftaTarihiDuzelt = topluHaftaTarihiDuzelt;
 
     // �📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
