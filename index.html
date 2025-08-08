@@ -7727,33 +7727,30 @@ function duzenleHafta(i) {
         console.log('🔍 EGZERSIZ PDF: Toplam hafta sayısı:', haftalar.length);
         console.log('🔍 EGZERSIZ PDF: Hafta numaraları:', haftalar.map(h => ({ index: haftalar.indexOf(h), haftaNo: h.haftaNo, baslangic: h.baslangic })));
         
-        // 9. hafta verisi için hafta numarasına göre ara
-        for (let i = 0; i < haftalar.length; i++) {
-            console.log(`🔍 EGZERSIZ PDF: Hafta ${i} kontrolü - haftaNo: ${haftalar[i].haftaNo}, aranan: 9`);
-            if (haftalar[i].haftaNo === 9) {
-                dokuzuncuHafta = haftalar[i];
-                console.log('🎯 EGZERSIZ PDF: 9. hafta BULUNDU!', dokuzuncuHafta);
-                break;
-            }
-        }
+        // 9. hafta verisi için hafta numarasına göre ara (masaj PDF ile aynı mantık)
+        dokuzuncuHafta = haftalar.find(hafta => hafta.haftaNo === 9);
         
         if (dokuzuncuHafta && dokuzuncuHafta.baslangic) {
             console.log('✅ 9. HAFTA BULUNDU - hafta numarası:', dokuzuncuHafta.haftaNo);
             console.log('🔍 9. HAFTA TARİH VERİSİ:', dokuzuncuHafta.baslangic, '→', dokuzuncuHafta.bitis);
             haftaBaslangici = new Date(dokuzuncuHafta.baslangic);
             console.log('✅ 9. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+        } else {
+            console.error('❌ 9. hafta verisi bulunamadı - hasta adı:', hasta.isim);
+            console.log('🔍 Mevcut hafta numaraları:', haftalar.map(h => h.haftaNo || 'tanımsız'));
+            return; // 9. hafta yoksa PDF oluşturma
+        }
             // 9. hafta verisi mevcut
             console.log('� 9. HAFTA RAW VERİ:', haftalar[8].baslangic);
-            haftaBaslangici = new Date(haftalar[8].baslangic);
+            haftaBaslangici = new Date(dokuzuncuHafta.baslangic);
             console.log('🔵 9. HAFTA PARSED:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
-            // 5. haftadan 4 hafta sonrasını hesapla
-            console.log('� 5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
-            const besinciHafta = new Date(haftalar[4].baslangic);
-            haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+        }
+
+        // PDF oluştur� 5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
+
+
             console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else {
+        // } else {
             console.log('❌ 9. hafta verisi bulunamadı, hesaplama yapılacak');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
             console.log('🔍 Hafta numaraları:', haftalar.map(h => h.haftaNo || 'yok'));
