@@ -7254,9 +7254,6 @@ function duzenleHafta(i) {
             console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         }
 
-        // JSON'daki başlangıç tarihini aynen kullan - değiştirme!
-        console.log('🗓️ MASAJ PDF BAŞLANGIÇ TARİHİ (JSON\'dan):', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
-
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
@@ -7416,10 +7413,7 @@ function duzenleHafta(i) {
             
             const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
-            // Gerçek günü tarihten al - JSON'daki başlangıç gününe göre
-            const gercekGunIndex = gunTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-            const gunAdlari = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
-            const gun = turkceKarakterDuzelt(gunAdlari[gercekGunIndex]);
+            const gun = gunler[gunIndex];
             
             // Uygulama kontrolü - lenf masajı versiyonu (tekli tab versiyonuyla aynı mantık)
             let sabahUygulama = '-';
@@ -7544,9 +7538,6 @@ function duzenleHafta(i) {
             console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
         }
-
-        // JSON'daki başlangıç tarihini aynen kullan - değiştirme!
-        console.log('🗓️ EGZERSİZ PDF BAŞLANGIÇ TARİHİ (JSON\'dan):', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -7709,10 +7700,7 @@ function duzenleHafta(i) {
             
             const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
             const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
-            // Gerçek günü tarihten al - JSON'daki başlangıç gününe göre
-            const gercekGunIndex = gunTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-            const gunAdlari = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
-            const gun = turkceKarakterDuzelt(gunAdlari[gercekGunIndex]);
+            const gun = gunler[gunIndex];
             
             // Uygulama kontrolü - egzersiz dahil versiyonu (tekli tab versiyonuyla aynı mantık)
             let sabahUygulama = '-';
