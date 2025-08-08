@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Lipodem Takip Paneli - Ayrı JSON Dosyaları v2.0</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2NmZiIvPgo8cGF0aCBkPSJNMTEgMTBoMTB2MkgxMXptMCA0aDd2MmgtN3ptMCA0aDEwdjJIMTF6IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" />
   
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -1663,7 +1664,7 @@
       // Mevcut eşleşmeyen tarifleri tekrar kontrol et
       const aktifHasta = seciliHasta;
       if (!aktifHasta || !aktifHasta.haftalar) {
-        console.log('🔍 Aktif hasta veya hafta verisi yok');
+        console.log('ℹ️ Yemek analizi için hasta seçilmedi veya hafta verisi yok');
         return;
       }
       
@@ -2191,8 +2192,8 @@
       const token = document.getElementById('githubToken').value.trim();
       
       if (!token) {
-        if (!sessiz) console.log('⚠️ GitHub token yok, hasta verileri yüklenemedi');
-        if (durumElement) durumElement.innerHTML = '❌ GitHub token girilmedi';
+        if (!sessiz) console.log('ℹ️ GitHub token girilmedi, offline modda çalışıyor');
+        if (durumElement) durumElement.innerHTML = 'ℹ️ Offline Mod - GitHub token girilmedi';
         return;
       }
       
@@ -2266,7 +2267,7 @@
       try {
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
-          console.log('⚠️ GitHub token yok, hasta listesi yükleme atlanıyor');
+          console.log('ℹ️ GitHub token yok, offline modda çalışıyor');
           return [];
         }
         
@@ -2323,7 +2324,7 @@
     async function hastaListesiKaydet(hastaListesi) {
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
-        console.warn('⚠️ GitHub token yok, hasta listesi kaydedilemiyor');
+        console.warn('ℹ️ GitHub token yok, offline modda çalışıyor');
         return false;
       }
       
@@ -5279,6 +5280,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                       hastaDetayiBulundu = true;
                       break;
                     }
+                  } else if (response.status === 404) {
+                    // Hasta dosyası bulunamadı, diğer dosya adlarını dene
+                    continue;
                   }
                 } catch (e) {
                   // Sessizce geç
@@ -10987,7 +10991,7 @@ function duzenleHafta(i) {
           });
         }
       } else {
-        console.warn(`⚠️ ${haftaNo}. hafta PDF bilgisi bulunamadı veya GitHub token yok`, {
+        console.warn(`ℹ️ ${haftaNo}. hafta PDF bilgisi bulunamadı`, {
           haftaNo: haftaNo,
           pdfName: hafta.pdfName,
           pdfOrijinalIsim: hafta.pdfOrijinalIsim,
@@ -11529,7 +11533,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Token kontrolü
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
-        console.log('⚠️ GitHub token yok - Boş yeni sistem başlatılıyor');
+        console.log('ℹ️ GitHub token yok - Offline modda başlatılıyor');
         
         // Boş yeni sistem başlat
         hastaListesi = [];
