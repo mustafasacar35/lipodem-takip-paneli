@@ -7249,7 +7249,7 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // JSON verisinden doğrudan 5. hafta başlangıç tarihini al
+        // 5. hafta başlangıç tarihini çalışan fonksiyonla aynı şekilde hesapla
         let haftaBaslangici = new Date();
         
         if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
@@ -7257,9 +7257,13 @@ function duzenleHafta(i) {
             haftaBaslangici = new Date(haftalar[4].baslangic);
             console.log('� 5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else {
-            console.log('⚠️ 5. hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            // 5. hafta yok, mevcut ilk haftayı kullan ve 5. haftaya kadar hesapla
+            const baslangicHafta = haftalar[0];
+            const ilkHaftaTarihi = new Date(baslangicHafta.baslangic);
+            haftaBaslangici = new Date(ilkHaftaTarihi.getTime() + (4 * 7 * 24 * 60 * 60 * 1000)); // 4 hafta sonrası = 5. hafta
+            console.log('⚠️ 5. hafta verisi yok, 1. haftadan hesaplandı:', haftaBaslangici.toLocaleDateString('tr-TR'));
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
-            console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
+            console.log('🔍 1. hafta verisi kullanıldı:', baslangicHafta);
         }
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
