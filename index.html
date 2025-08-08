@@ -847,10 +847,13 @@
     
     // Profesyonel PDF adını parse etme
     function parseProfessionalPdfName(fileName) {
-      console.log('🔍 PDF dosya adı parse ediliyor:', fileName);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı parse ediliyor:', fileName);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı uzunluğu:', fileName.length);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı karakterleri:', fileName.split('').map(c => `'${c}' (${c.charCodeAt(0)})`).join(', '));
       
       // .pdf uzantısını kaldır
       const cleanName = fileName.replace(/\.pdf$/i, '');
+      console.log('🔍 PDF PARSE DEBUG: Temizlenmiş dosya adı:', cleanName);
       
       // Regex pattern'ler (esnek format desteği)
       const patterns = [
@@ -865,9 +868,16 @@
       ];
       
       for (const pattern of patterns) {
+        console.log('🔍 PDF PARSE DEBUG: Pattern deneniyor:', pattern);
         const match = cleanName.match(pattern);
+        console.log('🔍 PDF PARSE DEBUG: Pattern match sonucu:', match);
+        
         if (match) {
           console.log('✅ Pattern match bulundu:', match);
+          console.log('🔍 PDF PARSE DEBUG: Match grupları:');
+          match.forEach((group, index) => {
+            console.log(`  Grup ${index}: "${group}"`);
+          });
           
           let sonuc = {};
           
@@ -918,10 +928,13 @@
 
     // Tarih aralığını parse etme
     function parseTarihAraligi(tarihAraligi) {
-      console.log('📅 Tarih aralığı parse ediliyor:', tarihAraligi);
+      console.log('� TARIH DEBUG: Gelen tarih aralığı:', tarihAraligi);
+      console.log('🔍 TARIH DEBUG: Tarih tipi:', typeof tarihAraligi);
+      console.log('🔍 TARIH DEBUG: Tarih uzunluğu:', tarihAraligi?.length);
       
       const bugun = new Date();
       const yil = bugun.getFullYear();
+      console.log('🔍 TARIH DEBUG: Kullanılan yıl:', yil);
       
       // "28 TEMMUZ - 3 AĞUSTOS" formatını parse et
       const aylar = {
@@ -933,16 +946,26 @@
       try {
         // Format 1: "28 TEMMUZ - 3 AĞUSTOS"
         if (tarihAraligi.includes(' - ')) {
+          console.log('🔍 TARIH DEBUG: Format 1 algılandı (iki farklı ay)');
           const parts = tarihAraligi.split(' - ');
+          console.log('🔍 TARIH DEBUG: Ayrılmış parçalar:', parts);
+          
           if (parts.length >= 2) {
             const baslangicParts = parts[0].trim().split(' ');
             const bitisParts = parts[1].trim().split(' ');
+            
+            console.log('🔍 TARIH DEBUG: Başlangıç parçaları:', baslangicParts);
+            console.log('🔍 TARIH DEBUG: Bitiş parçaları:', bitisParts);
             
             const baslangicGun = baslangicParts[0].padStart(2, '0');
             const baslangicAy = aylar[baslangicParts[1]] || '01';
             
             const bitisGun = bitisParts[0].padStart(2, '0');
             const bitisAy = aylar[bitisParts[1]] || '01';
+            
+            console.log('🔍 TARIH DEBUG: Hesaplanan değerler:', {
+              baslangicGun, baslangicAy, bitisGun, bitisAy
+            });
             
             const sonuc = {
               baslangic: `${yil}-${baslangicAy}-${baslangicGun}`,
@@ -957,10 +980,17 @@
         // Format 2: "4-10 AĞUSTOS" (aynı ay içinde)
         const ayiciMatch = tarihAraligi.match(/^(\d{1,2})-(\d{1,2})\s+([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
         if (ayiciMatch) {
+          console.log('🔍 TARIH DEBUG: Format 2 algılandı (aynı ay)');
+          console.log('🔍 TARIH DEBUG: Regex eşleşmesi:', ayiciMatch);
+          
           const baslangicGun = ayiciMatch[1].padStart(2, '0');
           const bitisGun = ayiciMatch[2].padStart(2, '0');
           const ayAdi = ayiciMatch[3].toUpperCase();
           const ay = aylar[ayAdi] || '01';
+          
+          console.log('🔍 TARIH DEBUG: Format 2 hesaplanan değerler:', {
+            baslangicGun, bitisGun, ayAdi, ay
+          });
           
           const sonuc = {
             baslangic: `${yil}-${ay}-${baslangicGun}`,
@@ -972,6 +1002,49 @@
         }
         
         console.log('⚠️ Tarih formatı tanınmadı, pattern denemesi yapılıyor...');
+        
+        // Format 3: "11-18 AĞUSTOS" gibi formatlar için daha esnek regex
+        const ayiciMatch2 = tarihAraligi.match(/^(\d{1,2})\s*-\s*(\d{1,2})\s+([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
+        if (ayiciMatch2) {
+          console.log('🔍 TARIH DEBUG: Format 3 algılandı (esnek aynı ay)');
+          console.log('🔍 TARIH DEBUG: Regex eşleşmesi 2:', ayiciMatch2);
+          
+          const baslangicGun = ayiciMatch2[1].padStart(2, '0');
+          const bitisGun = ayiciMatch2[2].padStart(2, '0');
+          const ayAdi = ayiciMatch2[3].toUpperCase();
+          const ay = aylar[ayAdi] || '01';
+          
+          console.log('🔍 TARIH DEBUG: Format 3 hesaplanan değerler:', {
+            baslangicGun, bitisGun, ayAdi, ay
+          });
+          
+          const sonuc = {
+            baslangic: `${yil}-${ay}-${baslangicGun}`,
+            bitis: `${yil}-${ay}-${bitisGun}`
+          };
+          
+          console.log('✅ Tarih parse başarılı (Format 3):', sonuc);
+          return sonuc;
+        }
+        
+        // Format 4: Sadece ay adı var ise (örn: "AĞUSTOS")
+        const sadecAyMatch = tarihAraligi.match(/^([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
+        if (sadecAyMatch) {
+          console.log('🔍 TARIH DEBUG: Format 4 algılandı (sadece ay)');
+          const ayAdi = sadecAyMatch[1].toUpperCase();
+          const ay = aylar[ayAdi];
+          
+          if (ay) {
+            // Ayın ilk ve son günü
+            const sonuc = {
+              baslangic: `${yil}-${ay}-01`,
+              bitis: `${yil}-${ay}-28` // Güvenli son gün
+            };
+            
+            console.log('✅ Tarih parse başarılı (Format 4):', sonuc);
+            return sonuc;
+          }
+        }
         
       } catch (error) {
         console.warn('❌ Tarih parse hatası:', error);
@@ -985,6 +1058,70 @@
       
       console.log('⚠️ Fallback tarih kullanılıyor:', fallback);
       return fallback;
+    }
+
+    // 🔧 HAFTA TARİHLERİNİ DÜZELTME FONKSİYONU
+    function duzeltHaftaTarihleri(hasta) {
+      console.log('🔧 Hafta tarihleri düzeltiliyor:', hasta.isim || hasta.ad);
+      
+      // Bilinen doğru tarih aralıkları (örnek - gerçek tarihleri buraya girin)
+      const dogrusHaftaTarihleri = {
+        8: { baslangic: '2025-08-04', bitis: '2025-08-10' },  // Eğer 8. hafta bu tarihte olmalıysa
+        9: { baslangic: '2025-08-11', bitis: '2025-08-17' }   // Eğer 9. hafta bu tarihte olmalıysa
+      };
+      
+      let duzeltmeSayisi = 0;
+      
+      if (!hasta.haftalar) return duzeltmeSayisi;
+      
+      hasta.haftalar.forEach(hafta => {
+        const dogru = dogrusHaftaTarihleri[hafta.haftaNo];
+        if (dogru) {
+          const eskiBaslangic = hafta.baslangic;
+          const eskiBitis = hafta.bitis;
+          
+          hafta.baslangic = dogru.baslangic;
+          hafta.bitis = dogru.bitis;
+          
+          console.log(`🔧 ${hafta.haftaNo}. hafta düzeltildi:`);
+          console.log(`   Eski: ${eskiBaslangic} - ${eskiBitis}`);
+          console.log(`   Yeni: ${hafta.baslangic} - ${hafta.bitis}`);
+          
+          duzeltmeSayisi++;
+        }
+      });
+      
+      return duzeltmeSayisi;
+    }
+
+    // 🔧 TOPLU HAFTA TARİHİ DÜZELTME FONKSİYONU
+    function topluHaftaTarihiDuzelt() {
+      console.log('🔧 Toplu hafta tarih düzeltme başlatılıyor...');
+      
+      let toplamDuzeltme = 0;
+      
+      // Tüm hastaları kontrol et
+      hastalar.forEach(hasta => {
+        if (!hasta.arsiv) {  // Sadece aktif hastalar
+          const duzeltilen = duzeltHaftaTarihleri(hasta);
+          toplamDuzeltme += duzeltilen;
+        }
+      });
+      
+      if (toplamDuzeltme > 0) {
+        saveToStorage();
+        console.log(`✅ Toplam ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi`);
+        
+        // Aktif hastanın tablarını yenile
+        if (seciliHasta) {
+          gosterHaftalar();
+        }
+        
+        alert(`✅ ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi!`);
+      } else {
+        console.log('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
+        alert('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
+      }
     }
 
     // Hasta bulma/oluşturma (GitHub entegrasyonlu)
@@ -1074,16 +1211,23 @@
 
     // Hafta bulma/oluşturma (GitHub güncellemeli)
     async function findOrCreateHaftaWithGitHub(hasta, haftaNo, tarihAraligi) {
-      console.log('📅 Hafta aranıyor/oluşturuluyor:', haftaNo, tarihAraligi);
+      console.log('� HAFTA DEBUG: findOrCreateHaftaWithGitHub çağrıldı');
+      console.log('🔍 HAFTA DEBUG: haftaNo:', haftaNo, '(tip:', typeof haftaNo, ')');
+      console.log('🔍 HAFTA DEBUG: tarihAraligi:', tarihAraligi, '(tip:', typeof tarihAraligi, ')');
+      console.log('🔍 HAFTA DEBUG: hasta adı:', hasta.isim || hasta.ad);
+      console.log('🔍 HAFTA DEBUG: mevcut hafta sayısı:', hasta.haftalar?.length || 0);
       
       if (!hasta.haftalar) hasta.haftalar = [];
       
       // Mevcut haftayı ara (hafta numarasına göre)
       let hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
+      console.log('🔍 HAFTA DEBUG: Mevcut hafta bulundu mu?', !!hafta);
       
       if (!hafta) {
         // Tarihleri parse et
+        console.log('🔍 HAFTA DEBUG: Yeni hafta oluşturuluyor, tarih parse ediliyor...');
         const tarihBilgisi = parseTarihAraligi(tarihAraligi);
+        console.log('🔍 HAFTA DEBUG: Parse sonucu tarih bilgisi:', tarihBilgisi);
         
         console.log(`✨ ${haftaNo}. hafta oluşturuluyor, mevcut hafta sayısı: ${hasta.haftalar.length}`);
         console.log('📅 Hafta için hesaplanan tarihler:', tarihBilgisi);
@@ -6428,6 +6572,28 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         pdfName: h.pdfName || h.pdfOrijinalIsim || 'yok'
       })));
       
+      // 8. ve 9. hafta özel debug
+      const sekizinciHafta = haftalar.find(h => h.haftaNo === 8);
+      const dokuzuncuHafta = haftalar.find(h => h.haftaNo === 9);
+      
+      if (sekizinciHafta) {
+        console.log('🔍 8. HAFTA DEBUG:', {
+          haftaNo: sekizinciHafta.haftaNo,
+          baslangic: sekizinciHafta.baslangic,
+          bitis: sekizinciHafta.bitis,
+          kayitTarihi: sekizinciHafta.kayitTarihi
+        });
+      }
+      
+      if (dokuzuncuHafta) {
+        console.log('🔍 9. HAFTA DEBUG:', {
+          haftaNo: dokuzuncuHafta.haftaNo,
+          baslangic: dokuzuncuHafta.baslangic,
+          bitis: dokuzuncuHafta.bitis,
+          kayitTarihi: dokuzuncuHafta.kayitTarihi
+        });
+      }
+      
       // Cache'i kontrol et
       if (typeof cokluPdfHastaCache !== 'undefined') {
         const cacheKey = seciliHasta?.isim?.toUpperCase();
@@ -11663,6 +11829,92 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         // Butonu sidebar'a ekle
         sidebarButtons.appendChild(topluZipButton);
         console.log('✅ Toplu ZIP butonu eklendi');
+        
+        // 🔧 Hafta tarih düzeltme butonu ekle
+        if (!sidebarButtons.querySelector('.hafta-duzelt-button')) {
+          const haftaDuzeltButton = document.createElement('button');
+          haftaDuzeltButton.className = 'hafta-duzelt-button';
+          haftaDuzeltButton.innerHTML = '🔧 HAFTA TARİHLERİNİ DÜZELT';
+          haftaDuzeltButton.title = '8. ve 9. hafta tarihlerini doğru değerlerle düzelt';
+          haftaDuzeltButton.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #fd7e14, #e55a4e);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          `;
+          
+          haftaDuzeltButton.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+          });
+          
+          haftaDuzeltButton.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+          });
+          
+          haftaDuzeltButton.onclick = function() {
+            if (confirm('8. ve 9. hafta tarihlerini düzeltmek istediğinizden emin misiniz?')) {
+              topluHaftaTarihiDuzelt();
+            }
+          };
+          
+          sidebarButtons.appendChild(haftaDuzeltButton);
+          console.log('✅ Hafta tarih düzeltme butonu eklendi');
+          
+          // 🔍 Debug butonu ekle
+          const debugButton = document.createElement('button');
+          debugButton.className = 'debug-button';
+          debugButton.innerHTML = '🔍 HAFTA DEBUG';
+          debugButton.title = 'Mevcut hafta verilerini konsola yazdır';
+          debugButton.style.cssText = `
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #6c757d, #495057);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          `;
+          
+          debugButton.onclick = function() {
+            console.log('🔍 MANUEL DEBUG - Seçili hasta:', seciliHasta?.isim);
+            if (seciliHasta && seciliHasta.haftalar) {
+              console.log('🔍 MANUEL DEBUG - Tüm haftalar:', seciliHasta.haftalar.map(h => ({
+                haftaNo: h.haftaNo,
+                baslangic: h.baslangic,
+                bitis: h.bitis,
+                kayitTarihi: h.kayitTarihi
+              })));
+              
+              const sekizinciHafta = seciliHasta.haftalar.find(h => h.haftaNo === 8);
+              const dokuzuncuHafta = seciliHasta.haftalar.find(h => h.haftaNo === 9);
+              
+              if (sekizinciHafta) {
+                console.log('🔍 MANUEL DEBUG - 8. hafta detay:', sekizinciHafta);
+              }
+              if (dokuzuncuHafta) {
+                console.log('🔍 MANUEL DEBUG - 9. hafta detay:', dokuzuncuHafta);
+              }
+            }
+            alert('Debug bilgileri konsola yazdırıldı. F12 ile konsolu açın.');
+          };
+          
+          sidebarButtons.appendChild(debugButton);
+          console.log('✅ Debug butonu eklendi');
+        }
       }
     }
     
