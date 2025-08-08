@@ -7727,11 +7727,14 @@ function duzenleHafta(i) {
         console.log('🔍 EGZERSIZ PDF: Toplam hafta sayısı:', haftalar.length);
         console.log('🔍 EGZERSIZ PDF: Hafta numaraları:', haftalar.map(h => ({ index: haftalar.indexOf(h), haftaNo: h.haftaNo, baslangic: h.baslangic })));
         
-        // Masaj PDF ile aynı mantık: haftaNo'ya göre hafta bul
-        dokuzuncuHafta = haftalar.find(hafta => hafta.haftaNo === 9);
-        
-        if (dokuzuncuHafta) {
-            console.log('🎯 EGZERSIZ PDF: 9. hafta BULUNDU!', dokuzuncuHafta);
+        // 9. hafta verisi için hafta numarasına göre ara
+        for (let i = 0; i < haftalar.length; i++) {
+            console.log(`🔍 EGZERSIZ PDF: Hafta ${i} kontrolü - haftaNo: ${haftalar[i].haftaNo}, aranan: 9`);
+            if (haftalar[i].haftaNo === 9) {
+                dokuzuncuHafta = haftalar[i];
+                console.log('🎯 EGZERSIZ PDF: 9. hafta BULUNDU!', dokuzuncuHafta);
+                break;
+            }
         }
         
         if (dokuzuncuHafta && dokuzuncuHafta.baslangic) {
@@ -7739,9 +7742,8 @@ function duzenleHafta(i) {
             console.log('🔍 9. HAFTA TARİH VERİSİ:', dokuzuncuHafta.baslangic, '→', dokuzuncuHafta.bitis);
             haftaBaslangici = new Date(dokuzuncuHafta.baslangic);
             console.log('✅ 9. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else {
-            console.log('❌ 9. hafta verisi bulunamadı, fallback hesaplama yapılacak');
-            if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+        } else if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+            // 9. hafta verisi mevcut
             console.log('� 9. HAFTA RAW VERİ:', haftalar[8].baslangic);
             haftaBaslangici = new Date(haftalar[8].baslangic);
             console.log('🔵 9. HAFTA PARSED:', haftaBaslangici.toLocaleDateString('tr-TR'));
