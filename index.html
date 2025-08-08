@@ -7254,6 +7254,12 @@ function duzenleHafta(i) {
             console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         }
 
+        // Tarihi o haftanın Pazartesi'sine hizala
+        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
+        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
+        console.log('🗓️ MASAJ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
+
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
@@ -7538,6 +7544,12 @@ function duzenleHafta(i) {
             console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
         }
+
+        // Tarihi o haftanın Pazartesi'sine hizala
+        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
+        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
+        console.log('🗓️ EGZERSİZ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
