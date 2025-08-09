@@ -928,7 +928,7 @@
 
     // Tarih aralığını parse etme
     function parseTarihAraligi(tarihAraligi) {
-      console.log('� TARIH DEBUG: Gelen tarih aralığı:', tarihAraligi);
+      console.log('  TARIH DEBUG: Gelen tarih aralığı:', tarihAraligi);
       console.log('🔍 TARIH DEBUG: Tarih tipi:', typeof tarihAraligi);
       console.log('🔍 TARIH DEBUG: Tarih uzunluğu:', tarihAraligi?.length);
       
@@ -1094,133 +1094,6 @@
       return duzeltmeSayisi;
     }
 
-    // 🤖 OTOMATİK HAFTA TARİH DÜZELTME SİSTEMİ - GELİŞTİRİLMİŞ VERSİYON
-    function otomatikHaftaTarihDuzeltmeSistemi() {
-      console.log('🤖 Geliştirilmiş otomatik hafta tarih düzeltme sistemi başlatılıyor...');
-      
-      let toplamDuzeltme = 0;
-      let hataliHastalar = [];
-      
-      // Tüm aktif hastaları kontrol et
-      hastalar.forEach(hasta => {
-        if (!hasta.arsiv && hasta.haftalar && hasta.haftalar.length > 0) {
-          
-          let hastaDuzeltmeSayisi = 0;
-          let referansTarih = null;
-          let referansHafta = null;
-          
-          // Strategi 1: En güvenilir haftayı bul (manuel düzeltilmiş veya en son eklenen)
-          // En son hafta numarasına sahip haftayı referans olarak al (en güncel)
-          const enSonHafta = hasta.haftalar.reduce((latest, hafta) => {
-            const latestHaftaNo = latest.haftaNo || 1;
-            const haftaNo = hafta.haftaNo || 1;
-            return haftaNo > latestHaftaNo ? hafta : latest;
-          });
-          
-          if (enSonHafta && enSonHafta.baslangic) {
-            referansHafta = enSonHafta;
-            const haftaTarih = new Date(enSonHafta.baslangic);
-            const geriGunSayisi = (enSonHafta.haftaNo - 1) * 7;
-            referansTarih = new Date(haftaTarih.getTime() - (geriGunSayisi * 24 * 60 * 60 * 1000));
-            console.log(`📅 ${hasta.isim || hasta.ad} için ${enSonHafta.haftaNo}. haftadan hesaplanan referans: ${referansTarih.toISOString().split('T')[0]}`);
-          }
-          
-          // Alternatif: 1. haftayı referans ol olarak al
-          if (!referansTarih) {
-            const birincihafta = hasta.haftalar.find(h => h.haftaNo === 1);
-            if (birincihafta && birincihafta.baslangic) {
-              referansTarih = new Date(birincihafta.baslangic);
-              referansHafta = birincihafta;
-              console.log(`📅 ${hasta.isim || hasta.ad} için 1. hafta referans: ${birincihafta.baslangic}`);
-            }
-          }
-          
-          // Son çare: Herhangi bir haftayı al
-          if (!referansTarih) {
-            const enDusukHafta = hasta.haftalar.reduce((min, hafta) => 
-              hafta.haftaNo < min.haftaNo ? hafta : min
-            );
-            
-            if (enDusukHafta && enDusukHafta.baslangic) {
-              const haftaTarih = new Date(enDusukHafta.baslangic);
-              const geriGunSayisi = (enDusukHafta.haftaNo - 1) * 7;
-              referansTarih = new Date(haftaTarih.getTime() - (geriGunSayisi * 24 * 60 * 60 * 1000));
-              referansHafta = enDusukHafta;
-              console.log(`📅 ${hasta.isim || hasta.ad} için ${enDusukHafta.haftaNo}. haftadan hesaplanan referans: ${referansTarih.toISOString().split('T')[0]}`);
-            }
-          }
-          
-          // Referans tarih bulunduysa, tüm haftalardaki hataları düzelt
-          if (referansTarih) {
-            hasta.haftalar.forEach(hafta => {
-              // Her hafta için doğru tarihleri hesapla
-              const haftaOffset = (hafta.haftaNo - 1) * 7; // 1. hafta = 0, 2. hafta = 7, vb.
-              const dogrusBaslangic = new Date(referansTarih.getTime() + (haftaOffset * 24 * 60 * 60 * 1000));
-              const dogrusBitis = new Date(dogrusBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)); // 6 gün sonra
-              
-              const dogrusBaslangicStr = dogrusBaslangic.toISOString().split('T')[0];
-              const dogrusBitisStr = dogrusBitis.toISOString().split('T')[0];
-              
-              // Mevcut tarihlerle karşılaştır
-              const mevcutBaslangic = hafta.baslangic;
-              const mevcutBitis = hafta.bitis;
-              
-              if (mevcutBaslangic !== dogrusBaslangicStr || mevcutBitis !== dogrusBitisStr) {
-                console.log(`🔧 ${hasta.isim || hasta.ad} - ${hafta.haftaNo}. hafta düzeltiliyor:`);
-                console.log(`   Eski: ${mevcutBaslangic} - ${mevcutBitis}`);
-                console.log(`   Yeni: ${dogrusBaslangicStr} - ${dogrusBitisStr}`);
-                
-                hafta.baslangic = dogrusBaslangicStr;
-                hafta.bitis = dogrusBitisStr;
-                
-                hastaDuzeltmeSayisi++;
-                toplamDuzeltme++;
-              }
-            });
-          } else {
-            console.log(`⚠️ ${hasta.isim || hasta.ad} için referans tarih bulunamadı`);
-            hataliHastalar.push(hasta.isim || hasta.ad);
-          }
-          
-          if (hastaDuzeltmeSayisi > 0) {
-            console.log(`✅ ${hasta.isim || hasta.ad} için ${hastaDuzeltmeSayisi} hafta düzeltildi`);
-          }
-        }
-      });
-      
-      // Sonuçları göster
-      if (toplamDuzeltme > 0) {
-        saveToStorage();
-        console.log(`✅ Otomatik düzeltme tamamlandı: ${toplamDuzeltme} hafta tarihi düzeltildi`);
-        
-        // Aktif hastanın tablarını yenile
-        if (seciliHasta) {
-          gosterHaftalar();
-        }
-        
-        let mesaj = `🤖 Geliştirilmiş Otomatik Düzeltme Tamamlandı!\n\n`;
-        mesaj += `✅ ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi\n`;
-        mesaj += `🧠 Sistem en güncel hafta verilerini referans aldı\n`;
-        
-        if (hataliHastalar.length > 0) {
-          mesaj += `\n⚠️ Referans tarih bulunamayan hastalar:\n${hataliHastalar.join(', ')}`;
-        }
-        
-        alert(mesaj);
-      } else {
-        console.log('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
-        
-        let mesaj = `ℹ️ Düzeltme Gerekmiyor\n\n`;
-        mesaj += `Tüm hafta tarihleri zaten doğru görünüyor.`;
-        
-        if (hataliHastalar.length > 0) {
-          mesaj += `\n\n⚠️ Referans tarih bulunamayan hastalar:\n${hataliHastalar.join(', ')}`;
-        }
-        
-        alert(mesaj);
-      }
-    }
-
     // 🔧 TOPLU HAFTA TARİHİ DÜZELTME FONKSİYONU
     function topluHaftaTarihiDuzelt() {
       console.log('🔧 Toplu hafta tarih düzeltme başlatılıyor...');
@@ -1338,7 +1211,7 @@
 
     // Hafta bulma/oluşturma (GitHub güncellemeli)
     async function findOrCreateHaftaWithGitHub(hasta, haftaNo, tarihAraligi) {
-      console.log('� HAFTA DEBUG: findOrCreateHaftaWithGitHub çağrıldı');
+      console.log('  HAFTA DEBUG: findOrCreateHaftaWithGitHub çağrıldı');
       console.log('🔍 HAFTA DEBUG: haftaNo:', haftaNo, '(tip:', typeof haftaNo, ')');
       console.log('🔍 HAFTA DEBUG: tarihAraligi:', tarihAraligi, '(tip:', typeof tarihAraligi, ')');
       console.log('🔍 HAFTA DEBUG: hasta adı:', hasta.isim || hasta.ad);
@@ -6455,138 +6328,68 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Bir sonraki hafta numarasını hesapla
       let sonrakiHaftaNo = 1;
       if (seciliHasta.haftalar.length > 0) {
-        const maxHaftaNo = Math.max(...seciliHasta.haftalar.map(h => h.haftaNo || 1));
-        sonrakiHaftaNo = maxHaftaNo + 1;
+        const sonHafta = seciliHasta.haftalar[seciliHasta.haftalar.length - 1];
+        sonrakiHaftaNo = (sonHafta.haftaNo || seciliHasta.haftalar.length) + 1;
       }
       
-      let varsayilanBaslangic = null;
-      let varsayilanBitis = null;
-      
+      let startDate = null;
       if (seciliHasta.haftalar.length > 0) {
-        // Mevcut hafta var - en son haftanın bitişinden bir gün sonra başla
-        const sonHafta = seciliHasta.haftalar.reduce((latest, hafta) => {
-          const latestHaftaNo = latest.haftaNo || 1;
-          const haftaNo = hafta.haftaNo || 1;
-          return haftaNo > latestHaftaNo ? hafta : latest;
-        });
-        
+        // Son haftanın pazarından bir gün sonrası
+        const last = seciliHasta.haftalar[seciliHasta.haftalar.length-1];
         try {
-          if (sonHafta.bitis) {
-            const sonBitis = new Date(sonHafta.bitis);
-            varsayilanBaslangic = new Date(sonBitis.getTime() + 24 * 60 * 60 * 1000); // Bir gün sonra
-            varsayilanBitis = new Date(varsayilanBaslangic.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 gün sonra
+          if (last.baslangic) {
+            startDate = new Date(new Date(last.baslangic).getTime() + 7*24*60*60*1000);
+          } else {
+            throw new Error('Başlangıç tarihi yok');
+          }
+          
+          // Tarih geçerli mi kontrol et
+          if (isNaN(startDate.getTime())) {
+            throw new Error('Geçersiz tarih');
           }
         } catch (e) {
           console.warn('Son hafta tarih hatası:', e);
-          varsayilanBaslangic = null;
+          // Bugünden başla
+          const now = new Date();
+          const day = now.getDay();
+          const diff = (day === 0 ? 1 : 8 - day); // Gelecek pazartesi
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
         }
+      } else {
+        // İlk hafta için bugünün pazartesisi
+        const now = new Date();
+        const day = now.getDay();
+        const diff = (day === 0 ? -6 : 1) - day; // Pazartesiye çek
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
       }
       
-      // Eğer tarih hesaplanamadıysa, bir sonraki Pazartesi'yi varsayılan yap
-      if (!varsayilanBaslangic) {
-        const bugun = new Date();
-        const gunNo = bugun.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-        const pazartesiyeKalanGun = gunNo === 0 ? 1 : (8 - gunNo); // Pazartesi'ye kaç gün var
-        varsayilanBaslangic = new Date(bugun.getTime() + (pazartesiyeKalanGun * 24 * 60 * 60 * 1000));
-        varsayilanBitis = new Date(varsayilanBaslangic.getTime() + 6 * 24 * 60 * 60 * 1000);
+      // Final güvenlik kontrolü
+      if (!startDate || isNaN(startDate.getTime())) {
+        startDate = new Date(); // En son çare olarak bugün
       }
       
-      // Türkçe tarih formatına çevir
-      const formatTarih = (tarih) => {
-        const gun = String(tarih.getDate()).padStart(2, '0');
-        const ay = String(tarih.getMonth() + 1).padStart(2, '0');
-        const yil = tarih.getFullYear();
-        return `${gun}.${ay}.${yil}`;
-      };
-      
-      const formatTarihISO = (tarih) => {
-        return tarih.toISOString().slice(0, 10);
-      };
-      
-      // Kullanıcıdan tarih aralığını sor
-      const varsayilanBaslangicStr = formatTarih(varsayilanBaslangic);
-      const varsayilanBitisStr = formatTarih(varsayilanBitis);
-      
-      const tarihPrompt = `📅 ${sonrakiHaftaNo}. Hafta Tarih Aralığı
-      
-Varsayılan: ${varsayilanBaslangicStr} - ${varsayilanBitisStr}
-
-Başlangıç tarihi (GG.AA.YYYY formatında):`;
-      
-      let baslangicInput = prompt(tarihPrompt, varsayilanBaslangicStr);
-      
-      // İptal edilirse fonksiyondan çık
-      if (baslangicInput === null) {
-        return;
-      }
-      
-      // Boş bırakılırsa varsayılanı kullan
-      if (!baslangicInput.trim()) {
-        baslangicInput = varsayilanBaslangicStr;
-      }
-      
-      // Başlangıç tarihini parse et
-      let baslangicTarih;
-      try {
-        const parcalar = baslangicInput.split('.');
-        if (parcalar.length !== 3) throw new Error('Geçersiz format');
-        
-        const gun = parseInt(parcalar[0]);
-        const ay = parseInt(parcalar[1]) - 1; // JavaScript ayları 0-11 arası
-        const yil = parseInt(parcalar[2]);
-        
-        baslangicTarih = new Date(yil, ay, gun);
-        
-        if (isNaN(baslangicTarih.getTime())) {
-          throw new Error('Geçersiz tarih');
-        }
-      } catch (e) {
-        alert('❌ Geçersiz tarih formatı! Lütfen GG.AA.YYYY formatında girin.\nÖrnek: 15.08.2025');
-        return;
-      }
-      
-      // Bitiş tarihini hesapla (6 gün sonra)
-      const bitisTarih = new Date(baslangicTarih.getTime() + 6 * 24 * 60 * 60 * 1000);
-      
-      // Bitiş tarihini kullanıcıya göster ve onay al
-      const bitisTarihStr = formatTarih(bitisTarih);
-      const onayMesaji = `📅 ${sonrakiHaftaNo}. Hafta Tarih Aralığı:
-
-🗓️ Başlangıç: ${formatTarih(baslangicTarih)}
-🗓️ Bitiş: ${bitisTarihStr}
-
-Bu tarihleri onaylıyor musunuz?`;
-      
-      if (!confirm(onayMesaji)) {
-        // Kullanıcı onaylamazsa tekrar sor
-        haftaEkle();
-        return;
-      }
-      
-      // Yeni haftayı ekle
-      const yeniHafta = {
-        haftaNo: sonrakiHaftaNo,
-        baslangic: formatTarihISO(baslangicTarih),
-        bitis: formatTarihISO(bitisTarih),
+      const endDate = new Date(startDate.getTime() + 6*24*60*60*1000);
+      seciliHasta.haftalar.push({
+        haftaNo: sonrakiHaftaNo, // YENİ: Hafta numarası
+        baslangic: startDate.toISOString().slice(0,10),
+        bitis: endDate.toISOString().slice(0,10),
         aciklama: '',
         pdf: null,
-        pdfName: null,
-        pdfOrijinalIsim: null,
-        pdfYolu: null,
-        githubUrl: null,
-        indirmeUrl: null,
-        kayitTarihi: null,
+        pdfName: null,  // PDF güvenli dosya adı
+        pdfOrijinalIsim: null,  // PDF'nin orijinal dosya adı
+        pdfYolu: null,  // GitHub'daki PDF yolu (pdfs/dosya.pdf)
+        githubUrl: null,  // GitHub'da görüntüleme linki
+        indirmeUrl: null,  // Direkt indirme linki
+        kayitTarihi: null, // PDF yükleme tarihi
         tarifKartlar: [],
         tarifler: [],
         gptMesaj: ''
-      };
-      
-      seciliHasta.haftalar.push(yeniHafta);
+      });
       saveToStorage();
       
-      console.log(`✅ ${sonrakiHaftaNo}. hafta eklendi:`, formatTarih(baslangicTarih), '-', formatTarih(bitisTarih));
+      console.log('✅ Yeni hafta eklendi:', sonrakiHaftaNo, 'numaralı hafta');
       
-      // Otomatik kaydetme
+      // Otomatik kaydetme - hafta eklendi
       autoSaveHastaData(seciliHasta);
       
       // Tab sistemini yeniden yükle ve yeni tab'a geç
@@ -7631,9 +7434,9 @@ function duzenleHafta(i) {
             haftaBaslangici = new Date(besinciHafta.baslangic);
             console.log('✅ 5. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
-            console.log('� 5. HAFTA RAW VERİ:', haftalar[4].baslangic, typeof haftalar[4].baslangic);
+            console.log('  5. HAFTA RAW VERİ:', haftalar[4].baslangic, typeof haftalar[4].baslangic);
             haftaBaslangici = new Date(haftalar[4].baslangic);
-            console.log('� 5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
+            console.log('  5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else {
             console.log('❌ 5. hafta verisi bulunamadı, hesaplama yapılacak');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
@@ -7705,7 +7508,7 @@ function duzenleHafta(i) {
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
         
         // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
-        console.log('� PDF OLUŞTURMA: Ana tarih:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        console.log('  PDF OLUŞTURMA: Ana tarih:', haftaBaslangici.toLocaleDateString('tr-TR'));
         
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
@@ -7941,12 +7744,12 @@ function duzenleHafta(i) {
             console.log('✅ 9. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
             // 9. hafta verisi mevcut
-            console.log('� 9. HAFTA RAW VERİ:', haftalar[8].baslangic);
+            console.log('  9. HAFTA RAW VERİ:', haftalar[8].baslangic);
             haftaBaslangici = new Date(haftalar[8].baslangic);
             console.log('🔵 9. HAFTA PARSED:', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
             // 5. haftadan 4 hafta sonrasını hesapla
-            console.log('� 5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
+            console.log('  5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
             const besinciHafta = new Date(haftalar[4].baslangic);
             haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
             console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
@@ -12084,53 +11887,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
           
           sidebarButtons.appendChild(haftaDuzeltButton);
           console.log('✅ Hafta tarih düzeltme butonu eklendi');
-        }
-        
-        // 🤖 Otomatik hafta tarih düzeltme butonu ekle
-        if (!sidebarButtons.querySelector('.otomatik-duzeltme-button')) {
-          const otomatikDuzeltmeButton = document.createElement('button');
-          otomatikDuzeltmeButton.className = 'otomatik-duzeltme-button';
-          otomatikDuzeltmeButton.innerHTML = '🤖 OTOMATİK DÜZELTME';
-          otomatikDuzeltmeButton.title = 'Tüm hafta tarihlerini otomatik olarak düzelt (akıllı sistem)';
-          otomatikDuzeltmeButton.style.cssText = `
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #28a745, #20c997);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          `;
           
-          otomatikDuzeltmeButton.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-            this.style.background = 'linear-gradient(45deg, #218838, #1e7e34)';
-          });
-          
-          otomatikDuzeltmeButton.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-            this.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-          });
-          
-          otomatikDuzeltmeButton.onclick = function() {
-            if (confirm('🤖 Otomatik hafta tarih düzeltme sistemi çalıştırılacak.\n\nBu işlem tüm hastaların hafta tarihlerini kontrol edip düzeltecek.\n\nDevam etmek istiyor musunuz?')) {
-              otomatikHaftaTarihDuzeltmeSistemi();
-            }
-          };
-          
-          sidebarButtons.appendChild(otomatikDuzeltmeButton);
-          console.log('✅ Otomatik düzeltme butonu eklendi');
-        }
-        
-        // 🔍 Debug butonu ekle
-        if (!sidebarButtons.querySelector('.debug-button')) {
+          // 🔍 Debug butonu ekle
           const debugButton = document.createElement('button');
           debugButton.className = 'debug-button';
           debugButton.innerHTML = '🔍 HAFTA DEBUG';
@@ -13259,7 +13017,7 @@ ${mesajlar.join('\n')}
     // Global erişim için
     window.hastaSecildi = hastaSecildi;
 
-    // �️ TOPLU ZIP FONKSİYONU
+    //  ️ TOPLU ZIP FONKSİYONU
     async function topluZipIndir() {
       try {
         console.log('🚀 Toplu ZIP indirme başlatıldı');
@@ -13405,7 +13163,7 @@ ${mesajlar.join('\n')}
                   pdfUrl = `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/pdfs/${encodedFileName}`;
                 }
                 
-                console.log(`� PDF URL: ${pdfUrl}`);
+                console.log(`  PDF URL: ${pdfUrl}`);
                 
                 const pdfResponse = await fetch(pdfUrl);
                 
@@ -13571,10 +13329,8 @@ ${mesajlar.join('\n')}
     
     // Global erişim için
     window.topluZipIndir = topluZipIndir;
-    window.otomatikHaftaTarihDuzeltmeSistemi = otomatikHaftaTarihDuzeltmeSistemi;
-    window.topluHaftaTarihiDuzelt = topluHaftaTarihiDuzelt;
 
-    // �📁 ANA ÇOKLU PDF FONKSİYONU
+    //  📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
