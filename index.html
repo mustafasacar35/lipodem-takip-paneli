@@ -686,11 +686,17 @@
       <button onclick="manuelEslestirmeleriTemizle()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         Tüm Eşleştirmeleri Temizle
       </button>
+      <button onclick="manuelEslestirmeleriKarakterDuzelt()" style="background:#ffc107; color:#212529; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;" title="Mevcut eşleştirmelerdeki bozuk karakterleri düzelt">
+        🔧 Karakter Düzelt
+      </button>
       <button onclick="manuelEslestirmeleriGitHubKaydet()" style="background:#007bff; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         GitHub'a Kaydet
       </button>
       <button onclick="manuelEslestirmeleriGitHubYukle()" style="background:#6f42c1; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         GitHub'dan Yükle
+      </button>
+      <button onclick="manuelEslestirmelerDebug()" style="background:#17a2b8; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; margin-left:10px; font-size:0.9em;" title="JSON içeriğini debug et">
+        🔍 Debug
       </button>
     </div>
     <div id="manuelEslestirmeStatus" style="margin-bottom:15px; padding:10px; border-radius:5px; display:none;"></div>
@@ -847,10 +853,13 @@
     
     // Profesyonel PDF adını parse etme
     function parseProfessionalPdfName(fileName) {
-      console.log('🔍 PDF dosya adı parse ediliyor:', fileName);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı parse ediliyor:', fileName);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı uzunluğu:', fileName.length);
+      console.log('🔍 PDF PARSE DEBUG: Dosya adı karakterleri:', fileName.split('').map(c => `'${c}' (${c.charCodeAt(0)})`).join(', '));
       
       // .pdf uzantısını kaldır
       const cleanName = fileName.replace(/\.pdf$/i, '');
+      console.log('🔍 PDF PARSE DEBUG: Temizlenmiş dosya adı:', cleanName);
       
       // Regex pattern'ler (esnek format desteği)
       const patterns = [
@@ -865,9 +874,16 @@
       ];
       
       for (const pattern of patterns) {
+        console.log('🔍 PDF PARSE DEBUG: Pattern deneniyor:', pattern);
         const match = cleanName.match(pattern);
+        console.log('🔍 PDF PARSE DEBUG: Pattern match sonucu:', match);
+        
         if (match) {
           console.log('✅ Pattern match bulundu:', match);
+          console.log('🔍 PDF PARSE DEBUG: Match grupları:');
+          match.forEach((group, index) => {
+            console.log(`  Grup ${index}: "${group}"`);
+          });
           
           let sonuc = {};
           
@@ -918,10 +934,13 @@
 
     // Tarih aralığını parse etme
     function parseTarihAraligi(tarihAraligi) {
-      console.log('📅 Tarih aralığı parse ediliyor:', tarihAraligi);
+      console.log('  TARIH DEBUG: Gelen tarih aralığı:', tarihAraligi);
+      console.log('🔍 TARIH DEBUG: Tarih tipi:', typeof tarihAraligi);
+      console.log('🔍 TARIH DEBUG: Tarih uzunluğu:', tarihAraligi?.length);
       
       const bugun = new Date();
       const yil = bugun.getFullYear();
+      console.log('🔍 TARIH DEBUG: Kullanılan yıl:', yil);
       
       // "28 TEMMUZ - 3 AĞUSTOS" formatını parse et
       const aylar = {
@@ -933,16 +952,26 @@
       try {
         // Format 1: "28 TEMMUZ - 3 AĞUSTOS"
         if (tarihAraligi.includes(' - ')) {
+          console.log('🔍 TARIH DEBUG: Format 1 algılandı (iki farklı ay)');
           const parts = tarihAraligi.split(' - ');
+          console.log('🔍 TARIH DEBUG: Ayrılmış parçalar:', parts);
+          
           if (parts.length >= 2) {
             const baslangicParts = parts[0].trim().split(' ');
             const bitisParts = parts[1].trim().split(' ');
+            
+            console.log('🔍 TARIH DEBUG: Başlangıç parçaları:', baslangicParts);
+            console.log('🔍 TARIH DEBUG: Bitiş parçaları:', bitisParts);
             
             const baslangicGun = baslangicParts[0].padStart(2, '0');
             const baslangicAy = aylar[baslangicParts[1]] || '01';
             
             const bitisGun = bitisParts[0].padStart(2, '0');
             const bitisAy = aylar[bitisParts[1]] || '01';
+            
+            console.log('🔍 TARIH DEBUG: Hesaplanan değerler:', {
+              baslangicGun, baslangicAy, bitisGun, bitisAy
+            });
             
             const sonuc = {
               baslangic: `${yil}-${baslangicAy}-${baslangicGun}`,
@@ -957,10 +986,17 @@
         // Format 2: "4-10 AĞUSTOS" (aynı ay içinde)
         const ayiciMatch = tarihAraligi.match(/^(\d{1,2})-(\d{1,2})\s+([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
         if (ayiciMatch) {
+          console.log('🔍 TARIH DEBUG: Format 2 algılandı (aynı ay)');
+          console.log('🔍 TARIH DEBUG: Regex eşleşmesi:', ayiciMatch);
+          
           const baslangicGun = ayiciMatch[1].padStart(2, '0');
           const bitisGun = ayiciMatch[2].padStart(2, '0');
           const ayAdi = ayiciMatch[3].toUpperCase();
           const ay = aylar[ayAdi] || '01';
+          
+          console.log('🔍 TARIH DEBUG: Format 2 hesaplanan değerler:', {
+            baslangicGun, bitisGun, ayAdi, ay
+          });
           
           const sonuc = {
             baslangic: `${yil}-${ay}-${baslangicGun}`,
@@ -972,6 +1008,49 @@
         }
         
         console.log('⚠️ Tarih formatı tanınmadı, pattern denemesi yapılıyor...');
+        
+        // Format 3: "11-18 AĞUSTOS" gibi formatlar için daha esnek regex
+        const ayiciMatch2 = tarihAraligi.match(/^(\d{1,2})\s*-\s*(\d{1,2})\s+([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
+        if (ayiciMatch2) {
+          console.log('🔍 TARIH DEBUG: Format 3 algılandı (esnek aynı ay)');
+          console.log('🔍 TARIH DEBUG: Regex eşleşmesi 2:', ayiciMatch2);
+          
+          const baslangicGun = ayiciMatch2[1].padStart(2, '0');
+          const bitisGun = ayiciMatch2[2].padStart(2, '0');
+          const ayAdi = ayiciMatch2[3].toUpperCase();
+          const ay = aylar[ayAdi] || '01';
+          
+          console.log('🔍 TARIH DEBUG: Format 3 hesaplanan değerler:', {
+            baslangicGun, bitisGun, ayAdi, ay
+          });
+          
+          const sonuc = {
+            baslangic: `${yil}-${ay}-${baslangicGun}`,
+            bitis: `${yil}-${ay}-${bitisGun}`
+          };
+          
+          console.log('✅ Tarih parse başarılı (Format 3):', sonuc);
+          return sonuc;
+        }
+        
+        // Format 4: Sadece ay adı var ise (örn: "AĞUSTOS")
+        const sadecAyMatch = tarihAraligi.match(/^([A-Za-zÇĞIİÖŞÜçğıöşü]+)$/i);
+        if (sadecAyMatch) {
+          console.log('🔍 TARIH DEBUG: Format 4 algılandı (sadece ay)');
+          const ayAdi = sadecAyMatch[1].toUpperCase();
+          const ay = aylar[ayAdi];
+          
+          if (ay) {
+            // Ayın ilk ve son günü
+            const sonuc = {
+              baslangic: `${yil}-${ay}-01`,
+              bitis: `${yil}-${ay}-28` // Güvenli son gün
+            };
+            
+            console.log('✅ Tarih parse başarılı (Format 4):', sonuc);
+            return sonuc;
+          }
+        }
         
       } catch (error) {
         console.warn('❌ Tarih parse hatası:', error);
@@ -985,6 +1064,70 @@
       
       console.log('⚠️ Fallback tarih kullanılıyor:', fallback);
       return fallback;
+    }
+
+    // 🔧 HAFTA TARİHLERİNİ DÜZELTME FONKSİYONU
+    function duzeltHaftaTarihleri(hasta) {
+      console.log('🔧 Hafta tarihleri düzeltiliyor:', hasta.isim || hasta.ad);
+      
+      // Bilinen doğru tarih aralıkları (örnek - gerçek tarihleri buraya girin)
+      const dogrusHaftaTarihleri = {
+        8: { baslangic: '2025-08-04', bitis: '2025-08-10' },  // Eğer 8. hafta bu tarihte olmalıysa
+        9: { baslangic: '2025-08-11', bitis: '2025-08-17' }   // Eğer 9. hafta bu tarihte olmalıysa
+      };
+      
+      let duzeltmeSayisi = 0;
+      
+      if (!hasta.haftalar) return duzeltmeSayisi;
+      
+      hasta.haftalar.forEach(hafta => {
+        const dogru = dogrusHaftaTarihleri[hafta.haftaNo];
+        if (dogru) {
+          const eskiBaslangic = hafta.baslangic;
+          const eskiBitis = hafta.bitis;
+          
+          hafta.baslangic = dogru.baslangic;
+          hafta.bitis = dogru.bitis;
+          
+          console.log(`🔧 ${hafta.haftaNo}. hafta düzeltildi:`);
+          console.log(`   Eski: ${eskiBaslangic} - ${eskiBitis}`);
+          console.log(`   Yeni: ${hafta.baslangic} - ${hafta.bitis}`);
+          
+          duzeltmeSayisi++;
+        }
+      });
+      
+      return duzeltmeSayisi;
+    }
+
+    // 🔧 TOPLU HAFTA TARİHİ DÜZELTME FONKSİYONU
+    function topluHaftaTarihiDuzelt() {
+      console.log('🔧 Toplu hafta tarih düzeltme başlatılıyor...');
+      
+      let toplamDuzeltme = 0;
+      
+      // Tüm hastaları kontrol et
+      hastalar.forEach(hasta => {
+        if (!hasta.arsiv) {  // Sadece aktif hastalar
+          const duzeltilen = duzeltHaftaTarihleri(hasta);
+          toplamDuzeltme += duzeltilen;
+        }
+      });
+      
+      if (toplamDuzeltme > 0) {
+        saveToStorage();
+        console.log(`✅ Toplam ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi`);
+        
+        // Aktif hastanın tablarını yenile
+        if (seciliHasta) {
+          gosterHaftalar();
+        }
+        
+        alert(`✅ ${toplamDuzeltme} hafta tarihi düzeltildi ve kaydedildi!`);
+      } else {
+        console.log('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
+        alert('ℹ️ Düzeltilecek hafta tarihi bulunamadı');
+      }
     }
 
     // Hasta bulma/oluşturma (GitHub entegrasyonlu)
@@ -1074,16 +1217,23 @@
 
     // Hafta bulma/oluşturma (GitHub güncellemeli)
     async function findOrCreateHaftaWithGitHub(hasta, haftaNo, tarihAraligi) {
-      console.log('📅 Hafta aranıyor/oluşturuluyor:', haftaNo, tarihAraligi);
+      console.log('  HAFTA DEBUG: findOrCreateHaftaWithGitHub çağrıldı');
+      console.log('🔍 HAFTA DEBUG: haftaNo:', haftaNo, '(tip:', typeof haftaNo, ')');
+      console.log('🔍 HAFTA DEBUG: tarihAraligi:', tarihAraligi, '(tip:', typeof tarihAraligi, ')');
+      console.log('🔍 HAFTA DEBUG: hasta adı:', hasta.isim || hasta.ad);
+      console.log('🔍 HAFTA DEBUG: mevcut hafta sayısı:', hasta.haftalar?.length || 0);
       
       if (!hasta.haftalar) hasta.haftalar = [];
       
       // Mevcut haftayı ara (hafta numarasına göre)
       let hafta = hasta.haftalar.find(h => h.haftaNo === haftaNo);
+      console.log('🔍 HAFTA DEBUG: Mevcut hafta bulundu mu?', !!hafta);
       
       if (!hafta) {
         // Tarihleri parse et
+        console.log('🔍 HAFTA DEBUG: Yeni hafta oluşturuluyor, tarih parse ediliyor...');
         const tarihBilgisi = parseTarihAraligi(tarihAraligi);
+        console.log('🔍 HAFTA DEBUG: Parse sonucu tarih bilgisi:', tarihBilgisi);
         
         console.log(`✨ ${haftaNo}. hafta oluşturuluyor, mevcut hafta sayısı: ${hasta.haftalar.length}`);
         console.log('📅 Hafta için hesaplanan tarihler:', tarihBilgisi);
@@ -1532,27 +1682,91 @@
     // UTF-8 Base64 decode yardımcı fonksiyonu (Türkçe karakterler için)
     function decodeBase64UTF8(base64Content) {
       try {
+        // Base64 string'i temizle (boşlukları kaldır)
+        const cleanBase64 = base64Content.replace(/\s/g, '');
+        
         // Modern tarayıcılarda TextDecoder kullan
-        const bytes = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
-        return new TextDecoder('utf-8').decode(bytes);
+        const binaryString = atob(cleanBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const decoder = new TextDecoder('utf-8');
+        const decodedText = decoder.decode(bytes);
+        
+        console.log('🔍 Base64 decode başarılı, UTF-8 karakterler korundu');
+        return decodedText;
       } catch (decodeError) {
-        // Fallback: Normal atob kullan
-        console.warn('UTF-8 decode başarısız, normal decode deneniyor:', decodeError);
-        return atob(base64Content);
+        console.warn('⚠️ UTF-8 decode başarısız, fallback deneniyor:', decodeError);
+        
+        // Fallback 1: decodeURIComponent kullan
+        try {
+          const fallback1 = decodeURIComponent(escape(atob(base64Content)));
+          console.log('✅ Fallback 1 başarılı');
+          return fallback1;
+        } catch (fallback1Error) {
+          console.warn('⚠️ Fallback 1 başarısız:', fallback1Error);
+          
+          // Fallback 2: Normal atob
+          try {
+            const fallback2 = atob(base64Content);
+            console.log('✅ Fallback 2 başarılı (basit atob)');
+            return fallback2;
+          } catch (fallback2Error) {
+            console.error('❌ Tüm decode yöntemleri başarısız:', fallback2Error);
+            return base64Content; // En son çare
+          }
+        }
       }
     }
     
     // UTF-8 encoding için yardımcı fonksiyon
     function encodeUTF8ToBase64(jsonData) {
       try {
+        // JSON string'i oluştur
         const jsonString = JSON.stringify(jsonData, null, 2);
+        console.log('🔍 JSON string oluşturuldu, uzunluk:', jsonString.length);
+        
+        // Modern TextEncoder kullan
         const encoder = new TextEncoder();
         const utf8Bytes = encoder.encode(jsonString);
-        return btoa(String.fromCharCode(...utf8Bytes));
+        
+        // Uint8Array'i binary string'e çevir
+        let binaryString = '';
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          binaryString += String.fromCharCode(utf8Bytes[i]);
+        }
+        
+        // Base64'e encode et
+        const base64Result = btoa(binaryString);
+        console.log('✅ UTF-8 encode başarılı, Base64 uzunluk:', base64Result.length);
+        
+        return base64Result;
       } catch (error) {
-        console.warn('UTF-8 encode başarısız, fallback kullanılıyor:', error);
-        // Fallback: Eski yöntem
-        return btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+        console.warn('⚠️ UTF-8 encode başarısız, fallback kullanılıyor:', error);
+        
+        try {
+          // Fallback 1: encodeURIComponent kullan
+          const jsonString = JSON.stringify(jsonData, null, 2);
+          const fallback1 = btoa(unescape(encodeURIComponent(jsonString)));
+          console.log('✅ Fallback 1 başarılı');
+          return fallback1;
+        } catch (fallback1Error) {
+          console.warn('⚠️ Fallback 1 başarısız:', fallback1Error);
+          
+          try {
+            // Fallback 2: Basit btoa
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            const fallback2 = btoa(jsonString);
+            console.log('✅ Fallback 2 başarılı (basit btoa)');
+            return fallback2;
+          } catch (fallback2Error) {
+            console.error('❌ Tüm encode yöntemleri başarısız:', fallback2Error);
+            throw error;
+          }
+        }
       }
     }
     
@@ -1811,6 +2025,15 @@
       manuelEslestirmeleriYukle();
       eslesmemeKurallariniYukle();
       
+      // GitHub'dan manuel eşleştirmeleri otomatik yükle (token varsa)
+      setTimeout(() => {
+        const token = document.getElementById('githubToken').value.trim();
+        if (token) {
+          console.log('🔄 GitHub\'tan manuel eşleştirmeler otomatik yükleniyor...');
+          manuelEslestirmeleriGitHubYukle(true); // sessiz yükleme
+        }
+      }, 2000); // 2 saniye bekle ki sistem tam yüklensin
+      
       // Sadece yeni sistemi başlat
       loadHastaDataFromGitHub().then(() => {
         console.log('✅ Yeni sistem hazır');
@@ -1840,21 +2063,67 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
-    // Türkçe karakter düzeltme fonksiyonu - YENİ VE GÜVENLİ VERSİYON
+    // Türkçe karakter düzeltme fonksiyonu - YENİ VE GELİŞTİRİLMİŞ VERSİYON
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // SADECE BOZUK KARAKTERLERI TEMİZLE, YENİ BOZUKLUK YARATMA!
       let temizMetin = text;
       
-      // 1. Sadece gerçekten bozuk olan ÃÂÃÂ kalıplarını temizle
+      // 1. UTF-8 double encoding düzeltmesi - En yaygın sorun
+      const utf8Düzeltmeleri = {
+        'Ä±': 'ı',        // ı
+        'Ä°': 'İ',        // İ  
+        'Ã§': 'ç',        // ç
+        'Ã‡': 'Ç',        // Ç
+        'Ä°': 'İ',        // İ
+        'ÄŸ': 'ğ',        // ğ
+        'Ä': 'Ğ',         // Ğ
+        'Å': 'Ş',         // Ş
+        'ÅŸ': 'ş',        // ş
+        'Ã¼': 'ü',        // ü
+        'Ãœ': 'Ü',        // Ü
+        'Ã¶': 'ö',        // ö
+        'Ã–': 'Ö',        // Ö
+        'Ã¢': 'â',        // â
+        'Ã®': 'î',        // î
+        'Ã»': 'û',        // û
+      };
+      
+      // UTF-8 düzeltmelerini uygula
+      for (const [bozuk, dogru] of Object.entries(utf8Düzeltmeleri)) {
+        temizMetin = temizMetin.replace(new RegExp(bozuk, 'g'), dogru);
+      }
+      
+      // 2. HTML entity düzeltmeleri
+      const htmlEntityler = {
+        '&Ccedil;': 'Ç',
+        '&ccedil;': 'ç',
+        '&Ouml;': 'Ö', 
+        '&ouml;': 'ö',
+        '&Uuml;': 'Ü',
+        '&uuml;': 'ü',
+        '&Scaron;': 'Ş',
+        '&scaron;': 'ş',
+        '&Idot;': 'İ',
+        '&imath;': 'ı',
+        '&Gbreve;': 'Ğ',
+        '&gbreve;': 'ğ'
+      };
+      
+      for (const [entity, karakter] of Object.entries(htmlEntityler)) {
+        temizMetin = temizMetin.replace(new RegExp(entity, 'g'), karakter);
+      }
+      
+      // 3. Çok katmanlı bozuk karakterleri temizle 
       const bozukKaliplar = [
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂ/g,
         /ãâãâ/g,
-        /ãâ/g
+        /ãâ/g,
+        /ÃÂ/g,
+        /â/g
       ];
       
       // Bozuk kalıpları kaldır
@@ -1862,58 +2131,101 @@
         temizMetin = temizMetin.replace(kalip, '');
       });
       
-      // 2. ÖNCE tam isim kalıplarını düzelt (en spesifik olanlar)
-      temizMetin = temizMetin.replace(/\^EYDA E EÇ0\^Ç/gi, 'ŞEYDA EĞEÇİŞ');
-      
-      // 2.1. PDF'de yaygın bozuk karakterleri düzelt
-      const karakterDuzeltmeleri = {
-        '^': 'Ş',    // PDF'de Ş karakteri ^ olarak görünüyor
-        '0^': 'İ',   // PDF'de İ karakteri 0^ olarak görünüyor  
-        'Ç^': 'Ç',   // PDF'de Ç karakteri Ç^ olarak görünüyor
-        '°': 'İ',    // Alternatif İ gösterimi
-        '*': 'Ş',    // Alternatif Ş gösterimi
-        '§': 'Ş'     // Başka bir Ş gösterimi
+      // 4. Manuel düzeltmeler - bilinen bozuk kelimeler
+      const manuelDuzeltmeler = {
+        'kÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±ymalÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'kıymalı',
+        'kÃÂÃÂÃÂÃÂ±ymalÃÂÃÂÃÂÃÂ±': 'kıymalı',
+        'kÃÂ±ymalÃÂ±': 'kıymalı',
+        'kiymalı': 'kıymalı',
+        'kıymalı': 'kıymalı',
+        
+        'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±spanak': 'ıspanak',
+        'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂspanak': 'ıspanak',
+        'ıspanak': 'ıspanak',
+        'ispanak': 'ıspanak',
+        
+        'gÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¼veÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§': 'güveç',
+        'gÃÂ¼veÃÂ§': 'güveç',
+        'güveç': 'güveç',
+        'guvec': 'güveç',
+        
+        'kÃÂÃÂÃÂÃÂ¶fte': 'köfte',
+        'kÃÂ¶fte': 'köfte',
+        'köfte': 'köfte',
+        'kofte': 'köfte',
+        
+        'poÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂaÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§a': 'poğaça',
+        'poÃÂaÃÂ§a': 'poğaça',
+        'poğaça': 'poğaça',
+        'pogaca': 'poğaça',
+        
+        'salatasÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'salatası',
+        'salatasÃÂ±': 'salatası',
+        'salatası': 'salatası',
+        'salatasi': 'salatası',
+        
+        'yemeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂi': 'yemeği',
+        'yemeÃÂi': 'yemeği',
+        'yemeği': 'yemeği',
+        'yemegi': 'yemeği',
+        
+        'mantÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±sÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'mantısı',
+        'mantÃÂ±sÃÂ±': 'mantısı',
+        'mantısı': 'mantısı',
+        'mantisi': 'mantısı',
+        
+        'dolmasÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'dolması',
+        'dolmasÃÂ±': 'dolması',
+        'dolması': 'dolması',
+        'dolmasi': 'dolması',
+        
+        'patlÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±can': 'patlıcan',
+        'patlÃÂ±can': 'patlıcan',
+        'patlıcan': 'patlıcan',
+        'patlican': 'patlıcan',
+        
+        'FÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±rÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±nda': 'Fırında',
+        'FÃÂ±rÃÂ±nda': 'Fırında',
+        'Fırında': 'Fırında',
+        'Firinda': 'Fırında',
+        
+        'yoÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂurtlu': 'yoğurtlu',
+        'yoÃÂurtlu': 'yoğurtlu',
+        'yoğurtlu': 'yoğurtlu',
+        'yogurtlu': 'yoğurtlu',
+        
+        'yeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂil': 'yeşil',
+        'yeÃÂil': 'yeşil',
+        'yeşil': 'yeşil',
+        'yesil': 'yeşil',
+        
+        'pazÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'pazılı',
+        'pazÃÂ±lÃÂ±': 'pazılı',
+        'pazılı': 'pazılı',
+        'pazili': 'pazılı',
+        
+        'ispanaklÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'ispanaklı',
+        'ispanaklÃÂ±': 'ispanaklı', 
+        'ispanaklı': 'ispanaklı',
+        'ispanakli': 'ispanaklı',
+        
+        'RokalÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'Rokalı',
+        'RokalÃÂ±': 'Rokalı',
+        'Rokalı': 'Rokalı',
+        'Rokali': 'Rokalı',
+        
+        'ekmeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂi': 'ekmeği',
+        'ekmeÃÂi': 'ekmeği',
+        'ekmeği': 'ekmeği',
+        'ekmegi': 'ekmeği'
       };
       
-      // Karakter düzeltmelerini uygula
-      for (const [bozuk, dogru] of Object.entries(karakterDuzeltmeleri)) {
-        temizMetin = temizMetin.replace(new RegExp(escapeRegex(bozuk), 'g'), dogru);
+      // Manuel düzeltmeleri uygula
+      for (const [bozuk, dogru] of Object.entries(manuelDuzeltmeler)) {
+        temizMetin = temizMetin.replace(new RegExp(bozuk, 'gi'), dogru);
       }
       
-      // 2.5. Diğer özel kalıpları düzelt
-      temizMetin = temizMetin.replace(/\^EYDA/g, 'ŞEYDA');
-      temizMetin = temizMetin.replace(/E EÇ0\^Ç/g, 'EĞEÇİŞ');
-      temizMetin = temizMetin.replace(/EGEÇ0\^/g, 'EĞEÇİŞ');
-      
-      // 2. Sadece kesin bozuk karakterleri düzelt (DİKKATLİ!)
-      if (temizMetin.includes('°')) {
-        temizMetin = temizMetin.replace(/°/g, 'İ');
-      }
-      if (temizMetin.includes('*')) {
-        temizMetin = temizMetin.replace(/\*/g, 'Ş');
-      }
-      
-      // 3. Bilinen bozuk isimleri düzelt
-      const isimDuzeltmeleri = {
-        'efKE BAY': 'ŞEFİKE BAY',
-        'EF°KE BAY': 'ŞEFİKE BAY',
-        'EFKE BAY': 'ŞEFİKE BAY',
-        'ATAYŞ': 'ATAYŞ', // Doğru halini koru
-        'ATAYYŞ': 'ATAYŞ', // Çifte Ş'yi düzelt
-        'KK': 'KÖK',
-        'KARAGZ': 'KARAGÖZ',
-        'FSUN': 'FİSUN',
-        'F°SUN': 'FİSUN'
-      };
-      
-      // Sadece kesin bozuk isimleri düzelt
-      for (const [bozuk, dogru] of Object.entries(isimDuzeltmeleri)) {
-        if (temizMetin.includes(bozuk)) {
-          temizMetin = temizMetin.replace(new RegExp(bozuk, 'gi'), dogru);
-        }
-      }
-      
-      // 4. Fazla boşlukları temizle
+      // 5. Fazla boşlukları temizle
       temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
       
       return temizMetin;
@@ -3158,7 +3470,50 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         const data = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
         if (data) {
-          manuelEslestirmeler = JSON.parse(data);
+          const eskiEslestirmeler = JSON.parse(data);
+          
+          // Otomatik karakter düzeltmesi
+          let otomatikDuzeltmeSayisi = 0;
+          const yeniEslestirmeler = {};
+          
+          Object.keys(eskiEslestirmeler).forEach(anahtar => {
+            const eslestirme = eskiEslestirmeler[anahtar];
+            
+            // Orijinal metni düzelt
+            const eskiOrijinalMetin = eslestirme.orijinalMetin;
+            const yeniOrijinalMetin = turkceKarakterDuzelt(eskiOrijinalMetin);
+            
+            // Kartları düzelt
+            const eskiKartlar = eslestirme.kartlar || [];
+            const yeniKartlar = eskiKartlar.map(kart => turkceKarakterDuzelt(kart));
+            
+            // Değişiklik var mı kontrol et
+            const metinDegisti = eskiOrijinalMetin !== yeniOrijinalMetin;
+            const kartlarDegisti = JSON.stringify(eskiKartlar) !== JSON.stringify(yeniKartlar);
+            
+            if (metinDegisti || kartlarDegisti) {
+              otomatikDuzeltmeSayisi++;
+              console.log(`🔧 Otomatik düzeltme ${otomatikDuzeltmeSayisi}: "${eskiOrijinalMetin}" → "${yeniOrijinalMetin}"`);
+            }
+            
+            // Yeni anahtar oluştur (düzeltilmiş metinle)
+            const yeniAnahtar = yeniOrijinalMetin.toLowerCase().replace(/[^a-zşğıüöç0-9]/gi, '');
+            
+            // Yeni eşleştirmeyi kaydet
+            yeniEslestirmeler[yeniAnahtar] = {
+              orijinalMetin: yeniOrijinalMetin,
+              kartlar: yeniKartlar,
+              eklemeTarihi: eslestirme.eklemeTarihi || new Date().toISOString()
+            };
+          });
+          
+          manuelEslestirmeler = yeniEslestirmeler;
+          
+          // Eğer düzeltme yapıldıysa kaydet
+          if (otomatikDuzeltmeSayisi > 0) {
+            console.log(`🎉 Sayfa yüklenirken ${otomatikDuzeltmeSayisi} manuel eşleştirme otomatik düzeltildi!`);
+            localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+          }
         }
       } catch(e) {
         console.error('Manuel eşleştirme yükleme hatası:', e);
@@ -3479,6 +3834,78 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeStatusGoster('Tüm manuel eşleştirmeler temizlendi.', 'success');
     }
 
+    function manuelEslestirmeleriKarakterDuzelt() {
+      console.log('🔧 Manuel eşleştirmelerde karakter düzeltmesi başlatılıyor...');
+      
+      if (Object.keys(manuelEslestirmeler).length === 0) {
+        alert('Düzeltilecek manuel eşleştirme bulunmuyor.');
+        return;
+      }
+      
+      if (!confirm('Mevcut manuel eşleştirmelerdeki bozuk karakterleri düzeltmek istediğinize emin misiniz?\n\nÖrnek: "kÃÂÃÂ±ymalÃÂ±" → "kıymalı"')) {
+        return;
+      }
+      
+      let duzeltmeSayisi = 0;
+      const yeniEslestirmeler = {};
+      
+      // Her eşleştirmeyi kontrol et ve düzelt
+      Object.keys(manuelEslestirmeler).forEach(anahtar => {
+        const eslestirme = manuelEslestirmeler[anahtar];
+        
+        // Orijinal metni düzelt
+        const eskiOrijinalMetin = eslestirme.orijinalMetin;
+        const yeniOrijinalMetin = turkceKarakterDuzelt(eskiOrijinalMetin);
+        
+        // Kartları düzelt
+        const eskiKartlar = eslestirme.kartlar;
+        const yeniKartlar = eskiKartlar.map(kart => turkceKarakterDuzelt(kart));
+        
+        // Değişiklik var mı kontrol et
+        const metinDegisti = eskiOrijinalMetin !== yeniOrijinalMetin;
+        const kartlarDegisti = JSON.stringify(eskiKartlar) !== JSON.stringify(yeniKartlar);
+        
+        if (metinDegisti || kartlarDegisti) {
+          duzeltmeSayisi++;
+          console.log(`✅ ${duzeltmeSayisi}. Düzeltme:`);
+          
+          if (metinDegisti) {
+            console.log(`  📝 Metin: "${eskiOrijinalMetin}" → "${yeniOrijinalMetin}"`);
+          }
+          
+          if (kartlarDegisti) {
+            console.log(`  🖼️ Kartlar: "${eskiKartlar.join(', ')}" → "${yeniKartlar.join(', ')}"`);
+          }
+        }
+        
+        // Yeni anahtar oluştur (düzeltilmiş metinle)
+        const yeniAnahtar = yeniOrijinalMetin.toLowerCase().replace(/[^a-zşğıüöç0-9]/gi, '');
+        
+        // Yeni eşleştirmeyi kaydet
+        yeniEslestirmeler[yeniAnahtar] = {
+          orijinalMetin: yeniOrijinalMetin,
+          kartlar: yeniKartlar,
+          eklemeTarihi: eslestirme.eklemeTarihi || new Date().toISOString()
+        };
+      });
+      
+      if (duzeltmeSayisi > 0) {
+        // Eski eşleştirmeleri sil, yenilerini kaydet
+        manuelEslestirmeler = yeniEslestirmeler;
+        manuelEslestirmeleriKaydet();
+        manuelEslestirmeListesiniGoster();
+        
+        console.log(`🎉 Karakter düzeltmesi tamamlandı: ${duzeltmeSayisi} eşleştirme düzeltildi!`);
+        alert(`✅ Karakter düzeltmesi başarılı!\n\n${duzeltmeSayisi} manuel eşleştirmede bozuk karakterler düzeltildi.\n\nÖrnek düzeltmeler:\n• "kÃÂÃÂ±ymalÃÂ±" → "kıymalı"\n• "gÃÂ¼veÃÂ§" → "güveç"\n• "poÃÂaÃÂ§a" → "poğaça"`);
+        
+        // GitHub'a kaydet
+        manuelEslestirmeleriGitHubKaydet(true); // sessiz kaydetme
+      } else {
+        console.log('✅ Tüm manuel eşleştirmeler zaten doğru karakterlerle yazılmış!');
+        alert('✅ Tüm manuel eşleştirmeler zaten doğru formatta!\n\nDüzeltilecek bozuk karakter bulunmuyor.');
+      }
+    }
+
     function manuelEslestirmeListesiniGoster() {
       const div = document.getElementById('manuelEslestirmeListesi');
       div.innerHTML = '';
@@ -3521,18 +3948,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Karakter düzeltme fonksiyonu
       function karakterDuzelt(text) {
         if (!text) return text;
-        return text
-          .replace(/Ä±/g, 'ı')
-          .replace(/Ä/g, 'ğ') 
-          .replace(/Å/g, 'ş')
-          .replace(/Ğ/g, 'ğ')
-          .replace(/Ã¼/g, 'ü')
-          .replace(/Ã¶/g, 'ö')
-          .replace(/Ã§/g, 'ç')
-          .replace(/â/g, 'a')
-          .replace(/î/g, 'i')
-          .replace(/û/g, 'u')
-          .replace(/ô/g, 'o');
+        
+        // Gelişmiş Türkçe karakter düzeltme - turkceKarakterDuzelt fonksiyonunu kullan
+        return turkceKarakterDuzelt(text);
       }
       
       anahtarlar.forEach(anahtar => {
@@ -3915,21 +4333,72 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (resp.ok) {
           const data = await resp.json();
           const jsonContent = decodeBase64UTF8(data.content);
+          console.log('🔍 GitHub\'dan yüklenen JSON içerik ilk 200 karakter:', jsonContent.substring(0, 200));
+          
           const kayitVerisi = JSON.parse(jsonContent);
+          
+          let eskiEslestirmeler = {};
           
           // Eski format kontrolü
           if (kayitVerisi.eslestirmeler) {
-            manuelEslestirmeler = kayitVerisi.eslestirmeler;
+            eskiEslestirmeler = kayitVerisi.eslestirmeler;
           } else {
             // Eski format (direkt object)
-            manuelEslestirmeler = kayitVerisi;
+            eskiEslestirmeler = kayitVerisi;
           }
           
-          // LocalStorage'a da kaydet
+          // 🔧 GitHub'tan yüklenen verilerde otomatik karakter düzeltmesi
+          let otomatikDuzeltmeSayisi = 0;
+          const yeniEslestirmeler = {};
+          
+          Object.keys(eskiEslestirmeler).forEach(anahtar => {
+            const eslestirme = eskiEslestirmeler[anahtar];
+            
+            // Orijinal metni düzelt
+            const eskiOrijinalMetin = eslestirme.orijinalMetin;
+            const yeniOrijinalMetin = turkceKarakterDuzelt(eskiOrijinalMetin);
+            
+            // Kartları düzelt
+            const eskiKartlar = eslestirme.kartlar || [];
+            const yeniKartlar = eskiKartlar.map(kart => turkceKarakterDuzelt(kart));
+            
+            // Değişiklik var mı kontrol et
+            const metinDegisti = eskiOrijinalMetin !== yeniOrijinalMetin;
+            const kartlarDegisti = JSON.stringify(eskiKartlar) !== JSON.stringify(yeniKartlar);
+            
+            if (metinDegisti || kartlarDegisti) {
+              otomatikDuzeltmeSayisi++;
+              console.log(`🔧 GitHub verisi düzeltildi ${otomatikDuzeltmeSayisi}: "${eskiOrijinalMetin}" → "${yeniOrijinalMetin}"`);
+            }
+            
+            // Yeni anahtar oluştur (düzeltilmiş metinle)
+            const yeniAnahtar = yeniOrijinalMetin.toLowerCase().replace(/[^a-zşğıüöç0-9]/gi, '');
+            
+            // Yeni eşleştirmeyi kaydet
+            yeniEslestirmeler[yeniAnahtar] = {
+              orijinalMetin: yeniOrijinalMetin,
+              kartlar: yeniKartlar,
+              eklemeTarihi: eslestirme.eklemeTarihi || new Date().toISOString()
+            };
+          });
+          
+          manuelEslestirmeler = yeniEslestirmeler;
+          
+          // LocalStorage'a düzeltilmiş veriyi kaydet
           localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
           
           // Cache timestamp'ini güncelle
           localStorage.setItem('lastGithubUpdate', Date.now().toString());
+          
+          // Eğer karakter düzeltmesi yapıldıysa GitHub'a geri kaydet
+          if (otomatikDuzeltmeSayisi > 0) {
+            console.log(`🎉 GitHub'tan yüklenen ${otomatikDuzeltmeSayisi} eşleştirmede karakter düzeltmesi yapıldı, geri kaydediliyor...`);
+            
+            // 3 saniye bekle sonra otomatik kaydet (çakışmayı önlemek için)
+            setTimeout(() => {
+              manuelEslestirmeleriGitHubKaydet(true); // sessiz kaydetme
+            }, 3000);
+          }
           
           // Listeyi güncelle (eğer panel açıksa)
           if (document.getElementById('manuelEslestirmePanel').style.display !== 'none') {
@@ -3938,11 +4407,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
           if (!sessizYukleme) {
             const eslestirmeSayisi = Object.keys(manuelEslestirmeler).length;
-            manuelEslestirmeStatusGoster(`✅ GitHub'dan ${eslestirmeSayisi} eşleştirme yüklendi!`, 'success');
+            const duzeltmeMetni = otomatikDuzeltmeSayisi > 0 ? ` (${otomatikDuzeltmeSayisi} karakter düzeltmesi yapıldı)` : '';
+            manuelEslestirmeStatusGoster(`✅ GitHub'dan ${eslestirmeSayisi} eşleştirme yüklendi!${duzeltmeMetni}`, 'success');
           } else {
             // Sessiz yükleme olsa bile konsola yazdır
             const eslestirmeSayisi = Object.keys(manuelEslestirmeler).length;
-            console.log(`Manuel eşleştirmeler GitHub'dan güncellendi: ${eslestirmeSayisi} adet`);
+            const duzeltmeMetni = otomatikDuzeltmeSayisi > 0 ? ` (${otomatikDuzeltmeSayisi} düzeltme)` : '';
+            console.log(`Manuel eşleştirmeler GitHub'dan güncellendi: ${eslestirmeSayisi} adet${duzeltmeMetni}`);
           }
 
         } else if (resp.status === 404) {
@@ -3960,6 +4431,75 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           manuelEslestirmeStatusGoster(`❌ GitHub yükleme hatası: ${error.message}`, 'error');
         }
       }
+    }
+
+    // Manuel eşleştirmeler debug fonksiyonu
+    function manuelEslestirmelerDebug() {
+      console.log('🔍 Manuel Eşleştirmeler Debug Raporu');
+      console.log('=====================================');
+      
+      // LocalStorage verisi
+      const localData = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
+      console.log('📁 LocalStorage veri uzunluğu:', localData ? localData.length : 0);
+      
+      if (localData) {
+        try {
+          const parsedLocal = JSON.parse(localData);
+          console.log('📦 LocalStorage eşleştirme sayısı:', Object.keys(parsedLocal).length);
+          
+          // İlk 3 eşleştirmeyi göster
+          Object.keys(parsedLocal).slice(0, 3).forEach((key, index) => {
+            const eslestirme = parsedLocal[key];
+            console.log(`${index + 1}. "${eslestirme.orijinalMetin}" → [${eslestirme.kartlar.join(', ')}]`);
+          });
+        } catch (e) {
+          console.error('❌ LocalStorage parse hatası:', e);
+        }
+      }
+      
+      // Mevcut bellek verisi
+      console.log('💾 Bellekteki eşleştirme sayısı:', Object.keys(manuelEslestirmeler).length);
+      
+      // Karakterlerde sorun var mı kontrol et
+      let bozukKarakterSayisi = 0;
+      Object.keys(manuelEslestirmeler).forEach(key => {
+        const eslestirme = manuelEslestirmeler[key];
+        const metin = eslestirme.orijinalMetin;
+        
+        if (metin.includes('Ã') || metin.includes('Â') || metin.includes('Ä') || metin.includes('Å')) {
+          bozukKarakterSayisi++;
+          console.log(`⚠️ Bozuk karakter: "${metin}"`);
+        }
+      });
+      
+      console.log(`📊 Bozuk karakter içeren eşleştirme sayısı: ${bozukKarakterSayisi}`);
+      
+      // JSON Preview
+      const jsonPreview = JSON.stringify({
+        version: '1.0',
+        sonGuncelleme: new Date().toISOString(),
+        eslestirmeler: manuelEslestirmeler
+      }, null, 2);
+      
+      console.log('📄 Kaydedilecek JSON preview (ilk 500 karakter):');
+      console.log(jsonPreview.substring(0, 500) + '...');
+      
+      // Kullanıcıya özet göster
+      const ozet = `
+🔍 MANUEL EŞLEŞTİRMELER DEBUG RAPORU
+=====================================
+
+📊 İstatistikler:
+• Toplam eşleştirme sayısı: ${Object.keys(manuelEslestirmeler).length}
+• Bozuk karakter içeren: ${bozukKarakterSayisi}
+• LocalStorage veri boyutu: ${localData ? Math.round(localData.length / 1024) : 0} KB
+
+${bozukKarakterSayisi > 0 ? '⚠️ Bozuk karakterler tespit edildi! "🔧 Karakter Düzelt" butonunu kullanın.' : '✅ Tüm karakterler temiz görünüyor.'}
+
+📄 Detaylar konsola yazdırıldı (F12 > Console)
+      `;
+      
+      alert(ozet);
     }
 
     // --- Kart Silme Fonksiyonları ---
@@ -5258,7 +5798,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
           
           // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel)
-          if (!hastaDetayiBulundu && hasta.id) {
+          if (!hastaDetayiBulundu && hasta.id && token) {
             try {
               const dosyaAdlari = [
                 generateFileName({ id: hasta.id, isim: hasta.isim }),
@@ -5281,11 +5821,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                       break;
                     }
                   } else if (response.status === 404) {
-                    // Hasta dosyası bulunamadı, diğer dosya adlarını dene
+                    // 404 hatası beklenen bir durum - dosya henüz oluşturulmamış olabilir
+                    console.log(`📝 GitHub'da ${dosyaAdi} dosyası bulunamadı (404) - localStorage verisi kullanılacak`);
                     continue;
+                  } else {
+                    console.warn(`⚠️ GitHub API hatası (${response.status}): ${dosyaAdi}`);
                   }
                 } catch (e) {
-                  // Sessizce geç
+                  // Network veya diğer hatalar için sessiz geçiş
+                  console.log(`📝 GitHub bağlantısı sırasında hata: ${dosyaAdi} - localStorage verisi kullanılacak`);
                 }
               }
             } catch (e) {
@@ -5468,9 +6012,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               bulunanDosya = dosyaAdi;
               console.log(`✅ Dosya bulundu: ${dosyaAdi}`);
               break;
+            } else if (response.status === 404) {
+              console.log(`📝 Dosya bulunamadı (404): ${dosyaAdi}`);
+            } else {
+              console.warn(`⚠️ GitHub API hatası (${response.status}): ${dosyaAdi}`);
             }
           } catch (e) {
-            console.log(`❌ Dosya bulunamadı: ${dosyaAdi}`);
+            console.log(`📝 Bağlantı hatası: ${dosyaAdi} - ${e.message}`);
           }
         }
         
@@ -6420,6 +6968,28 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         pdfName: h.pdfName || h.pdfOrijinalIsim || 'yok'
       })));
       
+      // 8. ve 9. hafta özel debug
+      const sekizinciHafta = haftalar.find(h => h.haftaNo === 8);
+      const dokuzuncuHafta = haftalar.find(h => h.haftaNo === 9);
+      
+      if (sekizinciHafta) {
+        console.log('🔍 8. HAFTA DEBUG:', {
+          haftaNo: sekizinciHafta.haftaNo,
+          baslangic: sekizinciHafta.baslangic,
+          bitis: sekizinciHafta.bitis,
+          kayitTarihi: sekizinciHafta.kayitTarihi
+        });
+      }
+      
+      if (dokuzuncuHafta) {
+        console.log('🔍 9. HAFTA DEBUG:', {
+          haftaNo: dokuzuncuHafta.haftaNo,
+          baslangic: dokuzuncuHafta.baslangic,
+          bitis: dokuzuncuHafta.bitis,
+          kayitTarihi: dokuzuncuHafta.kayitTarihi
+        });
+      }
+      
       // Cache'i kontrol et
       if (typeof cokluPdfHastaCache !== 'undefined') {
         const cacheKey = seciliHasta?.isim?.toUpperCase();
@@ -7042,6 +7612,7 @@ function duzenleHafta(i) {
         console.log('🔍 Seçili hasta:', seciliHasta.id);
 
         const haftalar = getHaftaListesi();
+        console.log('🔍 ZIP: getHaftaListesi() döndürdü:', JSON.stringify(haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })), null, 2));
         if (!haftalar[haftaIndex]) {
           alert('Hafta bulunamadı!');
           return;
@@ -7241,24 +7812,42 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // JSON verisinden doğrudan 5. hafta başlangıç tarihini al
+        // 5. hafta başlangıç tarihini bul - hafta numarasına göre ara
         let haftaBaslangici = new Date();
+        let besinciHafta = null;
         
-        if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+        // Önce hafta numarasına göre 5. haftayı ara
+        for (let i = 0; i < haftalar.length; i++) {
+            if (haftalar[i].haftaNo === 5) {
+                besinciHafta = haftalar[i];
+                break;
+            }
+        }
+        
+        if (besinciHafta && besinciHafta.baslangic) {
+            console.log('✅ 5. HAFTA BULUNDU - hafta numarası:', besinciHafta.haftaNo);
+            console.log('🔍 5. HAFTA TARİH VERİSİ:', besinciHafta.baslangic, '→', besinciHafta.bitis);
+            haftaBaslangici = new Date(besinciHafta.baslangic);
+            console.log('✅ 5. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
             console.log('  5. HAFTA RAW VERİ:', haftalar[4].baslangic, typeof haftalar[4].baslangic);
             haftaBaslangici = new Date(haftalar[4].baslangic);
             console.log('  5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else {
-            console.log('⚠️ 5. hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('❌ 5. hafta verisi bulunamadı, hesaplama yapılacak');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
-            console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
+            console.log('🔍 Hafta numaraları:', haftalar.map(h => h.haftaNo || 'yok'));
+            
+            // 5. hafta yok, 1. haftadan hesapla
+            if (haftalar.length > 0 && haftalar[0]?.baslangic) {
+                const birinciHafta = new Date(haftalar[0].baslangic);
+                haftaBaslangici = new Date(birinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000)); // 4 hafta ekle
+                console.log('⚠️ 1. haftadan 5. hafta hesaplandı:', haftaBaslangici.toLocaleDateString('tr-TR'));
+            } else {
+                console.error('❌ Hiç hafta verisi yok, bugün kullanılacak');
+                haftaBaslangici = new Date();
+            }
         }
-
-        // Tarihi o haftanın Pazartesi'sine hizala
-        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
-        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
-        console.log('🗓️ MASAJ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -7517,6 +8106,7 @@ function duzenleHafta(i) {
     async function createAndAddEgzersizPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
         console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...', { hasta: hasta.isim });
+        console.log('🔍 EGZERSIZ PDF DEBUG: Gelen haftalar verisi:', JSON.stringify(haftalar.slice(0, 10).map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })), null, 2));
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7526,10 +8116,29 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // JSON verisinden doğrudan 9. hafta başlangıç tarihini al
+        // 9. hafta başlangıç tarihini bul - hafta numarasına göre ara
         let haftaBaslangici = new Date();
+        let dokuzuncuHafta = null;
         
-        if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+        console.log('🔍 EGZERSIZ PDF: Toplam hafta sayısı:', haftalar.length);
+        console.log('🔍 EGZERSIZ PDF: Hafta numaraları:', haftalar.map(h => ({ index: haftalar.indexOf(h), haftaNo: h.haftaNo, baslangic: h.baslangic })));
+        
+        // 9. hafta verisi için hafta numarasına göre ara
+        for (let i = 0; i < haftalar.length; i++) {
+            console.log(`🔍 EGZERSIZ PDF: Hafta ${i} kontrolü - haftaNo: ${haftalar[i].haftaNo}, aranan: 9`);
+            if (haftalar[i].haftaNo === 9) {
+                dokuzuncuHafta = haftalar[i];
+                console.log('🎯 EGZERSIZ PDF: 9. hafta BULUNDU!', dokuzuncuHafta);
+                break;
+            }
+        }
+        
+        if (dokuzuncuHafta && dokuzuncuHafta.baslangic) {
+            console.log('✅ 9. HAFTA BULUNDU - hafta numarası:', dokuzuncuHafta.haftaNo);
+            console.log('🔍 9. HAFTA TARİH VERİSİ:', dokuzuncuHafta.baslangic, '→', dokuzuncuHafta.bitis);
+            haftaBaslangici = new Date(dokuzuncuHafta.baslangic);
+            console.log('✅ 9. HAFTA BAŞLANGIÇ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
             // 9. hafta verisi mevcut
             console.log('  9. HAFTA RAW VERİ:', haftalar[8].baslangic);
             haftaBaslangici = new Date(haftalar[8].baslangic);
@@ -7541,15 +8150,20 @@ function duzenleHafta(i) {
             haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
             console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
         } else {
-            console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('❌ 9. hafta verisi bulunamadı, hesaplama yapılacak');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
+            console.log('🔍 Hafta numaraları:', haftalar.map(h => h.haftaNo || 'yok'));
+            
+            // 9. hafta yok, 1. haftadan hesapla
+            if (haftalar.length > 0 && haftalar[0]?.baslangic) {
+                const birinciHafta = new Date(haftalar[0].baslangic);
+                haftaBaslangici = new Date(birinciHafta.getTime() + (8 * 7 * 24 * 60 * 60 * 1000)); // 8 hafta ekle
+                console.log('⚠️ 1. haftadan 9. hafta hesaplandı:', haftaBaslangici.toLocaleDateString('tr-TR'));
+            } else {
+                console.error('❌ Hiç hafta verisi yok, bugün kullanılacak');
+                haftaBaslangici = new Date();
+            }
         }
-
-        // Tarihi o haftanın Pazartesi'sine hizala
-        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
-        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
-        console.log('🗓️ EGZERSİZ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -8692,26 +9306,32 @@ function duzenleHafta(i) {
         
         console.log('🔍 Hafta verilerini belirleniyor...');
         // Başlangıç haftasını belirle
-        let baslangicHaftaIndex;
         let baslangicHafta;
         
         if (dokuzuncuHaftaOzelModu) {
-          // 9. hafta özel modu: 4 hafta geriden başla (5. haftadan başla)
-          baslangicHaftaIndex = 4; // 5. hafta = index 4
-          console.log('🎯 9. hafta özel modu: 5. haftadan başlayacak (4 hafta geri)');
+          // 9. hafta özel modu: 9. haftayı bul
+          console.log('🎯 9. hafta özel modu: 9. hafta aranıyor...');
+          baslangicHafta = haftalar.find(h => h.haftaNo === 9);
+          if (!baslangicHafta) {
+            console.log('⚠️ 9. hafta bulunamadı, mevcut en büyük hafta kullanılacak');
+            baslangicHafta = haftalar[haftalar.length - 1];
+          } else {
+            console.log('✅ 9. hafta bulundu:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
+          }
+        } else if (belirliHaftaNo) {
+          // Belirli hafta numarası ile arama yap
+          console.log('🔍 Belirli hafta aranıyor, haftaNo:', belirliHaftaNo);
+          baslangicHafta = haftalar.find(h => h.haftaNo === belirliHaftaNo);
+          if (!baslangicHafta) {
+            console.log('⚠️ Belirtilen hafta bulunamadı, mevcut en büyük hafta kullanılacak');
+            baslangicHafta = haftalar[haftalar.length - 1];
+          } else {
+            console.log('✅ Belirtilen hafta bulundu:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
+          }
         } else {
-          // Normal mod
-          baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
-        }
-        
-        if (baslangicHaftaIndex < haftalar.length) {
-          // Belirtilen hafta mevcut
-          baslangicHafta = haftalar[baslangicHaftaIndex];
-          console.log('✅ Belirtilen hafta bulundu:', baslangicHafta);
-        } else {
-          // Belirtilen hafta yok, mevcut ilk haftayı kullan
-          baslangicHafta = haftalar[0];
-          console.log('⚠️ Belirtilen hafta yok, ilk hafta kullanılıyor:', baslangicHafta);
+          // Varsayılan: mevcut son haftayı kullan
+          baslangicHafta = haftalar[haftalar.length - 1];
+          console.log('🔄 Varsayılan hafta kullanılıyor:', { haftaNo: baslangicHafta.haftaNo, baslangic: baslangicHafta.baslangic });
         }
         
         console.log('🔍 Başlangıç tarihi hesaplanıyor...');
@@ -8724,26 +9344,38 @@ function duzenleHafta(i) {
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
         
         // Kompakt tablo (Blob için)
-        const haftaSayisi = dokuzuncuHaftaOzelModu ? 8 : 8; // 9. hafta özel modunda 8 hafta (5-12), normal modda 8 hafta
+        const haftaSayisi = dokuzuncuHaftaOzelModu ? 8 : 8; // Her durumda 8 hafta
+        
+        console.log('🔍 PDF oluşturma parametreleri:', {
+          dokuzuncuHaftaOzelModu,
+          belirliHaftaNo,
+          haftaSayisi,
+          baslangicHaftaNo: baslangicHafta.haftaNo,
+          baslangicTarihi: baslangicHafta.baslangic
+        });
+        
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < haftaSayisi; lenfHaftaIndex++) {
-          // 9. hafta özel modunda 5. haftadan başla (5,6,7,8,9,10,11,12), normal modda belirtilen haftadan
-          const gercekHaftaNo = dokuzuncuHaftaOzelModu ? (lenfHaftaIndex + 5) : (lenfHaftaIndex + (belirliHaftaNo || 5));
-          
-          // Tarih hesaplaması düzeltildi
+          // Hafta numarası hesapla
+          let gercekHaftaNo;
           let haftaBaslangic;
+          
           if (dokuzuncuHaftaOzelModu) {
-            // 9. hafta özel modu: 5. haftadan başlayarak 8 hafta göster
-            // baslangicTarihi = 9. hafta başlangıç tarihi
-            // 5. hafta = 9. haftadan 4 hafta önce
-            // 6. hafta = 9. haftadan 3 hafta önce
-            // ...
-            // 9. hafta = 9. haftadan 0 hafta önce
-            // 10. hafta = 9. haftadan 1 hafta sonra
-            const haftaFarki = (lenfHaftaIndex + 5) - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+            // 9. hafta özel modu: 5-12. haftalar (8 hafta)
+            gercekHaftaNo = lenfHaftaIndex + 5; // 5, 6, 7, 8, 9, 10, 11, 12
+            
+            // 9. haftayı referans alarak diğer hafta tarihlerini hesapla
+            const haftaFarki = gercekHaftaNo - baslangicHafta.haftaNo; // 5.hafta=-4, 6.hafta=-3, ..., 9.hafta=0, 10.hafta=+1
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+            
+            console.log(`🔍 9. hafta modu - ${gercekHaftaNo}. hafta: farki=${haftaFarki}, tarih=${haftaBaslangic.toLocaleDateString('tr-TR')}`);
           } else {
-            // Normal mod: başlangıç tarihinden itibaren hafta hafta ilerle
+            // Normal mod: belirtilen haftadan başlayarak 8 hafta
+            gercekHaftaNo = lenfHaftaIndex + baslangicHafta.haftaNo;
+            
+            // Başlangıç haftasından itibaren hafta hafta ilerle  
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+            
+            console.log(`🔍 Normal mod - ${gercekHaftaNo}. hafta: index=${lenfHaftaIndex}, tarih=${haftaBaslangic.toLocaleDateString('tr-TR')}`);
           }
           
           // Hafta başlığı
@@ -11611,6 +12243,92 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         // Butonu sidebar'a ekle
         sidebarButtons.appendChild(topluZipButton);
         console.log('✅ Toplu ZIP butonu eklendi');
+        
+        // 🔧 Hafta tarih düzeltme butonu ekle
+        if (!sidebarButtons.querySelector('.hafta-duzelt-button')) {
+          const haftaDuzeltButton = document.createElement('button');
+          haftaDuzeltButton.className = 'hafta-duzelt-button';
+          haftaDuzeltButton.innerHTML = '🔧 HAFTA TARİHLERİNİ DÜZELT';
+          haftaDuzeltButton.title = '8. ve 9. hafta tarihlerini doğru değerlerle düzelt';
+          haftaDuzeltButton.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #fd7e14, #e55a4e);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          `;
+          
+          haftaDuzeltButton.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+          });
+          
+          haftaDuzeltButton.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+          });
+          
+          haftaDuzeltButton.onclick = function() {
+            if (confirm('8. ve 9. hafta tarihlerini düzeltmek istediğinizden emin misiniz?')) {
+              topluHaftaTarihiDuzelt();
+            }
+          };
+          
+          sidebarButtons.appendChild(haftaDuzeltButton);
+          console.log('✅ Hafta tarih düzeltme butonu eklendi');
+          
+          // 🔍 Debug butonu ekle
+          const debugButton = document.createElement('button');
+          debugButton.className = 'debug-button';
+          debugButton.innerHTML = '🔍 HAFTA DEBUG';
+          debugButton.title = 'Mevcut hafta verilerini konsola yazdır';
+          debugButton.style.cssText = `
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #6c757d, #495057);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          `;
+          
+          debugButton.onclick = function() {
+            console.log('🔍 MANUEL DEBUG - Seçili hasta:', seciliHasta?.isim);
+            if (seciliHasta && seciliHasta.haftalar) {
+              console.log('🔍 MANUEL DEBUG - Tüm haftalar:', seciliHasta.haftalar.map(h => ({
+                haftaNo: h.haftaNo,
+                baslangic: h.baslangic,
+                bitis: h.bitis,
+                kayitTarihi: h.kayitTarihi
+              })));
+              
+              const sekizinciHafta = seciliHasta.haftalar.find(h => h.haftaNo === 8);
+              const dokuzuncuHafta = seciliHasta.haftalar.find(h => h.haftaNo === 9);
+              
+              if (sekizinciHafta) {
+                console.log('🔍 MANUEL DEBUG - 8. hafta detay:', sekizinciHafta);
+              }
+              if (dokuzuncuHafta) {
+                console.log('🔍 MANUEL DEBUG - 9. hafta detay:', dokuzuncuHafta);
+              }
+            }
+            alert('Debug bilgileri konsola yazdırıldı. F12 ile konsolu açın.');
+          };
+          
+          sidebarButtons.appendChild(debugButton);
+          console.log('✅ Debug butonu eklendi');
+        }
       }
     }
     
