@@ -3166,16 +3166,44 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
+    // Kaydetme throttle değişkenleri
+    let kaydetmeZamanlayicisi = null;
+    let gitHubKaydetmeDevamEdiyor = false;
+    let sonKaydetmeZamani = 0;
+
     function manuelEslestirmeleriKaydet() {
       try {
         localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+        console.log('📁 Manuel eşleştirmeler localStorage\'a kaydedildi');
+        
         // Otomatik GitHub kaydı (token varsa)
         const token = document.getElementById('githubToken').value.trim();
         if (token && Object.keys(manuelEslestirmeler).length > 0) {
-          // 2 saniye bekle sonra otomatik kaydet (çok sık kaydetmeyi önlemek için)
-          setTimeout(() => {
-            manuelEslestirmeleriGitHubKaydet(true); // true = sessiz kaydetme
-          }, 2000);
+          const simdikiZaman = Date.now();
+          const sonKaydetmedenGecenZaman = simdikiZaman - sonKaydetmeZamani;
+          
+          // Mevcut zamanlayıcıyı iptal et
+          if (kaydetmeZamanlayicisi) {
+            clearTimeout(kaydetmeZamanlayicisi);
+            console.log('🔄 Önceki kaydetme zamanlayıcısı iptal edildi');
+          }
+          
+          // Eğer son kaydetmeden 10 saniye geçmemişse, daha fazla bekle
+          const beklemeZamani = sonKaydetmedenGecenZaman < 10000 ? 5000 : 3000;
+          
+          // Yeni zamanlayıcı başlat
+          kaydetmeZamanlayicisi = setTimeout(async () => {
+            if (!gitHubKaydetmeDevamEdiyor) {
+              console.log(`⏰ Zamanlayıcı tetiklendi (${beklemeZamani}ms bekledikten sonra), GitHub\'a kaydediliyor...`);
+              sonKaydetmeZamani = Date.now();
+              await manuelEslestirmeleriGitHubKaydet(true); // true = sessiz kaydetme
+            } else {
+              console.log('⚠️ GitHub kaydetme devam ediyor, atlandı');
+            }
+            kaydetmeZamanlayicisi = null;
+          }, beklemeZamani);
+          
+          console.log(`⏰ GitHub kaydetme ${beklemeZamani}ms sonra yapılacak`);
         }
       } catch(e) {
         console.error('Manuel eşleştirme kaydetme hatası:', e);
@@ -3762,6 +3790,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     // GitHub'a manuel eşleştirmeleri kaydetme
     async function manuelEslestirmeleriGitHubKaydet(sessizKaydetme = false) {
+      // Zaten kaydetme devam ediyorsa çık
+      if (gitHubKaydetmeDevamEdiyor) {
+        if (!sessizKaydetme) {
+          console.log('⚠️ GitHub kaydetme zaten devam ediyor, işlem atlandı');
+        }
+        return;
+      }
+      
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
         if (!sessizKaydetme) {
@@ -3769,6 +3805,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         return;
       }
+
+      // Kaydetme başladı işaretini koy
+      gitHubKaydetmeDevamEdiyor = true;
 
       const owner = 'mustafasacar35';
       const repo = 'lipodem-takip-paneli';
@@ -3823,6 +3862,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           if (!sessizKaydetme) {
             manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi!', 'success');
           }
+          console.log('✅ GitHub kaydetme başarılı - durum sıfırlanacak');
         } else {
           throw new Error('GitHub kaydı başarısız: ' + (await res.text()));
         }
@@ -3872,6 +3912,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                 if (!sessizKaydetme) {
                   manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi! (retry)', 'success');
                 }
+                // Başarılı retry sonrası da durumu sıfırla
+                gitHubKaydetmeDevamEdiyor = false;
                 return;
               } else {
                 console.error('❌ Retry de başarısız oldu:', await retryRes.text());
@@ -3885,6 +3927,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (!sessizKaydetme) {
           manuelEslestirmeStatusGoster(`❌ GitHub kaydetme hatası: ${error.message}`, 'error');
         }
+      } finally {
+        // Kaydetme durumunu her durumda sıfırla
+        gitHubKaydetmeDevamEdiyor = false;
+        console.log('🔄 GitHub kaydetme durumu sıfırlandı');
       }
     }
 
