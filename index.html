@@ -686,6 +686,9 @@
       <button onclick="manuelEslestirmeleriTemizle()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         Tüm Eşleştirmeleri Temizle
       </button>
+      <button onclick="manuelEslestirmeleriKarakterDuzelt()" style="background:#ffc107; color:#212529; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;" title="Mevcut eşleştirmelerdeki bozuk karakterleri düzelt">
+        🔧 Karakter Düzelt
+      </button>
       <button onclick="manuelEslestirmeleriGitHubKaydet()" style="background:#007bff; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">
         GitHub'a Kaydet
       </button>
@@ -1984,21 +1987,67 @@
     });
 
     // Data klasöründen hasta verilerini otomatik yükle
-    // Türkçe karakter düzeltme fonksiyonu - YENİ VE GÜVENLİ VERSİYON
+    // Türkçe karakter düzeltme fonksiyonu - YENİ VE GELİŞTİRİLMİŞ VERSİYON
     function turkceKarakterDuzelt(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // SADECE BOZUK KARAKTERLERI TEMİZLE, YENİ BOZUKLUK YARATMA!
       let temizMetin = text;
       
-      // 1. Sadece gerçekten bozuk olan ÃÂÃÂ kalıplarını temizle
+      // 1. UTF-8 double encoding düzeltmesi - En yaygın sorun
+      const utf8Düzeltmeleri = {
+        'Ä±': 'ı',        // ı
+        'Ä°': 'İ',        // İ  
+        'Ã§': 'ç',        // ç
+        'Ã‡': 'Ç',        // Ç
+        'Ä°': 'İ',        // İ
+        'ÄŸ': 'ğ',        // ğ
+        'Ä': 'Ğ',         // Ğ
+        'Å': 'Ş',         // Ş
+        'ÅŸ': 'ş',        // ş
+        'Ã¼': 'ü',        // ü
+        'Ãœ': 'Ü',        // Ü
+        'Ã¶': 'ö',        // ö
+        'Ã–': 'Ö',        // Ö
+        'Ã¢': 'â',        // â
+        'Ã®': 'î',        // î
+        'Ã»': 'û',        // û
+      };
+      
+      // UTF-8 düzeltmelerini uygula
+      for (const [bozuk, dogru] of Object.entries(utf8Düzeltmeleri)) {
+        temizMetin = temizMetin.replace(new RegExp(bozuk, 'g'), dogru);
+      }
+      
+      // 2. HTML entity düzeltmeleri
+      const htmlEntityler = {
+        '&Ccedil;': 'Ç',
+        '&ccedil;': 'ç',
+        '&Ouml;': 'Ö', 
+        '&ouml;': 'ö',
+        '&Uuml;': 'Ü',
+        '&uuml;': 'ü',
+        '&Scaron;': 'Ş',
+        '&scaron;': 'ş',
+        '&Idot;': 'İ',
+        '&imath;': 'ı',
+        '&Gbreve;': 'Ğ',
+        '&gbreve;': 'ğ'
+      };
+      
+      for (const [entity, karakter] of Object.entries(htmlEntityler)) {
+        temizMetin = temizMetin.replace(new RegExp(entity, 'g'), karakter);
+      }
+      
+      // 3. Çok katmanlı bozuk karakterleri temizle 
       const bozukKaliplar = [
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ/g,
         /ÃÂÃÂÃÂÃÂ/g,
         /ãâãâ/g,
-        /ãâ/g
+        /ãâ/g,
+        /ÃÂ/g,
+        /â/g
       ];
       
       // Bozuk kalıpları kaldır
@@ -2006,58 +2055,101 @@
         temizMetin = temizMetin.replace(kalip, '');
       });
       
-      // 2. ÖNCE tam isim kalıplarını düzelt (en spesifik olanlar)
-      temizMetin = temizMetin.replace(/\^EYDA E EÇ0\^Ç/gi, 'ŞEYDA EĞEÇİŞ');
-      
-      // 2.1. PDF'de yaygın bozuk karakterleri düzelt
-      const karakterDuzeltmeleri = {
-        '^': 'Ş',    // PDF'de Ş karakteri ^ olarak görünüyor
-        '0^': 'İ',   // PDF'de İ karakteri 0^ olarak görünüyor  
-        'Ç^': 'Ç',   // PDF'de Ç karakteri Ç^ olarak görünüyor
-        '°': 'İ',    // Alternatif İ gösterimi
-        '*': 'Ş',    // Alternatif Ş gösterimi
-        '§': 'Ş'     // Başka bir Ş gösterimi
+      // 4. Manuel düzeltmeler - bilinen bozuk kelimeler
+      const manuelDuzeltmeler = {
+        'kÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±ymalÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'kıymalı',
+        'kÃÂÃÂÃÂÃÂ±ymalÃÂÃÂÃÂÃÂ±': 'kıymalı',
+        'kÃÂ±ymalÃÂ±': 'kıymalı',
+        'kiymalı': 'kıymalı',
+        'kıymalı': 'kıymalı',
+        
+        'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±spanak': 'ıspanak',
+        'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂspanak': 'ıspanak',
+        'ıspanak': 'ıspanak',
+        'ispanak': 'ıspanak',
+        
+        'gÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¼veÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§': 'güveç',
+        'gÃÂ¼veÃÂ§': 'güveç',
+        'güveç': 'güveç',
+        'guvec': 'güveç',
+        
+        'kÃÂÃÂÃÂÃÂ¶fte': 'köfte',
+        'kÃÂ¶fte': 'köfte',
+        'köfte': 'köfte',
+        'kofte': 'köfte',
+        
+        'poÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂaÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§a': 'poğaça',
+        'poÃÂaÃÂ§a': 'poğaça',
+        'poğaça': 'poğaça',
+        'pogaca': 'poğaça',
+        
+        'salatasÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'salatası',
+        'salatasÃÂ±': 'salatası',
+        'salatası': 'salatası',
+        'salatasi': 'salatası',
+        
+        'yemeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂi': 'yemeği',
+        'yemeÃÂi': 'yemeği',
+        'yemeği': 'yemeği',
+        'yemegi': 'yemeği',
+        
+        'mantÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±sÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'mantısı',
+        'mantÃÂ±sÃÂ±': 'mantısı',
+        'mantısı': 'mantısı',
+        'mantisi': 'mantısı',
+        
+        'dolmasÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'dolması',
+        'dolmasÃÂ±': 'dolması',
+        'dolması': 'dolması',
+        'dolmasi': 'dolması',
+        
+        'patlÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±can': 'patlıcan',
+        'patlÃÂ±can': 'patlıcan',
+        'patlıcan': 'patlıcan',
+        'patlican': 'patlıcan',
+        
+        'FÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±rÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±nda': 'Fırında',
+        'FÃÂ±rÃÂ±nda': 'Fırında',
+        'Fırında': 'Fırında',
+        'Firinda': 'Fırında',
+        
+        'yoÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂurtlu': 'yoğurtlu',
+        'yoÃÂurtlu': 'yoğurtlu',
+        'yoğurtlu': 'yoğurtlu',
+        'yogurtlu': 'yoğurtlu',
+        
+        'yeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂil': 'yeşil',
+        'yeÃÂil': 'yeşil',
+        'yeşil': 'yeşil',
+        'yesil': 'yeşil',
+        
+        'pazÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'pazılı',
+        'pazÃÂ±lÃÂ±': 'pazılı',
+        'pazılı': 'pazılı',
+        'pazili': 'pazılı',
+        
+        'ispanaklÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'ispanaklı',
+        'ispanaklÃÂ±': 'ispanaklı', 
+        'ispanaklı': 'ispanaklı',
+        'ispanakli': 'ispanaklı',
+        
+        'RokalÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±': 'Rokalı',
+        'RokalÃÂ±': 'Rokalı',
+        'Rokalı': 'Rokalı',
+        'Rokali': 'Rokalı',
+        
+        'ekmeÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂi': 'ekmeği',
+        'ekmeÃÂi': 'ekmeği',
+        'ekmeği': 'ekmeği',
+        'ekmegi': 'ekmeği'
       };
       
-      // Karakter düzeltmelerini uygula
-      for (const [bozuk, dogru] of Object.entries(karakterDuzeltmeleri)) {
-        temizMetin = temizMetin.replace(new RegExp(escapeRegex(bozuk), 'g'), dogru);
+      // Manuel düzeltmeleri uygula
+      for (const [bozuk, dogru] of Object.entries(manuelDuzeltmeler)) {
+        temizMetin = temizMetin.replace(new RegExp(bozuk, 'gi'), dogru);
       }
       
-      // 2.5. Diğer özel kalıpları düzelt
-      temizMetin = temizMetin.replace(/\^EYDA/g, 'ŞEYDA');
-      temizMetin = temizMetin.replace(/E EÇ0\^Ç/g, 'EĞEÇİŞ');
-      temizMetin = temizMetin.replace(/EGEÇ0\^/g, 'EĞEÇİŞ');
-      
-      // 2. Sadece kesin bozuk karakterleri düzelt (DİKKATLİ!)
-      if (temizMetin.includes('°')) {
-        temizMetin = temizMetin.replace(/°/g, 'İ');
-      }
-      if (temizMetin.includes('*')) {
-        temizMetin = temizMetin.replace(/\*/g, 'Ş');
-      }
-      
-      // 3. Bilinen bozuk isimleri düzelt
-      const isimDuzeltmeleri = {
-        'efKE BAY': 'ŞEFİKE BAY',
-        'EF°KE BAY': 'ŞEFİKE BAY',
-        'EFKE BAY': 'ŞEFİKE BAY',
-        'ATAYŞ': 'ATAYŞ', // Doğru halini koru
-        'ATAYYŞ': 'ATAYŞ', // Çifte Ş'yi düzelt
-        'KK': 'KÖK',
-        'KARAGZ': 'KARAGÖZ',
-        'FSUN': 'FİSUN',
-        'F°SUN': 'FİSUN'
-      };
-      
-      // Sadece kesin bozuk isimleri düzelt
-      for (const [bozuk, dogru] of Object.entries(isimDuzeltmeleri)) {
-        if (temizMetin.includes(bozuk)) {
-          temizMetin = temizMetin.replace(new RegExp(bozuk, 'gi'), dogru);
-        }
-      }
-      
-      // 4. Fazla boşlukları temizle
+      // 5. Fazla boşlukları temizle
       temizMetin = temizMetin.replace(/\s+/g, ' ').trim();
       
       return temizMetin;
@@ -3302,7 +3394,50 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         const data = localStorage.getItem(MANUEL_ESLESTIRME_KEY);
         if (data) {
-          manuelEslestirmeler = JSON.parse(data);
+          const eskiEslestirmeler = JSON.parse(data);
+          
+          // Otomatik karakter düzeltmesi
+          let otomatikDuzeltmeSayisi = 0;
+          const yeniEslestirmeler = {};
+          
+          Object.keys(eskiEslestirmeler).forEach(anahtar => {
+            const eslestirme = eskiEslestirmeler[anahtar];
+            
+            // Orijinal metni düzelt
+            const eskiOrijinalMetin = eslestirme.orijinalMetin;
+            const yeniOrijinalMetin = turkceKarakterDuzelt(eskiOrijinalMetin);
+            
+            // Kartları düzelt
+            const eskiKartlar = eslestirme.kartlar || [];
+            const yeniKartlar = eskiKartlar.map(kart => turkceKarakterDuzelt(kart));
+            
+            // Değişiklik var mı kontrol et
+            const metinDegisti = eskiOrijinalMetin !== yeniOrijinalMetin;
+            const kartlarDegisti = JSON.stringify(eskiKartlar) !== JSON.stringify(yeniKartlar);
+            
+            if (metinDegisti || kartlarDegisti) {
+              otomatikDuzeltmeSayisi++;
+              console.log(`🔧 Otomatik düzeltme ${otomatikDuzeltmeSayisi}: "${eskiOrijinalMetin}" → "${yeniOrijinalMetin}"`);
+            }
+            
+            // Yeni anahtar oluştur (düzeltilmiş metinle)
+            const yeniAnahtar = yeniOrijinalMetin.toLowerCase().replace(/[^a-zşğıüöç0-9]/gi, '');
+            
+            // Yeni eşleştirmeyi kaydet
+            yeniEslestirmeler[yeniAnahtar] = {
+              orijinalMetin: yeniOrijinalMetin,
+              kartlar: yeniKartlar,
+              eklemeTarihi: eslestirme.eklemeTarihi || new Date().toISOString()
+            };
+          });
+          
+          manuelEslestirmeler = yeniEslestirmeler;
+          
+          // Eğer düzeltme yapıldıysa kaydet
+          if (otomatikDuzeltmeSayisi > 0) {
+            console.log(`🎉 Sayfa yüklenirken ${otomatikDuzeltmeSayisi} manuel eşleştirme otomatik düzeltildi!`);
+            localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+          }
         }
       } catch(e) {
         console.error('Manuel eşleştirme yükleme hatası:', e);
@@ -3623,6 +3758,78 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeStatusGoster('Tüm manuel eşleştirmeler temizlendi.', 'success');
     }
 
+    function manuelEslestirmeleriKarakterDuzelt() {
+      console.log('🔧 Manuel eşleştirmelerde karakter düzeltmesi başlatılıyor...');
+      
+      if (Object.keys(manuelEslestirmeler).length === 0) {
+        alert('Düzeltilecek manuel eşleştirme bulunmuyor.');
+        return;
+      }
+      
+      if (!confirm('Mevcut manuel eşleştirmelerdeki bozuk karakterleri düzeltmek istediğinize emin misiniz?\n\nÖrnek: "kÃÂÃÂ±ymalÃÂ±" → "kıymalı"')) {
+        return;
+      }
+      
+      let duzeltmeSayisi = 0;
+      const yeniEslestirmeler = {};
+      
+      // Her eşleştirmeyi kontrol et ve düzelt
+      Object.keys(manuelEslestirmeler).forEach(anahtar => {
+        const eslestirme = manuelEslestirmeler[anahtar];
+        
+        // Orijinal metni düzelt
+        const eskiOrijinalMetin = eslestirme.orijinalMetin;
+        const yeniOrijinalMetin = turkceKarakterDuzelt(eskiOrijinalMetin);
+        
+        // Kartları düzelt
+        const eskiKartlar = eslestirme.kartlar;
+        const yeniKartlar = eskiKartlar.map(kart => turkceKarakterDuzelt(kart));
+        
+        // Değişiklik var mı kontrol et
+        const metinDegisti = eskiOrijinalMetin !== yeniOrijinalMetin;
+        const kartlarDegisti = JSON.stringify(eskiKartlar) !== JSON.stringify(yeniKartlar);
+        
+        if (metinDegisti || kartlarDegisti) {
+          duzeltmeSayisi++;
+          console.log(`✅ ${duzeltmeSayisi}. Düzeltme:`);
+          
+          if (metinDegisti) {
+            console.log(`  📝 Metin: "${eskiOrijinalMetin}" → "${yeniOrijinalMetin}"`);
+          }
+          
+          if (kartlarDegisti) {
+            console.log(`  🖼️ Kartlar: "${eskiKartlar.join(', ')}" → "${yeniKartlar.join(', ')}"`);
+          }
+        }
+        
+        // Yeni anahtar oluştur (düzeltilmiş metinle)
+        const yeniAnahtar = yeniOrijinalMetin.toLowerCase().replace(/[^a-zşğıüöç0-9]/gi, '');
+        
+        // Yeni eşleştirmeyi kaydet
+        yeniEslestirmeler[yeniAnahtar] = {
+          orijinalMetin: yeniOrijinalMetin,
+          kartlar: yeniKartlar,
+          eklemeTarihi: eslestirme.eklemeTarihi || new Date().toISOString()
+        };
+      });
+      
+      if (duzeltmeSayisi > 0) {
+        // Eski eşleştirmeleri sil, yenilerini kaydet
+        manuelEslestirmeler = yeniEslestirmeler;
+        manuelEslestirmeleriKaydet();
+        manuelEslestirmeListesiniGoster();
+        
+        console.log(`🎉 Karakter düzeltmesi tamamlandı: ${duzeltmeSayisi} eşleştirme düzeltildi!`);
+        alert(`✅ Karakter düzeltmesi başarılı!\n\n${duzeltmeSayisi} manuel eşleştirmede bozuk karakterler düzeltildi.\n\nÖrnek düzeltmeler:\n• "kÃÂÃÂ±ymalÃÂ±" → "kıymalı"\n• "gÃÂ¼veÃÂ§" → "güveç"\n• "poÃÂaÃÂ§a" → "poğaça"`);
+        
+        // GitHub'a kaydet
+        manuelEslestirmeleriGitHubKaydet(true); // sessiz kaydetme
+      } else {
+        console.log('✅ Tüm manuel eşleştirmeler zaten doğru karakterlerle yazılmış!');
+        alert('✅ Tüm manuel eşleştirmeler zaten doğru formatta!\n\nDüzeltilecek bozuk karakter bulunmuyor.');
+      }
+    }
+
     function manuelEslestirmeListesiniGoster() {
       const div = document.getElementById('manuelEslestirmeListesi');
       div.innerHTML = '';
@@ -3665,18 +3872,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Karakter düzeltme fonksiyonu
       function karakterDuzelt(text) {
         if (!text) return text;
-        return text
-          .replace(/Ä±/g, 'ı')
-          .replace(/Ä/g, 'ğ') 
-          .replace(/Å/g, 'ş')
-          .replace(/Ğ/g, 'ğ')
-          .replace(/Ã¼/g, 'ü')
-          .replace(/Ã¶/g, 'ö')
-          .replace(/Ã§/g, 'ç')
-          .replace(/â/g, 'a')
-          .replace(/î/g, 'i')
-          .replace(/û/g, 'u')
-          .replace(/ô/g, 'o');
+        
+        // Gelişmiş Türkçe karakter düzeltme - turkceKarakterDuzelt fonksiyonunu kullan
+        return turkceKarakterDuzelt(text);
       }
       
       anahtarlar.forEach(anahtar => {
