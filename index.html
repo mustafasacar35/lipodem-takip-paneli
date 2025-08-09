@@ -5245,19 +5245,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const hastalarVeriAnaliziIle = await Promise.all(filtreliHastalar.map(async (hasta) => {
           const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
           
-          // En büyük hafta sayısını bul - önce localStorage'a bak
+          // En büyük hafta sayısını bul - sadece localStorage'a bak (güvenilir kaynak)
           let maxHafta = 0;
           let hastaDetayiBulundu = false;
           
-          // Önce localStorage'dan kontrol et
+          // Önce localStorage'dan kontrol et (ÖNCELIK: localStorage)
           const localHasta = hastalar.find(h => h && h.id === hasta.id);
           if (localHasta && localHasta.haftalar && localHasta.haftalar.length > 0) {
             const haftaNumaralari = localHasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
             maxHafta = Math.max(...haftaNumaralari);
             hastaDetayiBulundu = true;
+            console.log(`📊 Hasta ${hastaIsim} - localStorage'dan hafta bilgisi alındı: maxHafta=${maxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
           }
           
-          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel)
+          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel ve sadece yedek)
           if (!hastaDetayiBulundu && hasta.id) {
             try {
               const dosyaAdlari = [
@@ -5276,8 +5277,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                     const hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
                     if (hastaDetay.haftalar && hastaDetay.haftalar.length > 0) {
                       const haftaNumaralari = hastaDetay.haftalar.map(h => h.haftaNo || h.hafta || 0);
-                      maxHafta = Math.max(...haftaNumaralari);
+                      const githubMaxHafta = Math.max(...haftaNumaralari);
+                      
+                      // ⚠️ UYARI: GitHub verisi localStorage'ı geçersiz kılmasın
+                      // Sadece localStorage boşsa GitHub verisini kullan
+                      maxHafta = githubMaxHafta;
                       hastaDetayiBulundu = true;
+                      console.log(`📊 Hasta ${hastaIsim} - GitHub'dan yedek hafta bilgisi alındı: maxHafta=${githubMaxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
                       break;
                     }
                   } else if (response.status === 404) {
@@ -13187,4 +13193,5 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
+
 
