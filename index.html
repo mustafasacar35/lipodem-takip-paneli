@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Lipodem Takip Paneli - Ayrı JSON Dosyaları v2.0</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwN2NmZiIvPgo8cGF0aCBkPSJNMTEgMTBoMTB2MkgxMXptMCA0aDd2MmgtN3ptMCA0aDEwdjJIMTF6IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" />
   
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -503,7 +504,7 @@
               align-items: center;
               font-size: 14px;
             ">
-              <span id="analizBaslik">� Yemek Kullanım Analizi (0/239)</span>
+              <span id="analizBaslik">  Yemek Kullanım Analizi (0/239)</span>
               <span id="analizIcon">▶</span>
             </button>
             <div id="analizContent" class="accordion-content" style="
@@ -543,7 +544,7 @@
               align-items: center;
               font-size: 14px;
             ">
-              <span id="eslesmeyenlerBaslik">� Eşleşmeyen Tarifler</span>
+              <span id="eslesmeyenlerBaslik">  Eşleşmeyen Tarifler</span>
               <span id="eslesmeyenlerIcon">▶</span>
             </button>
             <div id="eslesmeyenlerContent" class="accordion-content" style="
@@ -1575,19 +1576,68 @@
       }
     }
     
-    // Hasta verisini GitHub'dan al
-    async function getHastaData(hastaId) {
+    // Hasta verisini GitHub'dan al (Yeni Sistem Uyumlu)
+    async function getHastaData(hastaId, githubRepo = null, githubToken = null, hastaIsim = null) {
       try {
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/patients/${hastaId}/hasta_data.json`, {
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`
-          }
-        });
+        // Parametrelerden veya global değişkenlerden al
+        const repo = githubRepo || (typeof GITHUB_REPO !== 'undefined' ? GITHUB_REPO : null);
+        const token = githubToken || (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : null);
         
-        if (response.ok) {
-          const data = await response.json();
-          const content = decodeBase64UTF8(data.content);
-          return JSON.parse(content);
+        if (!repo || !token) {
+          throw new Error('GitHub repo veya token eksik');
+        }
+        
+        // Yeni sistem: hasta_ID_ISIM.json formatında dosya ara
+        const dosyaAdlari = [];
+        
+        if (hastaIsim) {
+          dosyaAdlari.push(generateFileName({ id: hastaId, isim: hastaIsim }));
+          dosyaAdlari.push(generateFileName({ id: hastaId, isim: turkceKarakterDuzelt(hastaIsim) }));
+          dosyaAdlari.push(generateFileName({ isim: hastaIsim }));
+          dosyaAdlari.push(generateFileName({ isim: turkceKarakterDuzelt(hastaIsim) }));
+        }
+        
+        // Çift entryleri kaldır
+        const benzersizDosyaAdlari = [...new Set(dosyaAdlari)];
+        
+        console.log('🔍 Hasta verisi aranan dosyalar:', benzersizDosyaAdlari);
+        
+        // Her dosya adını dene
+        for (const dosyaAdi of benzersizDosyaAdlari) {
+          try {
+            const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${dosyaAdi}`, {
+              headers: {
+                'Authorization': `token ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const content = decodeBase64UTF8(data.content);
+              console.log(`✅ Hasta verisi bulundu: ${dosyaAdi}`);
+              return JSON.parse(content);
+            }
+          } catch (e) {
+            console.log(`❌ Dosya bulunamadı: ${dosyaAdi}`);
+          }
+        }
+        
+        // Eski sistem de deneyelim (backward compatibility)
+        try {
+          const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
+            headers: {
+              'Authorization': `token ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const content = decodeBase64UTF8(data.content);
+            console.log(`✅ Hasta verisi eski sistemde bulundu: ${hastaId}/hasta_data.json`);
+            return JSON.parse(content);
+          }
+        } catch (e) {
+          console.log(`❌ Eski sistem de bulunamadı: ${hastaId}/hasta_data.json`);
         }
         
         throw new Error('Hasta verisi bulunamadı');
@@ -1614,7 +1664,7 @@
       // Mevcut eşleşmeyen tarifleri tekrar kontrol et
       const aktifHasta = seciliHasta;
       if (!aktifHasta || !aktifHasta.haftalar) {
-        console.log('🔍 Aktif hasta veya hafta verisi yok');
+        console.log('ℹ️ Yemek analizi için hasta seçilmedi veya hafta verisi yok');
         return;
       }
       
@@ -2142,8 +2192,8 @@
       const token = document.getElementById('githubToken').value.trim();
       
       if (!token) {
-        if (!sessiz) console.log('⚠️ GitHub token yok, hasta verileri yüklenemedi');
-        if (durumElement) durumElement.innerHTML = '❌ GitHub token girilmedi';
+        if (!sessiz) console.log('ℹ️ GitHub token girilmedi, offline modda çalışıyor');
+        if (durumElement) durumElement.innerHTML = 'ℹ️ Offline Mod - GitHub token girilmedi';
         return;
       }
       
@@ -2217,7 +2267,7 @@
       try {
         const token = document.getElementById('githubToken').value.trim();
         if (!token) {
-          console.log('⚠️ GitHub token yok, hasta listesi yükleme atlanıyor');
+          console.log('ℹ️ GitHub token yok, offline modda çalışıyor');
           return [];
         }
         
@@ -2274,7 +2324,7 @@
     async function hastaListesiKaydet(hastaListesi) {
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
-        console.warn('⚠️ GitHub token yok, hasta listesi kaydedilemiyor');
+        console.warn('ℹ️ GitHub token yok, offline modda çalışıyor');
         return false;
       }
       
@@ -2728,7 +2778,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         return; 
       }
       
-      console.log('� Yeni sisteme göre tüm hastalar kaydediliyor...');
+      console.log('  Yeni sisteme göre tüm hastalar kaydediliyor...');
       
       // Yeni sistemi kullan
       await tumHastalariAyriKaydet();
@@ -3116,16 +3166,44 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
+    // Kaydetme throttle değişkenleri
+    let kaydetmeZamanlayicisi = null;
+    let gitHubKaydetmeDevamEdiyor = false;
+    let sonKaydetmeZamani = 0;
+
     function manuelEslestirmeleriKaydet() {
       try {
         localStorage.setItem(MANUEL_ESLESTIRME_KEY, JSON.stringify(manuelEslestirmeler));
+        console.log('📁 Manuel eşleştirmeler localStorage\'a kaydedildi');
+        
         // Otomatik GitHub kaydı (token varsa)
         const token = document.getElementById('githubToken').value.trim();
         if (token && Object.keys(manuelEslestirmeler).length > 0) {
-          // 2 saniye bekle sonra otomatik kaydet (çok sık kaydetmeyi önlemek için)
-          setTimeout(() => {
-            manuelEslestirmeleriGitHubKaydet(true); // true = sessiz kaydetme
-          }, 2000);
+          const simdikiZaman = Date.now();
+          const sonKaydetmedenGecenZaman = simdikiZaman - sonKaydetmeZamani;
+          
+          // Mevcut zamanlayıcıyı iptal et
+          if (kaydetmeZamanlayicisi) {
+            clearTimeout(kaydetmeZamanlayicisi);
+            console.log('🔄 Önceki kaydetme zamanlayıcısı iptal edildi');
+          }
+          
+          // Eğer son kaydetmeden 10 saniye geçmemişse, daha fazla bekle
+          const beklemeZamani = sonKaydetmedenGecenZaman < 10000 ? 5000 : 3000;
+          
+          // Yeni zamanlayıcı başlat
+          kaydetmeZamanlayicisi = setTimeout(async () => {
+            if (!gitHubKaydetmeDevamEdiyor) {
+              console.log(`⏰ Zamanlayıcı tetiklendi (${beklemeZamani}ms bekledikten sonra), GitHub\'a kaydediliyor...`);
+              sonKaydetmeZamani = Date.now();
+              await manuelEslestirmeleriGitHubKaydet(true); // true = sessiz kaydetme
+            } else {
+              console.log('⚠️ GitHub kaydetme devam ediyor, atlandı');
+            }
+            kaydetmeZamanlayicisi = null;
+          }, beklemeZamani);
+          
+          console.log(`⏰ GitHub kaydetme ${beklemeZamani}ms sonra yapılacak`);
         }
       } catch(e) {
         console.error('Manuel eşleştirme kaydetme hatası:', e);
@@ -3712,6 +3790,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     // GitHub'a manuel eşleştirmeleri kaydetme
     async function manuelEslestirmeleriGitHubKaydet(sessizKaydetme = false) {
+      // Zaten kaydetme devam ediyorsa çık
+      if (gitHubKaydetmeDevamEdiyor) {
+        if (!sessizKaydetme) {
+          console.log('⚠️ GitHub kaydetme zaten devam ediyor, işlem atlandı');
+        }
+        return;
+      }
+      
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
         if (!sessizKaydetme) {
@@ -3719,6 +3805,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }
         return;
       }
+
+      // Kaydetme başladı işaretini koy
+      gitHubKaydetmeDevamEdiyor = true;
 
       const owner = 'mustafasacar35';
       const repo = 'lipodem-takip-paneli';
@@ -3773,6 +3862,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           if (!sessizKaydetme) {
             manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi!', 'success');
           }
+          console.log('✅ GitHub kaydetme başarılı - durum sıfırlanacak');
         } else {
           throw new Error('GitHub kaydı başarısız: ' + (await res.text()));
         }
@@ -3822,6 +3912,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                 if (!sessizKaydetme) {
                   manuelEslestirmeStatusGoster('✅ GitHub\'a başarıyla kaydedildi! (retry)', 'success');
                 }
+                // Başarılı retry sonrası da durumu sıfırla
+                gitHubKaydetmeDevamEdiyor = false;
                 return;
               } else {
                 console.error('❌ Retry de başarısız oldu:', await retryRes.text());
@@ -3835,6 +3927,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (!sessizKaydetme) {
           manuelEslestirmeStatusGoster(`❌ GitHub kaydetme hatası: ${error.message}`, 'error');
         }
+      } finally {
+        // Kaydetme durumunu her durumda sıfırla
+        gitHubKaydetmeDevamEdiyor = false;
+        console.log('🔄 GitHub kaydetme durumu sıfırlandı');
       }
     }
 
@@ -5085,87 +5181,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
     function saveToStorage() {
       try {
-        // Büyük verileri temizle (PDF Base64 verilerini hariç tut)
-        const temizHastalar = hastalar.map(hasta => {
-          const temizHasta = { ...hasta };
-          if (temizHasta.haftalar) {
-            temizHasta.haftalar = temizHasta.haftalar.map(hafta => {
-              const temizHafta = { ...hafta };
-              // PDF Base64 verilerini localStorage'dan hariç tut (sadece referans bilgilerini sakla)
-              delete temizHafta.pdf; // Büyük Base64 veriyi sil
-              delete temizHafta.pdfFile; // File objesi de sil
-              // PDF referans bilgilerini koru: pdfName, pdfYolu, githubUrl, indirmeUrl
-              return temizHafta;
-            });
-          }
-          return temizHasta;
-        });
-
-        // Veri boyutunu kontrol et
-        const jsonString = JSON.stringify(temizHastalar);
-        const sizeInMB = (new Blob([jsonString]).size / (1024 * 1024)).toFixed(2);
-        console.log(`📊 localStorage veri boyutu: ${sizeInMB} MB`);
-
-        // 4MB'dan büyükse uyarı ver ve eski verileri temizle
-        if (sizeInMB > 4) {
-          console.warn('⚠️ localStorage verisi çok büyük, eski veriler temizleniyor...');
-          // En eski hastaları kaldır
-          const maxHastaSayisi = Math.floor(temizHastalar.length * 0.8); // %20 azalt
-          const azaltilmisHastalar = temizHastalar.slice(-maxHastaSayisi);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(azaltilmisHastalar));
-          console.log(`🧹 ${temizHastalar.length - maxHastaSayisi} eski hasta kaydı temizlendi`);
-          hastalar = azaltilmisHastalar; // Global değişkeni de güncelle
-        } else {
-          localStorage.setItem(STORAGE_KEY, jsonString);
-        }
-
-        console.log('💾 Hastalar localStorage\'a kaydedildi (PDF veriler hariç)');
-        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+        console.log('💾 Hastalar localStorage\'a kaydedildi');
         // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
-      } catch(e) { 
-        console.error('localStorage kaydetme hatası:', e);
-        
-        // Quota aşımı hatası varsa acil temizlik yap
-        if (e.name === 'QuotaExceededError') {
-          console.warn('🚨 localStorage kapasitesi doldu, acil temizlik yapılıyor...');
-          try {
-            // Sadece en son 5 hastayı koru
-            const acilTemizHastalar = hastalar.slice(-5).map(hasta => {
-              const temizHasta = { ...hasta };
-              if (temizHasta.haftalar) {
-                temizHasta.haftalar = temizHasta.haftalar.map(hafta => {
-                  const temizHafta = { ...hafta };
-                  // Tüm büyük verileri sil
-                  delete temizHafta.pdf;
-                  delete temizHafta.pdfFile;
-                  delete temizHafta.tarifler; // Büyük tarif verilerini de sil
-                  delete temizHafta.tarifKartlar;
-                  delete temizHafta.manuelKartlar;
-                  return temizHafta;
-                });
-              }
-              return temizHasta;
-            });
-            
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(acilTemizHastalar));
-            hastalar = acilTemizHastalar; // Global değişkeni güncelle
-            console.log('🆘 Acil temizlik tamamlandı, sadece son 5 hasta korundu');
-            
-            // Kullanıcıya bilgi ver
-            alert('⚠️ Veri depolama alanı doldu!\n\nEski hasta kayıtları temizlendi. Verileriniz GitHub\'da güvende.\n\nÖnemli: PDF dosyalarınız GitHub\'da saklanıyor ve PDF yeniden yüklendiğinde analiz edilecek.');
-            
-          } catch (acilHata) {
-            console.error('🆘 Acil temizlik de başarısız:', acilHata);
-            // Son çare: localStorage'ı tamamen temizle
-            localStorage.removeItem(STORAGE_KEY);
-            hastalar = [];
-            alert('🚨 Kritik hata: Tüm yerel veriler temizlendi.\n\nVerileriniz GitHub\'da güvende. Sayfayı yenileyin ve hastalarınızı GitHub\'dan yükleyin.');
-          }
-        }
-      }
+      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
     }
     
     // Veri değiştiğinde otomatik kaydetme
@@ -5173,33 +5195,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         if (!hasta) return;
         
-        // Hastayı temizle (büyük verileri çıkar)
-        const temizHasta = { ...hasta };
-        if (temizHasta.haftalar) {
-          temizHasta.haftalar = temizHasta.haftalar.map(hafta => {
-            const temizHafta = { ...hafta };
-            // Büyük verileri localStorage'a kaydetme
-            delete temizHafta.pdf;
-            delete temizHafta.pdfFile;
-            delete temizHafta._geciciPdfFile;
-            delete temizHafta._geciciTarifler;
-            delete temizHafta._geciciEslestirme;
-            // Tarif verilerini de sınırla
-            if (temizHafta.tarifler && temizHafta.tarifler.length > 10) {
-              temizHafta.tarifler = temizHafta.tarifler.slice(0, 10); // İlk 10 tarifi koru
-            }
-            return temizHafta;
-          });
-        }
-        
         // Global hastalar dizisinde güncelle
-        const hastaIndex = hastalar.findIndex(h => h.id === temizHasta.id);
+        const hastaIndex = hastalar.findIndex(h => h.id === hasta.id);
         if (hastaIndex >= 0) {
-          hastalar[hastaIndex] = temizHasta;
-          console.log('🔄 Hasta verisi güncellendi (temizlenmiş):', temizHasta.isim);
+          hastalar[hastaIndex] = hasta;
+          console.log('🔄 Hasta verisi güncellendi:', hasta.isim);
         } else {
-          hastalar.push(temizHasta);
-          console.log('➕ Yeni hasta eklendi (temizlenmiş):', temizHasta.isim);
+          hastalar.push(hasta);
+          console.log('➕ Yeni hasta eklendi:', hasta.isim);
         }
         
         // localStorage'a kaydet
@@ -5217,44 +5220,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (data) return JSON.parse(data);
       } catch(e) { console.error('localStorage okuma hatası:', e); }
       return null;
-    }
-
-    // Manuel localStorage temizleme fonksiyonu
-    function manuelTemizleLocalStorage() {
-      try {
-        const onay = confirm('⚠️ Yerel depolama alanını temizlemek istediğinizden emin misiniz?\n\nBu işlem:\n- Sadece tarayıcıdaki geçici verileri siler\n- GitHub\'daki verilerinizi etkilemez\n- PDF dosyalarınız güvende kalır\n\nDevam etmek istiyor musunuz?');
-        
-        if (onay) {
-          localStorage.removeItem(STORAGE_KEY);
-          hastalar = [];
-          console.log('🧹 localStorage manuel olarak temizlendi');
-          alert('✅ Yerel depolama temizlendi!\n\nSayfa yenilendikten sonra verilerinizi GitHub\'dan yükleyebilirsiniz.');
-          location.reload();
-        }
-      } catch (e) {
-        console.error('localStorage temizleme hatası:', e);
-        alert('❌ Temizleme sırasında hata oluştu: ' + e.message);
-      }
-    }
-
-    // localStorage boyutunu kontrol etme fonksiyonu
-    function localStorageBoyutKontrol() {
-      try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        if (data) {
-          const sizeInMB = (new Blob([data]).size / (1024 * 1024)).toFixed(2);
-          console.log(`📊 Mevcut localStorage boyutu: ${sizeInMB} MB`);
-          
-          if (sizeInMB > 3) {
-            console.warn(`⚠️ localStorage boyutu büyük: ${sizeInMB} MB`);
-            return false;
-          }
-          return true;
-        }
-      } catch (e) {
-        console.error('localStorage boyut kontrol hatası:', e);
-      }
-      return true;
     }
 
     // Başlangıç verisi veya storage'dan yükle
@@ -5326,19 +5291,20 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const hastalarVeriAnaliziIle = await Promise.all(filtreliHastalar.map(async (hasta) => {
           const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
           
-          // En büyük hafta sayısını bul - önce localStorage'a bak
+          // En büyük hafta sayısını bul - sadece localStorage'a bak (güvenilir kaynak)
           let maxHafta = 0;
           let hastaDetayiBulundu = false;
           
-          // Önce localStorage'dan kontrol et
+          // Önce localStorage'dan kontrol et (ÖNCELIK: localStorage)
           const localHasta = hastalar.find(h => h && h.id === hasta.id);
           if (localHasta && localHasta.haftalar && localHasta.haftalar.length > 0) {
             const haftaNumaralari = localHasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
             maxHafta = Math.max(...haftaNumaralari);
             hastaDetayiBulundu = true;
+            console.log(`📊 Hasta ${hastaIsim} - localStorage'dan hafta bilgisi alındı: maxHafta=${maxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
           }
           
-          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel)
+          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel ve sadece yedek)
           if (!hastaDetayiBulundu && hasta.id) {
             try {
               const dosyaAdlari = [
@@ -5357,10 +5323,18 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                     const hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
                     if (hastaDetay.haftalar && hastaDetay.haftalar.length > 0) {
                       const haftaNumaralari = hastaDetay.haftalar.map(h => h.haftaNo || h.hafta || 0);
-                      maxHafta = Math.max(...haftaNumaralari);
+                      const githubMaxHafta = Math.max(...haftaNumaralari);
+                      
+                      // ⚠️ UYARI: GitHub verisi localStorage'ı geçersiz kılmasın
+                      // Sadece localStorage boşsa GitHub verisini kullan
+                      maxHafta = githubMaxHafta;
                       hastaDetayiBulundu = true;
+                      console.log(`📊 Hasta ${hastaIsim} - GitHub'dan yedek hafta bilgisi alındı: maxHafta=${githubMaxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
                       break;
                     }
+                  } else if (response.status === 404) {
+                    // Hasta dosyası bulunamadı, diğer dosya adlarını dene
+                    continue;
                   }
                 } catch (e) {
                   // Sessizce geç
@@ -5468,7 +5442,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
-          isimSpan.textContent = `${hasta.arsiv ? '� ' : ''}${hasta.hastaIsim}`;
+          isimSpan.textContent = `${hasta.arsiv ? '  ' : ''}${hasta.hastaIsim}`;
           isimDiv.appendChild(isimSpan);
           
           // Hafta bilgisini ekle (renkli)
@@ -5500,6 +5474,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         // Sidebar'daki hasta sayılarını güncelle
         await guncelleHastaSayilari();
+        
+        // Toplu ZIP butonunu ekle
+        ekleTopluZipButonu();
         
       } catch (error) {
         console.error('❌ Yeni sistem hasta listesi yükleme hatası:', error);
@@ -6777,15 +6754,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           checkAndActivate();
         }, 500); // İlk gecikmeyi artırdık
       }
-      
-      // İlk hafta için sidebar'ı da güncelle (sayfa yüklendiğinde)
-      setTimeout(() => {
-        const haftalar = getHaftaListesi();
-        if (haftalar.length > 0) {
-          console.log('🔄 İlk hafta için sidebar güncelleniyor...');
-          gosterEslesenKartlarSidebar(0);
-        }
-      }, 1000); // Tüm işlemler tamamlandıktan sonra
     }
     
     // Tab değiştirme fonksiyonu
@@ -7215,6 +7183,7 @@ function duzenleHafta(i) {
 
           // 5. hafta için otomatik masaj planı PDF'si ekle
           console.log('🏥 5. hafta masaj PDF fonksiyonu çağrılıyor...');
+          console.log('🔍 ÇAĞRI: haftalar verisi:', JSON.stringify(haftalar.slice(3, 6), null, 2)); // 4,5,6. haftaları göster
           await createAndAddLenfMasajPDF(zip, hasta, haftalar);
         }
         
@@ -7312,9 +7281,9 @@ function duzenleHafta(i) {
     }
 
     // 5. hafta için Lenf Masaj PDF'si oluştur ve ZIP'e ekle
-    async function createAndAddLenfMasajPDF(zip, hasta, haftalar) {
+    async function createAndAddLenfMasajPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
-        console.log('🏥 5. hafta Lenf Masaj PDF oluşturuluyor...');
+        console.log('🤲 5. hafta Lenf Masaj PDF oluşturuluyor...', { hasta: hasta.isim });
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7324,13 +7293,26 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // 5. hafta başlangıç tarihini bul
-        let baslangicTarihi = new Date();
-        if (haftalar.length >= 5 && haftalar[4].baslangic) {
-          baslangicTarihi = new Date(haftalar[4].baslangic);
+        // JSON verisinden doğrudan 5. hafta başlangıç tarihini al
+        let haftaBaslangici = new Date();
+        
+        if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+            console.log('  5. HAFTA RAW VERİ:', haftalar[4].baslangic, typeof haftalar[4].baslangic);
+            haftaBaslangici = new Date(haftalar[4].baslangic);
+            console.log('  5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else {
+            console.log('⚠️ 5. hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('🔍 Toplam hafta sayısı:', haftalar.length);
+            console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
         }
 
-        // PDF oluştur
+        // Tarihi o haftanın Pazartesi'sine hizala
+        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
+        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
+        console.log('🗓️ MASAJ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
+
+        // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
           console.error('❌ jsPDF constructor bulunamadı');
@@ -7339,82 +7321,254 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
-        const doc = new jsPDF();
+        const doc = new jsPDF('p', 'mm', 'a4'); // Tekli tab versiyonuyla aynı format
         
-        // Türkçe font desteği
-        doc.addFont('https://fonts.googleapis.com/css?family=Roboto', 'Roboto', 'normal');
-        doc.setFont('helvetica');
+        // Hasta adını ASCII'ye çevir (tekli tab versiyonuyla aynı)
+        console.log('🔍 Orijinal hasta adı:', hasta.isim);
+        const asciiHastaAdi = hasta.isim
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
-        // Başlık
-        doc.setFontSize(16);
-        doc.setTextColor(40, 44, 52);
-        doc.text('LENF DRENAJ MASAJI TAKVIMI', 20, 35);
+        // Başlık - tekli tab versiyonuyla aynı
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
         
-        // Hasta bilgileri
+        const title = `${asciiHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
         doc.setFontSize(12);
-        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
-        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        doc.setTextColor(0, 0, 0);
         
-        // Haftalık program oluştur (5. haftadan başlayarak 8 hafta)
-        let yPos = 90;
-        doc.setFontSize(10);
+        // Lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Lenf Drenaj Masaji Uygulama Programi';
         
-        for (let hafta = 5; hafta <= 12; hafta++) {
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 5) * 7 * 24 * 60 * 60 * 1000));
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu - tekli tab versiyonuyla aynı
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
+        
+        // 5. haftanın başlangıcı
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
+        console.log('  PDF OLUŞTURMA: Ana tarih:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
-          doc.setFontSize(12);
-          doc.setTextColor(0, 123, 255);
-          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
-          yPos += 15;
-          
-          doc.setFontSize(10);
-          doc.setTextColor(0, 0, 0);
-          
-          // Hafta programı
-          if (hafta >= 5 && hafta <= 6) {
-            // İlk 2 hafta: Günde 2 kez
-            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 10;
-            doc.text('• Akşam: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
-          } else if (hafta >= 7 && hafta <= 8) {
-            // Sonraki 2 hafta: Günde 1 kez
-            doc.text('• Sabah: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
-          } else if (hafta >= 9 && hafta <= 10) {
-            // 9-10. hafta: Günaşırı
-            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
-            yPos += 10;
-            doc.text('  Lenf masajı (20 dk)', 30, yPos);
-            yPos += 15;
-          } else if (hafta >= 11 && hafta <= 12) {
-            // Son 2 hafta: Salı, Cuma
-            doc.text('• Salı, Cuma: Lenf masajı (20 dk)', 25, yPos);
-            yPos += 15;
+          if (lenfHaftaIndex === 0) { // Sadece ilk hafta (5. hafta) için log
+            console.log('🟢 PDF İLK HAFTA:', haftaBaslangic.toLocaleDateString('tr-TR'));
           }
           
-          if (yPos > 250) {
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
             doc.addPage();
-            yPos = 30;
+            currentY = 20;
           }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 5. hafta PDF'si için 9-12. haftalar soluk renkte olsun
+          if (gercekHaftaNo >= 9) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - tekli tab versiyonuyla aynı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - tekli tab versiyonuyla aynı
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Uygulama kontrolü - lenf masajı versiyonu (tekli tab versiyonuyla aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else {
+              // 9-12. haftalar: lenf masajı yok (egzersiz başlamış)
+              sabahUygulama = '-';
+              aksamUygulama = '-';
+            }
+            
+            zipTableStartX = 15;
+            
+            // 5. hafta PDF'si için 5-8. haftalar yeşil check'li olsun
+            if (gercekHaftaNo <= 8) {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            } else {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            
+            // 5. hafta PDF'si ve aktif haftalar (5-8) yeşil check simgesi ekle
+            if (gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi normal renkte yaz
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Gelecek haftalar için tarih soluk renkte
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
         }
         
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
-        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Lenf_Masaj_Takvimi.pdf`;
-        zip.file(dosyaAdi, pdfBlob);
+        const dosyaAdi = `${asciiHastaAdi}_Lenf_Masaj_Takvimi.pdf`;
+        zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 5. hafta Lenf Masaj PDF ZIP\'e eklendi:', dosyaAdi);
         
       } catch (error) {
-        console.error('❌ Lenf masaj PDF oluşturma hatası:', error);
+        console.error('❌ Lenf Masaj PDF oluşturma hatası:', error);
       }
     }
 
-    // 9. hafta için Egzersiz PDF'si oluştur ve ZIP'e ekle
-    async function createAndAddEgzersizPDF(zip, hasta, haftalar) {
+    async function createAndAddEgzersizPDF(zip, hasta, haftalar, klasorYolu = '') {
       try {
-        console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...');
+        console.log('🏃 9. hafta Egzersiz PDF oluşturuluyor...', { hasta: hasta.isim });
         
         // Kütüphane kontrolü
         if (!window.jspdf) {
@@ -7424,17 +7578,32 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // 9. hafta başlangıç tarihini bul
-        let baslangicTarihi = new Date();
-        if (haftalar.length >= 9 && haftalar[8].baslangic) {
-          baslangicTarihi = new Date(haftalar[8].baslangic);
-        } else if (haftalar.length >= 5 && haftalar[4].baslangic) {
-          // 5. haftadan 4 hafta sonra
-          const besinciHafta = new Date(haftalar[4].baslangic);
-          baslangicTarihi = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+        // JSON verisinden doğrudan 9. hafta başlangıç tarihini al
+        let haftaBaslangici = new Date();
+        
+        if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
+            // 9. hafta verisi mevcut
+            console.log('  9. HAFTA RAW VERİ:', haftalar[8].baslangic);
+            haftaBaslangici = new Date(haftalar[8].baslangic);
+            console.log('🔵 9. HAFTA PARSED:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+            // 5. haftadan 4 hafta sonrasını hesapla
+            console.log('  5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
+            const besinciHafta = new Date(haftalar[4].baslangic);
+            haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+            console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
+        } else {
+            console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
+            console.log('🔍 Toplam hafta sayısı:', haftalar.length);
         }
 
-        // PDF oluştur
+        // Tarihi o haftanın Pazartesi'sine hizala
+        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
+        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
+        console.log('🗓️ EGZERSİZ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
+
+        // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
         if (!jsPDF) {
           console.error('❌ jsPDF constructor bulunamadı');
@@ -7443,63 +7612,261 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF constructor bulundu, PDF oluşturuluyor...');
         
-        const doc = new jsPDF();
+        const doc = new jsPDF('p', 'mm', 'a4'); // Tekli tab versiyonuyla aynı format
         
-        doc.setFont('helvetica');
+        // Hasta adını ASCII'ye çevir (tekli tab versiyonuyla aynı)
+        console.log('🔍 Orijinal hasta adı:', hasta.isim);
+        const asciiHastaAdi = hasta.isim
+            .replace(/Ş/g, 'S').replace(/ş/g, 's')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+            .replace(/İ/g, 'I').replace(/ı/g, 'i')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+            .replace(/Ə/g, 'E').replace(/ə/g, 'e');
+        console.log('🔍 ASCII hasta adı:', asciiHastaAdi);
         
-        // Başlık
-        doc.setFontSize(16);
-        doc.setTextColor(40, 44, 52);
-        doc.text('EGZERSIZ TAKVIMI', 20, 35);
+        // Başlık - tekli tab versiyonuyla aynı
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
         
-        // Hasta bilgileri
+        const title = `${asciiHastaAdi.toUpperCase()}`;
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (210 - titleWidth) / 2, 20);
+        
         doc.setFontSize(12);
-        doc.text(`Hasta: ${hasta.isim}`, 20, 55);
-        doc.text(`Başlangıç: ${baslangicTarihi.toLocaleDateString('tr-TR')}`, 20, 70);
+        doc.setTextColor(0, 0, 0);
         
-        // Haftalık program oluştur (9. haftadan başlayarak 4 hafta)
-        let yPos = 90;
-        doc.setFontSize(10);
+        // Egzersiz + lenf masaj başlığı - ASCII karakterlerle
+        const subtitle = 'EGZERSIZ VE LENF DRENAJ MASAJI PROGRAMI';
+        const programBasligi = '8 Haftalik Egzersiz ve Lenf Drenaj Masaji Uygulama Programi';
         
-        for (let hafta = 9; hafta <= 12; hafta++) {
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((hafta - 9) * 7 * 24 * 60 * 60 * 1000));
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (210 - subtitleWidth) / 2, 28);
+        
+        // Açıklama kutusu - tekli tab versiyonuyla aynı
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.rect(15, 32, 170, 10);
+        doc.text(programBasligi, 20, 36);
+        doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
+        
+        // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
+        let currentY = 50;
+        const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
+        
+        // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
+        for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
+          const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
           
-          doc.setFontSize(12);
-          doc.setTextColor(0, 123, 255);
-          doc.text(`${hafta}. HAFTA (${haftaBaslangic.toLocaleDateString('tr-TR')})`, 20, yPos);
-          yPos += 15;
+          // 9. haftayı referans alarak diğer hafta başlangıçlarını hesapla
+          // 5. hafta: 9. haftadan 4 hafta önce (-4 * 7 gün)
+          // 6. hafta: 9. haftadan 3 hafta önce (-3 * 7 gün)
+          // ...
+          // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
+          // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
+          const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           
-          doc.setFontSize(10);
-          doc.setTextColor(0, 0, 0);
-          
-          if (hafta >= 9 && hafta <= 10) {
-            // 9-10. hafta
-            doc.text('• Pazartesi, Çarşamba, Cuma, Pazar:', 25, yPos);
-            yPos += 10;
-            doc.text('  Sabah: Lenf masajı + Akşam: Egzersiz', 30, yPos);
-            yPos += 10;
-            doc.text('• Salı, Perşembe, Cumartesi:', 25, yPos);
-            yPos += 10;
-            doc.text('  Sadece akşam egzersiz', 30, yPos);
-            yPos += 15;
-          } else if (hafta >= 11 && hafta <= 12) {
-            // 11-12. hafta
-            doc.text('• Salı, Cuma: Lenf masajı + Akşam egzersiz', 25, yPos);
-            yPos += 10;
-            doc.text('• Diğer günler: Sadece akşam egzersiz', 25, yPos);
-            yPos += 15;
-          }
-          
-          if (yPos > 250) {
+          // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
+          if (currentY > 270) {
             doc.addPage();
-            yPos = 30;
+            currentY = 20;
           }
+          
+          // Hafta başlığı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.rect(15, currentY, 170, 6);
+          
+          const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
+          const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
+          
+          // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+          if (gercekHaftaNo <= 8) {
+            doc.setTextColor(150, 150, 150); // Soluk gri renk
+          } else {
+            doc.setTextColor(0, 0, 0); // Normal siyah renk
+          }
+          
+          doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
+          currentY += 8;
+          
+          // Tablo başlıkları - tekli tab versiyonuyla aynı
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.3);
+          
+          const colWidths = [30, 40, 50, 50]; // Tarih, Gün, Sabah, Akşam
+          let zipTableStartX = 15;
+          
+          // Başlık satırı
+          doc.rect(zipTableStartX, currentY, colWidths[0], 6);
+          doc.text('TARIH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[0];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[1], 6);
+          doc.text('GUN', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[1];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[2], 6);
+          doc.text('SABAH', zipTableStartX + 2, currentY + 4);
+          zipTableStartX += colWidths[2];
+          
+          doc.rect(zipTableStartX, currentY, colWidths[3], 6);
+          doc.text('AKSAM', zipTableStartX + 2, currentY + 4);
+          currentY += 6;
+          
+          // Her gün için satır - tekli tab versiyonuyla aynı
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          for (let gunIndex = 0; gunIndex < 7; gunIndex++) {
+            // Sayfa sonu kontrolü - satır için yer var mı?
+            if (currentY > 280) {
+              doc.addPage();
+              currentY = 20;
+              
+              // Yeni sayfada tablo başlıklarını tekrar oluştur
+              doc.setTextColor(0, 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              let newPageTableStartX = 15;
+              
+              // Başlık satırı
+              doc.rect(newPageTableStartX, currentY, colWidths[0], 6);
+              doc.text('TARIH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[0];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[1], 6);
+              doc.text('GUN', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[1];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[2], 6);
+              doc.text('SABAH', newPageTableStartX + 2, currentY + 4);
+              newPageTableStartX += colWidths[2];
+              
+              doc.rect(newPageTableStartX, currentY, colWidths[3], 6);
+              doc.text('AKSAM', newPageTableStartX + 2, currentY + 4);
+              currentY += 6;
+              
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+            }
+            
+            const gunTarihi = new Date(haftaBaslangic.getTime() + (gunIndex * 24 * 60 * 60 * 1000));
+            const tarihStr = gunTarihi.toLocaleDateString('tr-TR');
+            const gun = gunler[gunIndex];
+            
+            // Uygulama kontrolü - egzersiz dahil versiyonu (tekli tab versiyonuyla aynı mantık)
+            let sabahUygulama = '-';
+            let aksamUygulama = '-';
+            
+            if (lenfHaftaIndex < 2) {
+              // İlk 2 hafta (5-6): Günde 2 kez lenf masajı
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = turkceKarakterDuzelt('Lenf Masaji');
+            } else if (lenfHaftaIndex < 4) {
+              // Sonraki 2 hafta (7-8): Günde 1 kez lenf masajı (sabah)
+              sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+              aksamUygulama = '-';
+            } else if (lenfHaftaIndex < 6) {
+              // Sonraki 2 hafta (9-10): Günaşırı lenf masajı + egzersiz
+              if (gunIndex === 0 || gunIndex === 2 || gunIndex === 4 || gunIndex === 6) {
+                // Pazartesi, Çarşamba, Cuma, Pazar: Lenf masajı + akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                // Salı, Perşembe, Cumartesi: Sabah ve akşam egzersiz
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            } else {
+              // Son 2 hafta (11-12): Haftada 2 gün lenf masajı + sürekli egzersiz
+              if (gunIndex === 1 || gunIndex === 4) { // Salı, Cuma
+                sabahUygulama = turkceKarakterDuzelt('Lenf Masaji');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              } else {
+                sabahUygulama = turkceKarakterDuzelt('Egzersiz-1');
+                aksamUygulama = turkceKarakterDuzelt('Egzersiz-2');
+              }
+            }
+            
+            zipTableStartX = 15;
+            
+            // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
+            if (gercekHaftaNo <= 8) {
+              doc.setTextColor(150, 150, 150); // Soluk gri renk
+            } else {
+              doc.setTextColor(0, 0, 0); // Normal siyah renk
+            }
+            
+            // Tablo çizgi ayarları
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            
+            // Tarih sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[0], 5);
+            
+            // 9. hafta PDF'si ve geçmiş haftalarda (5-8) yeşil check simgesi ekle
+            if (gercekHaftaNo <= 8) {
+              // Yeşil check kutusu çiz
+              doc.setFillColor(0, 128, 0); // Yeşil dolgu
+              doc.rect(zipTableStartX + 1, currentY + 1, 4, 3, 'F'); // Yeşil dikdörtgen
+              
+              // Beyaz check çizgisi çiz
+              doc.setDrawColor(255, 255, 255); // Beyaz çizgi
+              doc.setLineWidth(0.5);
+              // Check işareti çizgisi (V şekli)
+              doc.line(zipTableStartX + 1.5, currentY + 2.5, zipTableStartX + 2.5, currentY + 3.2);
+              doc.line(zipTableStartX + 2.5, currentY + 3.2, zipTableStartX + 4.2, currentY + 1.5);
+              
+              // Tablo çizgi ayarlarını geri yükle
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.3);
+              
+              // Tarihi soluk renkte yaz
+              doc.setTextColor(150, 150, 150);
+              doc.text(tarihStr, zipTableStartX + 7, currentY + 3.5);
+            } else {
+              // Normal tarih
+              doc.setTextColor(0, 0, 0);
+              doc.text(tarihStr, zipTableStartX + 2, currentY + 3.5);
+            }
+            zipTableStartX += colWidths[0];
+            
+            // Gün sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[1], 5);
+            doc.text(gun, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[1];
+            
+            // Sabah sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[2], 5);
+            doc.text(sabahUygulama, zipTableStartX + 2, currentY + 3.5);
+            zipTableStartX += colWidths[2];
+            
+            // Akşam sütunu
+            doc.rect(zipTableStartX, currentY, colWidths[3], 5);
+            doc.text(aksamUygulama, zipTableStartX + 2, currentY + 3.5);
+            
+            currentY += 5;
+          }
+          
+          currentY += 8; // Haftalar arası boşluk
         }
         
         // PDF'i blob olarak al ve ZIP'e ekle
         const pdfBlob = doc.output('blob');
-        const dosyaAdi = `${hasta.isim.replace(/[^a-zA-Z0-9]/g, '_')}_Egzersiz_Takvimi.pdf`;
-        zip.file(dosyaAdi, pdfBlob);
+        const dosyaAdi = `${asciiHastaAdi}_Egzersiz_Takvimi.pdf`;
+        zip.file(klasorYolu + dosyaAdi, pdfBlob);
         
         console.log('✅ 9. hafta Egzersiz PDF ZIP\'e eklendi:', dosyaAdi);
         
@@ -7523,7 +7890,7 @@ function duzenleHafta(i) {
       const haftaNo = haftalar[i].haftaNo || (i + 1);
       
       // GitHub'a PDF yükle
-      console.log('� PDF GitHub\'a yükleniyor...');
+      console.log('  PDF GitHub\'a yükleniyor...');
       const pdfSonuc = await pdfYukleGithub(file, seciliHasta.id, haftaNo);
       
       if (!pdfSonuc) {
@@ -7531,32 +7898,30 @@ function duzenleHafta(i) {
         return;
       }
       
-        // Hafta verilerini güncelle - localStorage için büyük verileri temizle
-        // NOT: File objesi ve Base64 veriler localStorage'a kaydedilmeyecek (sadece referans bilgileri)
-        const temizHafta = {
-          pdfOrijinalIsim: pdfSonuc.orijinalAd,
-          pdfName: pdfSonuc.guvenliAd,
-          pdfYolu: pdfSonuc.dosyaYolu,
-          githubUrl: pdfSonuc.githubUrl,
-          indirmeUrl: pdfSonuc.indirmeUrl,
-          kayitTarihi: new Date().toISOString(),
-          haftaNo: haftalar[i].haftaNo,
-          baslangic: haftalar[i].baslangic,
-          bitis: haftalar[i].bitis
-        };
-        
-        // Büyük verileri geçici değişkenlerde tut (localStorage'a gitmeyecek)
-        const geciciPdfFile = file; // File objesi
-        const geciciTarifler = []; // PDF'den çıkarılacak tarifler
-        
-        console.log('🔍 PDF verileri güncellenecek (büyük veriler localStorage dışında):', temizHafta);
+      // Hafta verilerini güncelle
+      haftalar[i].pdfFile = file; // Geçici olarak File objesi (analiz için)
+      haftalar[i].pdfOrijinalIsim = pdfSonuc.orijinalAd;
+      haftalar[i].pdfName = pdfSonuc.guvenliAd;
+      haftalar[i].pdfYolu = pdfSonuc.dosyaYolu;
+      haftalar[i].githubUrl = pdfSonuc.githubUrl;
+      haftalar[i].indirmeUrl = pdfSonuc.indirmeUrl;
+      haftalar[i].kayitTarihi = new Date().toISOString();
       
-        // Temiz hafta verilerini localStorage için güncelle
-        Object.assign(haftalar[i], temizHafta);
-        
-        // Büyük verileri geçici olarak işlemde kullan ama localStorage'a kaydetme
-        haftalar[i]._geciciPdfFile = geciciPdfFile; // Geçici PDF File objesi (analiz için)
-        haftalar[i]._geciciTarifler = geciciTarifler; // Geçici tarif verileri
+      // YENİ PDF YÜKLENINCE ESKİ KARTLARI TEMİZLE
+      console.log('🧹 Yeni PDF yükleniyor, eski kartlar temizleniyor...');
+      console.log('🔍 Temizleme öncesi hafta verileri:', {
+        haftaIndex: i,
+        eskiTarifKartlar: haftalar[i].tarifKartlar?.length || 0,
+        eskiManuelKartlar: haftalar[i].manuelKartlar?.length || 0,
+        eskiTarifler: haftalar[i].tarifler?.length || 0
+      });
+      
+      // 1. LocalStorage'daki hafta verilerinden eski kartları temizle
+      haftalar[i].tarifKartlar = []; // Otomatik eşleşen kartları sıfırla
+      haftalar[i].manuelKartlar = []; // Manuel eklenen kartları sıfırla
+      haftalar[i].tarifler = []; // Eski tarifleri sıfırla
+      
+      console.log('✅ LocalStorage hafta verileri temizlendi');
       
       console.log('✅ PDF verileri güncellendi:', {
         pdfOrijinalIsim: haftalar[i].pdfOrijinalIsim,
@@ -7682,21 +8047,8 @@ function duzenleHafta(i) {
         await hastayiAyriKaydet(seciliHasta);
       }
 
-      // Otomatik kaydetme - temizlenmiş hasta verileri
-      const temizSeciliHasta = { ...seciliHasta };
-      if (temizSeciliHasta.haftalar) {
-        temizSeciliHasta.haftalar = temizSeciliHasta.haftalar.map(hafta => {
-          const temizHafta = { ...hafta };
-          // Büyük verileri localStorage'a kaydetme
-          delete temizHafta.pdf;
-          delete temizHafta.pdfFile;
-          delete temizHafta._geciciPdfFile;
-          delete temizHafta._geciciTarifler;
-          delete temizHafta._geciciEslestirme;
-          return temizHafta;
-        });
-      }
-      autoSaveHastaData(temizSeciliHasta);
+      // Otomatik kaydetme - hasta verileri değişti
+      autoSaveHastaData(seciliHasta);
       
       renderHastalar();
       gosterHaftalar();
@@ -7745,66 +8097,42 @@ function duzenleHafta(i) {
           }, 100);
         }
 
-        // Tarifleri geçici değişkende tut (localStorage'a kaydedilmeyecek)
-        const analizTarifleri = extractTariflerDetay(fullText);
-        haftalar[i]._geciciTarifler = analizTarifleri; // Geçici veri olarak sakla
-        console.log('📝 Tarifler geçici değişkende saklandı (localStorage dışında):', analizTarifleri?.length || 0);
+        haftalar[i].tarifler = extractTariflerDetay(fullText);
         
-        // Eşleştirme yap (geçici verilerle)
+        // Eşleştirme yap ve sonuçları kaydet
         const eslestirmeSonucu = await otomatikEsleHafta(i);
         
-        // Sadece en önemli eşleştirme sonuçlarını localStorage'a kaydet
-        if (eslestirmeSonucu && eslestirmeSonucu.eslesenKartlar) {
-          // Sadece minimal kart bilgilerini sakla (büyük veriler olmadan)
-          const minimalKartlar = eslestirmeSonucu.eslesenKartlar.map(kart => ({
-            baslik: kart.baslik?.substring(0, 100) || '', // Başlığı kısalt
-            tip: kart.tip,
-            ogunZamani: kart.ogunZamani,
-            eslesen: kart.eslesen,
-            eslesenTarif: kart.eslesenTarif?.substring(0, 50) || '' // Tarif adını kısalt
-          }));
-          
-          haftalar[i].tarifKartlar = minimalKartlar;
-          console.log('📝 Minimal kart verileri localStorage için hazırlandı:', minimalKartlar.length);
+        // JSON'a sadece eşleşen kartları kaydet (eşleşmeyenleri kaydetme)
+        if (eslestirmeSonucu) {
+          console.log('✅ Eşleştirme sonuçları hafta verilerine kaydediliyor...');
+          haftalar[i].tarifKartlar = eslestirmeSonucu.eslesenKartlar || [];
+          // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - sadece UI'da göstereceğiz
+          console.log('📝 JSON\'a kaydedilecek eşleşen kart sayısı:', eslestirmeSonucu.eslesenKartlar?.length || 0);
+          console.log('📝 Eşleşmeyen tarifler JSON\'a kaydedilmiyor (sadece UI\'da görünür)');
         }
         
-        // Tam verileri geçici değişkende tut (UI için)
-        haftalar[i]._geciciEslestirme = eslestirmeSonucu;
-        
-        // Hasta JSON dosyasını güncelle (sadece minimal verilerle)
+        // Hasta JSON dosyasını güncelle
         if (seciliHasta) {
           const seciliHaftaIndex = seciliHasta.haftalar.findIndex(h => (h.haftaNo || 0) === (haftalar[i].haftaNo || (i + 1)));
           if (seciliHaftaIndex !== -1) {
-            // Sadece minimal verileri JSON'a kaydet
-            seciliHasta.haftalar[seciliHaftaIndex] = {
-              ...seciliHasta.haftalar[seciliHaftaIndex],
-              ...temizHafta,
-              tarifKartlar: haftalar[i].tarifKartlar || [] // Sadece minimal kartlar
-            };
+            seciliHasta.haftalar[seciliHaftaIndex].tarifler = haftalar[i].tarifler;
+            seciliHasta.haftalar[seciliHaftaIndex].tarifKartlar = haftalar[i].tarifKartlar || [];
+            // Eşleşmeyen tarifleri JSON'a kaydetmiyoruz - JSON boyutunu küçük tutmak için
+            // seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler = haftalar[i].eslesmeyenTarifler || [];
             
-            // Büyük verileri JSON'a kaydetme
-            delete seciliHasta.haftalar[seciliHaftaIndex].tarifler;
-            delete seciliHasta.haftalar[seciliHaftaIndex].pdf;
-            delete seciliHasta.haftalar[seciliHaftaIndex].pdfFile;
-            delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
-            
-            console.log('🧹 Hasta JSON\'undan büyük veriler temizlendi');
+            // Mevcut JSON'da eslesmeyenTarifler varsa sil (temizlik)
+            if (seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler) {
+              delete seciliHasta.haftalar[seciliHaftaIndex].eslesmeyenTarifler;
+              console.log('🧹 Eski eslesmeyenTarifler verisi JSON\'dan temizlendi');
+            }
           }
           
           // Hasta verilerini GitHub'a kaydet
           await hastayiAyriKaydet(seciliHasta);
-          console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi (sadece minimal veriler)');
+          console.log('💾 PDF analizi sonrası hasta verileri JSON\'a kaydedildi (sadece eşleşenler)');
         }
         
-        // Temizlenmiş verilerle localStorage'a kaydet
         saveToStorage();
-        console.log('💾 PDF analizi tamamlandı, temizlenmiş veriler localStorage\'a kaydedildi');
-        
-        // Kullanıcıya bilgi ver (sadece ilk PDF yükleme sırasında)
-        if (!window._pdfOptimizasyonUyarisi) {
-          window._pdfOptimizasyonUyarisi = true;
-          console.log('💡 PDF optimizasyonu aktif: Büyük veriler localStorage\'a kaydedilmiyor');
-        }
         
         // Eğer bu hafta şu anda aktif hafta ise, kartları hemen göster
         const aktifTab = document.querySelector('.hafta-tab.active');
@@ -8441,13 +8769,8 @@ function duzenleHafta(i) {
         console.log('🔍 Başlangıç tarihi hesaplanıyor...');
         const baslangicTarihi = new Date(baslangicHafta.baslangic);
         
-        // Başlangıç tarihinin pazartesi olmasını garanti altına al
-        const haftaGunu = baslangicTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
-        if (haftaGunu !== 1) { // Eğer pazartesi değilse
-          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
-          baslangicTarihi.setDate(baslangicTarihi.getDate() + gunFarki);
-        }
-        console.log('✅ Başlangıç tarihi (Pazartesi):', baslangicTarihi);
+        // Tab başlangıç tarihini olduğu gibi kullan - zaten doğru tarihlendirilmiş
+        console.log('✅ Başlangıç tarihi (tab tarihinden):', baslangicTarihi);
         
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -8458,14 +8781,20 @@ function duzenleHafta(i) {
           // 9. hafta özel modunda 5. haftadan başla (5,6,7,8,9,10,11,12), normal modda belirtilen haftadan
           const gercekHaftaNo = dokuzuncuHaftaOzelModu ? (lenfHaftaIndex + 5) : (lenfHaftaIndex + (belirliHaftaNo || 5));
           
-          // Tarih hesaplaması: 9. hafta özel modunda, 9. haftanın pazartesi günü referans alınır
+          // Tarih hesaplaması düzeltildi
           let haftaBaslangic;
           if (dokuzuncuHaftaOzelModu) {
-            // 9. haftanın pazartesi gününden geriye/ileriye doğru hesapla
-            const dokuzuncuHaftaPazartesi = new Date(baslangicTarihi.getTime());
-            const haftaFarki = lenfHaftaIndex - 4; // 9. hafta = index 4, yani 0 fark
-            haftaBaslangic = new Date(dokuzuncuHaftaPazartesi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
+            // 9. hafta özel modu: 5. haftadan başlayarak 8 hafta göster
+            // baslangicTarihi = 9. hafta başlangıç tarihi
+            // 5. hafta = 9. haftadan 4 hafta önce
+            // 6. hafta = 9. haftadan 3 hafta önce
+            // ...
+            // 9. hafta = 9. haftadan 0 hafta önce
+            // 10. hafta = 9. haftadan 1 hafta sonra
+            const haftaFarki = (lenfHaftaIndex + 5) - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+            haftaBaslangic = new Date(baslangicTarihi.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           } else {
+            // Normal mod: başlangıç tarihinden itibaren hafta hafta ilerle
             haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           }
           
@@ -8738,7 +9067,7 @@ function duzenleHafta(i) {
         // Debug: Hem orijinal hem ASCII versiyonu deneyelim
         console.log('🔍 Debug - orijinal isim:', hastaAdi);
         const pdfUygunHastaAdi = window.fixTurkishChars(hastaAdi);
-        console.log('� Debug - ASCII isim:', pdfUygunHastaAdi);
+        console.log('  Debug - ASCII isim:', pdfUygunHastaAdi);
         
         // İki versiyon da deneyelim
         try {
@@ -9330,12 +9659,8 @@ function duzenleHafta(i) {
   let eslesmeyenTarifler = [];
   let eslesmeyenOneriler = [];
 
-  // Tarif verilerini geçici değişkenlerden al (localStorage'a kaydedilmemiş)
-  const tarifVerileri = hafta._geciciTarifler || hafta.tarifler || [];
-  console.log('📋 Eşleştirme için kullanılacak tarif sayısı:', tarifVerileri.length);
-
   // Her tarif için eşleştirme yap
-  tarifVerileri.forEach(tarif => {
+  hafta.tarifler.forEach(tarif => {
     let tarifSatir = tarif.replace(/^\*+\s*/, '').trim();
     let eslesen = null;
     let eslesenKartlar = [];
@@ -9904,7 +10229,7 @@ function duzenleHafta(i) {
           return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
         }
         
-        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn� format
+        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn  format
         
         // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
         console.log('🔍 Orijinal hasta adı:', hastaAdi);
@@ -9945,6 +10270,12 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
         
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 Tekli lenf masaj - 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
+        const hizalanmisBaslangic = baslangicTarihi;
+        
         // 5. haftanın başlangıcı
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
@@ -9952,7 +10283,7 @@ function duzenleHafta(i) {
         // 8 haftalık lenf masaj programı (ZIP sistemindeki gibi)
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
+          const haftaBaslangic = new Date(hizalanmisBaslangic.getTime() + (lenfHaftaIndex * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
@@ -10152,7 +10483,7 @@ function duzenleHafta(i) {
           return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
         }
         
-        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn� format
+        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn  format
         
         // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
         console.log('🔍 Orijinal hasta adı:', hastaAdi);
@@ -10193,6 +10524,12 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
+        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
+        console.log('🔍 Tekli egzersiz - 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        
+        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
+        const hizalanmisBaslangic = baslangicTarihi;
+        
         // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
@@ -10200,7 +10537,15 @@ function duzenleHafta(i) {
         // 8 haftalık program (5-12. haftalar) - ZIP sistemindeki gibi
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          const haftaBaslangic = new Date(baslangicTarihi.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000)); // 9. hafta referans
+          
+          // 9. haftayı referans alarak diğer hafta başlangıçlarını hesapla
+          // 5. hafta: 9. haftadan 4 hafta önce (-4 * 7 gün)
+          // 6. hafta: 9. haftadan 3 hafta önce (-3 * 7 gün)
+          // ...
+          // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
+          // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
+          const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
+          const haftaBaslangic = new Date(hizalanmisBaslangic.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
           
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
@@ -10451,7 +10796,7 @@ function duzenleHafta(i) {
       console.log('🔍 Hafta listesi alındı, uzunluk:', haftalar ? haftalar.length : 'null');
       
       const hafta = haftalar[i];
-      console.log('� Hafta objesi alındı:', hafta);
+      console.log('  Hafta objesi alındı:', hafta);
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
       
@@ -10700,7 +11045,7 @@ function duzenleHafta(i) {
           });
         }
       } else {
-        console.warn(`⚠️ ${haftaNo}. hafta PDF bilgisi bulunamadı veya GitHub token yok`, {
+        console.warn(`ℹ️ ${haftaNo}. hafta PDF bilgisi bulunamadı`, {
           haftaNo: haftaNo,
           pdfName: hafta.pdfName,
           pdfOrijinalIsim: hafta.pdfOrijinalIsim,
@@ -11026,154 +11371,53 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Önce temizle
       currentDiv.innerHTML = '';
       
-      // Hafta verilerini al
-      const haftalar = getHaftaListesi();
-      const hafta = haftalar[haftaIndex];
-      if (!hafta) {
-        console.log('❌ Hafta verisi bulunamadı:', haftaIndex);
-        currentDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Hafta verisi bulunamadı</div>';
-        return;
-      }
-      
       // Eşleşen kartlar başlığını güncelle
       const eslesenBaslik = document.getElementById('eslesenBaslik');
       
       let kartVarMi = false;
       
-      // 1. Geçici eşleştirme verilerini kontrol et (yeni PDF analizi)
-      const geciciEslestirme = hafta._geciciEslestirme;
-      let eslesenKartlar = [];
-      let eslesmeyenTarifler = [];
-      
-      if (geciciEslestirme) {
-        console.log('✅ Geçici eşleştirme verileri bulundu');
-        eslesenKartlar = geciciEslestirme.eslesenKartlar || [];
-        eslesmeyenTarifler = geciciEslestirme.eslesmeyenTarifler || [];
-      } else {
-        // 2. Kayıtlı minimal kart verilerini kullan (localStorage'dan)
-        console.log('⚠️ Geçici eşleştirme yok, kayıtlı veriler kullanılıyor');
-        eslesenKartlar = hafta.tarifKartlar || [];
-      }
-      
-      console.log(`🔍 Toplam eşleşen kart sayısı: ${eslesenKartlar.length}`);
-      console.log(`🔍 Toplam eşleşmeyen tarif sayısı: ${eslesmeyenTarifler.length}`);
-      
-      // 3. Eşleşen kartları sidebar'a ekle
-      if (eslesenKartlar.length > 0) {
-        console.log('✅ Eşleşen kartlar sidebar\'a ekleniyor...');
-        kartVarMi = true;
+      // 1. Otomatik eşleşen kartları ekle
+      if (eskiDiv && eskiDiv.children.length > 0) {
+        console.log('✅ Otomatik eşleşen kartlar bulundu, sidebar\'a klonlanıyor...');
         
-        eslesenKartlar.forEach((kart, index) => {
-          // Kart container
-          const kartDiv = document.createElement('div');
-          kartDiv.style.marginBottom = '15px';
-          kartDiv.style.padding = '10px';
-          kartDiv.style.border = '1px solid #ddd';
-          kartDiv.style.borderRadius = '5px';
-          kartDiv.style.background = '#f9f9f9';
+        // Her child elementi klonla ve onclick eventleri yeniden ekle
+        Array.from(eskiDiv.children).forEach(child => {
+          const clonedChild = child.cloneNode(true);
           
-          // Tarif adı (tıklanabilir)
-          const tarifSpan = document.createElement('span');
-          tarifSpan.textContent = `📋 ${kart.eslesenTarif || kart.baslik || `Tarif ${index + 1}`}`;
-          tarifSpan.style.fontWeight = 'bold';
-          tarifSpan.style.cursor = 'pointer';
-          tarifSpan.style.color = '#007bff';
-          tarifSpan.style.display = 'block';
-          tarifSpan.style.marginBottom = '8px';
-          tarifSpan.title = 'Tarif detaylarını görüntüle';
-          
-          tarifSpan.onclick = () => {
-            console.log('🔧 Sidebar\'dan tarif adına tıklandı:', kart.eslesenTarif);
-            // Tarif detay modalı açabilir veya başka bir eylem
-          };
-          
-          kartDiv.appendChild(tarifSpan);
-          
-          // Kart bilgileri
-          if (kart.baslik) {
-            const kartInfo = document.createElement('div');
-            kartInfo.innerHTML = `<strong>Kart:</strong> ${kart.baslik}`;
-            kartInfo.style.fontSize = '12px';
-            kartInfo.style.color = '#666';
-            kartInfo.style.marginBottom = '5px';
-            kartDiv.appendChild(kartInfo);
-          }
-          
-          if (kart.tip) {
-            const tipInfo = document.createElement('div');
-            tipInfo.innerHTML = `<strong>Tür:</strong> ${kart.tip}`;
-            tipInfo.style.fontSize = '12px';
-            tipInfo.style.color = '#666';
-            tipInfo.style.marginBottom = '5px';
-            kartDiv.appendChild(tipInfo);
-          }
-          
-          if (kart.ogunZamani) {
-            const zamanInfo = document.createElement('div');
-            zamanInfo.innerHTML = `<strong>Öğün:</strong> ${kart.ogunZamani}`;
-            zamanInfo.style.fontSize = '12px';
-            zamanInfo.style.color = '#666';
-            kartDiv.appendChild(zamanInfo);
-          }
-          
-          currentDiv.appendChild(kartDiv);
-        });
-      }
-      
-      // 5. Eşleşmeyen tarifleri accordion'da güncelle
-      if (eslesmeyenTarifler.length > 0) {
-        const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
-        const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
-        
-        if (eslesmeyenlerContent && eslesmeyenlerBaslik) {
-          console.log('✅ Eşleşmeyen tarifler accordion\'da güncelleniyor...');
-          
-          // Başlığı güncelle
-          eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${eslesmeyenTarifler.length})`;
-          
-          // İçeriği temizle ve yeniden doldur
-          eslesmeyenlerContent.innerHTML = '';
-          
-          eslesmeyenTarifler.forEach(tarif => {
-            const p = document.createElement('p');
-            p.textContent = tarif;
-            p.style.color = '#dc3545';
-            p.style.margin = '6px 0';
-            p.style.padding = '4px 8px';
-            p.style.background = '#fff5f5';
-            p.style.borderLeft = '3px solid #dc3545';
-            p.style.borderRadius = '4px';
-            p.style.cursor = 'pointer';
-            p.style.transition = 'background-color 0.2s';
-            p.title = 'Tıkla ve manuel eşleştirme yap';
+          // Klonlanan element içindeki tıklanabilir span'ları bul ve onclick ekle
+          const clickableSpans = clonedChild.querySelectorAll('span[style*="cursor: pointer"]');
+          clickableSpans.forEach(span => {
+            const tarifText = span.textContent.replace(/^[^:]*:\s*/, '').trim(); // "Tarif: xyz" formatından "xyz" al
+            console.log('🔧 Sidebar klonuna onclick ekleniyor:', tarifText);
             
-            // Hover efekti
-            p.onmouseenter = () => p.style.background = '#ffe6e6';
-            p.onmouseleave = () => p.style.background = '#fff5f5';
-            
-            // Tıklama olayı - Manuel eşleştirme panelini aç
-            p.onclick = () => {
-              if (typeof eslesmeyenTarifManuelEslestir === 'function') {
-                eslesmeyenTarifManuelEslestir(tarif);
-              } else {
-                console.warn('⚠️ eslesmeyenTarifManuelEslestir fonksiyonu bulunamadı');
+            span.onclick = () => {
+              console.log('🔧 Sidebar\'dan eşleşen tarif adına tıklandı:', tarifText);
+              try {
+                if (typeof eslesenTarifManuelEslestir === 'function') {
+                  // Orjinal kartları bul
+                  const aktifHaftaIndex = getAktifHaftaIndex();
+                  const hafta = seciliHasta?.haftalar?.[aktifHaftaIndex];
+                  if (hafta?.tarifKartlar) {
+                    const eslesmeTarifKartlari = hafta.tarifKartlar.filter(kart => 
+                      kart.tarifAdi.toLowerCase() === tarifText.toLowerCase()
+                    );
+                    eslesenTarifManuelEslestir(tarifText, eslesmeTarifKartlari);
+                  }
+                } else {
+                  console.error('❌ eslesenTarifManuelEslestir fonksiyonu bulunamadı!');
+                  alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+                }
+              } catch (error) {
+                console.error('❌ Sidebar eşleşen tarif tıklama hatası:', error);
+                alert('Hata: ' + error.message);
               }
             };
-            
-            eslesmeyenlerContent.appendChild(p);
           });
-        }
-      } else {
-        // Eşleşmeyen tarif yoksa temizle
-        const eslesmeyenlerContent = document.getElementById('eslesmeyenlerContent');
-        const eslesmeyenlerBaslik = document.getElementById('eslesmeyenlerBaslik');
+          
+          currentDiv.appendChild(clonedChild);
+        });
         
-        if (eslesmeyenlerBaslik) {
-          eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
-        }
-        if (eslesmeyenlerContent) {
-          eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Tüm tarifler eşleştirildi! 🎉</div>';
-        }
+        kartVarMi = true;
       }
       
       // 2. Manuel eklenen kartları ekle
@@ -11343,7 +11587,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Token kontrolü
       const token = document.getElementById('githubToken').value.trim();
       if (!token) {
-        console.log('⚠️ GitHub token yok - Boş yeni sistem başlatılıyor');
+        console.log('ℹ️ GitHub token yok - Offline modda başlatılıyor');
         
         // Boş yeni sistem başlat
         hastaListesi = [];
@@ -11367,6 +11611,58 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         console.warn('⚠️ Yeni sistem yüklenemedi, boş sistem başlatılıyor:', error.message);
         hastaListesi = [];
         renderHastalarYeniSistem();
+      }
+      
+      // Toplu ZIP butonunu ekle
+      ekleTopluZipButonu();
+    }
+    
+    // Toplu ZIP butonunu sidebar'a ekle
+    function ekleTopluZipButonu() {
+      const sidebarButtons = document.getElementById('sidebarButtons');
+      if (sidebarButtons) {
+        // Eğer buton zaten varsa tekrar ekleme
+        if (sidebarButtons.querySelector('.toplu-zip-button')) {
+          return;
+        }
+        
+        const topluZipButton = document.createElement('button');
+        topluZipButton.className = 'toplu-zip-button';
+        topluZipButton.innerHTML = '🗜️ TOPLU ZIP İNDİR';
+        topluZipButton.title = 'Tüm aktif hastaların en son hafta tablarını tek ZIP dosyasında indir';
+        topluZipButton.style.cssText = `
+          width: 100%; 
+          padding: 12px; 
+          font-size: 14px; 
+          font-weight: bold; 
+          background: linear-gradient(45deg, #ff6b6b, #ee5a24); 
+          color: white; 
+          border: none; 
+          border-radius: 6px; 
+          cursor: pointer; 
+          margin-bottom: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          transition: all 0.3s ease;
+        `;
+        
+        // Hover efekti için
+        topluZipButton.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px)';
+          this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        });
+        
+        topluZipButton.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        });
+        
+        topluZipButton.onclick = function() {
+          topluZipIndir();
+        };
+        
+        // Butonu sidebar'a ekle
+        sidebarButtons.appendChild(topluZipButton);
+        console.log('✅ Toplu ZIP butonu eklendi');
       }
     }
     
@@ -12451,7 +12747,320 @@ ${mesajlar.join('\n')}
     // Global erişim için
     window.hastaSecildi = hastaSecildi;
 
-    // 📁 ANA ÇOKLU PDF FONKSİYONU
+    //  ️ TOPLU ZIP FONKSİYONU
+    async function topluZipIndir() {
+      try {
+        console.log('🚀 Toplu ZIP indirme başlatıldı');
+        
+        // GitHub token kontrolü
+        const tokenElement = document.getElementById('githubToken');
+        const repoElement = document.getElementById('githubRepo');
+        
+        const GITHUB_TOKEN = tokenElement ? tokenElement.value.trim() : '';
+        const GITHUB_REPO = repoElement ? repoElement.value.trim() || 'mustafasacar35/lipodem-takip-paneli' : 'mustafasacar35/lipodem-takip-paneli';
+        
+        if (!GITHUB_TOKEN) {
+          alert('GitHub token ayarlanmamış. Lütfen önce GitHub token\'ınızı girin.');
+          return;
+        }
+        
+        // Hasta listesini al (GitHub'dan direkt yükle)
+        console.log('📋 Hasta listesi yükleniyor...');
+        const tumHastalar = await hastaListesiYukle();
+        
+        if (!tumHastalar || tumHastalar.length === 0) {
+          alert('Hasta listesi yüklenmemiş! Lütfen GitHub token\'ınızı kontrol edin.');
+          return;
+        }
+        
+        const aktifHastalar = tumHastalar.filter(hasta => !hasta.arsiv);
+        
+        if (aktifHastalar.length === 0) {
+          alert('Aktif hasta bulunamadı!');
+          return;
+        }
+        
+        console.log(`📊 ${aktifHastalar.length} aktif hasta bulundu`);
+        
+        // Ana ZIP dosyasını oluştur
+        const anaZip = new JSZip();
+        const bugununTarihi = new Date().toISOString().slice(0,10);
+        const anaZipAdi = `TOPLU_HASTA_ZIP_${bugununTarihi}.zip`;
+        
+        // Progress gösterimi
+        const progressDiv = document.createElement('div');
+        progressDiv.style.cssText = `
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 10000; min-width: 400px; text-align: center;
+        `;
+        progressDiv.innerHTML = `
+          <h3>🗜️ Toplu ZIP Hazırlanıyor...</h3>
+          <div id="progressBar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+            <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(45deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+          </div>
+          <div id="progressText">0 / ${aktifHastalar.length}</div>
+          <div id="currentHasta" style="margin-top: 10px; font-weight: bold; color: #666;"></div>
+        `;
+        document.body.appendChild(progressDiv);
+        
+        let basariliHastalar = 0;
+        let hataliHastalar = 0;
+        
+        // Her hasta için işlem yap
+        for (let i = 0; i < aktifHastalar.length; i++) {
+          const hasta = aktifHastalar[i];
+          
+          // Progress güncelle
+          const progress = ((i + 1) / aktifHastalar.length) * 100;
+          document.getElementById('progressFill').style.width = progress + '%';
+          document.getElementById('progressText').textContent = `${i + 1} / ${aktifHastalar.length}`;
+          document.getElementById('currentHasta').textContent = `İşleniyor: ${hasta.isim}`;
+          
+          try {
+            console.log(`👤 ${hasta.isim} işleniyor...`);
+            
+            // Hasta verilerini al
+            const hastaData = await getHastaData(hasta.id, GITHUB_REPO, GITHUB_TOKEN, hasta.isim);
+            if (!hastaData || !hastaData.haftalar) {
+              console.warn(`⚠️ ${hasta.isim} için veri bulunamadı`);
+              hataliHastalar++;
+              continue;
+            }
+            
+            // En büyük hafta numarasını bul
+            const haftalar = hastaData.haftalar || [];
+            let enBuyukHafta = null;
+            let enBuyukHaftaNo = 0;
+            
+            haftalar.forEach(hafta => {
+              const haftaNo = hafta.haftaNo || 0;
+              if (haftaNo > enBuyukHaftaNo) {
+                enBuyukHaftaNo = haftaNo;
+                enBuyukHafta = hafta;
+              }
+            });
+            
+            if (!enBuyukHafta) {
+              console.warn(`⚠️ ${hasta.isim} için hafta verisi bulunamadı`);
+              hataliHastalar++;
+              continue;
+            }
+            
+            console.log(`📅 ${hasta.isim} - En büyük hafta: ${enBuyukHaftaNo}`);
+            
+            // Hasta klasörü oluştur - menü PDF adını kullan
+            let hastaKlasorAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+              const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
+              return trMap[match] || match;
+            });
+            
+            // Sadece en büyük hafta için menü PDF'sini ekle
+            if (enBuyukHafta.githubUrl || enBuyukHafta.indirmeUrl || (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim))) {
+              try {
+                let pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
+                
+                // Klasör adını menü PDF adıyla değiştir (MENU_ prefix'i olmadan)
+                if (pdfFileName) {
+                  hastaKlasorAdi = pdfFileName.replace('.pdf', '');
+                }
+                
+                console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
+                
+                // Raw GitHub URL'sini kullan
+                let pdfUrl;
+                if (enBuyukHafta.githubUrl) {
+                  // githubUrl varsa raw formatına çevir
+                  pdfUrl = enBuyukHafta.githubUrl
+                    .replace('github.com', 'raw.githubusercontent.com')
+                    .replace('/blob/', '/');
+                  // PDF dosya adını URL'den çıkar
+                  if (!pdfFileName) {
+                    pdfFileName = decodeURIComponent(pdfUrl.split('/').pop());
+                  }
+                } else if (enBuyukHafta.indirmeUrl) {
+                  // indirmeUrl varsa raw formatına çevir
+                  pdfUrl = enBuyukHafta.indirmeUrl
+                    .replace('github.com', 'raw.githubusercontent.com')
+                    .replace('/blob/', '/');
+                  // PDF dosya adını URL'den çıkar
+                  if (!pdfFileName) {
+                    pdfFileName = decodeURIComponent(pdfUrl.split('/').pop());
+                  }
+                } else {
+                  // Standart raw format ile dene
+                  const encodedFileName = encodeURIComponent(pdfFileName);
+                  pdfUrl = `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/pdfs/${encodedFileName}`;
+                }
+                
+                console.log(`  PDF URL: ${pdfUrl}`);
+                
+                const pdfResponse = await fetch(pdfUrl);
+                
+                if (pdfResponse.ok) {
+                  const pdfBlob = await pdfResponse.blob();
+                  anaZip.file(`${hastaKlasorAdi}/MENU_PDF_${pdfFileName}`, pdfBlob);
+                  console.log(`✅ ${hasta.isim} - Menü PDF eklendi: ${pdfFileName}`);
+                } else {
+                  console.warn(`❌ ${hasta.isim} - Menü PDF indirilemedi (${pdfResponse.status}): ${pdfUrl}`);
+                }
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Menü PDF eklenemedi:`, error);
+              }
+            } else {
+              console.log(`ℹ️ ${hasta.isim} - En büyük hafta için PDF verisi yok (githubUrl: ${!!enBuyukHafta.githubUrl}, indirmeUrl: ${!!enBuyukHafta.indirmeUrl}, pdf: ${!!enBuyukHafta.pdf}, pdfName: ${!!enBuyukHafta.pdfName})`);
+            }
+            
+            // Tarif kartlarını ekle
+            if (enBuyukHafta.tarifKartlar && enBuyukHafta.tarifKartlar.length > 0) {
+              console.log(`🔍 ${hasta.isim} - Tarif kartları:`, enBuyukHafta.tarifKartlar);
+              for (const kart of enBuyukHafta.tarifKartlar) {
+                try {
+                  console.log(`🔍 ${hasta.isim} - Kart objesi:`, kart);
+                  // Doğru özellik adını kullan: kartData
+                  const kartUrl = kart.kartData || kart.data;
+                  if (!kartUrl) {
+                    console.warn(`⚠️ ${hasta.isim} - Kart URL'si bulunamadı:`, kart);
+                    continue;
+                  }
+                  const response = await fetch(kartUrl);
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    const fileName = kartUrl.split('/').pop() || `tarif_${kart.tarifAdi || 'kart'}.jpg`;
+                    anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                    console.log(`✅ ${hasta.isim} - Tarif kartı eklendi:`, fileName);
+                  }
+                } catch (error) {
+                  console.warn(`❌ ${hasta.isim} - Tarif kartı eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
+                }
+              }
+            }
+            
+            // Manuel kartları ekle
+            if (enBuyukHafta.manuelKartlar && enBuyukHafta.manuelKartlar.length > 0) {
+              console.log(`🔍 ${hasta.isim} - Manuel kartlar:`, enBuyukHafta.manuelKartlar);
+              for (const kart of enBuyukHafta.manuelKartlar) {
+                try {
+                  // Doğru özellik adını kullan: kartData
+                  const kartUrl = kart.kartData || kart.data;
+                  if (!kartUrl) {
+                    console.warn(`⚠️ ${hasta.isim} - Manuel kart URL'si bulunamadı:`, kart);
+                    continue;
+                  }
+                  const response = await fetch(kartUrl);
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    const fileName = kartUrl.split('/').pop() || `manuel_${kart.tarifAdi || 'kart'}.jpg`;
+                    anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                    console.log(`✅ ${hasta.isim} - Manuel kart eklendi:`, fileName);
+                  }
+                } catch (error) {
+                  console.warn(`❌ ${hasta.isim} - Manuel kart eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
+                }
+              }
+            }
+            
+            // Çoklu PDF kartlarını ekle
+            if (enBuyukHafta.cokluPdfVerileri && enBuyukHafta.cokluPdfVerileri.length > 0) {
+              console.log(`🔍 ${hasta.isim} - Çoklu PDF verileri:`, enBuyukHafta.cokluPdfVerileri);
+              for (const veri of enBuyukHafta.cokluPdfVerileri) {
+                if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
+                  for (const kart of veri.tarifKartlar) {
+                    try {
+                      // Doğru özellik adını kullan: kartData
+                      const kartUrl = kart.kartData || kart.data;
+                      if (!kartUrl) {
+                        console.warn(`⚠️ ${hasta.isim} - Çoklu PDF kart URL'si bulunamadı:`, kart);
+                        continue;
+                      }
+                      const response = await fetch(kartUrl);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        const fileName = kartUrl.split('/').pop() || `coklu_${kart.tarifAdi || 'kart'}.jpg`;
+                        anaZip.file(`${hastaKlasorAdi}/${fileName}`, blob);
+                        console.log(`✅ ${hasta.isim} - Çoklu PDF kartı eklendi:`, fileName);
+                      }
+                    } catch (error) {
+                      console.warn(`❌ ${hasta.isim} - Çoklu PDF kartı eklenemedi:`, kart.tarifAdi || 'bilinmeyen', error);
+                    }
+                  }
+                }
+              }
+            }
+            
+            // GPT mesajını ekle
+            if (enBuyukHafta.gptMesaj && enBuyukHafta.gptMesaj.trim()) {
+              anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, enBuyukHafta.gptMesaj.trim());
+            }
+            
+            // Lenf masajı planını ekle (5. hafta için)
+            if (enBuyukHaftaNo === 5) {
+              try {
+                await createAndAddLenfMasajPDF(anaZip, hastaData, haftalar, `${hastaKlasorAdi}/`);
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Lenf masajı planı eklenemedi:`, error);
+              }
+            }
+            
+            // Egzersiz planını ekle (9. hafta için)
+            if (enBuyukHaftaNo === 9) {
+              try {
+                await createAndAddEgzersizPDF(anaZip, hastaData, haftalar, `${hastaKlasorAdi}/`);
+              } catch (error) {
+                console.warn(`❌ ${hasta.isim} - Egzersiz planı eklenemedi:`, error);
+              }
+            }
+            
+            basariliHastalar++;
+            console.log(`✅ ${hasta.isim} başarıyla işlendi`);
+            
+          } catch (error) {
+            console.error(`❌ ${hasta.isim} işlenirken hata:`, error);
+            hataliHastalar++;
+          }
+          
+          // Küçük delay (performans için)
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Progress'i kapat
+        document.body.removeChild(progressDiv);
+        
+        if (basariliHastalar === 0) {
+          alert('Hiçbir hasta başarıyla işlenemedi!');
+          return;
+        }
+        
+        // ZIP dosyasını oluştur ve indir
+        console.log('🗜️ ZIP dosyası oluşturuluyor...');
+        const zipBlob = await anaZip.generateAsync({type: 'blob'});
+        
+        // İndirme işlemi
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = anaZipAdi;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Başarı mesajı
+        alert(`🎉 Toplu ZIP başarıyla oluşturuldu!\n\n` +
+              `✅ Başarılı: ${basariliHastalar} hasta\n` +
+              `❌ Hatalı: ${hataliHastalar} hasta\n\n` +
+              `Dosya adı: ${anaZipAdi}`);
+        
+        console.log('🎉 Toplu ZIP işlemi tamamlandı!');
+        
+      } catch (error) {
+        console.error('❌ Toplu ZIP hatası:', error);
+        alert('Toplu ZIP oluşturulurken hata oluştu: ' + error.message);
+      }
+    }
+    
+    // Global erişim için
+    window.topluZipIndir = topluZipIndir;
+
+    //  📁 ANA ÇOKLU PDF FONKSİYONU
     async function processCokluPdf(files) {
       if (!files || files.length === 0) {
         alert('Lütfen en az bir PDF dosyası seçin.');
@@ -12630,3 +13239,5 @@ ${mesajlar.join('\n')}
   </script>
 </body>
 </html>
+
+
