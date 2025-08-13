@@ -503,7 +503,7 @@
               align-items: center;
               font-size: 14px;
             ">
-              <span id="analizBaslik">  Yemek Kullanım Analizi (0/239)</span>
+              <span id="analizBaslik">� Yemek Kullanım Analizi (0/239)</span>
               <span id="analizIcon">▶</span>
             </button>
             <div id="analizContent" class="accordion-content" style="
@@ -543,7 +543,7 @@
               align-items: center;
               font-size: 14px;
             ">
-              <span id="eslesmeyenlerBaslik">  Eşleşmeyen Tarifler</span>
+              <span id="eslesmeyenlerBaslik">� Eşleşmeyen Tarifler</span>
               <span id="eslesmeyenlerIcon">▶</span>
             </button>
             <div id="eslesmeyenlerContent" class="accordion-content" style="
@@ -2728,7 +2728,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         return; 
       }
       
-      console.log('  Yeni sisteme göre tüm hastalar kaydediliyor...');
+      console.log('� Yeni sisteme göre tüm hastalar kaydediliyor...');
       
       // Yeni sistemi kullan
       await tumHastalariAyriKaydet();
@@ -5085,13 +5085,101 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
     function saveToStorage() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
-        console.log('💾 Hastalar localStorage\'a kaydedildi');
+        // localStorage boyutunu kontrol et ve gerekirse optimize et
+        const hastalarCopy = JSON.parse(JSON.stringify(hastalar));
+        
+        // Her hasta için veri boyutunu küçült
+        hastalarCopy.forEach(hasta => {
+          if (hasta.haftalar) {
+            hasta.haftalar.forEach(hafta => {
+              // PDF File objelerini temizle (localStorage'a kaydedilemez)
+              if (hafta.pdfFile) {
+                delete hafta.pdfFile;
+              }
+              
+              // Çok büyük PDF text verilerini kısalt
+              if (hafta.pdfIcerik && hafta.pdfIcerik.length > 50000) {
+                hafta.pdfIcerik = hafta.pdfIcerik.substring(0, 50000) + '...[kısaltıldı]';
+              }
+              
+              // Eşleşmeyen tarifleri localStorage'a kaydetme (sadece geçici UI için)
+              if (hafta.eslesmeyenTarifler) {
+                delete hafta.eslesmeyenTarifler;
+              }
+              
+              // GPT mesajlarını kısalt (en son 10 mesaj)
+              if (hafta.gptMesajlari && hafta.gptMesajlari.length > 10) {
+                hafta.gptMesajlari = hafta.gptMesajlari.slice(-10);
+              }
+            });
+          }
+          
+          // Hasta seviyesindeki büyük verileri temizle
+          if (hasta.gptGecmisi && hasta.gptGecmisi.length > 20) {
+            hasta.gptGecmisi = hasta.gptGecmisi.slice(-20);
+          }
+        });
+        
+        const dataString = JSON.stringify(hastalarCopy);
+        const dataSize = new Blob([dataString]).size;
+        
+        console.log(`📊 localStorage veri boyutu: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
+        
+        // 4MB'dan büyükse uyarı ver
+        if (dataSize > 4 * 1024 * 1024) {
+          console.warn('⚠️ localStorage verisi çok büyük, eski veriler temizleniyor...');
+          
+          // En eski hasta verilerini temizle
+          if (hastalarCopy.length > 10) {
+            hastalarCopy.sort((a, b) => new Date(b.olusturulmaTarihi || 0) - new Date(a.olusturulmaTarihi || 0));
+            hastalarCopy.splice(10); // En son 10 hastayı tut
+          }
+        }
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalarCopy));
+        console.log('💾 Hastalar localStorage\'a kaydedildi (optimize edildi)');
+        
         // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
-      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+      } catch(e) { 
+        console.error('localStorage kaydetme hatası:', e);
+        
+        // Hata durumunda daha agresif temizlik yap
+        if (e.name === 'QuotaExceededError') {
+          console.warn('🧹 Quota aşıldı, daha agresif temizlik yapılıyor...');
+          try {
+            // Sadece temel hasta bilgilerini kaydet
+            const minimalData = hastalar.map(hasta => ({
+              id: hasta.id,
+              isim: hasta.isim,
+              yas: hasta.yas,
+              cinsiyet: hasta.cinsiyet,
+              kilo: hasta.kilo,
+              boy: hasta.boy,
+              olusturulmaTarihi: hasta.olusturulmaTarihi,
+              haftalar: hasta.haftalar ? hasta.haftalar.map(hafta => ({
+                haftaNo: hafta.haftaNo,
+                baslangic: hafta.baslangic,
+                bitis: hafta.bitis,
+                pdfOrijinalIsim: hafta.pdfOrijinalIsim,
+                pdfYolu: hafta.pdfYolu,
+                githubUrl: hafta.githubUrl,
+                indirmeUrl: hafta.indirmeUrl,
+                tarifKartlar: hafta.tarifKartlar || [],
+                manuelKartlar: hafta.manuelKartlar || []
+              })) : []
+            }));
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalData));
+            console.log('💾 Minimal hasta verileri kaydedildi');
+          } catch(minimalError) {
+            console.error('Minimal veri kaydetme de başarısız:', minimalError);
+            alert('Veri kaydetme başarısız! Tarayıcınızın depolama alanı dolu olabilir. Lütfen tarayıcı verilerini temizleyin.');
+          }
+        }
+      }
     }
     
     // Veri değiştiğinde otomatik kaydetme
@@ -5337,7 +5425,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
-          isimSpan.textContent = `${hasta.arsiv ? '  ' : ''}${hasta.hastaIsim}`;
+          isimSpan.textContent = `${hasta.arsiv ? '� ' : ''}${hasta.hastaIsim}`;
           isimDiv.appendChild(isimSpan);
           
           // Hafta bilgisini ekle (renkli)
@@ -7383,7 +7471,7 @@ function duzenleHafta(i) {
       const haftaNo = haftalar[i].haftaNo || (i + 1);
       
       // GitHub'a PDF yükle
-      console.log('  PDF GitHub\'a yükleniyor...');
+      console.log('� PDF GitHub\'a yükleniyor...');
       const pdfSonuc = await pdfYukleGithub(file, seciliHasta.id, haftaNo);
       
       if (!pdfSonuc) {
@@ -7626,6 +7714,42 @@ function duzenleHafta(i) {
         }
         
         saveToStorage();
+        
+        // PDF analizi tamamlandıktan sonra File objelerini temizle
+        setTimeout(() => {
+          try {
+            // Local hafta verilerinden File objelerini temizle
+            if (haftalar[i] && haftalar[i].pdfFile) {
+              delete haftalar[i].pdfFile;
+              console.log('🧹 Hafta verilerinden File objesi temizlendi');
+            }
+            
+            // Seçili hasta verilerinden de File objelerini temizle
+            if (seciliHasta && seciliHasta.haftalar) {
+              seciliHasta.haftalar.forEach(hafta => {
+                if (hafta.pdfFile) {
+                  delete hafta.pdfFile;
+                }
+              });
+              console.log('🧹 Hasta verilerinden File objeleri temizlendi');
+            }
+            
+            // Tüm hastalardan File objelerini temizle
+            hastalar.forEach(hasta => {
+              if (hasta.haftalar) {
+                hasta.haftalar.forEach(hafta => {
+                  if (hafta.pdfFile) {
+                    delete hafta.pdfFile;
+                  }
+                });
+              }
+            });
+            
+            console.log('🧹 Tüm File objeleri temizlendi - localStorage boyutu optimize edildi');
+          } catch (cleanError) {
+            console.warn('File objesi temizleme uyarısı:', cleanError);
+          }
+        }, 2000); // 2 saniye sonra temizle
         
         // Eğer bu hafta şu anda aktif hafta ise, kartları hemen göster
         const aktifTab = document.querySelector('.hafta-tab.active');
@@ -8559,7 +8683,7 @@ function duzenleHafta(i) {
         // Debug: Hem orijinal hem ASCII versiyonu deneyelim
         console.log('🔍 Debug - orijinal isim:', hastaAdi);
         const pdfUygunHastaAdi = window.fixTurkishChars(hastaAdi);
-        console.log('  Debug - ASCII isim:', pdfUygunHastaAdi);
+        console.log('� Debug - ASCII isim:', pdfUygunHastaAdi);
         
         // İki versiyon da deneyelim
         try {
@@ -9115,7 +9239,7 @@ function duzenleHafta(i) {
     return [];
   }
 
-  // Normalize fonksiyonu - sembolleri ve Türkçe karakterleri temizle
+  // Normalize fonksiyonu - daha agresif temizlik
   function normalize(str) {
     return str
       .toLowerCase()
@@ -9128,8 +9252,83 @@ function duzenleHafta(i) {
       .trim();
   }
 
-  // Basit Levenshtein mesafesi (benzerlik için)
+  // Gelişmiş normalize fonksiyonu - eş anlamlı kelimeleri de eşleştir
+  function advancedNormalize(str) {
+    let normalized = normalize(str);
+    
+    // Eş anlamlı kelime değişimleri
+    const synonyms = {
+      'sote': ['soteli', 'sotesi', 'sote'],
+      'tavuk': ['tavugu', 'tavugun', 'tavuklu'],
+      'mantar': ['mantarli', 'mantarlu', 'mantarla'],
+      'pilav': ['pilavi', 'pilavli', 'pilaviyla'],
+      'corbasi': ['corba', 'corbali'],
+      'salatasi': ['salata', 'salatali'],
+      'kebab': ['kebabi', 'kebap'],
+      'kofte': ['koftesi', 'kofteli'],
+      'dolma': ['dolmasi', 'dolmali'],
+      'sarma': ['sarmasi', 'sarmali'],
+      'fasulye': ['fasulyesi', 'fasulyeli'],
+      'makarna': ['makarnasi', 'makarnali'],
+      'yogurt': ['yogurdu', 'yogurtlu'],
+      'peynir': ['peyniri', 'peynirli'],
+      'domates': ['domatesi', 'domatesli'],
+      'biber': ['biberi', 'biberli'],
+      'patates': ['patatesi', 'patatesli'],
+      'sogan': ['sogani', 'soganli']
+    };
+    
+    // Eş anlamlı kelimeleri değiştir
+    Object.entries(synonyms).forEach(([base, variants]) => {
+      variants.forEach(variant => {
+        normalized = normalized.replace(new RegExp(`\\b${variant}\\b`, 'g'), base);
+      });
+    });
+    
+    return normalized;
+  }
+
+  // Akıllı kelime eşleştirme - eksik kelimeler ve sıra farklılıklarını tolere et
+  function smartWordMatch(tarifKelimeler, kartKelimeler) {
+    if (kartKelimeler.length === 0) return { score: 0, tip: 'boş kart' };
+    
+    // Tüm kart kelimelerinin tarif içinde bulunma oranı
+    const bulunanKelimeler = kartKelimeler.filter(kartKelime => 
+      tarifKelimeler.some(tarifKelime => 
+        tarifKelime.includes(kartKelime) || kartKelime.includes(tarifKelime) ||
+        levenshtein(tarifKelime, kartKelime) <= Math.min(tarifKelime.length, kartKelime.length) * 0.3
+      )
+    );
+    
+    const bulunanOran = bulunanKelimeler.length / kartKelimeler.length;
+    
+    // Skorlama sistemi
+    if (bulunanOran === 1.0) {
+      // Tüm kelimeler bulundu - ardışıklık kontrolü
+      const kartMetni = kartKelimeler.join(' ');
+      const tarifMetni = tarifKelimeler.join(' ');
+      if (tarifMetni.includes(kartMetni)) {
+        return { score: 100, tip: 'tam ardışık eşleşme' };
+      } else {
+        return { score: 90, tip: 'tüm kelimeler mevcut' };
+      }
+    } else if (bulunanOran >= 0.8) {
+      return { score: 80, tip: 'çok yüksek benzerlik' };
+    } else if (bulunanOran >= 0.6) {
+      return { score: 60, tip: 'yüksek benzerlik' };
+    } else if (bulunanOran >= 0.4) {
+      return { score: 40, tip: 'orta benzerlik' };
+    } else {
+      return { score: 20, tip: 'düşük benzerlik' };
+    }
+  }
+
+  // Basit Levenshtein mesafesi (benzerlik için) - iyileştirilmiş
   function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    
     const matrix = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(null));
     for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
     for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
@@ -9183,11 +9382,14 @@ function duzenleHafta(i) {
       let yemekAdlari = extractYemekAdlari(tarifSatir);
 
       // Her yemek adı için eşleştirme dene
+      let enIyiEslesme = null;
+      let enYuksekSkor = 0;
+      
       for (let yemekAdi of yemekAdlari) {
-        const tarifNorm = normalize(yemekAdi);
+        const tarifNorm = advancedNormalize(yemekAdi);
         const tarifKelimeler = tarifNorm.split(' ').filter(k => k.length > 0);
 
-        // Kullanılmayan kartlar arasında ara
+        // Kullanılmayan kartlar arasında en iyi eşleşmeyi bul
         for (let kart of tumKartlar) {
           if (kullanilanKartlar.has(kart.name)) continue;
 
@@ -9196,31 +9398,52 @@ function duzenleHafta(i) {
             continue; // Bu kart yasaklı, sonrakine geç
           }
 
-          const kartNorm = normalize(temizleDosyaAdi(kart.name));
+          const kartNorm = advancedNormalize(temizleDosyaAdi(kart.name));
           const kartKelimeler = kartNorm.split(' ').filter(k => k.length > 0);
 
-          // 1. Önce tam eşleşme kontrol et
+          // Debug: mantarlı tavuk sote için
+          if (tarifSatir.toLowerCase().includes('mantarlı tavuk sote') && kart.name.includes('mantar')) {
+            console.log('DEBUG - Eşleştirme denemesi:');
+            console.log('  Tarif norm:', tarifNorm);
+            console.log('  Kart norm:', kartNorm);
+            console.log('  Tarif kelimeler:', tarifKelimeler);
+            console.log('  Kart kelimeler:', kartKelimeler);
+          }
+
+          // 1. Tam eşleşme kontrolü (en yüksek puan)
           if (tarifNorm === kartNorm) {
-            eslesen = kart;
-            eslesenKartlar = [kart];
-            eslesenTip = 'tam eşleşme';
+            enIyiEslesme = { kart, tip: 'tam eşleşme', skor: 100 };
+            enYuksekSkor = 100;
             break;
           }
 
-          // 2. Kart kelimelerinin tarif içinde ardışık olarak bulunup bulunmadığını kontrol et
-          if (kartKelimeleriniKontrolEt(kartKelimeler, tarifKelimeler)) {
-            eslesen = kart;
-            eslesenKartlar = [kart];
-            eslesenTip = 'ardışık eşleşme';
-            break;
+          // 2. Akıllı kelime eşleştirme
+          const eslesmeSonucu = smartWordMatch(tarifKelimeler, kartKelimeler);
+          
+          if (eslesmeSonucu.score > enYuksekSkor && eslesmeSonucu.score >= 60) {
+            enIyiEslesme = { kart, tip: eslesmeSonucu.tip, skor: eslesmeSonucu.score };
+            enYuksekSkor = eslesmeSonucu.score;
+          }
+
+          // Debug: mantarlı tavuk sote için sonuç
+          if (tarifSatir.toLowerCase().includes('mantarlı tavuk sote') && kart.name.includes('mantar')) {
+            console.log('  Eşleşme sonucu:', eslesmeSonucu);
+            console.log('  En iyi eşleşme şu an:', enIyiEslesme);
           }
         }
 
-        // Eşleşme bulunursa bu yemek adı için dur
-        if (eslesen) {
-          kullanilanKartlar.add(eslesen.name);
+        // Mükemmel eşleşme bulunursa döngüyü kır
+        if (enYuksekSkor === 100) {
           break;
         }
+      }
+      
+      // En iyi eşleşmeyi kabul et
+      if (enIyiEslesme && enYuksekSkor >= 60) {
+        eslesen = enIyiEslesme.kart;
+        eslesenKartlar = [enIyiEslesme.kart];
+        eslesenTip = `${enIyiEslesme.tip} (${enYuksekSkor}%)`;
+        kullanilanKartlar.add(enIyiEslesme.kart.name);
       }
     }
 
@@ -9442,9 +9665,33 @@ function duzenleHafta(i) {
   
   console.log('✅ otomatikEsleHafta tamamlandı:', {
     haftaIndex: i,
+    toplamTarif: hafta.tarifler ? hafta.tarifler.length : 0,
     eslesenKartSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
-    eslesmeyenTarifSayisi: eslesmeyenTarifler.length
+    eslesmeyenTarifSayisi: eslesmeyenTarifler.length,
+    toplamKartSayisi: tumKartlar.length,
+    eslesenKartDetay: hafta.tarifKartlar ? hafta.tarifKartlar.map(k => `${k.tarifAdi} -> ${k.kartResmi} (${k.eslesmeTuru})`).join(', ') : 'yok',
+    eslesmeyenTarifDetay: eslesmeyenTarifler.join(', ')
   });
+  
+  // Debug: Mantarlı tavuk sote eşleşti mi kontrol et
+  const mantarliEslesti = hafta.tarifKartlar ? hafta.tarifKartlar.some(k => 
+    k.tarifAdi.toLowerCase().includes('mantarlı tavuk sote') || 
+    k.tarifAdi.toLowerCase().includes('mantarli tavuk sote')
+  ) : false;
+  
+  if (mantarliEslesti) {
+    console.log('✅ DEBUG: Mantarlı tavuk sote başarıyla eşleşti!');
+  } else {
+    const mantarliVarMi = hafta.tarifler ? hafta.tarifler.some(t => 
+      t.toLowerCase().includes('mantarlı tavuk sote') || 
+      t.toLowerCase().includes('mantarli tavuk sote')
+    ) : false;
+    if (mantarliVarMi) {
+      console.log('❌ DEBUG: Mantarlı tavuk sote tarifi var ama eşleşmedi!');
+      const mantarliKartVarMi = tumKartlar.some(k => k.name.includes('mantar') && k.name.includes('tavuk'));
+      console.log('DEBUG: Mantar+tavuk kartı var mı?', mantarliKartVarMi);
+    }
+  }
   
   // Eşleştirme sonrası yemek analizini güncelle
   setTimeout(() => {
@@ -9721,7 +9968,7 @@ function duzenleHafta(i) {
           return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
         }
         
-        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn  format
+        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn� format
         
         // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
         console.log('🔍 Orijinal hasta adı:', hastaAdi);
@@ -9969,7 +10216,7 @@ function duzenleHafta(i) {
           return; // Fonksiyondan çık, yükleme sonrası tekrar çalışacak
         }
         
-        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn  format
+        const doc = new jsPDFLib('p', 'mm', 'a4'); // ZIP sistemiyle ayn� format
         
         // Hasta adını ASCII'ye çevir (ZIP sistemiyle aynı)
         console.log('🔍 Orijinal hasta adı:', hastaAdi);
@@ -10268,7 +10515,7 @@ function duzenleHafta(i) {
       console.log('🔍 Hafta listesi alındı, uzunluk:', haftalar ? haftalar.length : 'null');
       
       const hafta = haftalar[i];
-      console.log('  Hafta objesi alındı:', hafta);
+      console.log('� Hafta objesi alındı:', hafta);
       
       console.log('🔍 Hafta objesi tamamı:', JSON.stringify(hafta, null, 2));
       
