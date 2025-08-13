@@ -12849,41 +12849,21 @@ ${mesajlar.join('\n')}
             
             console.log(`📅 ${hasta.isim} - En büyük hafta: ${enBuyukHaftaNo}`);
             
-            // Hasta klasörü oluştur - SOL SIDEBAR'DAKİ HASTA İSMİNİ + HAFTA + TARİH ARALIĞI KULLAN
-            let temizHastaIsmi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
+            // Hasta klasörü oluştur - menü PDF adını kullan
+            let hastaKlasorAdi = hasta.isim.toUpperCase().replace(/\s/g, '_').replace(/[İıÇçĞğÜüŞşÖö]/g, match => {
               const trMap = {'İ': 'I', 'ı': 'i', 'Ç': 'C', 'ç': 'c', 'Ğ': 'G', 'ğ': 'g', 'Ü': 'U', 'ü': 'u', 'Ş': 'S', 'ş': 's', 'Ö': 'O', 'ö': 'o'};
               return trMap[match] || match;
             });
-            
-            // Tarih aralığını formatla
-            let tarihAraligi = '';
-            if (enBuyukHafta.baslangic && enBuyukHafta.bitis) {
-              const basDate = new Date(enBuyukHafta.baslangic);
-              const bitDate = new Date(enBuyukHafta.bitis);
-              
-              // DD.MM.YYYY formatında tarih
-              const formatTarih = (date) => {
-                const gun = date.getDate().toString().padStart(2, '0');
-                const ay = (date.getMonth() + 1).toString().padStart(2, '0');
-                const yil = date.getFullYear();
-                return `${gun}.${ay}.${yil}`;
-              };
-              
-              tarihAraligi = `_${formatTarih(basDate)}-${formatTarih(bitDate)}`;
-            }
-            
-            // Final klasör adı: HASTA_ADI_HAFTA_X_TARIH_ARALIGI
-            let hastaKlasorAdi = `${temizHastaIsmi}_HAFTA_${enBuyukHaftaNo}${tarihAraligi}`;
-            
-            console.log(`📁 Klasör adı belirlendi: ${hastaKlasorAdi} (Sol sidebar'dan: ${hasta.isim}, Hafta: ${enBuyukHaftaNo}, Tarih: ${tarihAraligi})`);
             
             // Sadece en büyük hafta için menü PDF'sini ekle
             if (enBuyukHafta.githubUrl || enBuyukHafta.indirmeUrl || (enBuyukHafta.pdf && (enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim))) {
               try {
                 let pdfFileName = enBuyukHafta.pdfName || enBuyukHafta.pdfOrijinalIsim;
                 
-                // ⚠️ DEĞİŞİKLİK: Klasör adını PDF'den değil, sidebar'daki hasta isminden + hafta + tarih aralığından al
-                // Klasör adı zaten yukarıda hasta.isim + hafta + tarih'den belirlendi, PDF ismi klasör adını değiştirmesin
+                // Klasör adını menü PDF adıyla değiştir (MENU_ prefix'i olmadan)
+                if (pdfFileName) {
+                  hastaKlasorAdi = pdfFileName.replace('.pdf', '');
+                }
                 
                 console.log(`📄 ${hasta.isim} - En büyük hafta (${enBuyukHaftaNo}) menü PDF'i indiriliyor`);
                 
