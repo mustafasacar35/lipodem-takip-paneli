@@ -9579,24 +9579,41 @@ function duzenleHafta(i) {
     }
   }
 
-  // Eşleşen kartları hafta verisine JSON uyumlu formatta kaydet
+  // Tarifleri grupla (DOM gösterimi için)
+  const tarifGruplari = {};
+  eslesenKartlarListesi.forEach(({ tarif, kart, tip }) => {
+    if (!tarifGruplari[tarif]) {
+      tarifGruplari[tarif] = { kartlar: [], tip: tip };
+    }
+    tarifGruplari[tarif].kartlar.push(kart);
+  });
+
+  // Eşleşen kartları hafta verisine minimal formatta kaydet (localStorage için)
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => ({
-    tarifAdi: e.tarif,
+    tarifAdi: e.tarif?.substring(0, 100) || '', // Kısalt
     kartResmi: e.kart.name,
-    kartData: e.kart.data || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${e.kart.name}`,
     eslesmeTuru: e.tip
   }));
   
-  // Eşleşmeyen tarifleri ayrı array'de sakla (JSON'a da kaydedilsin)
+  // Eşleşen tarif isimlerini al
   const eslesenTarifIsimleri = eslesenKartlarListesi.map(e => e.tarif.toLowerCase());
-  hafta.eslesmeyenTarifler = eslesmeyenTarifler; // JSON'a kaydet
   
-  // Orijinal tarifler listesini koruyalım ama eşleşen/eşleşmeyen diye ayıralım
-  hafta.eslesenTarifler = hafta.tarifler ? hafta.tarifler.filter(tarif => 
-    eslesenTarifIsimleri.includes(tarif.toLowerCase())
-  ) : [];
+  // Eşleşen tarifleri sakla (minimal veri)
+  hafta.eslesenTarifler = eslesenTarifIsimleri.slice(0, 50); // İlk 50 tanesini koru
   
-  console.log('📝 Eşleştirme öncesi toplam tarif:', hafta.tarifler ? hafta.tarifler.length : 0);
+  // Geçici veri olarak tam eşleştirme sonuçlarını sakla (UI için)
+  hafta._geciciEslestirme = {
+    eslesenKartlar: Object.keys(tarifGruplari).map(tarif => ({
+      tarif: tarif,
+      kartlar: tarifGruplari[tarif].kartlar,
+      tip: tarifGruplari[tarif].tip
+    })),
+    eslesmeyenTarifler: eslesmeyenTarifler,
+    tarifGruplari: tarifGruplari,
+    fullEslesenKartlarListesi: eslesenKartlarListesi
+  };
+  
+  console.log('📝 Eşleştirme öncesi toplam tarif:', tarifVerileri ? tarifVerileri.length : 0);
   console.log('📝 Eşleşen tarif isimleri:', eslesenTarifIsimleri);
   console.log('📝 Eşleşen tarif sayısı:', hafta.eslesenTarifler.length);
   console.log('🚫 Eşleşmeyen tarifler:', eslesmeyenTarifler.length, 'adet kaydedildi');
@@ -9608,15 +9625,12 @@ function duzenleHafta(i) {
     saveToStorage(); // Fallback
   }
   
-  // Eşleştirme sonuçlarını döndür (JSON'a sadece eşleşenler kaydedilecek)
-  const sonuc = {
-    eslesenKartlar: hafta.tarifKartlar,
-    eslesmeyenTarifler: eslesmeyenTarifler // UI için döndür ama JSON'a kaydetme
-  };
+  // Eşleştirme sonuçlarını döndür (geçici verilerle)
+  const sonuc = hafta._geciciEslestirme;
   
   console.log('✅ otomatikEsleHafta tamamlandı:', {
     haftaIndex: i,
-    eslesenKartSayisi: hafta.tarifKartlar ? hafta.tarifKartlar.length : 0,
+    eslesenKartSayisi: sonuc.eslesenKartlar ? sonuc.eslesenKartlar.length : 0,
     eslesmeyenTarifSayisi: eslesmeyenTarifler.length
   });
   
@@ -11010,9 +11024,17 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
         return;
       }
       
-      const eskiDiv = document.getElementById(`eslesenKartlar_${haftaIndex}`);
-      console.log(`🔍 eslesenKartlar_${haftaIndex} div:`, eskiDiv);
-      console.log(`🔍 eskiDiv children count:`, eskiDiv ? eskiDiv.children.length : 'div null');
+      // Hafta verilerini al
+      const haftalar = getHaftaListesi();
+      const hafta = haftalar[haftaIndex];
+      
+      if (!hafta) {
+        console.log(`❌ ${haftaIndex}. hafta bulunamadı!`);
+        currentDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Hafta verisi bulunamadı</div>';
+        return;
+      }
+      
+      console.log(`🔍 ${haftaIndex}. hafta verisi:`, hafta);
       
       // Önce temizle
       currentDiv.innerHTML = '';
@@ -11021,203 +11043,174 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       const eslesenBaslik = document.getElementById('eslesenBaslik');
       
       let kartVarMi = false;
+      let toplamKartSayisi = 0;
       
-      // 1. Otomatik eşleşen kartları ekle
-      if (eskiDiv && eskiDiv.children.length > 0) {
-        console.log('✅ Otomatik eşleşen kartlar bulundu, sidebar\'a klonlanıyor...');
+      // 1. Otomatik eşleşen kartları kontrol et (geçici verilerden)
+      const geciciEslestirme = hafta._geciciEslestirme;
+      const eslesmeSonuclari = geciciEslestirme || { eslesenKartlar: hafta.tarifKartlar || [] };
+      
+      console.log(`🔍 Eşleştirme sonuçları:`, eslesmeSonuclari);
+      console.log(`🔍 Eşleşen kart sayısı:`, eslesmeSonuclari.eslesenKartlar?.length || 0);
+      
+      if (eslesmeSonuclari.eslesenKartlar && eslesmeSonuclari.eslesenKartlar.length > 0) {
+        console.log('✅ Otomatik eşleşen kartlar bulundu, sidebar\'a ekleniyor...');
         
-        // Her child elementi klonla ve onclick eventleri yeniden ekle
-        Array.from(eskiDiv.children).forEach(child => {
-          const clonedChild = child.cloneNode(true);
-          
-          // Klonlanan element içindeki tıklanabilir span'ları bul ve onclick ekle
-          const clickableSpans = clonedChild.querySelectorAll('span[style*="cursor: pointer"]');
-          clickableSpans.forEach(span => {
-            const tarifText = span.textContent.replace(/^[^:]*:\s*/, '').trim(); // "Tarif: xyz" formatından "xyz" al
-            console.log('🔧 Sidebar klonuna onclick ekleniyor:', tarifText);
+        // Eşleşen kartları göster
+        eslesmeSonuclari.eslesenKartlar.forEach((grup, index) => {
+          if (grup.kartlar && grup.kartlar.length > 0) {
+            const grupDiv = document.createElement('div');
+            grupDiv.style.marginBottom = '15px';
+            grupDiv.style.padding = '10px';
+            grupDiv.style.border = '1px solid #e0e0e0';
+            grupDiv.style.borderRadius = '5px';
+            grupDiv.style.backgroundColor = '#f8f9fa';
             
-            span.onclick = () => {
-              console.log('🔧 Sidebar\'dan eşleşen tarif adına tıklandı:', tarifText);
-              try {
-                if (typeof eslesenTarifManuelEslestir === 'function') {
-                  // Orjinal kartları bul
-                  const aktifHaftaIndex = getAktifHaftaIndex();
-                  const hafta = seciliHasta?.haftalar?.[aktifHaftaIndex];
-                  if (hafta?.tarifKartlar) {
-                    const eslesmeTarifKartlari = hafta.tarifKartlar.filter(kart => 
-                      kart.tarifAdi.toLowerCase() === tarifText.toLowerCase()
-                    );
-                    eslesenTarifManuelEslestir(tarifText, eslesmeTarifKartlari);
-                  }
-                } else {
-                  console.error('❌ eslesenTarifManuelEslestir fonksiyonu bulunamadı!');
-                  alert('Manuel eşleştirme fonksiyonu yüklenemedi. Sayfayı yenileyin.');
+            // Tarif başlığı
+            const tarifBaslik = document.createElement('div');
+            tarifBaslik.textContent = grup.tarif || `Tarif ${index + 1}`;
+            tarifBaslik.style.fontWeight = 'bold';
+            tarifBaslik.style.marginBottom = '8px';
+            tarifBaslik.style.color = '#2c3e50';
+            grupDiv.appendChild(tarifBaslik);
+            
+            // Kartları göster
+            grup.kartlar.forEach(kart => {
+              const kartDiv = document.createElement('div');
+              kartDiv.style.display = 'inline-block';
+              kartDiv.style.margin = '4px';
+              kartDiv.style.textAlign = 'center';
+              
+              const img = document.createElement('img');
+              img.src = kart.data || kart.kartData || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.kartResmi || kart.name || 'default.jpg'}`;
+              img.alt = kart.name || 'Tarif kartı';
+              img.title = kart.name || 'Tarif kartı';
+              img.style.width = '120px';
+              img.style.height = '80px';
+              img.style.objectFit = 'cover';
+              img.style.borderRadius = '4px';
+              img.style.border = '1px solid #ddd';
+              img.style.cursor = 'pointer';
+              img.onclick = () => {
+                if (img.requestFullscreen) {
+                  img.requestFullscreen();
                 }
-              } catch (error) {
-                console.error('❌ Sidebar eşleşen tarif tıklama hatası:', error);
-                alert('Hata: ' + error.message);
-              }
-            };
-          });
+              };
+              
+              const kartAdi = document.createElement('div');
+              kartAdi.textContent = kart.name?.replace(/\.[^/.]+$/, "").replace(/_/g, ' ') || 'Bilinmeyen';
+              kartAdi.style.fontSize = '11px';
+              kartAdi.style.marginTop = '4px';
+              kartAdi.style.color = '#666';
+              
+              kartDiv.appendChild(img);
+              kartDiv.appendChild(kartAdi);
+              grupDiv.appendChild(kartDiv);
+              
+              toplamKartSayisi++;
+            });
+            
+            currentDiv.appendChild(grupDiv);
+            kartVarMi = true;
+          }
+        });
+      }
+      
+      // 2. Manuel yüklenen kartları kontrol et
+      if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
+        console.log('✅ Manuel kartlar bulundu:', hafta.manuelKartlar.length);
+        
+        const manuelDiv = document.createElement('div');
+        manuelDiv.style.marginTop = '20px';
+        manuelDiv.style.padding = '10px';
+        manuelDiv.style.border = '1px solid #007bff';
+        manuelDiv.style.borderRadius = '5px';
+        manuelDiv.style.backgroundColor = '#e7f3ff';
+        
+        const manuelBaslik = document.createElement('div');
+        manuelBaslik.textContent = '📁 Manuel Yüklenen Kartlar';
+        manuelBaslik.style.fontWeight = 'bold';
+        manuelBaslik.style.marginBottom = '8px';
+        manuelBaslik.style.color = '#007bff';
+        manuelDiv.appendChild(manuelBaslik);
+        
+        hafta.manuelKartlar.forEach(kart => {
+          const kartDiv = document.createElement('div');
+          kartDiv.style.display = 'inline-block';
+          kartDiv.style.margin = '4px';
+          kartDiv.style.textAlign = 'center';
           
-          currentDiv.appendChild(clonedChild);
+          const img = document.createElement('img');
+          img.src = kart.data || kart.src;
+          img.alt = kart.name || 'Manuel kart';
+          img.title = kart.name || 'Manuel kart';
+          img.style.width = '120px';
+          img.style.height = '80px';
+          img.style.objectFit = 'cover';
+          img.style.borderRadius = '4px';
+          img.style.border = '1px solid #007bff';
+          img.style.cursor = 'pointer';
+          img.onclick = () => {
+            if (img.requestFullscreen) {
+              img.requestFullscreen();
+            }
+          };
+          
+          const kartAdi = document.createElement('div');
+          kartAdi.textContent = kart.name || 'Manuel Kart';
+          kartAdi.style.fontSize = '11px';
+          kartAdi.style.marginTop = '4px';
+          kartAdi.style.color = '#007bff';
+          
+          kartDiv.appendChild(img);
+          kartDiv.appendChild(kartAdi);
+          manuelDiv.appendChild(kartDiv);
+          
+          toplamKartSayisi++;
         });
         
+        currentDiv.appendChild(manuelDiv);
         kartVarMi = true;
       }
       
-      // 2. Manuel eklenen kartları ekle
-      if (seciliHasta && seciliHasta.haftalar && seciliHasta.haftalar[haftaIndex]) {
-        const hafta = seciliHasta.haftalar[haftaIndex];
-        if (hafta.manuelKartlar && hafta.manuelKartlar.length > 0) {
-          console.log('✅ Manuel kartlar bulundu, ekleniyor...', hafta.manuelKartlar);
-          
-          hafta.manuelKartlar.forEach(kart => {
-            const kartDiv = document.createElement('div');
-            kartDiv.style.cssText = 'display: inline-block; margin: 10px; position: relative; vertical-align: top;';
-            kartDiv.className = 'manuel-kart';
-            
-            // Kart adını düzenle
-            const kartBaslik = kart.name.replace('.jpg', '').replace(/_/g, ' ');
-            
-            kartDiv.innerHTML = `
-              <div style="background: white; border: 3px solid #ffd700; border-radius: 12px; padding: 15px; width: 200px; box-shadow: 0 4px 8px rgba(255,215,0,0.3);">
-                <img src="${kart.data}" alt="${kart.name}" title="${kartBaslik}" 
-                     style="width: 100%; height: 120px; object-fit: cover; object-position: top; border-radius: 8px; margin-bottom: 10px;">
-                
-                <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; text-align: center;">
-                  ${kartBaslik}
-                </div>
-                
-                <div style="background: #ffd700; color: #333; text-align: center; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-                  🖐️ MANUEL EKLENEN
-                </div>
-                
-                <div style="text-align: center;">
-                  <button onclick="manuelKartSil('${kart.name}', ${haftaIndex})" 
-                          style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                    🗑️ Sil
-                  </button>
-                </div>
-              </div>
-            `;
-            
-            currentDiv.appendChild(kartDiv);
-          });
-          
-          kartVarMi = true;
-        }
-        
-        // 3. Çoklu PDF'den eklenen kartları ekle
-        if (hafta.cokluPdfVerileri && hafta.cokluPdfVerileri.length > 0) {
-          console.log('✅ Çoklu PDF kartları bulundu, ekleniyor...', hafta.cokluPdfVerileri);
-          
-          hafta.cokluPdfVerileri.forEach((veri, veriIndex) => {
-            if (veri.tarifKartlar && veri.tarifKartlar.length > 0) {
-              veri.tarifKartlar.forEach(kart => {
-                const kartDiv = document.createElement('div');
-                kartDiv.style.cssText = 'display: inline-block; margin: 10px; position: relative; vertical-align: top;';
-                kartDiv.className = 'coklu-pdf-kart';
-                kartDiv.setAttribute('data-kart-name', kart.name);
-                
-                // Kart adını düzenle
-                const kartBaslik = kart.name.replace('.jpg', '').replace(/_/g, ' ');
-                
-                kartDiv.innerHTML = `
-                  <div style="background: white; border: 3px solid #17a2b8; border-radius: 12px; padding: 15px; width: 200px; box-shadow: 0 4px 8px rgba(23,162,184,0.3);">
-                    <img src="${kart.data}" alt="${kart.name}" title="${kartBaslik}" 
-                         style="width: 100%; height: 120px; object-fit: cover; object-position: top; border-radius: 8px; margin-bottom: 10px;">
-                    
-                    <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; text-align: center;">
-                      ${kartBaslik}
-                    </div>
-                    
-                    <div style="background: #17a2b8; color: white; text-align: center; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-                      📁 ÇOKLU PDF'DEN
-                    </div>
-                    
-                    <div style="text-align: center;">
-                      <button onclick="cokluPdfKartSil('${kart.name}', ${haftaIndex}, ${veriIndex})" 
-                              style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        🗑️ Sil
-                      </button>
-                    </div>
-                  </div>
-                `;
-                
-                currentDiv.appendChild(kartDiv);
-              });
-            }
-          });
-          
-          kartVarMi = true;
+      // Başlığı güncelle
+      if (eslesenBaslik) {
+        if (kartVarMi) {
+          eslesenBaslik.textContent = `✅ Eşleşen Kartlar (${toplamKartSayisi})`;
+          eslesenBaslik.style.color = '#28a745';
+        } else {
+          eslesenBaslik.textContent = '🔍 Eşleşen Kartlar (0)';
+          eslesenBaslik.style.color = '#dc3545';
         }
       }
       
-      // 3. Eğer hiç kart yoksa mesaj göster
+      // Eğer hiç kart yoksa bilgi mesajı göster
       if (!kartVarMi) {
         console.log('❌ Hiç kart bulunamadı');
-        currentDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px; font-size: 12px;">Bu hafta için henüz eşleşme yok.</div>';
-        if (eslesenBaslik) {
-          eslesenBaslik.textContent = '📋 Eşleşen Kartlar';
-        }
-      } else {
-        console.log('✅ Kartlar sidebar\'a başarıyla eklendi');
-        
-        // Benzersiz yemek çeşidi sayısını hesapla
-        const benzersizYemekler = new Set();
-        
-        // Tüm kartlardaki yemek isimlerini topla
-        const tumKartlar = currentDiv.querySelectorAll('[data-kart-name]');
-        tumKartlar.forEach(kart => {
-          const kartName = kart.getAttribute('data-kart-name');
-          if (kartName) {
-            // .jpg uzantısını kaldır ve normalize et
-            const yemekAdi = kartName.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
-            benzersizYemekler.add(yemekAdi);
-          }
-        });
-        
-        // Eğer data-kart-name yoksa, görsel isimlerden çıkar
-        if (benzersizYemekler.size === 0) {
-          const gorselKartlari = currentDiv.querySelectorAll('img');
-          gorselKartlari.forEach(img => {
-            if (img.src && img.src.includes('/')) {
-              const dosyaAdi = img.src.split('/').pop();
-              const yemekAdi = dosyaAdi.replace('.jpg', '').replace(/_/g, ' ').toLowerCase();
-              benzersizYemekler.add(yemekAdi);
-            }
-          });
-        }
-        
-        const benzersizSayisi = benzersizYemekler.size;
-        console.log('🍽️ Benzersiz yemek çeşidi sayısı:', benzersizSayisi, 'Toplam kart:', currentDiv.children.length);
-        
-        // Başlık güncelle - benzersiz yemek çeşidi sayısı ile
-        if (eslesenBaslik) {
-          eslesenBaslik.textContent = `📋 Eşleşen Kartlar (${benzersizSayisi})`;
-        }
-        
-        // Sadece güvenlik için onclick'leri yeniden ata (otomatik kartlar için)
-        const tumButonlar = currentDiv.querySelectorAll('button:not(.manuel-kart-silme-btn)');
-        console.log('🔍 Sidebar\'da bulunan buton sayısı:', tumButonlar.length);
-        
-        tumButonlar.forEach((btn, index) => {
-          if (btn.textContent.includes('ZIP İndir')) {
-            console.log('🔍 ZIP butonu bulundu, onclick kontrol ediliyor...');
-            if (!btn.onclick) {
-              console.log('🔧 ZIP butonu onclick eksik, yeniden atanıyor...');
-              btn.onclick = function(e) { 
-                e.preventDefault();
-                console.log('🎯 ZIP butonuna tıklandı (sidebar), hafta index:', haftaIndex);
-                zipEslesenGorseller(haftaIndex); 
-              };
-            }
-          }
-        });
+        const bilgiDiv = document.createElement('div');
+        bilgiDiv.style.padding = '20px';
+        bilgiDiv.style.textAlign = 'center';
+        bilgiDiv.style.color = '#666';
+        bilgiDiv.style.fontStyle = 'italic';
+        bilgiDiv.innerHTML = `
+          <div style="margin-bottom: 10px;">Bu hafta için henüz eşleşen tarif kartı yok.</div>
+          <div style="font-size: 12px;">
+            • PDF yükleyerek otomatik eşleştirme yapabilirsiniz<br>
+            • Manuel kart yükleyebilirsiniz<br>
+            • Eşleşmeyen tarifleri manuel eşleştirebilirsiniz
+          </div>
+        `;
+        currentDiv.appendChild(bilgiDiv);
       }
+      
+      console.log(`✅ Sidebar güncellendi: ${toplamKartSayisi} kart gösteriliyor`);
     }
     window.gosterEslesenKartlarSidebar = gosterEslesenKartlarSidebar;
+
+    // ========================
+    // SAYFA BAŞLATMA
+    // ========================
+    
+    // Sayfa yüklendiğinde çalışacak başlatma fonksiyonu - SADECE YENİ SİSTEM
 
     // ========================
     // SAYFA BAŞLATMA
