@@ -979,14 +979,22 @@
             sonuc = {
               hastaAdi: match[1].trim().toUpperCase(),
               haftaNo: parseInt(match[6]),
-              tarihAraligi: `${match[2]} ${match[3]} - ${match[4]} ${match[5]}`.toUpperCase()
+              tarihAraligi: `${match[2]} ${match[3]} - ${match[4]} ${match[5]}`.toUpperCase(),
+              baslangicGun: parseInt(match[2]),
+              baslangicAy: match[3].toUpperCase(),
+              bitisGun: parseInt(match[4]),
+              bitisAy: match[5].toUpperCase()
             };
           } else if (pattern === patterns[1]) {
             // "FİGEN TEZMAN 4-10 AĞUSTOS 1.HAFTA"
             sonuc = {
               hastaAdi: match[1].trim().toUpperCase(),
               haftaNo: parseInt(match[5]),
-              tarihAraligi: `${match[2]}-${match[3]} ${match[4]}`.toUpperCase()
+              tarihAraligi: `${match[2]}-${match[3]} ${match[4]}`.toUpperCase(),
+              baslangicGun: parseInt(match[2]),
+              bitisGun: parseInt(match[3]),
+              baslangicAy: match[4].toUpperCase(),
+              bitisAy: match[4].toUpperCase() // Aynı ay
             };
           } else {
             // Genel format
@@ -1004,6 +1012,45 @@
       
       console.warn('⚠️ Hiçbir pattern uyuşmadı:', cleanName);
       return null;
+    }
+
+    // Türkçe ay adını sayıya çevir
+    function turkceAyToNumber(ayAdi) {
+      const aylar = {
+        'OCAK': 1, 'ŞUBAT': 2, 'MART': 3, 'NİSAN': 4, 'MAYIS': 5, 'HAZİRAN': 6,
+        'TEMMUZ': 7, 'AĞUSTOS': 8, 'EYLÜL': 9, 'EKİM': 10, 'KASIM': 11, 'ARALIK': 12
+      };
+      return aylar[ayAdi.toUpperCase()] || null;
+    }
+
+    // Parse edilen tarih bilgisini Date formatına çevir
+    function parseEdilmistarihleriDateOlarak(parsedData) {
+      if (!parsedData || !parsedData.baslangicGun || !parsedData.baslangicAy) {
+        return null;
+      }
+      
+      const currentYear = new Date().getFullYear();
+      const baslangicAyNo = turkceAyToNumber(parsedData.baslangicAy);
+      const bitisAyNo = parsedData.bitisAy ? turkceAyToNumber(parsedData.bitisAy) : baslangicAyNo;
+      
+      if (!baslangicAyNo || !bitisAyNo) {
+        console.warn('⚠️ Ay adı çevrilemedi:', parsedData.baslangicAy, parsedData.bitisAy);
+        return null;
+      }
+      
+      // Başlangıç ve bitiş tarihlerini oluştur
+      const baslangicTarih = new Date(currentYear, baslangicAyNo - 1, parsedData.baslangicGun);
+      const bitisTarih = new Date(currentYear, bitisAyNo - 1, parsedData.bitisGun || parsedData.baslangicGun);
+      
+      // Bitiş tarihi başlangıçtan küçükse, sonraki yıla geç
+      if (bitisTarih < baslangicTarih) {
+        bitisTarih.setFullYear(currentYear + 1);
+      }
+      
+      return {
+        baslangic: baslangicTarih.toISOString().slice(0, 10),
+        bitis: bitisTarih.toISOString().slice(0, 10)
+      };
     }
 
     // Dosyayı Base64'e çevirme
@@ -8027,7 +8074,33 @@ function duzenleHafta(i) {
         return;
       }
       
-      const haftaNo = hafta.haftaNo || (i + 1);
+      // PDF dosya adından tarih ve hafta numarasını çıkar
+      const parsedPdf = parseProfessionalPdfName(file.name);
+      console.log('📋 PDF dosya adı parse sonucu:', parsedPdf);
+      
+      let haftaNo = hafta.haftaNo || (i + 1);
+      
+      // PDF'den hafta numarası varsa güncelle
+      if (parsedPdf && parsedPdf.haftaNo) {
+        console.log(`📅 PDF'den hafta numarası alındı: ${haftaNo} → ${parsedPdf.haftaNo}`);
+        haftaNo = parsedPdf.haftaNo;
+        haftalar[i].haftaNo = parsedPdf.haftaNo;
+      }
+      
+      // PDF'den tarih aralığı varsa güncelle
+      if (parsedPdf && parsedPdf.baslangicGun && parsedPdf.baslangicAy) {
+        const parsedTarihler = parseEdilmistarihleriDateOlarak(parsedPdf);
+        if (parsedTarihler) {
+          console.log(`📅 PDF'den tarih aralığı alındı:`, parsedTarihler);
+          haftalar[i].baslangic = parsedTarihler.baslangic;
+          haftalar[i].bitis = parsedTarihler.bitis;
+          
+          // Başarı mesajı göster
+          const basTarih = new Date(parsedTarihler.baslangic).toLocaleDateString('tr-TR');
+          const bitTarih = new Date(parsedTarihler.bitis).toLocaleDateString('tr-TR');
+          console.log(`✅ Tab tarihleri güncellendi: ${basTarih} - ${bitTarih}`);
+        }
+      }
       
       // GitHub'a PDF yükle
       console.log('  PDF GitHub\'a yükleniyor...');
@@ -8285,14 +8358,35 @@ function duzenleHafta(i) {
           eslestirmeSonucu: eslestirmeSonucu ? 'var' : 'yok'
         });
         
-        if (aktifTab && aktifHaftaIndex === i) {
-          console.log('🎯 PDF yüklenen hafta aktif hafta, kartları güncelleniyor...');
-          setTimeout(() => {
-            gosterEslesenKartlarSidebar(i);
-          }, 500); // Kısa bir gecikme ile güncelle
-        } else {
-          console.log('🔍 PDF yüklenen hafta aktif hafta değil, kart güncelleme yapılmıyor');
+        // Verileri kaydet
+        saveToStorage();
+        
+        // YENİ SİSTEM: GitHub'a da kaydet
+        if (seciliHasta) {
+          hastayiAyriKaydet(seciliHasta).then(basarili => {
+            if (basarili) {
+              console.log('✅ PDF güncellenen hafta verileri GitHub\'a kaydedildi');
+            }
+          }).catch(error => {
+            console.error('❌ GitHub kaydetme hatası:', error);
+          });
         }
+        
+        // Tab başlığını ve tarihlerini güncelle
+        gosterHaftalar();
+        
+        // Aktif tab'ı koru
+        setTimeout(() => {
+          switchTab(i);
+          if (aktifTab && aktifHaftaIndex === i) {
+            console.log('🎯 PDF yüklenen hafta aktif hafta, kartları güncelleniyor...');
+            setTimeout(() => {
+              gosterEslesenKartlarSidebar(i);
+            }, 500); // Kısa bir gecikme ile güncelle
+          } else {
+            console.log('🔍 PDF yüklenen hafta aktif hafta değil, kart güncelleme yapılmıyor');
+          }
+        }, 200);
       };
       reader.readAsArrayBuffer(file);
     }
