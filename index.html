@@ -136,6 +136,35 @@
       background: #f8f9fa;
     }
     
+    /* Seçili hasta stili */
+    #hastaListesi li.secili-hasta {
+      position: relative;
+      border: 2px solid #dc3545 !important;
+      box-shadow: 0 0 10px rgba(220, 53, 69, 0.3) !important;
+      transform: scale(1.02) !important;
+    }
+    
+    #hastaListesi li.secili-hasta::after {
+      content: '👈 SEÇİLİ';
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      background: #dc3545;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: bold;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; transform: translateY(-50%) scale(1); }
+      50% { opacity: 0.7; transform: translateY(-50%) scale(1.1); }
+      100% { opacity: 1; transform: translateY(-50%) scale(1); }
+    }
+    
     /* Orta Panel */
     .center-panel {
       display: flex;
@@ -5617,6 +5646,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           li.onclick = () => hastaSecYeniSistem(hasta);
           li.dataset.hastaId = hasta.id;
+          li.classList.add('hasta-item'); // CSS vurgulama için
           ul.appendChild(li);
         });
         
@@ -5739,6 +5769,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           if (secilenHastaNot) secilenHastaNot.textContent = hastaDetay.not || 'Not yok';
           if (hastaBilgiButonlar) hastaBilgiButonlar.style.display = 'block'; // Butonları göster
           
+          // Seçili hastayı vurgula
+          vurgulaSeciliHasta(hastaBilgi.id);
+          
           console.log('✅ Yeni sistemde hasta bilgileri yüklendi:', hastaDetay.isim);
           
           // Hafta tablarını göster
@@ -5787,6 +5820,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       });
       
       return enSonPdfHafta;
+    }
+
+    function vurgulaSeciliHasta(hastaId) {
+      // Önce tüm hasta vurgularını kaldır
+      const tumHastalar = document.querySelectorAll('.hasta-item');
+      tumHastalar.forEach(hasta => {
+        hasta.classList.remove('secili-hasta');
+      });
+      
+      // Seçilen hastayı vurgula
+      const secilenHasta = document.querySelector(`[data-hasta-id="${hastaId}"]`);
+      if (secilenHasta) {
+        secilenHasta.classList.add('secili-hasta');
+        console.log('✅ Hasta vurgulandı:', hastaId);
+      } else {
+        console.log('⚠️ Vurgulanacak hasta bulunamadı:', hastaId);
+      }
     }
 
     function filtreleHastalar() { 
