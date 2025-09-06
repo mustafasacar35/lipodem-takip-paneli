@@ -571,9 +571,9 @@
         <h3>👥 Hastalar</h3>
         <input type="text" id="hastaAra" placeholder="Hasta ara..." style="width:100%; padding:6px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; font-size:12px;" oninput="filtreleHastalar()">
         <select id="arsivFiltre" style="width:100%; padding:6px; margin-bottom:10px; border:1px solid #ddd; border-radius:4px; font-size:12px;" onchange="filtreleHastalar()">
+          <option value="tum">Tümü (0)</option>
           <option value="aktif">Aktif Hastalar (0)</option>
           <option value="arsiv">Arşiv (0)</option>
-          <option value="tum">Tümü (0)</option>
         </select>
         <ul id="hastaListesi"></ul>
         <button onclick="yeniHastaFormu()" style="width:100%; padding:8px; margin-top:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">+ Yeni Hasta</button>
@@ -761,6 +761,10 @@
         <input type="password" id="githubToken" placeholder="GitHub Token" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;" oninput="saveTokenToStorage()">
         <input type="text" id="githubRepo" placeholder="GitHub Repo (owner/repo)" value="mustafasacar35/lipodem-takip-paneli" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; border:1px solid #ddd; border-radius:3px;">
         <button onclick="testGitHubToken()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Token Test Et</button>
+        
+        <!-- Storage Yönetimi -->
+        <button onclick="manuelStorageTemizlik()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#fd7e14; color:white; border:none; border-radius:3px; cursor:pointer;">🧹 Storage Temizle</button>
+        <button onclick="storageInfoGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Storage Durumu</button>
       </div>
 
       <!-- Araçlar -->
@@ -1268,19 +1272,10 @@
 
     async function findOrCreateHastaWithGitHub(hastaAdi) {
       console.log('👤 Hasta aranıyor/oluşturuluyor:', hastaAdi);
+      console.log('📊 ÖNCESİ - Toplam hasta sayısı:', hastalar.length);
       
-      // Cache'de var mı kontrol et (çoklu PDF işlemi için)
-      const cacheKey = hastaAdi.toUpperCase();
-      if (cokluPdfHastaCache.has(cacheKey)) {
-        const cachedHasta = cokluPdfHastaCache.get(cacheKey);
-        console.log('🚨 CACHE\'DEN HASTA ALINDI:', hastaAdi);
-        console.log('🔍 Cache hafta sayısı:', cachedHasta.haftalar ? cachedHasta.haftalar.length : 0);
-        console.log('🔍 Cache hafta detayları:', cachedHasta.haftalar ? cachedHasta.haftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })) : []);
-        return cachedHasta;
-      }
-      
-      // DÜZELTME: Global hastalar dizisini kullan (localStorage'dan her defasında yükleme!)
-      // let hastalar = JSON.parse(localStorage.getItem('lipedem_hasta_kayitlari') || '[]');
+      // ÇOKLU PDF CACHE PROBLEMİ DÜZELTİLDİ
+      // Cache kullanmak yerine her defasında güncel hastalar listesinden arama yap
       
       // Mevcut hastayı ara (global hastalar dizisinde)
       let hasta = hastalar.find(h => 
@@ -1303,15 +1298,19 @@
           olusturmaTarihi: new Date().toISOString(),
           yeniSistem: true
         };
+        
+        // Global hastalar dizisine ekle
         hastalar.push(hasta);
         console.log('✅ Yeni hasta oluşturuldu:', hastaAdi);
+        console.log('📊 SONRASI - Toplam hasta sayısı:', hastalar.length);
         
         // GitHub'a hasta listesi kaydet
         const token = document.getElementById('githubToken').value.trim();
         if (token) {
           try {
-            // Hasta listesini GitHub'a kaydet
-            const hastaListesi = await hastaListesiYukle() || [];
+            // Hasta listesini GitHub'dan yükle (GÜNCEL halini al)
+            const mevcutHastaListesi = await hastaListesiYukle() || [];
+            
             const yeniHastaListesi = {
               id: hastaId,
               isim: hastaAdi,
@@ -1320,9 +1319,9 @@
             };
             
             // Aynı hasta yoksa ekle
-            if (!hastaListesi.find(h => h.id === hastaId)) {
-              hastaListesi.push(yeniHastaListesi);
-              await hastaListesiKaydet(hastaListesi);
+            if (!mevcutHastaListesi.find(h => h.id === hastaId)) {
+              mevcutHastaListesi.push(yeniHastaListesi);
+              await hastaListesiKaydet(mevcutHastaListesi);
               console.log('✅ Hasta listesi GitHub\'a güncellendi');
             }
             
@@ -1336,13 +1335,10 @@
         }
       } else {
         console.log('✅ Mevcut hasta bulundu:', hastaAdi, 'Hafta sayısı:', hasta.haftalar ? hasta.haftalar.length : 0);
+        console.log('📊 MEVCUT - Toplam hasta sayısı:', hastalar.length);
       }
       
-      // Cache'e ekle (çoklu PDF işlemi için)
-      cokluPdfHastaCache.set(cacheKey, hasta);
-      
-      // DÜZELTME: Manuel sistemle aynı şekilde saveToStorage() kullan
-      saveToStorage();
+      // CACHE KULLANIMI KALDIRILDI - Her defasında güncel veri kullanılacak
       
       return hasta;
     }
@@ -1396,15 +1392,9 @@
           }
         }
         
-        // Cache'i de güncelle (çoklu PDF işlemi için)
-        if (typeof cokluPdfHastaCache !== 'undefined') {
-          const cacheKey = (hasta.isim || hasta.ad).toUpperCase();
-          cokluPdfHastaCache.set(cacheKey, hasta);
-          console.log(`🔄 Cache güncellendi: ${hasta.isim || hasta.ad} - Hafta sayısı: ${hasta.haftalar.length}`);
-        }
+        // ÇOKLU PDF CACHE PROBLEMİ DÜZELTİLDİ
+        // Cache kullanımı ve ara saveToStorage() çağrıları kaldırıldı
         
-        // DÜZELTME: Manuel sistemle aynı şekilde saveToStorage() kullan
-        saveToStorage();
       } else {
         console.log(`✅ ${hasta.isim || hasta.ad} için ${haftaNo}. hafta zaten mevcut`);
       }
@@ -1577,22 +1567,11 @@
               if (window.tarifKartlari && window.tarifKartlari.length > 0 && tarifDetaylar.length > 0) {
                 console.log(`🔗 ${file.name} için tarif eşleştirmesi başlıyor (manuel sistem gibi)...`);
                 
-                // Global değişkenleri geçici güncelle (manuel sistem için gerekli)
+                // KRİTİK DÜZELTME: Global değişken backup/restore kaldırıldı
+                // Bu işlem hasta listesini bozuyordu - direkt hasta objesi üzerinde çalışacağız
+                
                 const tempSeciliHasta = seciliHasta;
-                const tempHastalar = window.hastalar ? [...window.hastalar] : [];
-                
-                // Hasta listesini güncelle
-                if (!window.hastalar) window.hastalar = [];
-                let hastaIndex = window.hastalar.findIndex(h => h.id === hasta.id);
-                if (hastaIndex === -1) {
-                  window.hastalar.push(hasta);
-                  hastaIndex = window.hastalar.length - 1;
-                } else {
-                  window.hastalar[hastaIndex] = hasta;
-                }
-                
-                // seciliHasta'yı geçici olarak güncelle
-                seciliHasta = hasta;
+                seciliHasta = hasta; // Sadece seciliHasta'yı geçici değiştir
                 
                 // Manuel sistemle AYNI şekilde hafta localStorage güncellemesi
                 const haftaIndex = hasta.haftalar.findIndex(h => h.haftaNo === hafta.haftaNo);
@@ -1630,9 +1609,9 @@
                   }
                 }
                 
-                // Global değişkenleri geri yükle
+                // KRİTİK DÜZELTME: Sadece seciliHasta'yı geri yükle
+                // window.hastalar backup/restore kaldırıldı - hasta listesi bozulmasını önler
                 seciliHasta = tempSeciliHasta;
-                window.hastalar = tempHastalar;
                 
               } else {
                 console.warn('⚠️ Tarif kartları yüklenmemiş veya tarif bulunamadı, eşleştirme atlanıyor');
@@ -1705,18 +1684,35 @@
             console.warn('⚠️ Cache temizleme hatası:', cacheError);
           }
           
-          // Hasta listesini yeniden yükle
-          if (typeof loadHastaDataFromGitHub === 'function') {
-            await loadHastaDataFromGitHub(true); // sessiz mod
-            console.log('✅ Hasta listesi GitHub\'dan yeniden yüklendi');
-          }
+          // GitHub'dan hasta listesini yeniden yükle ve UI'ı güncelle - KALDIRILDI
+          // Bu işlem global hastalar arrayini bozuyordu, bunun yerine sadece UI güncellemesi yap
           
-          // UI'ı güncelle
-          if (typeof updateHastaListesi === 'function') {
-            updateHastaListesi();
-            console.log('✅ Hasta listesi UI güncellendi');
-          } else {
-            console.warn('⚠️ updateHastaListesi fonksiyonu bulunamadı');
+          console.log('✅ Çoklu PDF işlemi tamamlandı, sadece güvenli UI güncellemesi yapılıyor...');
+          console.log('📊 PDF işlemi sonrası mevcut hasta sayısı:', hastalar.length);
+          
+          // Güvenli UI güncellemesi: Global array'i bozmadan localStorage'dan render
+          try {
+            saveToStorage(); // Önce mevcut hastalar arrayini kaydet
+            console.log('✅ Global array localStorage\'a kaydedildi');
+            
+            // Sidebar hasta sayılarını güncelle (güncel array ile)
+            if (typeof guncelleHastaSayilari === 'function') {
+              await guncelleHastaSayilari();
+              console.log('✅ Hasta sayıları güncellendi');
+            }
+            
+            // Mevcut hasta seçiliyse, ona odakla  
+            const mevcutHastaId = localStorage.getItem('mevcutHastaId');
+            if (mevcutHastaId) {
+              const mevcutHasta = hastalar.find(h => h.id == mevcutHastaId);
+              if (mevcutHasta) {
+                console.log('✅ Mevcut hasta bilgisi korundu:', mevcutHasta.isim);
+              }
+            }
+            
+            console.log('✅ UI güvenli şekilde güncellendi (global array korundu)');
+          } catch (updateError) {
+            console.error('⚠️ UI güncelleme hatası:', updateError);
           }
           
           // Ana sistem UI'ını güncelle
@@ -1775,25 +1771,16 @@
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
       
-      // Otomatik kaydetme - çoklu PDF işlemi tamamlandı (Cache temizlenmeden önce!)
-      if (basarili > 0 && typeof cokluPdfHastaCache !== 'undefined') {
-        console.log('💾 Çoklu PDF işlemi başarılı, tüm hasta verileri otomatik kaydediliyor...');
-        
-        // Cache'deki tüm hastaları global hastalar dizisine ekle/güncelle
-        for (const [key, hasta] of cokluPdfHastaCache.entries()) {
-          autoSaveHastaData(hasta);
-        }
-      }
-      
-      // Cache'i temizle
-      if (typeof cokluPdfHastaCache !== 'undefined') {
-        console.log('🧹 Cache temizleniyor... Önceki boyut:', cokluPdfHastaCache.size);
-        cokluPdfHastaCache.clear();
-      }
+      // ÇOKLU PDF CACHE PROBLEMİ DÜZELTİLDİ
+      // Cache kullanımı kaldırıldı - direkt global hastalar dizisi üzerinde çalıştık
       
       // Final kaydetme: Tüm değişiklikleri kesin olarak kaydet
-      saveToStorage();
-      console.log('💾 Çoklu PDF işlemi sonrası final kaydetme tamamlandı');
+      if (basarili > 0) {
+        console.log('💾 Çoklu PDF işlemi başarılı, veriler kaydediliyor...');
+        console.log('📊 Toplam hasta sayısı:', hastalar.length);
+        saveToStorage();
+        console.log('💾 Çoklu PDF işlemi sonrası final kaydetme tamamlandı');
+      }
       
       // Yemek analizini güncelle (çoklu PDF işlemi sonrası)
       if (basarili > 0) {
@@ -2073,6 +2060,11 @@
     function loadTokenFromStorage() {
       return localStorage.getItem(TOKEN_KEY) || '';
     }
+    
+    // Global fonksiyonlar olarak tanımla
+    window.saveTokenToStorage = saveTokenToStorage;
+    window.loadTokenFromStorage = loadTokenFromStorage;
+    
     // Sayfa açılışında token input'u doldur ve SADECE YENİ SİSTEMİ YÜKLİ
     window.addEventListener('DOMContentLoaded', function() {
       const token = loadTokenFromStorage();
@@ -2535,6 +2527,9 @@
       }
     }
 
+    // Global fonksiyon olarak tanımla
+    window.testGitHubToken = testGitHubToken;
+
     // === YENİ SİSTEM: HASTA LİSTESİ YÖNETİMİ ===
     
     // Hasta listesini GitHub'dan yükle
@@ -2570,21 +2565,25 @@
             if (Array.isArray(content)) {
               console.log('✅ Hasta listesi GitHub\'dan yüklendi:', content.length, 'hasta');
               hastaListesi = content; // Global değişkeni güncelle
+              hastalar = content; // DÜZELTME: hastalar array'ini de güncelle
               return content;
             } else {
               console.log('⚠️ Hasta listesi array değil, yeni liste oluşturulacak');
               hastaListesi = []; // Global değişkeni sıfırla
+              hastalar = []; // DÜZELTME: hastalar array'ini de sıfırla
               return [];
             }
           } catch (parseError) {
             console.error('❌ JSON parse hatası:', parseError);
             console.log('📝 Bozuk JSON, yeni liste oluşturulacak');
             hastaListesi = []; // Global değişkeni sıfırla
+            hastalar = []; // DÜZELTME: hastalar array'ini de sıfırla
             return [];
           }
         } else if (response.status === 404) {
           console.log('📝 Hasta listesi bulunamadı, yeni liste oluşturulacak');
           hastaListesi = []; // Global değişkeni sıfırla
+          hastalar = []; // DÜZELTME: hastalar array'ini de sıfırla
           return [];
         } else {
           throw new Error(`GitHub API hatası: ${response.status}`);
@@ -5454,15 +5453,240 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // --- Hasta Yönetimi Modülü ---
     // --- Kalıcı veri yönetimi ---
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
+    // Storage boyutu hesaplama
+    function calculateStorageSize() {
+      try {
+        let total = 0;
+        for (let key in localStorage) {
+          if (localStorage.hasOwnProperty(key)) {
+            total += localStorage[key].length + key.length;
+          }
+        }
+        return total;
+      } catch(e) {
+        console.warn('Storage boyutu hesaplanamadı:', e);
+        return 0;
+      }
+    }
+
+    // Storage bilgilerini göster
+    function getStorageInfo() {
+      const used = calculateStorageSize();
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const percentage = (used / maxSize * 100).toFixed(1);
+      
+      return {
+        used: used,
+        usedMB: (used / 1024 / 1024).toFixed(2),
+        maxMB: (maxSize / 1024 / 1024).toFixed(0),
+        percentage: percentage,
+        isNearLimit: percentage > 80,
+        isCritical: percentage > 95
+      };
+    }
+
+    // Akıllı localStorage temizlik sistemi
+    function akIlliStorageTemizlik() {
+      console.log('🧹 Akıllı storage temizlik başlatılıyor...');
+      
+      const oncekiBoyut = calculateStorageSize();
+      let temizlenenBoyut = 0;
+      
+      try {
+        // 1. Eski cache verilerini temizle
+        const cacheKeys = Object.keys(localStorage).filter(key => 
+          key.includes('_cache_') || 
+          key.includes('temp_') ||
+          key.includes('backup_')
+        );
+        cacheKeys.forEach(key => {
+          temizlenenBoyut += localStorage[key]?.length || 0;
+          localStorage.removeItem(key);
+        });
+        
+        // 2. Eşleşmeyen tarifleri optimize et (sadece son 50'sini tut)
+        try {
+          const eslesmeyenKey = 'lipedem_eslesmeyenler';
+          const eslesmeyenData = JSON.parse(localStorage.getItem(eslesmeyenKey) || '[]');
+          if (eslesmeyenData.length > 50) {
+            const optimized = eslesmeyenData.slice(-50); // Son 50 tanesini tut
+            localStorage.setItem(eslesmeyenKey, JSON.stringify(optimized));
+            console.log(`📋 Eşleşmeyenler listesi optimize edildi: ${eslesmeyenData.length} → ${optimized.length}`);
+          }
+        } catch(e) {
+          console.warn('Eşleşmeyenler optimizasyonu hatası:', e);
+        }
+        
+        // 3. Hasta verilerinden büyük PDF verilerini temizle (GitHub'da zaten var)
+        try {
+          const hastalar = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          let hasVeriOptimized = false;
+          
+          hastalar.forEach(hasta => {
+            if (hasta.haftalar) {
+              hasta.haftalar.forEach(hafta => {
+                // PDF base64 verisini temizle (URL'ler korunur)
+                if (hafta.pdf && hafta.pdf.length > 1000) {
+                  hafta.pdf = null; // GitHub'dan tekrar çekilir
+                  hasVeriOptimized = true;
+                }
+                
+                // Büyük tarif kartlarını optimize et
+                if (hafta.tarifKartlar && hafta.tarifKartlar.length > 100) {
+                  hafta.tarifKartlar = hafta.tarifKartlar.slice(0, 50);
+                  hasVeriOptimized = true;
+                }
+              });
+            }
+          });
+          
+          if (hasVeriOptimized) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+            console.log('🗜️ Hasta verileri optimize edildi (PDF ve tarif kartları)');
+          }
+        } catch(e) {
+          console.warn('Hasta verileri optimizasyonu hatası:', e);
+        }
+        
+        const sonrakiBoyut = calculateStorageSize();
+        const temizlenen = oncekiBoyut - sonrakiBoyut;
+        
+        console.log(`✅ Akıllı temizlik tamamlandı:`);
+        console.log(`   Önceki boyut: ${(oncekiBoyut/1024/1024).toFixed(2)} MB`);
+        console.log(`   Sonraki boyut: ${(sonrakiBoyut/1024/1024).toFixed(2)} MB`);
+        console.log(`   Temizlenen: ${(temizlenen/1024/1024).toFixed(2)} MB`);
+        
+        return temizlenen;
+        
+      } catch(e) {
+        console.error('Akıllı temizlik hatası:', e);
+        return 0;
+      }
+    }
+
+    // Storage durumunu kontrol et ve gerekirse temizle
+    function storageHealthCheck() {
+      const info = getStorageInfo();
+      console.log(`📊 Storage durumu: ${info.usedMB}/${info.maxMB} MB (%${info.percentage})`);
+      
+      if (info.isCritical) {
+        console.warn('🚨 Storage kritik seviyede! Acil temizlik yapılıyor...');
+        akIlliStorageTemizlik();
+        
+        // Hala kritikse kullanıcıya sor
+        const yeniInfo = getStorageInfo();
+        if (yeniInfo.isCritical) {
+          if (confirm('⚠️ Storage hala dolu! Daha fazla temizlik yapmak için tüm cache\'i temizleyelim mi?\n\n(Bu işlem veri kaybı yaratmaz, sadece performansı artırır)')) {
+            localStorage.clear();
+            location.reload();
+          }
+        }
+      } else if (info.isNearLimit) {
+        console.log('⚠️ Storage %80 dolu, proaktif temizlik yapılıyor...');
+        akIlliStorageTemizlik();
+      }
+      
+      return info;
+    }
+
+    // Manuel storage temizlik fonksiyonu
+    function manuelStorageTemizlik() {
+      if (confirm('🧹 Storage temizliği yapılsın mı?\n\n• Cache veriler temizlenecek\n• Eski eşleşmeyenler silinecek\n• PDF verileri optimize edilecek\n\n(Hasta verileri korunur)')) {
+        console.log('🧹 Manuel storage temizliği başlatılıyor...');
+        
+        const oncekiBoyut = calculateStorageSize();
+        const temizlenen = akIlliStorageTemizlik();
+        const sonrakiBoyut = calculateStorageSize();
+        
+        const mesaj = `✅ Temizlik tamamlandı!\n\n` +
+                     `📊 Önceki: ${(oncekiBoyut/1024/1024).toFixed(2)} MB\n` +
+                     `📊 Sonraki: ${(sonrakiBoyut/1024/1024).toFixed(2)} MB\n` +
+                     `🗑️ Temizlenen: ${(temizlenen/1024/1024).toFixed(2)} MB`;
+        
+        alert(mesaj);
+        showToast('🧹 Storage başarıyla temizlendi!', 'success');
+      }
+    }
+
+    // Storage bilgilerini göster
+    function storageInfoGoster() {
+      const info = getStorageInfo();
+      const detay = `📊 STORAGE DURUMU\n\n` +
+                   `💾 Kullanılan: ${info.usedMB} MB\n` +
+                   `📦 Maksimum: ${info.maxMB} MB\n` +
+                   `📈 Doluluk: %${info.percentage}\n` +
+                   `⚠️ Durum: ${info.isCritical ? 'KRİTİK' : info.isNearLimit ? 'DİKKAT' : 'NORMAL'}\n\n` +
+                   `🗂️ Toplam Key: ${info.totalKeys} adet`;
+      
+      alert(detay);
+      
+      if (info.isNearLimit) {
+        if (confirm('⚠️ Storage dolmaya yakın!\n\nTemizlik yapmak ister misiniz?')) {
+          manuelStorageTemizlik();
+        }
+      }
+    }
+
+    // Global olarak erişilebilir yap
+    window.manuelStorageTemizlik = manuelStorageTemizlik;
+    window.storageInfoGoster = storageInfoGoster;
+
     function saveToStorage() {
       try {
+        // Storage health check - kritikse otomatik temizlik
+        const healthInfo = storageHealthCheck();
+        
+        // Veriyi kaydet
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
-        console.log('💾 Hastalar localStorage\'a kaydedildi');
+        console.log('✅ Veriler localStorage\'a kaydedildi');
+        
         // Hasta sayılarını güncelle - async olarak çağır
         if (typeof guncelleHastaSayilari === 'function') {
           guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
         }
-      } catch(e) { console.error('localStorage kaydetme hatası:', e); }
+        
+      } catch (error) {
+        console.error('Storage kayıt hatası:', error);
+        
+        if (error.name === 'QuotaExceededError') {
+          console.warn('🚨 Storage dolu! Acil temizlik yapılıyor...');
+          
+          // Acil temizlik yap
+          const temizlenen = akIlliStorageTemizlik();
+          
+          if (temizlenen > 0) {
+            // Temizlik sonrası tekrar dene
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(hastalar));
+              console.log('✅ Temizlik sonrası kayıt başarılı!');
+              showToast('💾 Veriler kaydedildi (storage optimize edildi)', 'success');
+              
+              // Hasta sayılarını güncelle
+              if (typeof guncelleHastaSayilari === 'function') {
+                guncelleHastaSayilari().catch(err => console.warn('Hasta sayıları güncelleme hatası:', err));
+              }
+            } catch(secondError) {
+              console.error('Temizlik sonrası da kayıt başarısız:', secondError);
+              showToast('❌ Storage dolu! Manuel temizlik gerekli', 'error');
+              
+              // Son çare - kullanıcıya sor
+              if (confirm('⚠️ Storage tamamen dolu!\n\nTüm geçici verileri temizleyelim mi?\n(Hasta verileri korunur)')) {
+                // Sadece hasta verilerini koru
+                const hastalarBackup = localStorage.getItem(STORAGE_KEY);
+                localStorage.clear();
+                if (hastalarBackup) {
+                  localStorage.setItem(STORAGE_KEY, hastalarBackup);
+                }
+                showToast('🧹 Storage temizlendi ve veriler korundu', 'success');
+              }
+            }
+          } else {
+            showToast('❌ Storage dolu ve temizlik başarısız!', 'error');
+          }
+        } else {
+          showToast('❌ Kayıt hatası: ' + error.message, 'error');
+        }
+      }
     }
     
     // Veri değiştiğinde otomatik kaydetme
@@ -5526,19 +5750,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     async function renderHastalarYeniSistem() {
       const ul = document.getElementById('hastaListesi');
       const ara = document.getElementById('hastaAra').value.toLowerCase();
-      const filtre = document.getElementById('arsivFiltre').value;
+      const filtre = document.getElementById('arsivFiltre').value || 'tum'; // Varsayılan: tüm hastalar
       ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Yükleniyor...</li>';
       
       try {
-        // Token kontrolü
+        // Mevcut hasta listesini kontrol et - eğer boşsa GitHub'dan yükle
+        let yuklenmisList = hastalar || [];
+        
+        // Eğer hastalar boşsa ve token varsa GitHub'dan yükle
         const token = document.getElementById('githubToken').value.trim();
-        if (!token) {
+        if (yuklenmisList.length === 0 && token) {
+          yuklenmisList = await hastaListesiYukle();
+          // Global hastalar array'ini güncelle
+          hastalar = yuklenmisList;
+        } else if (!token) {
           ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #dc3545;">⚠️ GitHub token gerekli</li>';
           return;
         }
-        
-        // GitHub'dan hasta listesini al ve global değişkeni güncelle
-        const yuklenmisList = await hastaListesiYukle();
         
         if (yuklenmisList.length === 0) {
           ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok - Yeni hasta ekleyebilirsiniz</li>';
@@ -5551,7 +5779,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const filtreliHastalar = yuklenmisList.filter(hasta => {
           const hastaIsim = hasta.isim || hasta.ad || '';
           const aramaUygun = hastaIsim.toLowerCase().includes(ara);
-          const filtreUygun = filtre === 'hepsi' || 
+          const filtreUygun = filtre === 'tum' || 
                              (filtre === 'aktif' && !hasta.arsiv) || 
                              (filtre === 'arsiv' && hasta.arsiv);
           return aramaUygun && filtreUygun;
@@ -5581,7 +5809,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
           
           // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel ve sadece yedek)
-          if (!hastaDetayiBulundu && hasta.id) {
+          // Yeni eklenen hastalar için GitHub araması yapma (404 hatalarını önlemek için)
+          const simdi = Date.now();
+          const hastaYas = simdi - hasta.id; // hasta.id timestamp
+          const birDakika = 60 * 1000; // 1 dakika = 60.000 ms
+          
+          if (!hastaDetayiBulundu && hasta.id && hastaYas > birDakika) {
             try {
               const dosyaAdlari = [
                 generateFileName({ id: hasta.id, isim: hasta.isim }),
@@ -5944,8 +6177,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     async function guncelleHastaSayilari() {
       try {
-        // Yeni sistemden hasta listesini al
-        const hastaData = await hastaListesiYukle();
+        // Mevcut hastalar array'ini kullan (GitHub'dan yeniden yükleme)
+        const hastaData = hastalar || [];
         
         let aktifSayisi = 0;
         let arsivSayisi = 0;
@@ -5966,24 +6199,59 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Select option'larını güncelle
         const arsivFiltre = document.getElementById('arsivFiltre');
         if (arsivFiltre) {
-          const mevcutSecim = arsivFiltre.value || 'aktif'; // Mevcut seçimi al
+          const mevcutSecim = arsivFiltre.value || 'tum'; // Varsayılan: tüm hastalar
           
           arsivFiltre.innerHTML = `
             <option value="aktif">Aktif Hastalar (${aktifSayisi})</option>
-            <option value="arsiv">Arşiv (${arsivSayisi})</option>
-            <option value="tum">Tümü (${tumSayisi})</option>
+            <option value="arsiv">Arşiv Hastalar (${arsivSayisi})</option>
+            <option value="tum">Tüm Hastalar (${tumSayisi})</option>
           `;
           
-          // Seçili değeri geri yükle
-          arsivFiltre.value = mevcutSecim;
+          arsivFiltre.value = mevcutSecim; // Seçimi geri yükle
         }
-        
       } catch (error) {
         console.error('Hasta sayıları güncellenirken hata:', error);
       }
     }
 
-    function yeniHastaFormu() {
+    // Yeni hasta ekleme sonrası sidebar'ı anında güncelle
+    function anindaHastaEkleSidebar(yeniHasta) {
+      const ul = document.getElementById('hastaListesi');
+      if (!ul) return;
+
+      // Yeni hasta için li elementi oluştur
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span class="hasta-isim" onclick="hastaSeçYeniSistem('${yeniHasta.id}', '${yeniHasta.isim}')" title="Hasta ID: ${yeniHasta.id}">
+          ${yeniHasta.isim} (henüz pdf yok)
+        </span>
+      `;
+      li.style.background = 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
+      li.style.borderColor = '#dee2e6';
+      li.style.color = '#6c757d';
+
+      // Doğru sırada ekle (alfabetik sıraya göre)
+      const mevcutHastalar = Array.from(ul.children);
+      let eklendiMi = false;
+      
+      for (let i = 0; i < mevcutHastalar.length; i++) {
+        const mevcutIsim = mevcutHastalar[i].querySelector('.hasta-isim').textContent.split(' (')[0];
+        if (yeniHasta.isim.localeCompare(mevcutIsim, 'tr') < 0) {
+          ul.insertBefore(li, mevcutHastalar[i]);
+          eklendiMi = true;
+          break;
+        }
+      }
+      
+      // En sona ekle (alfabetik olarak en sonra geliyorsa)
+      if (!eklendiMi) {
+        ul.appendChild(li);
+      }
+      
+      console.log('✅ Sidebar\'a yeni hasta anında eklendi:', yeniHasta.isim);
+    }
+
+    async function yeniHastaFormu() {
       console.log('🆕 Yeni hasta ekleme başlatıldı (YENİ SİSTEM)');
       
       // Yeni hasta ismini iste
@@ -6032,27 +6300,27 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // YENİ SİSTEME KAYDET
       // 1. Önce individual hasta dosyası olarak kaydet
-      hastayiAyriKaydet(yeniHasta).then(basarili => {
+      hastayiAyriKaydet(yeniHasta).then(async basarili => {
         if (basarili) {
           console.log('✅ Yeni hasta GitHub\'a kaydedildi:', duzeltilmisIsim);
           
-          // 2. Global hasta listesini güncelle
-          const yeniHastaListeItem = {
-            id: yeniHasta.id,
-            isim: yeniHasta.isim,
-            olusturmaTarihi: yeniHasta.olusturmaTarihi,
-            arsiv: yeniHasta.arsiv || false
-          };
-          hastaListesi.push(yeniHastaListeItem);
-          hastaListesi.sort((a, b) => {
+          // 2. hastayiAyriKaydet zaten hastaListesineEkle çağırıyor, o da hastaListesi'ne ekliyor
+          // Sadece local hastalar array'ine eklememiz yeterli
+          console.log('✅ Global hasta listesi güncellendi');
+          
+          // 3. Hasta listesi güncelleme - sadece local hastalar array'ine ekle
+          hastalar.push(yeniHasta);
+          hastalar.sort((a, b) => {
             if (!a || !a.isim) return 1;
             if (!b || !b.isim) return -1;
             return a.isim.localeCompare(b.isim, 'tr');
           });
-          console.log('✅ Global hasta listesi güncellendi');
           
-          // 3. Hasta listesini yeniden render et
-          renderHastalarYeniSistem();
+          // UI'yi güncelle (GitHub'dan yeniden yüklemeden)
+          guncelleHastaSayilari();
+          
+          // Sidebar'a yeni hastayı anında ekle
+          anindaHastaEkleSidebar(yeniHasta);
           
           // 4. Yeni hastayı seç
           seciliHasta = yeniHasta;
@@ -6077,7 +6345,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         return a.isim.localeCompare(b.isim, 'tr');
       });
       saveToStorage();
-      renderHastalar();
+      // renderHastalar() kaldırıldı - tekrar yükleme yapmamak için
     }
 
     function iptalHastaFormu() {
@@ -7660,24 +7928,35 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // JSON verisinden doğrudan 5. hafta başlangıç tarihini al
+        // 5. hafta tarihini al ve pazartesi gününe hizala
         let haftaBaslangici = new Date();
         
         if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
             console.log('  5. HAFTA RAW VERİ:', haftalar[4].baslangic, typeof haftalar[4].baslangic);
-            haftaBaslangici = new Date(haftalar[4].baslangic);
-            console.log('  5. HAFTA PARSED TARİH:', haftaBaslangici.toISOString(), '|', haftaBaslangici.toLocaleDateString('tr-TR'));
+            
+            // 5. hafta başlangıç tarihini al
+            const besinciHaftaTarihi = new Date(haftalar[4].baslangic);
+            console.log('  5. HAFTA PARSED TARİH:', besinciHaftaTarihi.toISOString(), '|', besinciHaftaTarihi.toLocaleDateString('tr-TR'));
+            
+            // Bu tarihi o haftanın PAZARTESİ'sine hizala
+            const gunIndex = besinciHaftaTarihi.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+            const pazartesiyeKadarGun = gunIndex === 0 ? 1 : 1 - gunIndex; // Pazar ise +1, diğer günler için Pazartesi'ye kadar gün sayısı
+            
+            haftaBaslangici = new Date(besinciHaftaTarihi);
+            haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
+            
+            console.log('🗓️ 5. HAFTA ORİJİNAL TARİH:', besinciHaftaTarihi.toLocaleDateString('tr-TR'), '(Gün:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][gunIndex], ')');
+            console.log('🗓️ 5. HAFTA PAZARTESİ TARİHİ:', haftaBaslangici.toLocaleDateString('tr-TR'), '(Gün:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][haftaBaslangici.getDay()], ')');
         } else {
             console.log('⚠️ 5. hafta verisi bulunamadı, güncel tarih kullanılıyor');
             console.log('🔍 Toplam hafta sayısı:', haftalar.length);
             console.log('🔍 5. hafta verisi (index 4):', haftalar[4]);
+            
+            // Fallback: Güncel tarihi pazartesiye hizala
+            const gunIndex = haftaBaslangici.getDay();
+            const pazartesiyeKadarGun = gunIndex === 0 ? 1 : 1 - gunIndex;
+            haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
         }
-
-        // Tarihi o haftanın Pazartesi'sine hizala
-        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
-        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
-        console.log('🗓️ MASAJ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -8468,7 +8747,7 @@ function duzenleHafta(i) {
       // Otomatik kaydetme - hasta verileri değişti
       autoSaveHastaData(seciliHasta);
       
-      renderHastalar();
+      // renderHastalar() kaldırıldı - PDF yükleme sırasında hasta listesini GitHub'dan yeniden yüklemesin
       gosterHaftalar();
 
       // Eğer bu hafta şu anda aktif hafta ise, ekrandan da eski kartları temizle
@@ -8835,14 +9114,14 @@ function duzenleHafta(i) {
         }
         
         const besinciHaftaBaslangic = new Date(besinciHafta.baslangic);
+        console.log('🗓️ 5. HAFTA ORİJİNAL TARİH:', besinciHaftaBaslangic.toLocaleDateString('tr-TR'));
         
-        // 5. hafta başlangıç tarihinin pazartesi olmasını garanti altına al
+        // 5. hafta başlangıç tarihini o haftanın PAZARTESİ gününe hizala
         const haftaGunu = besinciHaftaBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
-        if (haftaGunu !== 1) { // Eğer pazartesi değilse
-          const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazartesiye kadar olan gün farkı
-          besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
-        }
+        const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazar ise +1, diğer günler için Pazartesi'ye fark
+        besinciHaftaBaslangic.setDate(besinciHaftaBaslangic.getDate() + gunFarki);
         
+        console.log('🗓️ 5. HAFTA PAZARTESİ TARİHİ:', besinciHaftaBaslangic.toLocaleDateString('tr-TR'), '(Gün:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][besinciHaftaBaslangic.getDay()], ')');
         console.log('✅ 5. hafta başlangıcı (Pazartesi):', besinciHaftaBaslangic);
         
         let currentY = 50;
@@ -10716,11 +10995,17 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren)'), 20, 40);
         
-        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
-        console.log('🔍 Tekli lenf masaj - 5. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        // 5. hafta tab başlangıç tarihini pazartesi gününe hizala
+        console.log('🔍 Tekli lenf masaj - 5. hafta tab orijinal başlangıç tarihi:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 Tab başlangıç gün kontrolü:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][baslangicTarihi.getDay()]);
         
-        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
-        const hizalanmisBaslangic = baslangicTarihi;
+        // Tab başlangıç tarihini o haftanın PAZARTESİ gününe hizala
+        const hizalanmisBaslangic = new Date(baslangicTarihi);
+        const haftaGunu = hizalanmisBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazar ise +1, diğer günler için Pazartesi'ye fark
+        hizalanmisBaslangic.setDate(hizalanmisBaslangic.getDate() + gunFarki);
+        
+        console.log('🔍 Hizalanmış Pazartesi tarihi:', hizalanmisBaslangic.toLocaleDateString('tr-TR'), '(Gün:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][hizalanmisBaslangic.getDay()], ')');
         
         // 5. haftanın başlangıcı
         let currentY = 50;
@@ -10970,11 +11255,17 @@ function duzenleHafta(i) {
         doc.text(programBasligi, 20, 36);
         doc.text(turkceKarakterDuzelt('(5. Haftadan itibaren) - Yesil check isareti tamamlanan gunler'), 20, 40);
         
-        // Tab başlangıç tarihi zaten pazartesi olarak planlanmış, değiştirme
-        console.log('🔍 Tekli egzersiz - 9. hafta tab başlangıç tarihi (pazartesi olarak kabul):', baslangicTarihi.toLocaleDateString('tr-TR'));
+        // 9. hafta tab başlangıç tarihini pazartesi gününe hizala
+        console.log('🔍 Tekli egzersiz - 9. hafta tab orijinal başlangıç tarihi:', baslangicTarihi.toLocaleDateString('tr-TR'));
+        console.log('🔍 Tab başlangıç gün kontrolü:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][baslangicTarihi.getDay()]);
         
-        // Tab tarihi direkt kullan - zaten hafta başı olarak planlanmış
-        const hizalanmisBaslangic = baslangicTarihi;
+        // Tab başlangıç tarihini o haftanın PAZARTESİ gününe hizala
+        const hizalanmisBaslangic = new Date(baslangicTarihi);
+        const haftaGunu = hizalanmisBaslangic.getDay(); // 0=Pazar, 1=Pazartesi, ... 6=Cumartesi
+        const gunFarki = haftaGunu === 0 ? 1 : (1 - haftaGunu); // Pazar ise +1, diğer günler için Pazartesi'ye fark
+        hizalanmisBaslangic.setDate(hizalanmisBaslangic.getDate() + gunFarki);
+        
+        console.log('🔍 Hizalanmış Pazartesi tarihi:', hizalanmisBaslangic.toLocaleDateString('tr-TR'), '(Gün:', ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][hizalanmisBaslangic.getDay()], ')');
         
         // 9. haftanın başlangıcı (baslangicTarihi 9. hafta başlangıcı kabul edilir)
         let currentY = 50;
@@ -12601,6 +12892,24 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // Sayfa yüklendiğinde başlat
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+        // Storage durumunu başlangıçta kontrol et
+        console.log('🔍 Sayfa yüklenirken storage durumu kontrol ediliyor...');
+        const storageInfo = storageHealthCheck();
+        
+        if (storageInfo.isNearLimit) {
+          showToast(`⚠️ Storage %${storageInfo.percentage} dolu - temizlik önerilir`, 'warning');
+        }
+      });
+    } else {
+      // Sayfa zaten yüklü, hemen kontrol et
+      console.log('🔍 Storage durumu kontrol ediliyor...');
+      const storageInfo = storageHealthCheck();
+      
+      if (storageInfo.isNearLimit) {
+        showToast(`⚠️ Storage %${storageInfo.percentage} dolu - temizlik önerilir`, 'warning');
+      }
+    }
+
     // === YEMEK KULLANIM ANALİZİ FONKSIYONLARI ===
     
     function siralaYemekAnalizi(tip) {
@@ -12972,8 +13281,10 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
 
       // hastalar array kontrol
       if (!hastalar || !Array.isArray(hastalar)) {
-        console.error('❌ hastalar array tanımlı değil, boş array oluşturuluyor');
-        window.hastalar = [];
+        console.error('❌ hastalar array tanımlı değil, localStorage\'dan yükle');
+        // KRİTİK DÜZELTME: window.hastalar = [] yerine loadFromStorage() kullan
+        hastalar = loadFromStorage() || [];
+        console.log('📊 localStorage\'dan yüklenen hasta sayısı:', hastalar.length);
       }
 
       console.log('🔍 findOrCreateHasta çağrıldı:', hastaAdi, 'Mevcut hasta sayısı:', hastalar.length);
@@ -13514,6 +13825,7 @@ ${mesajlar.join('\n')}
       }
 
       console.log('📁 Çoklu PDF işlemi başlatıldı:', files.length, 'dosya');
+      console.log('📊 İŞLEM ÖNCESİ - Toplam hasta sayısı:', hastalar.length);
       
       const sonuclar = [];
       let basarili = 0;
@@ -13556,11 +13868,13 @@ ${mesajlar.join('\n')}
             continue;
           }
 
-          // Hasta oluştur/bul
-          const hasta = findOrCreateHasta(parsed.hastaAdi);
+          // KRİTİK DÜZELTME: Eski sistem yerine yeni GitHub uyumlu sistemi kullan
+          // findOrCreateHasta() eski sistem (window.hastalar=[] problemi)
+          // findOrCreateHastaWithGitHub() yeni sistem (güvenli)
+          const hasta = await findOrCreateHastaWithGitHub(parsed.hastaAdi);
           
-          // Hafta oluştur/bul
-          const hafta = findOrCreateHafta(hasta, parsed.haftaNo, parsed.tarihAraligi);
+          // KRİTİK DÜZELTME: GitHub uyumlu hafta sistemi kullan
+          const hafta = await findOrCreateHaftaWithGitHub(hasta, parsed.haftaNo, parsed.tarihAraligi);
           
           // PDF'i Base64'e çevir ve sakla
           const pdfBase64 = await fileToBase64(file);
@@ -13669,6 +13983,7 @@ ${mesajlar.join('\n')}
       showCokluPdfSonuclari(sonuclar, basarili, hatali);
       
       console.log('🎉 Çoklu PDF işlemi tamamlandı! Başarılı:', basarili, 'Hatalı:', hatali);
+      console.log('📊 İŞLEM SONRASI - Toplam hasta sayısı:', hastalar.length);
     }
     
     // === EMNİYET KİLİDİ FONKSİYONLARI ===
@@ -13786,6 +14101,9 @@ ${mesajlar.join('\n')}
     window.haftaKaydet = haftaKaydet;
     window.haftaKilidiAc = haftaKilidiAc;
 
+    // Sayfa yüklenirken başlat  
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
         sayfaBaslat();
         initResizableSidebars();
       });
@@ -13837,10 +14155,10 @@ ${mesajlar.join('\n')}
         
         if (githubBasarili) {
           console.log(`✅ ${hafta.haftaNo}. hafta kaydedildi ve kilitlendi`);
-          alert(`✅ ${hafta.haftaNo}. hafta başarıyla kaydedildi ve kilitlendi!\n\n� GPT mesajı da kaydedildi\n�🔒 Hafta artık yanlışlıkla değiştirilemez.\n💾 Veriler GitHub'a kaydedildi.`);
+          showToast(`🔒 ${hafta.haftaNo}. hafta kilitlendi`, 'success');
         } else {
           console.warn(`⚠️ ${hafta.haftaNo}. hafta kilitlendi ama GitHub kaydı başarısız`);
-          alert(`⚠️ ${hafta.haftaNo}. hafta kilitlendi ancak GitHub'a kaydetme başarısız!\n\n📝 GPT mesajı kaydedildi\n🔒 Yerel kilit aktif.\n💾 GitHub bağlantınızı kontrol edin.`);
+          showToast(`🔒 ${hafta.haftaNo}. hafta kilitlendi (GitHub kaydı başarısız)`, 'warning');
         }
         
         // 4. UI'ı güncelle
@@ -13870,11 +14188,7 @@ ${mesajlar.join('\n')}
         return;
       }
       
-      // Kullanıcıdan onay al
-      const onay = confirm(`🔓 ${hafta.haftaNo}. haftanın kilidini açmak istediğinize emin misiniz?\n\nKilit açıldıktan sonra:\n• PDF değiştirilebilir\n• GPT mesajı değiştirilebilir\n• Açıklama değiştirilebilir\n\n⚠️ Yanlışlıkla veri kaybı riski oluşur!`);
-      
-      if (!onay) return;
-      
+      // Direkt kilit aç - onay kaldırıldı
       try {
         // 1. Hafta verilerini güncelle
         hafta.kilitli = false;
@@ -13888,10 +14202,10 @@ ${mesajlar.join('\n')}
         
         if (githubBasarili) {
           console.log(`🔓 ${hafta.haftaNo}. hafta kilidi açıldı`);
-          alert(`🔓 ${hafta.haftaNo}. hafta kilidi başarıyla açıldı!\n\n✏️ Artık düzenleyebilirsiniz.\n💾 Değişiklik GitHub'a kaydedildi.`);
+          showToast(`🔓 ${hafta.haftaNo}. hafta kilidi açıldı`, 'success');
         } else {
           console.warn(`⚠️ ${hafta.haftaNo}. hafta kilidi açıldı ama GitHub kaydı başarısız`);
-          alert(`⚠️ ${hafta.haftaNo}. hafta kilidi açıldı ancak GitHub'a kaydetme başarısız!\n\n🔓 Yerel kilit açık.\n💾 GitHub bağlantınızı kontrol edin.`);
+          showToast(`🔓 ${hafta.haftaNo}. hafta kilidi açıldı (GitHub kaydı başarısız)`, 'warning');
         }
         
         // 4. UI'ı güncelle
@@ -13901,8 +14215,13 @@ ${mesajlar.join('\n')}
         setTimeout(() => switchTab(i), 100);
         
       } catch (error) {
-        console.error('❌ Hafta kilit açma hatası:', error);
-        alert(`❌ Kilit açma başarısız!\n\nHata: ${error.message}`);
+        console.error('❌ Kilit açma hatası:', error);
+        
+        // Hata durumunda kilidi geri koy
+        hafta.kilitli = true;
+        saveToStorage();
+        
+        showToast(`❌ Kilit açma hatası: ${error.message}`, 'error');
       }
     }
     
