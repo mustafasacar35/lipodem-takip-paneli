@@ -7724,7 +7724,9 @@ function duzenleHafta(i) {
 
           // 9. hafta için otomatik egzersiz takvimi PDF'si ekle
           console.log('🏃 9. hafta egzersiz PDF fonksiyonu çağrılıyor...');
-          await createAndAddEgzersizPDF(zip, hasta, haftalar);
+          // Hafta verilerini tabdakiyle senkronize et
+          const guncelHaftalar = getHaftaListesi();
+          await createAndAddEgzersizPDF(zip, hasta, guncelHaftalar);
         }
 
         // ZIP dosyasını oluştur ve indir
@@ -8222,30 +8224,35 @@ function duzenleHafta(i) {
         
         console.log('✅ jsPDF kütüphanesi bulundu:', typeof window.jspdf);
         
-        // JSON verisinden doğrudan 9. hafta başlangıç tarihini al
-        let haftaBaslangici = new Date();
-        
-        if (haftalar.length >= 9 && haftalar[8]?.baslangic) {
-            // 9. hafta verisi mevcut
-            console.log('  9. HAFTA RAW VERİ:', haftalar[8].baslangic);
-            haftaBaslangici = new Date(haftalar[8].baslangic);
-            console.log('🔵 9. HAFTA PARSED:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
-            // 5. haftadan 4 hafta sonrasını hesapla
-            console.log('  5. HAFTA RAW (9. hafta için):', haftalar[4].baslangic);
-            const besinciHafta = new Date(haftalar[4].baslangic);
-            haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
-            console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
-        } else {
-            console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
-            console.log('🔍 Toplam hafta sayısı:', haftalar.length);
-        }
+    // 9. hafta tabındaki başlangıç ve bitiş tarihini doğrudan kullan
+    let haftaBaslangici = new Date();
+    let haftaBitisi = new Date();
+    
+    // 9. haftayı hafta numarasına göre bul (index 8 değil!)
+    const dokuzuncuHafta = haftalar.find(h => h.haftaNo === 9);
+    if (dokuzuncuHafta?.baslangic && dokuzuncuHafta?.bitis) {
+      haftaBaslangici = new Date(dokuzuncuHafta.baslangic + 'T00:00:00');
+      haftaBitisi = new Date(dokuzuncuHafta.bitis + 'T00:00:00');
+      console.log('🔵 9. HAFTA TAB BAŞLANGIÇ (hafta no ile bulundu):', haftaBaslangici.toLocaleDateString('tr-TR'));
+      console.log('🔵 9. HAFTA TAB BİTİŞ (hafta no ile bulundu):', haftaBitisi.toLocaleDateString('tr-TR'));
+    } else if (haftalar.length >= 9 && haftalar[8]?.baslangic && haftalar[8]?.bitis) {
+      // Fallback: index ile dene
+      haftaBaslangici = new Date(haftalar[8].baslangic + 'T00:00:00');
+      haftaBitisi = new Date(haftalar[8].bitis + 'T00:00:00');
+      console.log('🔵 9. HAFTA TAB BAŞLANGIÇ (index ile):', haftaBaslangici.toLocaleDateString('tr-TR'));
+      console.log('🔵 9. HAFTA TAB BİTİŞ (index ile):', haftaBitisi.toLocaleDateString('tr-TR'));
+    } else if (haftalar.length >= 5 && haftalar[4]?.baslangic) {
+      // 5. haftadan 4 hafta sonrasını hesapla (eski fallback)
+      const besinciHafta = new Date(haftalar[4].baslangic + 'T00:00:00');
+      haftaBaslangici = new Date(besinciHafta.getTime() + (4 * 7 * 24 * 60 * 60 * 1000));
+      haftaBitisi = new Date(haftaBaslangici.getTime() + 6 * 24 * 60 * 60 * 1000);
+      console.log('🔵 9. HAFTA HESAPLANAN:', haftaBaslangici.toLocaleDateString('tr-TR'));
+    } else {
+      console.log('⚠️ Hafta verisi bulunamadı, güncel tarih kullanılıyor');
+      console.log('🔍 Toplam hafta sayısı:', haftalar.length);
+    }
 
-        // Tarihi o haftanın Pazartesi'sine hizala
-        const gunIndex = haftaBaslangici.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-        const pazartesiyeKadarGun = gunIndex === 0 ? -6 : 1 - gunIndex; // Pazar ise -6, diğer günler için Pazartesi'ye kadar gün sayısı
-        haftaBaslangici.setDate(haftaBaslangici.getDate() + pazartesiyeKadarGun);
-        console.log('🗓️ EGZERSİZ PDF PAZARTESİ HIZALAMA:', haftaBaslangici.toLocaleDateString('tr-TR'), '(gün:', haftaBaslangici.getDay(), ')');
+    // Pazartesi'ye hizalama kaldırıldı, tabdaki tarih doğrudan kullanılacak
 
         // PDF oluştur - tekli tab versiyonuyla aynı format
         const { jsPDF } = window.jspdf;
@@ -8301,41 +8308,29 @@ function duzenleHafta(i) {
         let currentY = 50;
         const gunler = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'].map(gun => turkceKarakterDuzelt(gun));
         
-        // 8 haftalık program (5-12. haftalar) - tekli tab versiyonuyla aynı
+        // 8 haftalık program (5-12. haftalar) - 9. hafta tabındaki tarih referans alınacak
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
-          
-          // 9. haftayı referans alarak diğer hafta başlangıçlarını hesapla
-          // 5. hafta: 9. haftadan 4 hafta önce (-4 * 7 gün)
-          // 6. hafta: 9. haftadan 3 hafta önce (-3 * 7 gün)
-          // ...
-          // 9. hafta: 9. haftadan 0 hafta önce (0 * 7 gün)
-          // 10. hafta: 9. haftadan 1 hafta sonra (+1 * 7 gün)
-          const haftaFarki = gercekHaftaNo - 9; // 5. hafta=-4, 6. hafta=-3, ..., 9. hafta=0, 10. hafta=+1
-          const haftaBaslangic = new Date(haftaBaslangici.getTime() + (haftaFarki * 7 * 24 * 60 * 60 * 1000));
-          
+          // 9. hafta tabındaki başlangıçtan itibaren haftaları sırala
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 1000));
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
             doc.addPage();
             currentY = 20;
           }
-          
           // Hafta başlığı
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           doc.rect(15, currentY, 170, 6);
-          
           const haftaBaslangicStr = haftaBaslangic.toLocaleDateString('tr-TR');
           const haftaBitisStr = new Date(haftaBaslangic.getTime() + (6 * 24 * 60 * 60 * 1000)).toLocaleDateString('tr-TR');
-          
           // 9. hafta PDF'si için 5-8. haftalar soluk renkte olsun
           if (gercekHaftaNo <= 8) {
             doc.setTextColor(150, 150, 150); // Soluk gri renk
           } else {
             doc.setTextColor(0, 0, 0); // Normal siyah renk
           }
-          
           doc.text(turkceKarakterDuzelt(`${gercekHaftaNo}. HAFTA (${haftaBaslangicStr} - ${haftaBitisStr})`), 20, currentY + 4);
           currentY += 8;
           
@@ -9484,9 +9479,15 @@ function duzenleHafta(i) {
           baslangicHaftaIndex = belirliHaftaIndex;
           console.log('🎯 Belirtilen hafta index\'i kullanılıyor:', baslangicHaftaIndex);
         } else if (dokuzuncuHaftaOzelModu) {
-          // 9. hafta özel modu: 4 hafta geriden başla (5. haftadan başla)
-          baslangicHaftaIndex = 4; // 5. hafta = index 4
-          console.log('🎯 9. hafta özel modu: 5. haftadan başlayacak (4 hafta geri)');
+          // 9. hafta özel modu: 9. haftayı referans al
+          const dokuzuncuHaftaIndex = haftalar.findIndex(h => h.haftaNo === 9);
+          if (dokuzuncuHaftaIndex !== -1) {
+            baslangicHaftaIndex = dokuzuncuHaftaIndex; // 9. haftanın gerçek index'i
+            console.log('🎯 9. hafta özel modu: 9. hafta tabındaki tarihten başlayacak, index:', dokuzuncuHaftaIndex);
+          } else {
+            baslangicHaftaIndex = 4; // fallback: 5. hafta
+            console.log('⚠️ 9. hafta bulunamadı, 5. hafta fallback kullanılıyor');
+          }
         } else {
           // Normal mod
           baslangicHaftaIndex = belirliHaftaNo ? belirliHaftaNo - 1 : 4; // 5. hafta = index 4
