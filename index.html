@@ -16316,14 +16316,24 @@ ${mesajlar.join('\n')}
             </div>
             
             <!-- Prompt Ayarları -->
-            <div>
-              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Giriş Prompt:</label>
-              <textarea id="girisPrompt" placeholder="Lütfen aşağıdaki hasta bilgilerini analiz edin:" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 60px; resize: vertical;"></textarea>
+            <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">
+                🎬 Giriş Prompt (Wrapper)
+                <span style="font-size: 11px; color: #6c757d; font-weight: normal; display: block; margin-top: 3px;">
+                  Tüm prompt'un EN BAŞINA eklenir. Boş bırakılırsa göndeirlmez.
+                </span>
+              </label>
+              <textarea id="girisPrompt" placeholder="Örn: Sen bir diyetisyen ve lipödem uzmanısın. Aşağıdaki bilgileri analiz ederken empatik ve bilimsel bir dil kullan..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 80px; resize: vertical;"></textarea>
             </div>
             
-            <div style="margin-top: 15px;">
-              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Sonuç Prompt:</label>
-              <textarea id="sonucPrompt" placeholder="Detaylı bir analiz raporu hazırlayın." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 60px; resize: vertical;"></textarea>
+            <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #28a745;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">
+                🏁 Sonuç Prompt (Wrapper)
+                <span style="font-size: 11px; color: #6c757d; font-weight: normal; display: block; margin-top: 3px;">
+                  Tüm prompt'un EN SONUNA eklenir. Boş bırakılırsa gönderilmez.
+                </span>
+              </label>
+              <textarea id="sonucPrompt" placeholder="Örn: Yanıtını şu formatta ver: 1) Özet 2) Öneriler 3) Dikkat Edilmesi Gerekenler. Markdown formatında yaz..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 80px; resize: vertical;"></textarea>
             </div>
 
             <!-- Google Drive Ayarları -->
@@ -18400,6 +18410,10 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;">
             <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_girisPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>🎬 Giriş</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
               <input type="checkbox" id="modal_genelPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
               <span>🎨 Genel</span>
             </label>
@@ -18418,6 +18432,10 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
             <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
               <input type="checkbox" id="modal_beslenmeListesi" checked onchange="updatePromptPreview(${haftaIndex})">
               <span>📄 Beslenme Listesi</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_sonucPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>🏁 Sonuç</span>
             </label>
           </div>
         </div>
@@ -18635,6 +18653,15 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       const { settings, oncekiAnalizler } = window.currentModalData;
       const prompts = [];
       
+      // Giriş Prompt (en başta)
+      if (document.getElementById('modal_girisPrompt')?.checked) {
+        const girisPrompt = settings.girisPrompt?.trim();
+        if (girisPrompt) {
+          prompts.push('=== GİRİŞ TALİMATI ===');
+          prompts.push(girisPrompt);
+        }
+      }
+      
       // Genel prompt
       if (document.getElementById('modal_genelPrompt')?.checked) {
         const genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
@@ -18708,6 +18735,15 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
           prompts.push(window.cleanedPdfContent);
         } else {
           prompts.push('Bu hafta için henüz beslenme listesi yüklenmemiş.');
+        }
+      }
+      
+      // Sonuç Prompt (en sonda)
+      if (document.getElementById('modal_sonucPrompt')?.checked) {
+        const sonucPrompt = settings.sonucPrompt?.trim();
+        if (sonucPrompt) {
+          prompts.push('=== SONUÇ TALİMATI ===');
+          prompts.push(sonucPrompt);
         }
       }
       
