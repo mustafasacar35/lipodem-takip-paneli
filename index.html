@@ -8,12 +8,51 @@
   
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>
+    // PDF.js worker configuration
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    }
+  </script>
   
   <!-- JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Google APIs -->
+  <script async defer src="https://apis.google.com/js/api.js" onload="onGoogleApiLoad()"></script>
+  <script async defer src="https://accounts.google.com/gsi/client"></script>
+  
+  <!-- Google API yükleme fonksiyonu -->
+  <script>
+    // Google API yüklendikten sonra çağrılan global fonksiyon
+    function onGoogleApiLoad() {
+      window.isGoogleApiLoaded = true;
+      console.log('✅ Google API başarıyla yüklendi!');
+      
+      // gapi.load ile gerekli API'leri yükle
+      if (typeof gapi !== 'undefined') {
+        gapi.load('auth2:client:picker', function() {
+          console.log('✅ Google API modülleri yüklendi (auth2, client, picker)');
+          window.isGoogleApiReady = true;
+        });
+      }
+    }
+    
+    // Global seviyede fonksiyonu tanımla
+    window.onGoogleApiLoad = onGoogleApiLoad;
+    
+    // Başlangıçta false olarak ayarla
+    window.isGoogleApiLoaded = false;
+  </script>
+
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js" onload="onGoogleApiLoad()"></script>
+  <script src="https://apis.google.com/js/client.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
   <!-- Türkçe karakter desteği için font ekle -->
   <script>
     // jsPDF font encoding düzeltmesi
@@ -29,7 +68,111 @@
     };
   </script>
   
+  <!-- Google Drive API -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
+  <script>
+    // Google Drive API Konfigürasyonu
+    window.GOOGLE_DRIVE_CONFIG = {
+      // 🔑 BU ALANLAR localStorage'dan yüklenir:
+      API_KEY: 'YOUR_API_KEY_HERE', // ← localStorage'dan yüklenecek
+      CLIENT_ID: 'YOUR_CLIENT_ID_HERE', // ← localStorage'dan yüklenecek
+      
+      // Bu alanları değiştirmeyin:
+      DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+      SCOPES: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly'
+    };
+    
+    // localStorage'dan Google API ayarlarını yükle
+    function loadGoogleApiSettings() {
+      const savedApiKey = localStorage.getItem('googleDriveApiKey');
+      const savedClientId = localStorage.getItem('googleDriveClientId');
+      
+      if (savedApiKey && savedApiKey !== 'YOUR_API_KEY_HERE') {
+        window.GOOGLE_DRIVE_CONFIG.API_KEY = savedApiKey;
+        console.log('✅ Google API Key localStorage\'dan yüklendi');
+      }
+      
+      if (savedClientId && savedClientId !== 'YOUR_CLIENT_ID_HERE') {
+        window.GOOGLE_DRIVE_CONFIG.CLIENT_ID = savedClientId;
+        console.log('✅ Google Client ID localStorage\'dan yüklendi');
+      }
+      
+      // Eğer her ikisi de varsa, API'yi initialize et
+      if (savedApiKey && savedClientId) {
+        console.log('🚀 Google Drive API hazır!');
+      }
+    }
+    
+    // Sayfa yüklendiğinde ayarları yükle
+    document.addEventListener('DOMContentLoaded', loadGoogleApiSettings);
+  </script>
+  
   <style>
+    /* Prompt Şablon Butonları */
+    .prompt-sablon-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    
+    .prompt-sablon-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transform: translateY(-1px);
+    }
+    
+    .prompt-sablon-item strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-size: 13px;
+    }
+    
+    .prompt-sablon-item p {
+      margin: 5px 0;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.4;
+    }
+    
+    .sablon-buttons {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .btn-mini {
+      padding: 5px 10px;
+      font-size: 11px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    
+    .btn-mini:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    
+    .btn-mini:active {
+      transform: translateY(0);
+    }
+    
+    .btn-mini.btn-danger {
+      background: #dc3545;
+    }
+    
+    .btn-mini.btn-danger:hover {
+      background: #c82333;
+    }
+    
     /* Kısa Mesaj Sistemi */
     .toast-message {
       position: fixed;
@@ -554,7 +697,45 @@
   <div class="main-container">
     <!-- Header -->
     <div class="header">
-      <h2>Lipedem Hasta Takip Sistemi</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Lipedem Hasta Takip Sistemi</h2>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div id="googleDriveStatus" style="font-size: 12px; color: #666;">Drive: Bağlantı Yok</div>
+          <button onclick="showGptPanel()" style="
+            padding: 6px 10px; 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 11px;
+          ">🤖 GPT Yönetimi</button>
+          <button onclick="showGoogleApiConfig()" style="
+            padding: 6px 10px; 
+            background: #6c757d; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 11px;
+          ">⚙️ API Ayarları</button>
+          <button id="googleDriveBtn" onclick="signInToGoogle()" style="
+            padding: 8px 15px; 
+            background: #4285f4; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          ">
+            <span style="font-size: 14px;">💾</span>
+            Google Drive'a Bağlan
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Sol Sidebar -->
@@ -1174,15 +1355,15 @@
 
       <!-- Araçlar -->
       <div class="sidebar-section">
-        <h3>�️ Araçlar</h3>
+        <h3> ️ Araçlar</h3>
         <button onclick="toggleAramaConsole()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">🔍 Kart Ara & Filtrele</button>
         <button onclick="toggleVeritabaniConsole()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#20c997; color:white; border:none; border-radius:3px; cursor:pointer;">📊 Yemekler Veritabanı</button>
         <button onclick="yeniKartFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#17a2b8; color:white; border:none; border-radius:3px; cursor:pointer;">+ Yeni Kart</button>
         <button onclick="kartDuzenleFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#ffc107; color:black; border:none; border-radius:3px; cursor:pointer;">✏️ Kart Düzenle</button>
         <button onclick="kartSilFormGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">🗑️ Kart Sil</button>
-        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">� Manuel Eşleştirme</button>
-        <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">� Eşleşme Yasakları</button>
-        <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">� Lenf Masaj Takvimi</button>
+        <button onclick="manuelEslestirmePaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer;">  Manuel Eşleştirme</button>
+        <button onclick="eslesmemeRegeleriPaneliGoster()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">  Eşleşme Yasakları</button>
+        <button onclick="generateCustomLenfMasajTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer;">  Lenf Masaj Takvimi</button>
         <button onclick="generateCustomEgzersizTakvimi()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#007bff; color:white; border:none; border-radius:3px; cursor:pointer;">🏃 Egzersiz Takvimi</button>
         <input type="file" id="cokluPdfInput" multiple accept=".pdf" style="display:none" onchange="processCokluPdf(this.files)">
         <button onclick="document.getElementById('cokluPdfInput').click()" style="width:100%; margin-bottom:5px; padding:6px; font-size:11px; background:#6f42c1; color:white; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">📁 Çoklu PDF Yükle</button>
@@ -5984,71 +6165,39 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const listData = await listRes.json();
         const mevcutListe = JSON.parse(decodeBase64UTF8(listData.content));
         
-        // Debug: Mevcut liste içeriğini kontrol et
-        console.log('📋 Mevcut liste:', mevcutListe);
-        console.log('📋 Liste uzunluğu:', mevcutListe.length);
-        
         // Liste format kontrolü - hem eski hem yeni formatı destekle
         let yeniListe;
         const ilkEleman = mevcutListe.length > 0 ? mevcutListe[0] : null;
         const yeniFormatKullan = ilkEleman && typeof ilkEleman === 'object' && ilkEleman.file;
         
-        console.log('📋 İlk eleman:', ilkEleman);
-        console.log('📋 Yeni format kullanılacak mı?', yeniFormatKullan);
-        
         if (yeniFormatKullan) {
           // Yeni format: obje array
-          console.log('📋 Yeni format kullanılıyor...');
-          yeniListe = mevcutListe.filter(item => item && item.file && item.file !== dosyaAdi);
-          console.log('📋 Filtrelenmiş liste (eklenmeden önce):', yeniListe);
-          
+          yeniListe = mevcutListe.filter(item => item.file !== dosyaAdi);
           yeniListe.push({
             file: dosyaAdi,
             tags: tags
           });
-          
-          console.log('📋 Yeni eklenen dosya:', dosyaAdi);
-          console.log('📋 Final liste (sort öncesi):', yeniListe);
-          
-          // Güvenli sort - file property'si olan elemanları kontrol et
-          yeniListe.sort((a, b) => {
-            if (!a.file || !b.file) return 0;
-            return a.file.localeCompare(b.file, 'tr-TR');
-          });
+          yeniListe.sort((a, b) => a.file.localeCompare(b.file, 'tr-TR'));
         } else {
           // Eski format: string array - yeni formata dönüştür
-          console.log('📋 Eski format dönüştürülüyor...');
           yeniListe = mevcutListe
             .filter(item => {
-              const fileName = typeof item === 'string' ? item : (item && item.file);
-              return fileName && fileName !== dosyaAdi;
+              const fileName = typeof item === 'string' ? item : item.file;
+              return fileName !== dosyaAdi;
             })
             .map(item => {
               if (typeof item === 'string') {
                 return { file: item, tags: [] };
               }
-              return item && item.file ? item : null;
-            })
-            .filter(item => item !== null); // null elemanları temizle
-          
-          console.log('📋 Dönüştürülmüş liste (eklenmeden önce):', yeniListe);
+              return item;
+            });
           
           yeniListe.push({
             file: dosyaAdi,
             tags: tags
           });
-          
-          console.log('📋 Yeni eklenen dosya:', dosyaAdi);
-          console.log('📋 Final liste (sort öncesi):', yeniListe);
-          
-          // Güvenli sort - file property'si olan elemanları kontrol et
-          yeniListe.sort((a, b) => {
-            if (!a.file || !b.file) return 0;
-            return a.file.localeCompare(b.file, 'tr-TR');
-          });
+          yeniListe.sort((a, b) => a.file.localeCompare(b.file, 'tr-TR'));
         }
-        
-        console.log('📋 FINAL LİSTE (GitHub\'a gönderilecek):', yeniListe);
 
         // Güncellenmiş listeyi yükle
         const yeniListeContent = encodeUTF8ToBase64(yeniListe);
@@ -6638,7 +6787,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         tumKonsollarıKapat();
         
         console.log('👤 Yeni sistemde hasta seçiliyor:', hastaBilgi.isim);
-        console.log('� GitHub\'dan hasta bilgileri alınıyor:', hastaBilgi.isim);
+        console.log('  GitHub\'dan hasta bilgileri alınıyor:', hastaBilgi.isim);
         
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
@@ -6875,7 +7024,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
-    function yeniHastaFormu() {
+    async function yeniHastaFormu() {
       console.log('🆕 Yeni hasta ekleme başlatıldı (YENİ SİSTEM)');
       
       // Yeni hasta ismini iste
@@ -6895,19 +7044,24 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // ARTIK KARİKATER DÜZELTMESİ YAPMA - OLDUĞU GİBİ KULLAN
       const duzeltilmisIsim = temizIsim;
       
-      // Aynı isimde hasta var mı kontrol et (hem eski hem yeni sistemde)
-      const mevcutHastaEski = hastalar.find(h => h && h.isim && h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
-      if (mevcutHastaEski) {
-        alert('Bu isimde bir hasta zaten mevcut! (Eski sistem)');
+      // Sadece AKTIF (silinmemiş) hastalarda aynı isim kontrolü yap
+      // GitHub'dan güncel hasta listesini al
+      const guncelHastaListesi = await hastaListesiYukle();
+      
+      // Aynı isimde AKTIF hasta var mı kontrol et
+      const mevcutHasta = guncelHastaListesi.find(h => 
+        h && 
+        h.isim && 
+        h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase() &&
+        !h.arsiv  // Arşivlenmemiş olanları kontrol et
+      );
+      
+      if (mevcutHasta) {
+        alert(`⚠️ Bu isimde bir hasta zaten mevcut!\n\nHasta: ${mevcutHasta.isim}\n\n💡 İpucu: Eğer bu hastayı sildiniz ve yeniden eklemek istiyorsanız, önce arşivden tamamen temizlenmesi gerekebilir.`);
         return;
       }
       
-      // Yeni sistemde de kontrol et
-      const mevcutHastaYeni = hastaListesi.find(h => h && h.isim && h.isim.toLowerCase() === duzeltilmisIsim.toLowerCase());
-      if (mevcutHastaYeni) {
-        alert('Bu isimde bir hasta zaten mevcut! (Yeni sistem)');
-        return;
-      }
+      console.log('✅ İsim kontrolü geçti, hasta eklenebilir:', duzeltilmisIsim);
       
       // Yeni hasta oluştur
       const yeniHasta = {
@@ -7859,7 +8013,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             </div>
             <div style="display: flex; gap: 5px;">
               ${!hafta.kilitli ? `
-                <button onclick="haftaKaydet(${i})" class="kayit-btn" style="padding: 5px 12px; font-size: 12px;">� Kilitle</button>
+                <button onclick="haftaKaydet(${i})" class="kayit-btn" style="padding: 5px 12px; font-size: 12px;">  Kilitle</button>
               ` : `
                 <button class="kayit-btn saved" style="padding: 5px 12px; font-size: 12px;">🔒 Kilitli</button>
                 <button onclick="haftaKilidiAc(${i})" class="kilit-ac-btn" style="padding: 5px 10px; font-size: 11px;">🔓 Kilidi Aç</button>
@@ -7871,90 +8025,219 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             </div>
           </div>
           
-          <!-- Ana İçerik - Horizontal Layout (2 kolon: PDF ve Açıklama) -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-            
-            <!-- PDF Bölümü -->
-            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;" class="${hafta.kilitli ? 'locked-area' : ''}">
-              <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
-              <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
-                     style="width: 100%; margin-bottom: 10px; font-size: 12px;" ${hafta.kilitli ? 'disabled' : ''}>
-              ${hafta.pdf || hafta.pdfYolu ? `
-                <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
-                  ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
-                  ${hafta.pdfOrijinalIsim && hafta.pdfName && hafta.pdfOrijinalIsim !== hafta.pdfName ? `
-                    <div style="color: #6c757d; font-size: 11px; margin-top: 2px;">
-                      📁 Güvenli ad: ${hafta.pdfName}
-                    </div>
-                  ` : ''}
-                  <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
-                    📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
-                  </div>
-                  <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
-                    📅 Yüklenme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}
-                  </div>
-                  ${hafta.githubUrl || hafta.githubLink ? `
-                    <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #c3e6cb;">
-                      <a href="javascript:void(0)" onclick="pdfGoruntule('${hafta.indirmeUrl || hafta.githubRawLink || hafta.githubUrl}')" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                        <span style="font-size: 12px;">👁️</span> PDF Görüntüle
-                      </a>
-                      <span style="margin: 0 5px; color: #dee2e6;">|</span>
-                      <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #666; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                        <span style="font-size: 12px;">🔗</span> GitHub'da Görüntüle
-                      </a>
-                      ${hafta.indirmeUrl || hafta.githubRawLink ? `
-                        <span style="margin: 0 5px; color: #dee2e6;">|</span>
-                        <a href="javascript:void(0)" onclick="pdfIndir('${hafta.indirmeUrl || hafta.githubRawLink}', '${hafta.pdfOrijinalIsim || hafta.pdfName}')" style="color: #28a745; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                          <span style="font-size: 12px;">💾</span> İndir
-                        </a>
-                      ` : ''}
-                    </div>
-                  ` : ''}
+          <!-- Ana İçerik - Modern Layout -->
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 15px; margin-bottom: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+              <!-- PDF Bölümü -->
+              <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;" class="${hafta.kilitli ? 'locked-area' : ''}">
+                <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 14px;">📄 PDF</h4>
+                
+                <!-- Google Drive Entegrasyonu -->
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                  <button onclick="drivedenPdfYukle(${i})" 
+                          style="
+                            flex: 1;
+                            padding: 8px 12px; 
+                            background: linear-gradient(135deg, #4285f4, #34a853); 
+                            color: white; 
+                            border: none; 
+                            border-radius: 6px; 
+                            cursor: pointer;
+                            font-size: 12px;
+                            font-weight: bold;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                          " 
+                          ${hafta.kilitli ? 'disabled' : ''}
+                          title="Google Drive'dan ${haftaNo}. hafta PDF'ini otomatik yükle">
+                    <span>☁️</span> Drive'dan Yükle
+                  </button>
+                  
+                  <button onclick="googleApiDurum()" 
+                          style="
+                            padding: 8px 10px;
+                            background: #f8f9fa;
+                            color: #495057;
+                            border: 1px solid #dee2e6;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 11px;
+                            margin-right: 5px;
+                          "
+                          title="Google Drive bağlantı durumu">
+                    ⚙️
+                  </button>
+                  
+                  <button onclick="showOAuthTroubleshooting()" 
+                          style="
+                            padding: 8px 10px;
+                            background: #fff3cd;
+                            color: #856404;
+                            border: 1px solid #ffeaa7;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 11px;
+                          "
+                          title="OAuth hatası çözümü">
+                    🔧
+                  </button>
                 </div>
-              ` : '<div style="color: #666; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px;">📄 PDF henüz yüklenmedi</div>'}
-            </div>
-            
-            <!-- Tarif Kartları Bölümü - GİZLENDİ -->
-            <div style="display: none; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-              <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
-              <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
-                     onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
-              <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
-            </div>
-            
-            <!-- Açıklama Bölümü -->
-            <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;" class="${hafta.kilitli ? 'locked-area' : ''}">
-              <h4 style="margin: 0 0 10px 0; color: #0c5460; font-size: 14px;">📝 Açıklama</h4>
-              <input type="text" id="aciklama_${i}" value="${hafta.aciklama||''}" 
-                     placeholder="Bu hafta hakkında not..." 
-                     style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; font-size: 12px;"
-                     onchange="aciklamaKaydet(${i})" ${hafta.kilitli ? 'readonly' : ''}>>
-            </div>
-          </div>
-          
-          <!-- GPT Mesajı - Grid'in Altında -->
-          <div style="margin-bottom: 20px;" class="${hafta.kilitli ? 'locked-area' : ''}">
-            <h4 style="margin: 0 0 10px 0; color: #dc3545; font-size: 16px;">💬 ${haftaNo}. Haftanın Mesajı</h4>
-            <textarea id="gptMesaj_${i}" rows="3" 
-                      style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;"
-                      placeholder="Bu hafta için GPT mesajı veya not..."
-                      ${hafta.kilitli ? 'disabled' : ''}>${hafta.gptMesaj||''}</textarea>
-            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <button onclick="gptMesajKaydet(${i})" style="padding: 8px 15px; font-size: 12px;" ${hafta.kilitli ? 'disabled' : ''}>💾 Kaydet</button>
-                <button onclick="kopyalaGptMesaj(${i})" style="padding: 8px 15px; margin-left: 10px; font-size: 12px;">📋 Kopyala</button>
+                
+                <!-- Dosya Yükleme -->
+                <input type="file" accept="application/pdf" onchange="pdfYukleHafta(${i}, this)" 
+                       style="width: 100%; margin-bottom: 10px; font-size: 12px;" ${hafta.kilitli ? 'disabled' : ''}>
+                ${hafta.pdf || hafta.pdfYolu ? `
+                  <div style="color: green; font-weight: bold; font-size: 12px; background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">
+                    ✅ <strong style="color: #155724; font-size: 13px;">${hafta.pdfOrijinalIsim || hafta.pdfName || 'hafta.pdf'}</strong>
+                    ${hafta.pdfOrijinalIsim && hafta.pdfName && hafta.pdfOrijinalIsim !== hafta.pdfName ? `
+                      <div style="color: #6c757d; font-size: 11px; margin-top: 2px;">
+                        📁 Güvenli ad: ${hafta.pdfName}
+                      </div>
+                    ` : ''}
+                    <div style="color: #666; font-weight: normal; margin-top: 5px; font-size: 11px;">
+                      📊 ${hafta.tarifler ? hafta.tarifler.length : 0} tarif tespit edildi
+                    </div>
+                    <div style="color: #495057; font-weight: normal; margin-top: 3px; font-size: 10px;">
+                      📅 Yüklenme: ${hafta.kayitTarihi ? new Date(hafta.kayitTarihi).toLocaleString('tr-TR') : 'Bilinmiyor'}
+                    </div>
+                    ${hafta.githubUrl || hafta.githubLink ? `
+                      <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #c3e6cb;">
+                        <a href="javascript:void(0)" onclick="pdfGoruntule('${hafta.indirmeUrl || hafta.githubRawLink || hafta.githubUrl}')" style="color: #0066cc; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                          <span style="font-size: 12px;">👁️</span> PDF Görüntüle
+                        </a>
+                        <span style="margin: 0 5px; color: #dee2e6;">|</span>
+                        <a href="${hafta.githubUrl || hafta.githubLink}" target="_blank" style="color: #666; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                          <span style="font-size: 12px;">🔗</span> GitHub'da Görüntüle
+                        </a>
+                        ${hafta.indirmeUrl || hafta.githubRawLink ? `
+                          <span style="margin: 0 5px; color: #dee2e6;">|</span>
+                          <a href="javascript:void(0)" onclick="pdfIndir('${hafta.indirmeUrl || hafta.githubRawLink}', '${hafta.pdfOrijinalIsim || hafta.pdfName}')" style="color: #28a745; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                            <span style="font-size: 12px;">💾</span> İndir
+                          </a>
+                        ` : ''}
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : '<div style="color: #666; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px;">📄 PDF henüz yüklenmedi</div>'}
               </div>
-              <div>
-                <button onclick="zipEslesenGorseller(${i})" style="
-                  padding: 8px 12px; 
-                  font-size: 12px; 
-                  background: #17a2b8; 
+
+              <!-- Tarif Kartları Bölümü - GİZLENDİ (korundu) -->
+              <div style="display: none; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">🖼️ Tarif Kartları</h4>
+                <input type="file" accept="image/jpeg,image/jpg,image/png" multiple 
+                       onchange="tarifKartYukleHafta(${i}, this)" style="width: 100%; font-size: 12px;">
+                <div id="haftaKartGorsel_${i}" style="margin-top: 10px;"></div>
+              </div>
+
+              <!-- Açıklama Bölümü -->
+              <div style="padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;" class="${hafta.kilitli ? 'locked-area' : ''}">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                  <div style="background: #17a2b8; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">📝</div>
+                  <h4 style="margin: 0; color: #0c5460; font-size: 14px;">Açıklama</h4>
+                </div>
+                <textarea id="aciklama_${i}" 
+                          style="width: 100%; height: 70px; padding: 8px; border: 1px solid #bee5eb; border-radius: 6px; font-size: 12px; resize: vertical; background: #f8fdff;"
+                          placeholder="Bu hafta hakkında kısa not..."
+                          onchange="aciklamaKaydet(${i})" ${hafta.kilitli ? 'readonly' : ''}>${hafta.aciklama||''}</textarea>
+              </div>
+            </div>
+
+            <!-- GPT Analiz Paneli -->
+            <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 3px solid #007bff;" class="${hafta.kilitli ? 'locked-area' : ''}">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
+                <div style="background: #007bff; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">🤖</div>
+                <h4 style="margin: 0; color: #007bff; font-size: 16px;">GPT Beslenme Analizi</h4>
+              </div>
+
+              <!-- Prompt Seçenekleri -->
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+                    <input type="checkbox" id="genelPrompt_${i}" checked>
+                    <span>🎨 Genel</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+                    <input type="checkbox" id="haftalikPrompt_${i}" checked>
+                    <span>📅 ${i+1}. Hafta</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+                    <input type="checkbox" id="hastaPrompt_${i}" checked>
+                    <span>👤 Hasta</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+                    <input type="checkbox" id="oncekiAnalizler_${i}" ${i > 0 ? 'checked' : ''}>
+                    <span>📚 Önceki</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+                    <input type="checkbox" id="ekPrompt_${i}" checked>
+                    <span>📝 Ek Not</span>
+                  </label>
+                </div>
+                <button onclick="gptAnalizeEt(${i})" style="
+                  background: linear-gradient(135deg, #007bff, #0056b3); 
                   color: white; 
                   border: none; 
-                  border-radius: 4px; 
-                  cursor: pointer;
+                  padding: 10px 15px; 
+                  border-radius: 6px; 
+                  font-size: 12px;
                   font-weight: bold;
-                " title="Haftalık PDF, eşleşen tarif kartları ve GPT mesajını tek ZIP dosyasında indirir${hafta.kilitli ? ' (Kilitli haftada da kullanılabilir)' : ''}">🗜️ ZIP İndir</button>
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  transition: transform 0.2s ease;
+                " ${hafta.kilitli ? 'disabled' : ''}>
+                  <span>🚀</span> GPT ile Analiz Et
+                </button>
+              </div>
+
+              <!-- Ek Bilgiler -->
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #007bff; font-size: 12px;">📝 Ek Bilgiler:</label>
+                <textarea id="ekNotlar_${i}" 
+                          style="width: 100%; height: 60px; padding: 8px; border: 1px solid #b8daff; border-radius: 6px; font-size: 12px; resize: vertical; background: #f8fbff;"
+                          placeholder="Ek bilgiler, hastanın durumu..."
+                          onchange="ekNotlarKaydetVeTemizle(${i})"
+                          ${hafta.kilitli ? 'disabled' : ''}>${hafta.ekNotlar||''}</textarea>
+              </div>
+
+              <!-- GPT Sonuç -->
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #007bff; font-size: 12px;">🎯 GPT Analiz Sonucu:</label>
+                <textarea id="gptMesaj_${i}" 
+                          style="width: 100%; height: 100px; padding: 10px; border: 1px solid #b8daff; border-radius: 6px; font-size: 12px; resize: vertical; background: #ffffff; line-height: 1.4;"
+                          placeholder="GPT analiz sonucu burada görünecek..."
+                          onchange="gptMesajKaydet(${i}, 'ana')"
+                          ${hafta.kilitli ? 'disabled' : ''}>${hafta.gptMesaj||''}</textarea>
+              </div>
+
+              <!-- GPT Mesajı -->
+              <div>
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #dc3545; font-size: 12px;">💬 GPT Mesajı</label>
+                <textarea id="gptMesajSync_${i}" 
+                          style="width: 100%; height: 80px; padding: 10px; border: 1px solid #f5c6cb; border-radius: 6px; font-size: 12px; resize: vertical; background: #fef5f5; line-height: 1.4;"
+                          placeholder="GPT mesajı veya not..."
+                          onchange="gptMesajKaydet(${i}, 'sync')"
+                          ${hafta.kilitli ? 'disabled' : ''}>${hafta.gptMesaj||''}</textarea>
+                
+                <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; gap: 8px;">
+                    <button onclick="gptMesajKaydet(${i}, 'manuel')" style="background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" ${hafta.kilitli ? 'disabled' : ''}>💾 Kaydet</button>
+                    <button onclick="kopyalaGptMesaj(${i})" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">📋 Kopyala</button>
+                  </div>
+                  <button onclick="zipEslesenGorseller(${i})" style="
+                    background: #17a2b8; 
+                    color: white; 
+                    border: none; 
+                    padding: 8px 12px; 
+                    border-radius: 4px; 
+                    font-size: 11px; 
+                    cursor: pointer;
+                    font-weight: bold;
+                  " title="ZIP İndir">🗜️ ZIP</button>
+                </div>
               </div>
             </div>
           </div>
@@ -11549,7 +11832,7 @@ function duzenleHafta(i) {
   return sonuc;
 }
 
-    function gptMesajKaydet(i) {
+    function gptMesajKaydet(i, kaynak = 'ana') {
       const hafta = getHaftaListesi()[i];
       
       // Kilit kontrolü
@@ -11557,8 +11840,29 @@ function duzenleHafta(i) {
         alert('🔒 Bu hafta kilitli! GPT mesajını değiştirmek için önce kilidi açın.');
         return;
       }
-      
-      hafta.gptMesaj = document.getElementById('gptMesaj_' + i).value;
+
+      const anaTextarea = document.getElementById('gptMesaj_' + i);
+      const syncTextarea = document.getElementById('gptMesajSync_' + i);
+
+      let gptMesaj = '';
+
+      if (kaynak === 'sync' && syncTextarea) {
+        gptMesaj = syncTextarea.value;
+      } else if (anaTextarea) {
+        gptMesaj = anaTextarea.value;
+      } else if (syncTextarea) {
+        gptMesaj = syncTextarea.value;
+      }
+
+      if (anaTextarea && kaynak !== 'ana') {
+        anaTextarea.value = gptMesaj;
+      }
+
+      if (syncTextarea && kaynak !== 'sync') {
+        syncTextarea.value = gptMesaj;
+      }
+
+      hafta.gptMesaj = gptMesaj;
       saveToStorage();
       
       console.log('✅ GPT mesajı kaydedildi hafta:', i + 1);
@@ -11645,7 +11949,11 @@ function duzenleHafta(i) {
     }
 
     function kopyalaGptMesaj(i) {
-      const textarea = document.getElementById('gptMesaj_' + i);
+      const textarea = document.getElementById('gptMesajSync_' + i) || document.getElementById('gptMesaj_' + i);
+      if (!textarea) {
+        alert('Kopyalanacak GPT mesajı bulunamadı.');
+        return;
+      }
       textarea.select();
       textarea.setSelectionRange(0, 99999); // mobile uyumlu
       document.execCommand('copy');
@@ -15947,26 +16255,3570 @@ ${mesajlar.join('\n')}
     </div>
   </div>
 
+  <!-- GPT Yönetim Paneli (Index.html'den Tam Sistem) -->
+  <!-- GPT Yönetim Paneli (İndex.html'den Tam Sistem) -->
+  <div id="gptPanel" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10001;" onclick="hideGptPanel(event)">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; padding: 0; width: 90%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+      
+      <!-- Header -->
+      <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 12px 12px 0 0; flex-shrink: 0;">
+        <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">🤖</span>
+          GPT Prompt Yönetimi
+        </h2>
+        <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Beslenme listesi yorumlama için prompt şablonlarını yönetin</p>
+      </div>
+
+      <!-- İçerik -->
+      <div style="overflow-y: auto; flex: 1; padding: 20px;">
+        
+        <!-- GPT API Ayarları -->
+        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+          <h3 style="margin: 0 0 15px 0; color: #007bff; display: flex; align-items: center; gap: 8px;">
+            <span>🔑</span> GPT API Ayarları
+          </h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">OpenAI API Key:</label>
+              <input type="password" id="gptApiKey" placeholder="sk-..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Claude API Key:</label>
+              <input type="password" id="claudeApiKey" placeholder="sk-ant-..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Google API Key:</label>
+              <input type="password" id="geminiApiKey" placeholder="AIza..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Model:</label>
+              <select id="gptModel" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                <optgroup label="OpenAI">
+                  <option value="gpt-4o-mini">GPT-4o Mini (Önerilen)</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                  <option value="gpt-4o-audio-preview">GPT-4o Audio Preview</option>
+                  <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </optgroup>
+                <optgroup label="Anthropic">
+                  <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Önerilen)</option>
+                  <option value="claude-3-opus">Claude 3 Opus</option>
+                  <option value="claude-3-5-haiku">Claude 3.5 Haiku (Hızlı)</option>
+                </optgroup>
+                <optgroup label="Google Gemini">
+                  <option value="gemini-pro-latest">Gemini Pro Latest (Önerilen)</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (En Yeni)</option>
+                  <option value="gemini-flash-latest">Gemini Flash Latest (Hızlı)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Yeni + Hızlı)</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <!-- Prompt Ayarları -->
+            <div>
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Giriş Prompt:</label>
+              <textarea id="girisPrompt" placeholder="Lütfen aşağıdaki hasta bilgilerini analiz edin:" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 60px; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="margin-top: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Sonuç Prompt:</label>
+              <textarea id="sonucPrompt" placeholder="Detaylı bir analiz raporu hazırlayın." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; height: 60px; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Google Drive Ayarları -->
+            <div style="margin-top: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Google Drive API Key:</label>
+              <input type="password" id="googleDriveApiKey" placeholder="AIza..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+            </div>
+            
+            <div style="margin-top: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">Google Drive Client ID:</label>
+              <input type="text" id="googleDriveClientId" placeholder="123456789..." style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Genel Prompt Şablonları -->
+        <div style="margin-bottom: 25px;">
+          <h3 style="margin: 0 0 15px 0; color: #28a745; display: flex; align-items: center; gap: 8px;">
+            <span>🎨</span> Genel Prompt Şablonları
+          </h3>
+          
+          <!-- Yeni Şablon Ekleme Formu -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #f0f8f0; border-radius: 8px; border: 1px solid #c3e6c3;">
+            <div style="display: grid; gap: 10px;">
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="yeniGenelBaslik" placeholder="Şablon Başlığı (örn: Diyabet Yönetimi)" style="flex: 1; padding: 8px; border: 1px solid #28a745; border-radius: 4px; background: #f8fff8;">
+                <button onclick="yeniGenelPrompt()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">+ Ekle</button>
+              </div>
+              <input type="text" id="yeniGenelAciklama" placeholder="Açıklama (isteğe bağlı)" style="width: 100%; padding: 8px; border: 1px solid #28a745; border-radius: 4px; background: #f8fff8;">
+              <textarea id="yeniGenelPrompt" placeholder="Prompt içeriği..." style="width: 100%; padding: 8px; border: 1px solid #28a745; border-radius: 4px; background: #f8fff8; height: 80px; resize: vertical;"></textarea>
+            </div>
+          </div>
+
+          <!-- Split View Container -->
+          <div style="display: flex; height: 450px; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+            
+            <!-- Sol Panel - Şablon Listesi -->
+            <div style="width: 250px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column;">
+              <div style="padding: 15px; background: #fff; border-bottom: 1px solid #dee2e6;">
+                <strong style="color: #28a745;">🎨 Şablon Listesi</strong>
+                <button onclick="manualLoadPromptlarFromGithub()" style="margin-top: 10px; width: 100%; padding: 6px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 GitHub'dan Yükle</button>
+              </div>
+              <div id="genelPromptlarListe" style="flex: 1; overflow-y: auto; padding: 10px;">
+                <!-- Şablonlar buraya yüklenecek -->
+              </div>
+            </div>
+
+            <!-- Sağ Panel - Seçili Şablon Detayları -->
+            <div style="flex: 1; display: flex; flex-direction: column; background: white;">
+              <div style="padding: 15px; background: #fff; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+                <strong id="seciliSablonBaslik" style="color: #28a745;">Şablon seçiniz</strong>
+                <button id="sablonSilBtn" onclick="seciliSablonuSil()" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">🗑️ Sil</button>
+              </div>
+              <div style="flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                
+                <!-- Şablon Düzenleme Formu -->
+                <div id="sablonDetayForm" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+                  <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Şablon Başlığı:</label>
+                    <input type="text" id="seciliSablonBaslikInput" style="width: 100%; padding: 10px; border: 1px solid #28a745; border-radius: 4px; background: #f8fff8; font-size: 14px;">
+                  </div>
+                  
+                  <!-- Prompt İçeriği -->
+                  <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Prompt İçeriği:</label>
+                    <textarea id="seciliSablonIcerikInput" style="flex: 1; padding: 15px; border: 1px solid #28a745; border-radius: 4px; resize: none; background: #f8fff8; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; line-height: 1.5;" 
+                              placeholder="Genel kullanım için prompt şablonu içeriğini buraya yazınız...&#10;&#10;Örnek:&#10;- Hasta profili: [YAŞI, CİNSİYET, SAĞLIK DURUMU]&#10;- Beslenme hedefi: [KILO VER/ARTTIR/KORU]&#10;- Özel diyet gereksinimleri: [DİYABET/HİPERTANSİYON/ALERJİ]"></textarea>
+                  </div>
+
+                  <!-- Kaydet Butonları -->
+                  <div style="display: flex; justify-content: end; gap: 10px; padding-top: 10px; border-top: 1px solid #dee2e6;">
+                    <button onclick="seciliSablonuKaydet()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">💾 Kaydet (localStorage)</button>
+                    <button onclick="seciliSablonuGithubKaydet()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">☁️ Kaydet (GitHub)</button>
+                  </div>
+                </div>
+
+                <!-- Şablon Seçilmediğinde Gösterilen Mesaj -->
+                <div id="sablonSecinizMesaj" style="text-align: center; color: #6c757d; padding: 50px 20px;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">🎨</div>
+                  <h4 style="margin-bottom: 10px; color: #28a745;">Genel Prompt Şablonları</h4>
+                  <p style="margin: 0; line-height: 1.6;">Sol panelden bir şablon seçerek başlığını ve prompt içeriğini düzenleyebilirsiniz.</p>
+                  <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
+                    💡 Genel şablonlar farklı hasta tiplerinde yeniden kullanılabilir prompt yapıları oluşturmanızı sağlar.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Haftalık Promptlar -->
+        <div style="margin-bottom: 25px;">
+          <h3 style="margin: 0 0 15px 0; color: #ffc107; display: flex; align-items: center; gap: 8px;">
+            <span>📅</span> Haftalık Prompt Temaları
+          </h3>
+          
+          <!-- Yeni Hafta Ekleme Formu -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffecb3;">
+            <div style="display: grid; gap: 10px;">
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="yeniHaftalikBaslik" placeholder="Tema Başlığı (örn: Antiinflamatuar Beslenme)" style="flex: 1; padding: 8px; border: 1px solid #ffcc02; border-radius: 4px; background: #fffde7;">
+                <button onclick="yeniHaftalikPrompt()" style="padding: 8px 15px; background: #ffc107; color: #212529; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">+ Ekle</button>
+              </div>
+              <input type="text" id="yeniHaftalikAciklama" placeholder="Açıklama (isteğe bağlı)" style="width: 100%; padding: 8px; border: 1px solid #ffcc02; border-radius: 4px; background: #fffde7;">
+              <textarea id="yeniHaftalikPrompt" placeholder="Haftalık tema prompt içeriği..." style="width: 100%; padding: 8px; border: 1px solid #ffcc02; border-radius: 4px; background: #fffde7; height: 80px; resize: vertical;"></textarea>
+            </div>
+          </div>
+
+          <!-- Split View Container -->
+          <div style="display: flex; height: 500px; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+            
+            <!-- Sol Panel - Hafta Listesi -->
+            <div style="width: 250px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column;">
+              <div style="padding: 15px; background: #fff; border-bottom: 1px solid #dee2e6;">
+                <strong style="color: #ffc107;">📋 Hafta Listesi</strong>
+                <button onclick="manualLoadPromptlarFromGithub()" style="margin-top: 10px; width: 100%; padding: 6px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 GitHub'dan Yükle</button>
+              </div>
+              <div id="haftalikPromptlarListe" style="flex: 1; overflow-y: auto; padding: 10px;">
+                <!-- Haftalar buraya yüklenecek -->
+              </div>
+            </div>
+
+            <!-- Sağ Panel - Seçili Hafta Detayları -->
+            <div style="flex: 1; display: flex; flex-direction: column; background: white;">
+              <div style="padding: 15px; background: #fff; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+                <strong id="seciliHaftaBaslik" style="color: #ffc107;">Hafta seçiniz</strong>
+                <button id="haftaSilBtn" onclick="seciliHaftayiSil()" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">🗑️ Sil</button>
+              </div>
+              <div style="flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                
+                <!-- Hafta Başlığı Düzenleme -->
+                <div id="haftaDetayForm" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+                  <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Hafta Başlığı:</label>
+                    <input type="text" id="seciliHaftaBaslikInput" style="width: 100%; padding: 10px; border: 1px solid #ffcc02; border-radius: 4px; background: #fffde7; font-size: 14px;">
+                  </div>
+                  
+                  <!-- Prompt İçeriği -->
+                  <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Prompt İçeriği:</label>
+                    <textarea id="seciliHaftaIcerikInput" style="flex: 1; padding: 15px; border: 1px solid #ffcc02; border-radius: 4px; resize: none; background: #fffde7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; line-height: 1.5;" 
+                              placeholder="Bu hafta için özel prompt içeriğini buraya yazınız...&#10;&#10;Örnek:&#10;- Antiinflamatuar besinlere odaklan&#10;- Omega-3 kaynakları öner&#10;- İşlenmiş gıdalardan kaçınmayı vurgula"></textarea>
+                  </div>
+
+                  <!-- Kaydet Butonları -->
+                  <div style="display: flex; justify-content: end; gap: 10px; padding-top: 10px; border-top: 1px solid #dee2e6;">
+                    <button onclick="seciliHaftayiKaydet()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">💾 Kaydet (localStorage)</button>
+                    <button onclick="seciliHaftayiGithubKaydet()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">☁️ Kaydet (GitHub)</button>
+                  </div>
+                </div>
+
+                <!-- Hafta Seçilmediğinde Gösterilen Mesaj -->
+                <div id="haftaSecinizMesaj" style="text-align: center; color: #6c757d; padding: 50px 20px;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">📅</div>
+                  <h4 style="margin-bottom: 10px; color: #ffc107;">Haftalık Prompt Temaları</h4>
+                  <p style="margin: 0; line-height: 1.6;">Sol panelden bir hafta seçerek tema başlığını ve prompt içeriğini düzenleyebilirsiniz.</p>
+                  <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
+                    💡 Her hafta için özel beslenme teması belirleyerek hastalarınıza daha odaklı öneriler verebilirsiniz.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer - Sabit Alt Bar -->
+      <div style="background: #f8f9fa; padding: 15px 20px; border-radius: 0 0 12px 12px; border-top: 2px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
+        <div style="color: #6c757d; font-size: 12px;">
+          💡 Prompt şablonları otomatik localStorage'a kaydedilir
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="hideGptPanel()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">❌ Kapat</button>
+          <button onclick="saveGptSettings()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">💾 API Ayarlarını Kaydet</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- GPT Yönetimi JavaScript Fonksiyonları (Index.html'den Tam Sistem) -->
   <script>
-    // Global error handler - extension hatalarını suppress et
-    window.addEventListener('error', function(e) {
-      if (e.filename && e.filename.includes('content-all.js')) {
-        e.preventDefault();
-        return true;
-      }
-    });
+    // GPT Ayarları
+    const GPT_SETTINGS_KEY = 'gptSettings';
+    const GENEL_PROMPTLAR_KEY = 'genelPromptlar';
+    const HAFTALIK_PROMPTLAR_KEY = 'haftalikPromptlar';
     
-    // Promise rejection handler
-    window.addEventListener('unhandledrejection', function(e) {
-      if (e.reason && e.reason.message && e.reason.message.includes('Could not establish connection')) {
-        e.preventDefault();
-        return true;
+    // Base64 decode fonksiyonu (Türkçe karakter desteği ile)
+    function base64DecodeUnicode(base64) {
+      // Base64'ü binary string'e çevir
+      const binaryString = atob(base64);
+      // Binary string'i byte array'e çevir
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
+      // UTF-8 olarak decode et
+      const decoder = new TextDecoder('utf-8');
+      return decoder.decode(bytes);
+    }
+
+    // GitHub'dan prompt şablonlarını yükle
+    async function loadPromptlarFromGithub() {
+      try {
+        // GitHub token'ı anasayfadaki input'tan al
+        let token = localStorage.getItem('github_api_token');
+        
+        // Alternatif olarak githubSettings'ten de dene
+        if (!token) {
+          const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+          token = githubSettings.token;
+        }
+        
+        // Eğer hala yoksa, DOM'dan almayı dene
+        if (!token) {
+          const tokenInput = document.getElementById('githubToken');
+          if (tokenInput) {
+            token = tokenInput.value.trim();
+          }
+        }
+        
+        // GitHub repo bilgilerini al
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
+        const branch = githubSettings.branch || 'main';
+
+        console.log('Promptlar yükleniyor:', { owner, repo, branch, hasToken: !!token });
+
+        // Genel promptları yükle
+        try {
+          const genelResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/promptlar/genel_promptlar.json?ref=${branch}`, {
+            headers: token ? {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            } : {
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          
+          if (genelResponse.ok) {
+            const genelData = await genelResponse.json();
+            // Türkçe karakter desteği ile decode et
+            const genelContent = base64DecodeUnicode(genelData.content);
+            
+            // JSON parse et
+            const genelObj = JSON.parse(genelContent);
+            
+            // Eğer içerik tekrar JSON string ise bir kez daha parse et
+            const finalGenelObj = typeof genelObj === 'string' ? JSON.parse(genelObj) : genelObj;
+            
+            if (finalGenelObj.promptlar && Array.isArray(finalGenelObj.promptlar)) {
+              localStorage.setItem(GENEL_PROMPTLAR_KEY, JSON.stringify(finalGenelObj.promptlar));
+              console.log('✅ Genel promptlar GitHub\'dan yüklendi:', finalGenelObj.promptlar.length, 'adet');
+            }
+          }
+        } catch (err) {
+          console.warn('Genel promptlar yüklenemedi:', err);
+        }
+
+        // Haftalık promptları yükle
+        try {
+          const haftalikResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/promptlar/haftalik_promptlar.json?ref=${branch}`, {
+            headers: token ? {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            } : {
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          
+          if (haftalikResponse.ok) {
+            const haftalikData = await haftalikResponse.json();
+            // Türkçe karakter desteği ile decode et
+            const haftalikContent = base64DecodeUnicode(haftalikData.content);
+            
+            // JSON parse et
+            const haftalikObj = JSON.parse(haftalikContent);
+            
+            // Eğer içerik tekrar JSON string ise bir kez daha parse et
+            const finalHaftalikObj = typeof haftalikObj === 'string' ? JSON.parse(haftalikObj) : haftalikObj;
+            
+            if (finalHaftalikObj.promptlar && Array.isArray(finalHaftalikObj.promptlar)) {
+              localStorage.setItem(HAFTALIK_PROMPTLAR_KEY, JSON.stringify(finalHaftalikObj.promptlar));
+              console.log('✅ Haftalık promptlar GitHub\'dan yüklendi:', finalHaftalikObj.promptlar.length, 'adet');
+            }
+          }
+        } catch (err) {
+          console.warn('Haftalık promptlar yüklenemedi:', err);
+        }
+
+        return true;
+      } catch (error) {
+        console.error('GitHub\'dan prompt yükleme hatası:', error);
+        return false;
+      }
+    }
+    
+    // GPT Panel göster/gizle (Gelişmiş sistem)
+    async function showGptPanel() {
+      document.getElementById('gptPanel').style.display = 'block';
+      
+      // GitHub'dan promptları yükle
+      await loadPromptlarFromGithub();
+      
+      // Modal tamamen render edildikten sonra ayarları yükle
+      setTimeout(() => {
+        loadGptSettings();
+        renderGenelPromptlar();
+        renderHaftalikPromptlar();
+      }, 300);
+    }
+    
+    function hideGptPanel(event) {
+      if (event && event.target === event.currentTarget) {
+        document.getElementById('gptPanel').style.display = 'none';
+      } else if (!event) {
+        document.getElementById('gptPanel').style.display = 'none';
+      }
+    }
+
+    // Prompt Şablon Yönetimi
+    let genelPromptlar = [];
+    let haftalikPromptlar = [];
+    let seciliSablon = null;
+    let seciliHaftalikSablon = null;
+
+    function renderGenelPromptlar() {
+      const liste = document.getElementById('genelPromptlarListe');
+      if (!liste) return;
+      
+      // localStorage'dan yükle
+      genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+      
+      liste.innerHTML = '';
+      if (genelPromptlar.length === 0) {
+        liste.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Henüz genel prompt şablonu yok. GitHub\'dan yüklenecek...</p>';
+        return;
+      }
+      
+      genelPromptlar.forEach((sablon, index) => {
+        const div = document.createElement('div');
+        div.className = 'prompt-sablon-item';
+        div.innerHTML = `
+          <strong>${sablon.baslik || 'İsimsiz Prompt'}</strong>
+          <p>${sablon.icerik ? sablon.icerik.substring(0, 100) + '...' : 'İçerik yok'}</p>
+          <div class="sablon-buttons">
+            <button onclick="sablonGoruntule(${index}, 'genel')" class="btn-mini" style="background: #17a2b8;">👁️ Görüntüle</button>
+            <button onclick="sablonDuzenle(${index}, 'genel')" class="btn-mini" style="background: #ffc107; color: #000;">✏️ Düzenle</button>
+            <button onclick="sablonSil(${index}, 'genel')" class="btn-mini btn-danger">🗑️ Sil</button>
+          </div>
+        `;
+        liste.appendChild(div);
+      });
+    }
+
+    function renderHaftalikPromptlar() {
+      const liste = document.getElementById('haftalikPromptlarListe');
+      if (!liste) return;
+      
+      // localStorage'dan yükle
+      haftalikPromptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+      
+      liste.innerHTML = '';
+      if (haftalikPromptlar.length === 0) {
+        liste.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Henüz haftalık prompt şablonu yok. GitHub\'dan yüklenecek...</p>';
+        return;
+      }
+      
+      // Hafta numarasına göre sırala
+      haftalikPromptlar.sort((a, b) => (a.haftaNo || 0) - (b.haftaNo || 0));
+      
+      haftalikPromptlar.forEach((sablon, index) => {
+        const div = document.createElement('div');
+        div.className = 'prompt-sablon-item';
+        div.innerHTML = `
+          <strong>Hafta ${sablon.haftaNo || '?'}: ${sablon.baslik || 'İsimsiz Prompt'}</strong>
+          <p>${sablon.icerik ? sablon.icerik.substring(0, 100) + '...' : 'İçerik yok'}</p>
+          <div class="sablon-buttons">
+            <button onclick="sablonGoruntule(${index}, 'haftalik')" class="btn-mini" style="background: #17a2b8;">👁️ Görüntüle</button>
+            <button onclick="sablonDuzenle(${index}, 'haftalik')" class="btn-mini" style="background: #ffc107; color: #000;">✏️ Düzenle</button>
+            <button onclick="sablonSil(${index}, 'haftalik')" class="btn-mini btn-danger">🗑️ Sil</button>
+          </div>
+        `;
+        liste.appendChild(div);
+      });
+    }
+
+    // Prompt görüntüleme (sadece okuma modunda sağ panelde göster)
+    function sablonGoruntule(index, tip) {
+      const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+      const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+      
+      if (!promptlar[index]) return;
+      
+      const sablon = promptlar[index];
+      
+      // Tip'e göre element ID'lerini belirle
+      let baslikInput, icerikInput, formDiv, mesajDiv, kaydetBtn, baslikHeader, silBtn;
+      
+      if (tip === 'genel') {
+        baslikInput = document.getElementById('seciliSablonBaslikInput');
+        icerikInput = document.getElementById('seciliSablonIcerikInput');
+        formDiv = document.getElementById('sablonDetayForm');
+        mesajDiv = document.getElementById('sablonSecinizMesaj');
+        kaydetBtn = formDiv?.querySelector('button[onclick="seciliSablonuKaydet()"]');
+        silBtn = document.getElementById('sablonSilBtn');
+      } else if (tip === 'haftalik') {
+        baslikInput = document.getElementById('seciliHaftaBaslikInput');
+        icerikInput = document.getElementById('seciliHaftaIcerikInput');
+        formDiv = document.getElementById('haftaDetayForm');
+        mesajDiv = document.getElementById('haftaSecinizMesaj');
+        baslikHeader = document.getElementById('seciliHaftaBaslik');
+        kaydetBtn = formDiv?.querySelector('button[onclick="seciliHaftayiKaydet()"]');
+        silBtn = document.getElementById('haftaSilBtn');
+      }
+      
+      // Sağ paneldeki alanları doldur
+      if (baslikInput) baslikInput.value = sablon.baslik || '';
+      if (baslikHeader && tip === 'haftalik') baslikHeader.textContent = `📅 Hafta ${sablon.haftaNo || '?'}: ${sablon.baslik || 'Prompt'}`;
+      
+      if (icerikInput) {
+        icerikInput.value = sablon.icerik || '';
+        icerikInput.readOnly = true; // Sadece okuma
+        icerikInput.style.background = '#f0f0f0';
+      }
+      
+      // Formu göster, mesajı gizle
+      if (formDiv) formDiv.style.display = 'flex';
+      if (mesajDiv) mesajDiv.style.display = 'none';
+      
+      // Kaydet ve sil butonlarını gizle (sadece görüntüleme)
+      if (kaydetBtn) kaydetBtn.parentElement.style.display = 'none';
+      if (silBtn) silBtn.style.display = 'none';
+      
+      // Başlığı readonly yap
+      if (baslikInput) {
+        baslikInput.readOnly = true;
+        baslikInput.style.background = '#f0f0f0';
+      }
+      
+      // Geçici olarak kaydet
+      window.currentPromptView = { index, tip, mode: 'view' };
+    }
+    
+    // Prompt düzenleme (düzenleme modunda sağ panelde göster)
+    function sablonDuzenle(index, tip) {
+      const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+      const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+      
+      if (!promptlar[index]) return;
+      
+      const sablon = promptlar[index];
+      
+      // Tip'e göre element ID'lerini belirle
+      let baslikInput, icerikInput, formDiv, mesajDiv, kaydetBtn, baslikHeader, silBtn;
+      
+      if (tip === 'genel') {
+        baslikInput = document.getElementById('seciliSablonBaslikInput');
+        icerikInput = document.getElementById('seciliSablonIcerikInput');
+        formDiv = document.getElementById('sablonDetayForm');
+        mesajDiv = document.getElementById('sablonSecinizMesaj');
+        kaydetBtn = formDiv?.querySelector('button[onclick="seciliSablonuKaydet()"]');
+        silBtn = document.getElementById('sablonSilBtn');
+      } else if (tip === 'haftalik') {
+        baslikInput = document.getElementById('seciliHaftaBaslikInput');
+        icerikInput = document.getElementById('seciliHaftaIcerikInput');
+        formDiv = document.getElementById('haftaDetayForm');
+        mesajDiv = document.getElementById('haftaSecinizMesaj');
+        baslikHeader = document.getElementById('seciliHaftaBaslik');
+        kaydetBtn = formDiv?.querySelector('button[onclick="seciliHaftayiKaydet()"]');
+        silBtn = document.getElementById('haftaSilBtn');
+      }
+      
+      // Sağ paneldeki alanları doldur
+      if (baslikInput) {
+        baslikInput.value = sablon.baslik || '';
+        baslikInput.readOnly = false;
+        baslikInput.style.background = '#fffde7'; // Haftalık için sarı ton
+      }
+      
+      if (baslikHeader && tip === 'haftalik') baslikHeader.textContent = `📅 Hafta ${sablon.haftaNo || '?'}: ${sablon.baslik || 'Prompt'}`;
+      
+      if (icerikInput) {
+        icerikInput.value = sablon.icerik || '';
+        icerikInput.readOnly = false;
+        icerikInput.style.background = '#fffde7'; // Haftalık için sarı ton
+      }
+      
+      // Formu göster, mesajı gizle
+      if (formDiv) formDiv.style.display = 'flex';
+      if (mesajDiv) mesajDiv.style.display = 'none';
+      
+      // Kaydet ve sil butonlarını göster (düzenleme modu)
+      if (kaydetBtn) kaydetBtn.parentElement.style.display = 'flex';
+      if (silBtn) silBtn.style.display = 'block';
+      
+      // Geçici olarak kaydet
+      window.currentPromptView = { index, tip, mode: 'edit' };
+    }
+
+    // Sağ paneldeki değişiklikleri kaydet (genel promptlar için)
+    function seciliSablonuKaydet() {
+      if (!window.currentPromptView) {
+        alert('❌ Lütfen önce bir şablon seçin!');
+        return;
+      }
+      
+      const { index, tip } = window.currentPromptView;
+      
+      // Tip'e göre element ID'lerini belirle
+      let baslikInput, icerikInput;
+      
+      if (tip === 'genel') {
+        baslikInput = document.getElementById('seciliSablonBaslikInput');
+        icerikInput = document.getElementById('seciliSablonIcerikInput');
+      } else if (tip === 'haftalik') {
+        baslikInput = document.getElementById('seciliHaftaBaslikInput');
+        icerikInput = document.getElementById('seciliHaftaIcerikInput');
+      }
+      
+      const baslik = baslikInput?.value || '';
+      const icerik = icerikInput?.value || '';
+      
+      if (!baslik || !icerik) {
+        alert('❌ Başlık ve içerik alanları zorunludur!');
+        return;
+      }
+      
+      // Kayıt seçeneği sor
+      const secim = confirm('✅ localStorage\'a kaydet\n❌ İptal\n\n(GitHub\'a kaydetmek için Cancel -> sonra GitHub butonuna basın)');
+      
+      if (secim) {
+        // localStorage'a kaydet
+        const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+        const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+        
+        if (promptlar[index]) {
+          promptlar[index].baslik = baslik;
+          promptlar[index].icerik = icerik;
+          promptlar[index].guncellemeTarihi = new Date().toISOString();
+          
+          localStorage.setItem(promptKey, JSON.stringify(promptlar));
+          
+          alert('✅ Değişiklikler localStorage\'a kaydedildi!');
+          
+          // Listeyi yenile
+          if (tip === 'genel') {
+            renderGenelPromptlar();
+          } else {
+            renderHaftalikPromptlar();
+          }
+        }
+      }
+    }
+    
+    // Haftalık promptlar için kaydet (seciliHaftayiKaydet ile aynı)
+    function seciliHaftayiKaydet() {
+      seciliSablonuKaydet();
+    }
+    
+    // GitHub'a kaydet (genel ve haftalık için)
+    async function seciliSablonuGithubKaydet() {
+      if (!window.currentPromptView) {
+        alert('❌ Lütfen önce bir şablon seçin!');
+        return;
+      }
+      
+      const { index, tip } = window.currentPromptView;
+      
+      // Tip'e göre element ID'lerini belirle
+      let baslikInput, icerikInput;
+      
+      if (tip === 'genel') {
+        baslikInput = document.getElementById('seciliSablonBaslikInput');
+        icerikInput = document.getElementById('seciliSablonIcerikInput');
+      } else if (tip === 'haftalik') {
+        baslikInput = document.getElementById('seciliHaftaBaslikInput');
+        icerikInput = document.getElementById('seciliHaftaIcerikInput');
+      }
+      
+      const baslik = baslikInput?.value || '';
+      const icerik = icerikInput?.value || '';
+      
+      if (!baslik || !icerik) {
+        alert('❌ Başlık ve içerik alanları zorunludur!');
+        return;
+      }
+      
+      // Confirm dialog
+      if (!confirm('☁️ GitHub\'a kaydetmek istediğinizden emin misiniz?')) {
+        return;
+      }
+      
+      try {
+        // Önce localStorage'a kaydet
+        const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+        const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+        
+        if (promptlar[index]) {
+          promptlar[index].baslik = baslik;
+          promptlar[index].icerik = icerik;
+          promptlar[index].guncellemeTarihi = new Date().toISOString();
+          
+          localStorage.setItem(promptKey, JSON.stringify(promptlar));
+        }
+        
+        // GitHub token'ı al
+        let token = localStorage.getItem('github_api_token');
+        
+        if (!token) {
+          const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+          token = githubSettings.token;
+        }
+        
+        if (!token) {
+          const tokenInput = document.getElementById('githubToken');
+          if (tokenInput) {
+            token = tokenInput.value.trim();
+          }
+        }
+        
+        if (!token) {
+          alert('⚠️ GitHub token bulunamadı! Lütfen anasayfada GitHub Token alanını doldurun ve sayfayı yenileyin.');
+          return;
+        }
+        
+        // GitHub repo bilgilerini al
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
+        const fileName = tip === 'genel' ? 'genel_promptlar.json' : 'haftalik_promptlar.json';
+        const filePath = `promptlar/${fileName}`;
+        
+        // Mevcut dosyanın SHA'sını al
+        const getFileResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+          {
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+        
+        if (!getFileResponse.ok) {
+          throw new Error(`GitHub API hatası: ${getFileResponse.status} ${getFileResponse.statusText}`);
+        }
+        
+        const fileData = await getFileResponse.json();
+        const sha = fileData.sha;
+        
+        // JSON verisini hazırla
+        const jsonData = {
+          version: '1.0',
+          lastUpdated: new Date().toISOString(),
+          promptCount: promptlar.length,
+          promptlar: promptlar
+        };
+        
+        // Base64 encode et (UTF-8 desteğiyle)
+        const encoder = new TextEncoder();
+        const uint8Array = encoder.encode(JSON.stringify(jsonData, null, 2));
+        const binaryString = String.fromCharCode.apply(null, uint8Array);
+        const base64Content = btoa(binaryString);
+        
+        // GitHub'a kaydet
+        const updateResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Prompt güncellendi: ${baslik}`,
+              content: base64Content,
+              sha: sha
+            })
+          }
+        );
+        
+        if (!updateResponse.ok) {
+          throw new Error(`GitHub kayıt hatası: ${updateResponse.status} ${updateResponse.statusText}`);
+        }
+        
+        alert('✅ Değişiklikler GitHub\'a kaydedildi!');
+        
+        // Listeyi yenile
+        if (tip === 'genel') {
+          renderGenelPromptlar();
+        } else {
+          renderHaftalikPromptlar();
+        }
+        
+      } catch (error) {
+        console.error('GitHub kayıt hatası:', error);
+        alert('❌ GitHub\'a kaydetme başarısız: ' + error.message);
+      }
+    }
+    
+    // Haftalık promptlar için GitHub kaydet
+    async function seciliHaftayiGithubKaydet() {
+      await seciliSablonuGithubKaydet();
+    }
+    
+    // Seçili şablonu sil
+    function seciliSablonuSil() {
+      if (!window.currentPromptView) {
+        alert('❌ Lütfen önce bir şablon seçin!');
+        return;
+      }
+      
+      const { index, tip } = window.currentPromptView;
+      sablonSil(index, tip);
+    }
+    
+    // Haftalık prompts için sil (seciliHaftayiSil ile aynı)
+    function seciliHaftayiSil() {
+      seciliSablonuSil();
+    }
+    
+    // Prompt düzenleme (eski - artık kullanılmıyor - yukarıdaki yeni versiyonu kullanıyoruz)
+
+    function sablonSil(index, tip) {
+      if (!confirm('Bu şablonu silmek istediğinizden emin misiniz?')) return;
+      
+      if (tip === 'genel') {
+        const promptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+        promptlar.splice(index, 1);
+        localStorage.setItem(GENEL_PROMPTLAR_KEY, JSON.stringify(promptlar));
+        renderGenelPromptlar();
+        
+        // Sağ paneli temizle
+        const formDiv = document.getElementById('sablonDetayForm');
+        const mesajDiv = document.getElementById('sablonSecinizMesaj');
+        if (formDiv) formDiv.style.display = 'none';
+        if (mesajDiv) mesajDiv.style.display = 'block';
+        window.currentPromptView = null;
+        
+      } else if (tip === 'haftalik') {
+        const promptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+        promptlar.splice(index, 1);
+        localStorage.setItem(HAFTALIK_PROMPTLAR_KEY, JSON.stringify(promptlar));
+        renderHaftalikPromptlar();
+        
+        // Sağ paneli temizle
+        const formDiv = document.getElementById('haftaDetayForm');
+        const mesajDiv = document.getElementById('haftaSecinizMesaj');
+        const baslikHeader = document.getElementById('seciliHaftaBaslik');
+        if (formDiv) formDiv.style.display = 'none';
+        if (mesajDiv) mesajDiv.style.display = 'block';
+        if (baslikHeader) baslikHeader.textContent = 'Hafta seçiniz';
+        window.currentPromptView = null;
+      }
+      
+      alert('✅ Şablon silindi!');
+    }
+    
+    // Prompt düzenlemeyi localStorage'a kaydet
+    function kaydetPromptDuzenleme(index, tip, btnElement) {
+      const baslik = document.getElementById('editBaslik').value;
+      const icerik = document.getElementById('editIcerik').value;
+      const haftaNo = tip === 'haftalik' ? parseInt(document.getElementById('editHaftaNo').value) : null;
+      
+      if (!baslik || !icerik) {
+        alert('❌ Başlık ve içerik alanları zorunludur!');
+        return;
+      }
+      
+      const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+      const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+      
+      if (promptlar[index]) {
+        promptlar[index].baslik = baslik;
+        promptlar[index].icerik = icerik;
+        if (tip === 'haftalik' && haftaNo) {
+          promptlar[index].haftaNo = haftaNo;
+        }
+        promptlar[index].guncellemeTarihi = new Date().toISOString();
+        
+        localStorage.setItem(promptKey, JSON.stringify(promptlar));
+        
+        alert('✅ Değişiklikler localStorage\'a kaydedildi!');
+        
+        // Modalı kapat ve listeyi yenile
+        btnElement.closest('[style*="position: fixed"]').remove();
+        
+        if (tip === 'genel') {
+          renderGenelPromptlar();
+        } else {
+          renderHaftalikPromptlar();
+        }
+      }
+    }
+    
+    // Prompt düzenlemeyi GitHub'a kaydet
+    async function kaydetPromptGithub(index, tip, btnElement) {
+      const baslik = document.getElementById('editBaslik').value;
+      const icerik = document.getElementById('editIcerik').value;
+      const haftaNo = tip === 'haftalik' ? parseInt(document.getElementById('editHaftaNo').value) : null;
+      
+      if (!baslik || !icerik) {
+        alert('❌ Başlık ve içerik alanları zorunludur!');
+        return;
+      }
+      
+      const originalText = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = '⏳ Kaydediliyor...';
+      
+      try {
+        // Önce localStorage'a kaydet
+        const promptKey = tip === 'genel' ? GENEL_PROMPTLAR_KEY : HAFTALIK_PROMPTLAR_KEY;
+        const promptlar = JSON.parse(localStorage.getItem(promptKey) || '[]');
+        
+        if (promptlar[index]) {
+          promptlar[index].baslik = baslik;
+          promptlar[index].icerik = icerik;
+          if (tip === 'haftalik' && haftaNo) {
+            promptlar[index].haftaNo = haftaNo;
+          }
+          promptlar[index].guncellemeTarihi = new Date().toISOString();
+          
+          localStorage.setItem(promptKey, JSON.stringify(promptlar));
+        }
+        
+        // GitHub token'ı anasayfadaki input'tan al
+        let token = localStorage.getItem('github_api_token');
+        
+        // Alternatif olarak githubSettings'ten de dene
+        if (!token) {
+          const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+          token = githubSettings.token;
+        }
+        
+        // Eğer hala yoksa, DOM'dan almayı dene
+        if (!token) {
+          const tokenInput = document.getElementById('githubToken');
+          if (tokenInput) {
+            token = tokenInput.value.trim();
+          }
+        }
+        
+        if (!token) {
+          alert('⚠️ GitHub token bulunamadı! Lütfen anasayfada GitHub Token alanını doldurun ve sayfayı yenileyin.');
+          btnElement.disabled = false;
+          btnElement.innerHTML = originalText;
+          return;
+        }
+        
+        // GitHub repo bilgilerini al
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
+        const branch = githubSettings.branch || 'main';
+        
+        console.log('GitHub ayarları:', { owner, repo, branch, tokenLength: token.length });
+        
+        // Dosya adını belirle
+        const fileName = tip === 'genel' ? 'genel_promptlar.json' : 'haftalik_promptlar.json';
+        const filePath = `promptlar/${fileName}`;
+        
+        // Mevcut dosyayı al (SHA için)
+        const getResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`, {
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        if (!getResponse.ok) {
+          const errorText = await getResponse.text();
+          throw new Error(`Dosya GitHub'dan alınamadı (${getResponse.status}): ${errorText}`);
+        }
+        
+        const fileData = await getResponse.json();
+        const sha = fileData.sha;
+        
+        // Yeni içeriği hazırla
+        const jsonData = {
+          version: '1.0',
+          lastUpdated: new Date().toISOString(),
+          source: 'web_edit',
+          promptCount: promptlar.length,
+          promptlar: promptlar
+        };
+        
+        // Base64 encode et (Türkçe karakter desteği ile)
+        const encoder = new TextEncoder();
+        const uint8Array = encoder.encode(JSON.stringify(jsonData, null, 2));
+        let binaryString = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+          binaryString += String.fromCharCode(uint8Array[i]);
+        }
+        const base64Content = btoa(binaryString);
+        
+        // GitHub'a gönder
+        const updateResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Prompt güncellendi: ${baslik}`,
+            content: base64Content,
+            sha: sha,
+            branch: branch
+          })
+        });
+        
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          throw new Error(errorData.message || 'GitHub\'a kaydedilemedi');
+        }
+        
+        alert('✅ Değişiklikler başarıyla GitHub\'a kaydedildi!');
+        
+        // Modalı kapat ve listeyi yenile
+        btnElement.closest('[style*="position: fixed"]').remove();
+        
+        if (tip === 'genel') {
+          renderGenelPromptlar();
+        } else {
+          renderHaftalikPromptlar();
+        }
+        
+      } catch (error) {
+        console.error('GitHub kaydetme hatası:', error);
+        alert('❌ GitHub\'a kaydedilirken hata oluştu: ' + error.message);
+      } finally {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalText;
+      }
+    }
+
+    function yeniGenelPrompt() {
+      const baslik = document.getElementById('yeniGenelBaslik').value;
+      const aciklama = document.getElementById('yeniGenelAciklama').value;
+      const prompt = document.getElementById('yeniGenelPrompt').value;
+
+      if (!baslik || !prompt) {
+        alert('Başlık ve prompt alanları zorunludur!');
+        return;
+      }
+
+      const yeniSablon = { baslik, aciklama, prompt };
+      genelPromptlar.push(yeniSablon);
+      localStorage.setItem('genelPromptlar', JSON.stringify(genelPromptlar));
+      
+      // Formu temizle
+      document.getElementById('yeniGenelBaslik').value = '';
+      document.getElementById('yeniGenelAciklama').value = '';
+      document.getElementById('yeniGenelPrompt').value = '';
+      
+      renderGenelPromptlar();
+      alert('Yeni şablon eklendi!');
+    }
+
+    function yeniHaftalikPrompt() {
+      const baslik = document.getElementById('yeniHaftalikBaslik').value;
+      const aciklama = document.getElementById('yeniHaftalikAciklama').value;
+      const prompt = document.getElementById('yeniHaftalikPrompt').value;
+
+      if (!baslik || !prompt) {
+        alert('Başlık ve prompt alanları zorunludur!');
+        return;
+      }
+
+      const yeniSablon = { baslik, aciklama, prompt };
+      haftalikPromptlar.push(yeniSablon);
+      localStorage.setItem('haftalikPromptlar', JSON.stringify(haftalikPromptlar));
+      
+      // Formu temizle
+      document.getElementById('yeniHaftalikBaslik').value = '';
+      document.getElementById('yeniHaftalikAciklama').value = '';
+      document.getElementById('yeniHaftalikPrompt').value = '';
+      
+      renderHaftalikPromptlar();
+      alert('Yeni haftalık şablon eklendi!');
+    }
+
+    // Google Drive PDF İşlemleri
+    async function drivedenPdfYukle() {
+      // Google API kontrolü
+      if (typeof gapi === 'undefined') {
+        // Google API script'i yüklenmemişse bekle
+        let attempts = 0;
+        while (typeof gapi === 'undefined' && attempts < 10) {
+          console.log('Google API yüklenmeyi bekliyor...', attempts + 1);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+        }
+        
+        if (typeof gapi === 'undefined') {
+          alert('❌ Google API yüklenemedi!\n\n🔧 Çözüm:\n• Sayfa yenileyin\n• İnternet bağlantınızı kontrol edin');
+          return;
+        }
+      }
+
+      // Google API ayarlarını kontrol et
+      const apiKey = localStorage.getItem('googleDriveApiKey');
+      const clientId = localStorage.getItem('googleDriveClientId');
+      
+      if (!apiKey || !clientId) {
+        alert('Google Drive API ayarları eksik!\n\n🔧 Çözüm:\n1. "⚙️ API Ayarları" butonuna tıklayın\n2. Google Drive API Key ve Client ID girin\n3. Kaydet butonuna tıklayın');
+        return;
+      }
+
+      try {
+        // Google API modüllerini yükle
+        await new Promise((resolve, reject) => {
+          gapi.load('client:auth2:picker', {
+            callback: resolve,
+            onerror: reject
+          });
+        });
+
+        console.log('✅ Google API modülleri yüklendi');
+
+        // Google API'yi başlat
+        await gapi.client.init({
+          apiKey: apiKey,
+          clientId: clientId,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: 'https://www.googleapis.com/auth/drive.readonly'
+        });
+
+        console.log('✅ Google API başlatıldı');
+
+        // Kullanıcı girişi kontrol et
+        const authInstance = gapi.auth2.getAuthInstance();
+        if (!authInstance.isSignedIn.get()) {
+          console.log('🔐 Google hesabına giriş yapılıyor...');
+          await authInstance.signIn();
+        }
+
+        console.log('✅ Google hesabına giriş yapıldı');
+        openGooglePicker();
+
+      } catch (error) {
+        console.error('❌ Google API hatası:', error);
+        alert('❌ Google API Hatası!\n\n' + (error.details || error.message || 'Bilinmeyen hata') + '\n\n🔧 Çözüm:\n• API anahtarlarınızı kontrol edin\n• Google Cloud Console\'da API\'leri etkinleştirin');
+      }
+    }
+
+    function openGooglePicker() {
+      const picker = new google.picker.PickerBuilder()
+        .addView(new google.picker.DocsView(google.picker.ViewId.PDFS))
+        .setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
+        .setCallback(pdfSecildi)
+        .setTitle('PDF Dosyası Seçin')
+        .build();
+      picker.setVisible(true);
+    }
+
+    function pdfSecildi(data) {
+      if (data.action === google.picker.Action.PICKED) {
+        const file = data.docs[0];
+        const fileId = file.id;
+        const fileName = file.name;
+        
+        console.log('PDF seçildi:', fileName, 'ID:', fileId);
+        
+        // PDF'i indir ve analiz et
+        gapi.client.drive.files.get({
+          fileId: fileId,
+          alt: 'media'
+        }).then(function(response) {
+          console.log('PDF başarıyla indirildi:', fileName);
+          // PDF içeriğini analiz et
+          analyzePdf(response.body, fileName);
+        }).catch(function(error) {
+          console.error('PDF indirme hatası:', error);
+          alert('PDF indirilemedi!\n\nHata: ' + (error.result?.error?.message || error.message || 'Bilinmeyen hata'));
+        });
+      } else if (data.action === google.picker.Action.CANCEL) {
+        console.log('PDF seçimi iptal edildi');
+      }
+    }
+
+    async function analyzePdf(pdfContent, fileName) {
+      try {
+        // PDF içeriğini metin olarak çıkar (basit implementasyon)
+        const text = "PDF: " + fileName + " - İçerik analizi için PDF.js kullanılmalı";
+        
+        // Mevcut prompt'a PDF bilgisini ekle
+        const currentPrompt = document.getElementById('promptTextarea').value;
+        const newPrompt = currentPrompt + "\n\nAnaliz edilecek PDF: " + fileName + "\nİçerik: " + text;
+        document.getElementById('promptTextarea').value = newPrompt;
+        
+        alert('PDF bilgileri prompt alanına eklendi!');
+      } catch (error) {
+        console.error('PDF analiz hatası:', error);
+        alert('PDF analiz edilemedi: ' + error.message);
+      }
+    }
+    
+    // GPT ayarlarını yükle
+    function loadGptSettings() {
+      try {
+        const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+        
+        // Elementlerin varlığını kontrol et
+        const elements = {
+          'gptApiKey': settings.apiKey || '',
+          'claudeApiKey': settings.claudeApiKey || '',
+          'geminiApiKey': settings.geminiApiKey || '',
+          'gptModel': settings.model || 'gemini-pro-latest',
+          'girisPrompt': settings.girisPrompt || 'Lütfen aşağıdaki hasta bilgilerini analiz edin:',
+          'sonucPrompt': settings.sonucPrompt || 'Detaylı bir analiz raporu hazırlayın.',
+          'googleDriveApiKey': settings.googleDriveApiKey || '',
+          'googleDriveClientId': settings.googleDriveClientId || ''
+        };
+
+        for (const [id, value] of Object.entries(elements)) {
+          const element = document.getElementById(id);
+          if (element) {
+            element.value = value;
+          } else {
+            console.warn(`Element bulunamadı: ${id}`);
+          }
+        }
+      } catch (error) {
+        console.error('GPT ayarları yükleme hatası:', error);
+      }
+    }
+    
+    // GPT ayarlarını kaydet  
+    function saveGptSettings() {
+      try {
+        const settings = {};
+        
+        // Elementlerin varlığını kontrol ederek değerleri al
+        const elementIds = [
+          'gptApiKey', 'claudeApiKey', 'geminiApiKey', 'gptModel',
+          'girisPrompt', 'sonucPrompt', 'googleDriveApiKey', 'googleDriveClientId'
+        ];
+
+        for (const id of elementIds) {
+          const element = document.getElementById(id);
+          if (element) {
+            const key = id === 'gptApiKey' ? 'apiKey' : 
+                       id === 'gptModel' ? 'model' : id;
+            settings[key] = element.value || '';
+          } else {
+            console.warn(`Element bulunamadı: ${id}`);
+          }
+        }
+
+        localStorage.setItem(GPT_SETTINGS_KEY, JSON.stringify(settings));
+        
+        // Google Drive ayarlarını da kaydet
+        if (settings.googleDriveApiKey) {
+          localStorage.setItem('googleDriveApiKey', settings.googleDriveApiKey);
+        }
+        if (settings.googleDriveClientId) {
+          localStorage.setItem('googleDriveClientId', settings.googleDriveClientId);
+        }
+        
+        alert('✅ GPT ayarları kaydedildi!');
+      } catch (error) {
+        console.error('GPT ayarları kaydetme hatası:', error);
+        alert('❌ GPT ayarları kaydedilirken hata oluştu!');
+      }
+    }
+    
+    // Manuel olarak GitHub'dan prompt yükleme
+    async function manualLoadPromptlarFromGithub() {
+      const btn = event.target;
+      const originalText = btn.innerHTML;
+      
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Yükleniyor...';
+        
+        const success = await loadPromptlarFromGithub();
+        
+        if (success) {
+          alert('✅ Prompt şablonları GitHub\'dan başarıyla yüklendi!');
+          renderGenelPromptlar();
+          renderHaftalikPromptlar();
+        } else {
+          alert('⚠️ Prompt şablonları yüklenirken sorun oluştu. Konsolu kontrol edin.');
+        }
+      } catch (error) {
+        console.error('Manuel prompt yükleme hatası:', error);
+        alert('❌ Hata: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    
+    // Token hesaplama (yaklaşık)
+    function hesaplaToken(text) {
+      if (!text) return 0;
+      return Math.ceil(text.length / 4);
+    }
+    
+    // Maliyet hesaplama
+    function hesaplaMaliyet(tokenSayisi, model = 'gpt-4') {
+      const fiyatlar = {
+        // OpenAI Modeller
+        'gpt-4': { input: 0.03, output: 0.06 }, // $0.03 input, $0.06 output per 1K tokens
+        'gpt-4-turbo': { input: 0.01, output: 0.03 },
+        'gpt-3.5-turbo': { input: 0.001, output: 0.002 },
+        
+        // Anthropic Claude Modeller
+        'claude-3-5-sonnet': { input: 0.003, output: 0.015 }, // Çok uygun fiyat
+        'claude-3-opus': { input: 0.015, output: 0.075 },
+        'claude-3-haiku': { input: 0.00025, output: 0.00125 }, // En ucuz
+        
+        // Google Gemini Modeller (2025 fiyatları)
+        'gemini-pro-latest': { input: 0.00125, output: 0.005 }, // Orta fiyat, stabil
+        'gemini-2.5-pro': { input: 0.0025, output: 0.01 }, // En gelişmiş
+        'gemini-flash-latest': { input: 0.000075, output: 0.0003 }, // En ucuz
+        'gemini-2.5-flash': { input: 0.000075, output: 0.0003 }, // En ucuz
+        'gemini-2.0-flash': { input: 0.000075, output: 0.0003 }, // En ucuz
+        // Backward compatibility
+        'gemini-pro': { input: 0.00125, output: 0.005 },
+        'gemini-1.5-pro': { input: 0.0025, output: 0.01 },
+        'gemini-1.5-flash': { input: 0.000075, output: 0.0003 }
+      };
+      
+      const fiyat = fiyatlar[model] || fiyatlar['gpt-4'];
+      const inputMaliyet = (tokenSayisi / 1000) * fiyat.input;
+      const outputMaliyet = (3000 / 1000) * fiyat.output; // Tahmin edilen output
+      
+      return {
+        inputToken: tokenSayisi,
+        outputToken: 3000, // Daha uzun yanıtlar için tahmin
+        toplamToken: tokenSayisi + 3000,
+        inputMaliyet: inputMaliyet,
+        outputMaliyet: outputMaliyet,
+        toplamMaliyet: inputMaliyet + outputMaliyet,
+        model: model
+      };
+    }
+    
+    // Gemini modellerini listele (debug için)
+    async function listGeminiModels(apiKey) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Mevcut Gemini modelleri:', result.models?.map(m => m.name) || []);
+          return result.models;
+        }
+      } catch (error) {
+        console.error('Model listesi alınamadı:', error);
+      }
+      return [];
+    }
+
+    // Claude API'ye prompt gönder
+    async function sendToClaude(finalPrompt, haftaIndex, settings, gptMesajTextarea) {
+      try {
+        const claudeModelMap = {
+          'claude-3-5-sonnet': 'claude-3-5-sonnet-20241022',
+          'claude-3-opus': 'claude-3-opus-20240229',
+          'claude-3-5-haiku': 'claude-3-5-haiku-20241022'
+        };
+        const claudeModel = claudeModelMap[settings.model] || claudeModelMap['claude-3-5-sonnet'];
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': settings.claudeApiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: claudeModel,
+            max_tokens: 8000, // Claude çok daha uzun yanıtlar verebilir
+            messages: [{ 
+              role: 'user', 
+              content: finalPrompt 
+            }],
+            temperature: 0.7
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Claude API hatası: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        const claudeYanit = result.content[0].text;
+        
+        // Sonucu göster
+        gptMesajTextarea.value = claudeYanit;
+        gptMesajTextarea.disabled = false;
+        
+        showToast('✅ Claude analizi tamamlandı!', 'success', 3000);
+        
+      } catch (error) {
+        console.error('Claude API hatası:', error);
+        alert('❌ Claude API hatası: ' + error.message);
+        gptMesajTextarea.value = 'Hata: ' + error.message;
+        gptMesajTextarea.disabled = false;
+      }
+    }
+
+    // Google Gemini API'ye prompt gönder
+    async function sendToGemini(finalPrompt, haftaIndex, settings, gptMesajTextarea) {
+      try {
+        // Gemini model adlarını güncel API format'ına çevir (Ekim 2025)
+        const geminiModelMap = {
+          'gemini-pro-latest': 'gemini-pro-latest',
+          'gemini-2.0-flash-exp': 'gemini-2.0-flash-exp', 
+          'gemini-1.5-pro-latest': 'gemini-1.5-pro-latest',
+          // En stabil ve çalışan modeller
+          'gemini-pro': 'gemini-1.5-pro',
+          'gemini-1.5-pro': 'gemini-1.5-pro',
+          'gemini-1.5-flash': 'gemini-1.5-flash'
+        };
+        
+        const actualModelName = geminiModelMap[settings.model] || 'gemini-pro-latest';
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${actualModelName}:generateContent?key=${settings.geminiApiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: finalPrompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8000 // Çok daha uzun yanıtlar için
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorDetails;
+          
+          try {
+            const errorObj = JSON.parse(errorText);
+            errorDetails = errorObj.error ? errorObj.error.message : errorText;
+          } catch {
+            errorDetails = errorText;
+          }
+          
+          throw new Error(`Gemini API hatası: ${response.status} - ${errorDetails}`);
+        }
+        
+        const result = await response.json();
+        
+        // Gemini yanıt yapısını güvenli şekilde kontrol et
+        let geminiYanit;
+        if (result.candidates && result.candidates[0] && result.candidates[0].content) {
+          if (result.candidates[0].content.parts && result.candidates[0].content.parts[0]) {
+            geminiYanit = result.candidates[0].content.parts[0].text;
+          } else {
+            geminiYanit = result.candidates[0].content;
+          }
+        } else if (result.text) {
+          geminiYanit = result.text;
+        } else {
+          throw new Error('Gemini API yanıt formatı beklenmedik: ' + JSON.stringify(result));
+        }
+        
+        // Sonucu göster
+        gptMesajTextarea.value = geminiYanit;
+        gptMesajTextarea.disabled = false;
+        
+        showToast('✅ Gemini analizi tamamlandı!', 'success', 3000);
+        
+      } catch (error) {
+        console.error('Gemini API hatası:', error);
+        
+        // Hata türüne göre açıklayıcı mesajlar ver
+        if (error.message.includes('401') || error.message.includes('API_KEY_INVALID')) {
+          alert('❌ Gemini API Key Geçersiz!\n\n🔧 Çözüm:\n1. https://aistudio.google.com adresine gidin\n2. Yeni API key oluşturun\n3. GPT panelinden API key\'i güncelleyin');
+        } else if (error.message.includes('403')) {
+          if (error.message.includes('SERVICE_DISABLED') || error.message.includes('Generative Language API has not been used')) {
+            alert('❌ Gemini API Etkinleştirilmemiş!\n\n🔧 ADIM ADIM ÇÖZÜM:\n\n1️⃣ Bu linke tıklayın:\nhttps://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview?project=350908865771\n\n2️⃣ "Enable" (Etkinleştir) butonuna tıklayın\n\n3️⃣ Birkaç dakika bekleyin\n\n4️⃣ Tekrar deneyin\n\n💡 Not: API etkinleştirildikten sonra yayılması için 2-5 dakika bekleyin.');
+          } else {
+            alert('❌ Gemini API Erişim Reddedildi (403)!\n\n🔧 Olası Nedenler:\n• API key\'in Gemini AI erişimi yok\n• Kotanız dolmuş olabilir\n• Bölgenizde Gemini AI desteklenmiyor\n\n💡 Çözüm: Google AI Studio\'da (aistudio.google.com) hesabınızı kontrol edin');
+          }
+        } else if (error.message.includes('404') || error.message.includes('not found')) {
+          alert('❌ Gemini Model Bulunamadı!\n\n🔧 Çözüm:\n• Model: "Gemini 1.5 Pro Latest" seçin\n• En stabil ve çalışan model budur\n\nModel: ' + actualModelName);
+        } else if (error.message.includes('429')) {
+          alert('❌ Gemini API Limit Aşıldı!\n\n⏳ Çözüm:\nBirkaç dakika bekleyip tekrar deneyin');
+        } else {
+          alert('❌ Gemini API Hatası:\n\n' + error.message + '\n\nKullanılan Model: ' + actualModelName);
+        }
+        
+        gptMesajTextarea.value = 'Hata: ' + error.message;
+        gptMesajTextarea.disabled = false;
+      }
+    }
+
+    // GPT'ye prompt gönder
+    async function sendToGpt(finalPrompt, haftaIndex, settings, gptMesajTextarea) {
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${settings.apiKey}`
+          },
+          body: JSON.stringify({
+            model: settings.model || 'gpt-4',
+            messages: [{ 
+              role: 'user', 
+              content: finalPrompt 
+            }],
+            max_tokens: getModelMaxTokens(settings.model || 'gpt-4'),
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`GPT API hatası: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        const gptYanit = result.choices[0].message.content;
+
+        gptMesajTextarea.value = gptYanit;
+        gptMesajTextarea.disabled = false;
+
+        const syncGptArea = document.getElementById(`gptMesajSync_${haftaIndex}`);
+        if (syncGptArea) {
+          syncGptArea.value = gptYanit;
+        }
+
+        if (seciliHasta?.haftalar?.[haftaIndex]) {
+          seciliHasta.haftalar[haftaIndex].gptMesaj = gptYanit;
+
+          const ekNotlarDegeri = document.getElementById(`ekNotlar_${haftaIndex}`)?.value || '';
+          const temizlenmisEkNotlar = temizleEkBilgilerTekrarlari(ekNotlarDegeri);
+          seciliHasta.haftalar[haftaIndex].ekNotlar = temizlenmisEkNotlar;
+
+          if (temizlenmisEkNotlar !== ekNotlarDegeri) {
+            const ekNotlarInput = document.getElementById(`ekNotlar_${haftaIndex}`);
+            if (ekNotlarInput) {
+              ekNotlarInput.value = temizlenmisEkNotlar;
+            }
+          }
+
+          saveToStorage();
+
+          if (seciliHasta) {
+            try {
+              await hastayiAyriKaydet(seciliHasta);
+            } catch (githubError) {
+              console.warn('⚠️ GitHub kaydetme hatası:', githubError.message);
+            }
+          }
+        }
+
+        showToast('✅ GPT analizi tamamlandı!', 'success', 3000);
+
+      } catch (error) {
+        console.error('GPT API hatası:', error);
+        alert('❌ GPT API hatası: ' + error.message);
+        gptMesajTextarea.value = 'Hata: ' + error.message;
+        gptMesajTextarea.disabled = false;
+      }
+    }
+    
+    // AI Analiz fonksiyonu - Gelişmiş GPT Panel'i açar
+    async function aiAnalizYap(haftaIndex = null) {
+      if (!seciliHasta) {
+        alert('❌ Lütfen önce bir hasta seçin!');
+        return;
+      }
+      
+      // Eğer hafta indeksi belirtilmediyse, genel AI analiz modal'ını göster
+      if (haftaIndex === null || haftaIndex === undefined) {
+        await analyzeWithAI();
+        return;
+      }
+      
+      // Hafta-specific analiz için gelişmiş GPT panel'ini aç
+      const gptMesajTextarea = document.getElementById(`gptMesaj_${haftaIndex}`);
+      if (!gptMesajTextarea) {
+        console.error('GPT mesaj textarea bulunamadı:', `gptMesaj_${haftaIndex}`);
+        return;
+      }
+      
+      // GPT panel'ini hasta ve hafta bilgileriyle aç
+      showGptPanel(haftaIndex, gptMesajTextarea);
+    }
+
+    // Genel AI analiz fonksiyonu - Basit modal ile
+    async function analyzeWithAI() {
+      const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+      
+      // Model seçimine göre API key kontrolü
+      let missingApiKey = false;
+      let apiKeyMessage = '';
+      
+      if (settings.model && settings.model.includes('claude')) {
+        if (!settings.claudeApiKey) {
+          missingApiKey = true;
+          apiKeyMessage = 'Claude API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden Claude API Key\'inizi girin.';
+        }
+      } else if (settings.model && settings.model.includes('gemini')) {
+        if (!settings.geminiApiKey) {
+          missingApiKey = true;
+          apiKeyMessage = 'Google Gemini API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden Gemini API Key\'inizi girin.';
+        }
+      } else {
+        if (!settings.apiKey) {
+          missingApiKey = true;
+          apiKeyMessage = 'OpenAI API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden OpenAI API Key\'inizi girin.';
+        }
+      }
+      
+      if (missingApiKey) {
+        alert('❌ ' + apiKeyMessage + '\n\n💡 İpucu: Gelişmiş AI analiz özelliklerini kullanmak için haftalık AI panellerini tercih edin.');
+        return;
+      }
+      
+      // Hasta verilerini topla
+      let hastaVerisi = `Hasta Adı: ${seciliHasta.isim || 'Belirtilmemiş'}\n`;
+      hastaVerisi += `Hasta ID: ${seciliHasta.id || 'Yok'}\n`;
+      hastaVerisi += `Notlar: ${seciliHasta.not || seciliHasta.notlar || 'Yok'}\n`;
+      
+      // Haftalık verileri ekle (özet halinde)
+      if (seciliHasta.haftalar && seciliHasta.haftalar.length > 0) {
+        hastaVerisi += '\n=== HAFTALIK BESİN TAKİBİ ===\n';
+        
+        seciliHasta.haftalar.forEach((hafta, index) => {
+          if (hafta.kartlar && hafta.kartlar.length > 0) {
+            hastaVerisi += `\n${index + 1}. Hafta (${hafta.haftaAdi || `Hafta ${index + 1}`}): ${hafta.kartlar.length} beslenme kaydı\n`;
+            
+            // İlk 3 kartı örnek olarak ekle
+            const ornekKartlar = hafta.kartlar.slice(0, 3);
+            ornekKartlar.forEach(kart => {
+              hastaVerisi += `- ${kart.isim}\n`;
+            });
+            
+            if (hafta.kartlar.length > 3) {
+              hastaVerisi += `... ve ${hafta.kartlar.length - 3} diğer kayıt\n`;
+            }
+          } else {
+            hastaVerisi += `\n${index + 1}. Hafta: Henüz beslenme verisi eklenmemiş\n`;
+          }
+        });
+      } else {
+        hastaVerisi += '\n=== HAFTALIK BESİN TAKİBİ ===\nHenüz haftalık beslenme verisi bulunmuyor.\n';
+      }
+      
+      // Prompt oluştur
+      const prompt = `Lütfen aşağıdaki hasta bilgilerini analiz edin ve genel beslenme önerileri verin:
+
+${hastaVerisi}
+
+Lütfen genel bir değerlendirme yapın ve şunları içeren kısa bir rapor hazırlayın:
+1. Genel durum değerlendirmesi
+2. Temel beslenme önerileri
+3. Takip edilmesi gereken noktalar
+
+NOT: Bu genel bir analiz. Daha detaylı analiz için haftalık AI panellerini kullanın.
+
+Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
+
+      // Modal pencere oluştur
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.7); z-index: 10000; display: flex; 
+        justify-content: center; align-items: center;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; width: 80%; max-width: 800px; max-height: 90%; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+          <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 12px 12px 0 0; position: relative;">
+            <h2 style="margin: 0; font-size: 24px; font-weight: bold;">🤖 AI Genel Hasta Analizi</h2>
+            <p style="margin: 8px 0 0 0; opacity: 0.9;">Model: ${settings.model || 'Varsayılan GPT'} | Hasta: ${seciliHasta.isim || 'Bilinmiyor'}</p>
+            <button onclick="this.closest('.ai-modal').remove()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 28px; cursor: pointer; opacity: 0.8;">×</button>
+          </div>
+          
+          <div style="padding: 25px; flex: 1; overflow-y: auto;">
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+              <strong>💡 İpucu:</strong> Bu genel analiz sadece mevcut verilerle yapılır. 
+              Daha detaylı ve özelleştirilebilir analizler için haftalık AI panellerini kullanın. 
+              Bu paneller prompt editleme, önceki analizleri dahil etme ve PDF entegrasyonu sunar.
+            </div>
+            <textarea id="aiAnalysisResult" style="width: 100%; height: 350px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; resize: vertical;" placeholder="AI analizi burada görünecek..."></textarea>
+          </div>
+          
+          <div style="padding: 20px; border-top: 1px solid #dee2e6; display: flex; gap: 10px; justify-content: space-between; align-items: center;">
+            <div style="color: #666; font-size: 12px;">
+              🔧 <strong>Daha fazla özellik:</strong> Hafta kartlarındaki "AI Analiz" butonlarını deneyin
+            </div>
+            <button onclick="this.closest('.ai-modal').remove()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Kapat</button>
+          </div>
+        </div>
+      `;
+      
+      modal.className = 'ai-modal';
+      document.body.appendChild(modal);
+      
+      const textarea = document.getElementById('aiAnalysisResult');
+      
+      // Loading göster
+      const modelName = settings.model && settings.model.includes('claude') ? 'Claude' : 
+                       settings.model && settings.model.includes('gemini') ? 'Gemini' : 'GPT';
+      textarea.value = `🤖 ${modelName} analiz ediyor, lütfen bekleyin...`;
+      textarea.disabled = true;
+      
+      // Model seçimine göre API'ye gönder
+      try {
+        if (settings.model && settings.model.includes('claude')) {
+          await sendToClaude(prompt, 0, settings, textarea);
+        } else if (settings.model && settings.model.includes('gemini')) {
+          await sendToGemini(prompt, 0, settings, textarea);
+        } else {
+          await sendToGpt(prompt, 0, settings, textarea);
+        }
+      } catch (error) {
+        console.error('AI analiz hatası:', error);
+        textarea.value = 'Hata: ' + error.message;
+        textarea.disabled = false;
+      }
+    }
+
+    // Haftalık GPT analizi için gelişmiş fonksiyon
+    async function gptAnalizeEt(haftaIndex) {
+      try {
+        if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[haftaIndex]) {
+          alert('❌ Hasta veya hafta verisi bulunamadı!');
+          return;
+        }
+
+        const hafta = seciliHasta.haftalar[haftaIndex];
+        const haftaNo = haftaIndex + 1;
+
+        if (!hafta.pdf && !hafta.pdfYolu) {
+          const pdfYukleOnay = confirm(`📄 ${haftaNo}. Hafta için PDF bulunamadı. Şimdi yüklemek ister misiniz?`);
+          if (pdfYukleOnay) {
+            const pdfInput = document.getElementById('pdfInput');
+            if (pdfInput) {
+              switchTab(haftaIndex);
+              setTimeout(() => pdfInput.click(), 300);
+            }
+          }
+          return;
+        }
+
+        const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+        if (!settings.model) {
+          settings.model = 'gemini-pro-latest';
+        }
+
+        if (settings.model.includes('claude') && !settings.claudeApiKey) {
+          alert('❌ Claude API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+
+        if (settings.model.includes('gemini') && !settings.geminiApiKey) {
+          alert('❌ Google Gemini API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+
+        if (!settings.model.includes('claude') && !settings.model.includes('gemini') && !settings.apiKey) {
+          alert('❌ GPT API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+
+        guncelleEkBilgilerDinamik(haftaIndex);
+
+        const gptMesajTextarea = document.getElementById(`gptMesaj_${haftaIndex}`);
+        if (!gptMesajTextarea) {
+          alert('❌ GPT sonuç alanı bulunamadı!');
+          return;
+        }
+
+        gptMesajTextarea.value = '🤖 Analiz hazırlanıyor, lütfen bekleyin...';
+        gptMesajTextarea.disabled = true;
+
+        const prompts = [];
+
+        if (document.getElementById(`genelPrompt_${haftaIndex}`)?.checked) {
+          const genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+          if (genelPromptlar.length > 0) {
+            prompts.push('=== GENEL TALİMAT ===');
+            prompts.push(genelPromptlar[0].icerik);
+          }
+        }
+
+        if (document.getElementById(`haftalikPrompt_${haftaIndex}`)?.checked) {
+          const haftalikPromptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+          const haftaPrompt = haftalikPromptlar.find(p => p.haftaNo === haftaNo);
+          if (haftaPrompt) {
+            prompts.push('=== HAFTALIK TEMA ===');
+            prompts.push(haftaPrompt.icerik);
+          }
+        }
+
+        if (document.getElementById(`hastaPrompt_${haftaIndex}`)?.checked && seciliHasta) {
+          prompts.push('=== HASTA BİLGİLERİ ===');
+          prompts.push(`Hasta Adı: ${seciliHasta.hastaIsim || seciliHasta.isim || 'Bilinmiyor'}`);
+          if (seciliHasta.not) {
+            prompts.push(`Hasta Notu: ${seciliHasta.not}`);
+          }
+          if (seciliHasta.notlar) {
+            prompts.push(`Hasta Notları: ${seciliHasta.notlar}`);
+          }
+          if (seciliHasta.yasam) {
+            prompts.push(`Yaşam Bilgileri: ${seciliHasta.yasam}`);
+          }
+        }
+
+        if (document.getElementById(`oncekiAnalizler_${haftaIndex}`)?.checked) {
+          const oncekiAnalizler = getOncekiGptAnalizleri(haftaIndex);
+          if (oncekiAnalizler.length > 0) {
+            prompts.push('=== ÖNCEKİ HAFTALARIN GPT ANALİZLERİ (TUTARLILIK İÇİN) ===');
+            prompts.push('ÖNEMLİ: Aynı içeriği tekrar etmeyin. Önceki haftaları tamamlayan yeni öneriler üretin.');
+            prompts.push('');
+            oncekiAnalizler.forEach(analiz => {
+              prompts.push(`--- ${analiz.haftaNo}. Hafta (Özet) ---`);
+              prompts.push(analiz.icerik.substring(0, 800) + '...');
+              prompts.push('');
+            });
+          }
+        }
+
+        if (document.getElementById(`ekPrompt_${haftaIndex}`)?.checked) {
+          const ekNotlarHam = document.getElementById(`ekNotlar_${haftaIndex}`)?.value?.trim();
+          if (ekNotlarHam) {
+            const temizEkNotlar = temizleEkBilgilerTekrarlari(ekNotlarHam);
+            if (temizEkNotlar) {
+              prompts.push('=== BU HAFTA İÇİN EK BİLGİLER ===');
+              prompts.push(temizEkNotlar);
+            }
+          }
+        }
+
+        if (seciliHasta?.haftalar?.[haftaIndex]) {
+          prompts.push('=== BESLENME LİSTESİ ===');
+
+          if (hafta.pdf && hafta.pdf.length > 1000) {
+            try {
+              const pdfText = await extractTextFromPdf(hafta.pdf);
+              const temizPdfIcerik = temizlePdfIcerik(pdfText);
+              const maxLength = 2000;
+              window.cleanedPdfContent = temizPdfIcerik.length > maxLength
+                ? temizPdfIcerik.substring(0, maxLength) + '...[Optimize edildi]'
+                : temizPdfIcerik;
+
+              prompts.push('PDF İçeriği (Optimize Edildi):');
+              prompts.push(window.cleanedPdfContent);
+            } catch (pdfError) {
+              console.warn('PDF işleme hatası, tarif listesi kullanılıyor:', pdfError);
+              if (hafta.tarifler && hafta.tarifler.length > 0) {
+                const tarifListesi = hafta.tarifler.map(t => `• ${t}`).join('\n');
+                const temizTarifler = temizlePdfIcerik(tarifListesi);
+                window.cleanedPdfContent = temizTarifler;
+                prompts.push('Tarif Listesi:');
+                prompts.push(window.cleanedPdfContent);
+              } else {
+                window.cleanedPdfContent = 'Bu hafta için henüz beslenme listesi yüklenmemiş.';
+                prompts.push(window.cleanedPdfContent);
+              }
+            }
+          } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+            const tarifListesi = hafta.tarifler.map(t => `• ${t}`).join('\n');
+            const temizTarifler = temizlePdfIcerik(tarifListesi);
+            window.cleanedPdfContent = temizTarifler;
+            prompts.push('Tarif Listesi:');
+            prompts.push(window.cleanedPdfContent);
+          } else {
+            window.cleanedPdfContent = 'Bu hafta için henüz beslenme listesi yüklenmemiş.';
+            prompts.push(window.cleanedPdfContent);
+          }
+        }
+
+        const finalPrompt = prompts.length > 0 ? prompts.join('\n\n') : 'Bu hafta için analiz yapılabilecek veri bulunamadı.';
+
+        console.log('🔍 GPT\'ye gönderilecek prompt:', finalPrompt);
+
+        window.tempSettings = settings;
+        showFinalPromptModal(finalPrompt, haftaIndex, settings, gptMesajTextarea);
+
+      } catch (error) {
+        console.error('GPT analiz hatası:', error);
+        const textarea = document.getElementById(`gptMesaj_${haftaIndex}`);
+        if (textarea) {
+          textarea.value = `❌ GPT analiz hatası: ${error.message}`;
+          textarea.disabled = false;
+        }
+        showToast('❌ GPT analizi başarısız', 'error', 4000);
+      }
+    }
+
+    function getOncekiGptAnalizleri(haftaIndex) {
+      const analizler = [];
+
+      if (!seciliHasta || !seciliHasta.haftalar) {
+        return analizler;
+      }
+
+      const maxOncekiHafta = Math.min(haftaIndex, 5);
+
+      for (let i = Math.max(0, haftaIndex - maxOncekiHafta); i < haftaIndex; i++) {
+        const hafta = seciliHasta.haftalar[i];
+        if (hafta && hafta.gptMesaj && hafta.gptMesaj.trim().length > 50) {
+          analizler.push({
+            haftaNo: hafta.haftaNo || (i + 1),
+            icerik: hafta.gptMesaj.trim()
+          });
+        }
+      }
+
+      return analizler;
+    }
+
+    function temizleEkBilgilerTekrarlari(metinIcerik) {
+      if (!metinIcerik || typeof metinIcerik !== 'string') return '';
+
+      let temizMetin = metinIcerik.trim();
+
+      const tekrarPatterns = [
+        /Açıklama:\s*mide\s+ülseri\s+var/gi,
+        /Açıklama:\s*mide\s+bulantısı\s*sorunu\s*olmuş/gi,
+        /Açıklama:\s*iki\s+kez\s+kusmuş/gi,
+        /Açıklama:\s*hipertansiyon\s+var/gi,
+        /Açıklama:\s*böbrek\s+taşı\s+vardı/gi,
+        /Açıklama:\s*mide\s+bulantısı/gi,
+        /Açıklama:\s*kusmuş/gi,
+        /mide\s+ülseri\s+var/gi,
+        /mide\s+bulantısı\s*sorunu\s*olmuş/gi,
+        /iki\s+kez\s+kusmuş/gi
+      ];
+
+      tekrarPatterns.forEach(pattern => {
+        const matches = temizMetin.match(pattern);
+        if (matches && matches.length > 1) {
+          let firstFound = false;
+          temizMetin = temizMetin.replace(pattern, match => {
+            if (!firstFound) {
+              firstFound = true;
+              return match.replace(/^Açıklama:\s*/i, '');
+            }
+            return '';
+          });
+        }
+      });
+
+      const satirlar = temizMetin.split('\n');
+      const benzersizSatirlar = [];
+      const gorulenler = new Set();
+
+      satirlar.forEach(satir => {
+        const temizSatir = satir.trim().toLowerCase();
+        if (temizSatir.length > 0 && !gorulenler.has(temizSatir)) {
+          gorulenler.add(temizSatir);
+          benzersizSatirlar.push(satir.trim());
+        }
+      });
+
+      const sonuc = benzersizSatirlar.join('\n').replace(/\n\s*\n\s*\n+/g, '\n\n').trim();
+      return sonuc;
+    }
+
+    function ekNotlarKaydetVeTemizle(haftaIndex) {
+      if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[haftaIndex]) {
+        return;
+      }
+
+      const ekNotlarInput = document.getElementById(`ekNotlar_${haftaIndex}`);
+      if (!ekNotlarInput) return;
+
+      const mevcutDeger = ekNotlarInput.value || '';
+      const temizlenmisEkNotlar = temizleEkBilgilerTekrarlari(mevcutDeger);
+
+      if (temizlenmisEkNotlar !== mevcutDeger) {
+        ekNotlarInput.value = temizlenmisEkNotlar;
+      }
+
+      seciliHasta.haftalar[haftaIndex].ekNotlar = temizlenmisEkNotlar;
+      saveToStorage();
+
+      setTimeout(() => {
+        guncelleEkBilgilerDinamik(haftaIndex);
+      }, 100);
+    }
+
+    function guncelleEkBilgilerDinamik(haftaIndex) {
+      const ekNotlarInput = document.getElementById(`ekNotlar_${haftaIndex}`);
+      const aciklamaInput = document.getElementById(`aciklama_${haftaIndex}`);
+
+      if (!ekNotlarInput || !aciklamaInput) return;
+
+      const aciklamaMetni = aciklamaInput.value.trim();
+      const mevcutEkNotlar = ekNotlarInput.value.trim();
+
+      let manuelEkBilgiler = '';
+
+      const dinamikBaslangic = mevcutEkNotlar.indexOf('=== AÇIKLAMA ===');
+      if (dinamikBaslangic !== -1) {
+        manuelEkBilgiler = mevcutEkNotlar.substring(0, dinamikBaslangic).trim();
+      } else {
+        manuelEkBilgiler = mevcutEkNotlar;
+      }
+
+      let yeniIcerik = '';
+
+      if (manuelEkBilgiler.trim()) {
+        yeniIcerik = manuelEkBilgiler.trim();
+      }
+
+      if (aciklamaMetni && aciklamaMetni.length > 0) {
+        const temizAciklamaMetni = aciklamaMetni.replace(/^Açıklama:\s*/i, '').trim();
+        if (temizAciklamaMetni) {
+          if (yeniIcerik) {
+            yeniIcerik += '\n\n=== AÇIKLAMA ===\n' + temizAciklamaMetni;
+          } else {
+            yeniIcerik = '=== AÇIKLAMA ===\n' + temizAciklamaMetni;
+          }
+        }
+      }
+
+      ekNotlarInput.value = yeniIcerik;
+
+      if (seciliHasta && seciliHasta.haftalar && seciliHasta.haftalar[haftaIndex]) {
+        seciliHasta.haftalar[haftaIndex].ekNotlar = yeniIcerik;
+        saveToStorage();
+      }
+    }
+
+    async function extractTextFromPdf(pdfData) {
+      try {
+        if (!pdfData || pdfData.length < 100) {
+          throw new Error('PDF verisi çok küçük veya boş');
+        }
+
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+        const pdf = await loadingTask.promise;
+
+        let textContent = '';
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textData = await page.getTextContent();
+          const pageText = textData.items.map(item => item.str).join(' ');
+          textContent += pageText + '\n';
+        }
+
+        return textContent.trim();
+      } catch (error) {
+        console.error('PDF metin çıkarma hatası:', error);
+        throw error;
+      }
+    }
+
+    function temizlePdfIcerik(pdfText) {
+      if (!pdfText || typeof pdfText !== 'string') return '';
+
+      let temizIcerik = pdfText;
+
+      temizIcerik = temizIcerik
+        .replace(/.*?\/.*?\d{1,2}-\d{1,2}\s+\w+\s+\d{4}/gi, '')
+        .replace(/her\s+sabah\s+güne\s+başlarken:?/gi, '')
+        .replace(/•\s*ılık\s+su.*?elma\s+sirkesi/gi, '')
+        .replace(/•\s*kurşun\s+geçirmez\s+kahve.*?yağ\)/gi, '')
+        .replace(/\bhafta\b/gi, '')
+        .replace(/tercihen\s+saat.*?civarında/gi, '')
+        .replace(/tercihen\s+hava\s+kararınca/gi, '')
+        .replace(/ara\s+öğün.*?şekilde\)/gi, '')
+        .replace(/günlük\s+(ortalama\s+)?\d+\.?\d*\s+adım.*?önerilir/gi, '')
+        .replace(/günlük\s+su\s+tüketimi.*?önerilir/gi, '')
+        .replace(/diğer\s+günler.*?vs\.?/gi, '');
+
+      const gunler = ['pazartesi̇?', 'sali', 'salı', 'çarşamba', 'perşembe', 'cuma', 'cumartesi̇?', 'pazar'];
+      gunler.forEach(gun => {
+        const regex1 = new RegExp(`^\\s*•?\\s*${gun}\\s*$`, 'gim');
+        const regex2 = new RegExp(`^\\s*${gun}\\s*$`, 'gim');
+        temizIcerik = temizIcerik.replace(regex1, '').replace(regex2, '');
+      });
+
+      temizIcerik = temizIcerik
+        .replace(/^\s*•\s*öğle.*?$/gim, '')
+        .replace(/^\s*•\s*akşam.*?$/gim, '')
+        .replace(/•\s*\n/g, '')
+        .replace(/^\s*•\s*$/gm, '')
+        .replace(/\n\s*\n\s*\n/g, '\n\n')
+        .trim();
+
+      const satirlar = temizIcerik.split('\n').filter(s => s.trim());
+      const yemekSayac = new Map();
+      const temizSatirlar = [];
+
+      satirlar.forEach(satir => {
+        const temizSatir = satir.trim();
+
+        if (temizSatir.startsWith('•')) {
+          let yemekMetni = temizSatir.replace(/^•\s*/, '').trim();
+          const yemekAdi = yemekMetni.replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
+
+          if (yemekAdi.length > 2) {
+            const mevcutAnahtar = Array.from(yemekSayac.keys()).find(anahtar =>
+              anahtar.toLowerCase().includes(yemekAdi) || yemekAdi.includes(anahtar.toLowerCase())
+            );
+
+            if (mevcutAnahtar) {
+              yemekSayac.set(mevcutAnahtar, yemekSayac.get(mevcutAnahtar) + 1);
+            } else {
+              yemekSayac.set(yemekMetni, 1);
+            }
+          }
+        } else if (temizSatir.length > 5) {
+          temizSatirlar.push(temizSatir);
+        }
+      });
+
+      yemekSayac.forEach((sayi, yemek) => {
+        if (sayi > 1) {
+          temizSatirlar.push(`• ${yemek} (${sayi}x)`);
+        } else {
+          temizSatirlar.push(`• ${yemek}`);
+        }
+      });
+
+      const finalSatirlar = temizSatirlar.filter(satir => {
+        const temiz = satir.trim();
+        return temiz.length > 3 &&
+               !temiz.match(/^[•\-\s]*$/) &&
+               !temiz.match(/^\d+\s*$/) &&
+               !temiz.match(/^[^\w]*$/);
+      });
+
+      const sonuc = finalSatirlar.join('\n');
+      return sonuc;
+    }
+    
+    // Nihai prompt gösterme ve düzenleme modal'ı (önceki analizler checkbox'ı ile)
+    function showFinalPromptModal(finalPrompt, haftaIndex, settings, gptMesajTextarea) {
+      // PDF içeriği zaten önceden temizlenip window.cleanedPdfContent'e kaydedilmiş olmalı
+      // Ekstra işlem yapmayalım, sadece var olan temizlenmiş içeriği kullanalım
+      
+      // Token ve maliyet hesapla
+      const tokenSayisi = hesaplaToken(finalPrompt);
+      const maliyet = hesaplaMaliyet(tokenSayisi, settings.model || 'gpt-4');
+      
+      // Önceki analizleri al (her zaman al, checkbox durumuna bakmaksızın)
+      const oncekiAnalizler = getOncekiGptAnalizleri(haftaIndex);
+      
+      // Prompt'u daha okunabilir hale getir (başlıkları bold ve altı çizili yap)
+      const formattedPromptForDisplay = finalPrompt
+        .replace(/=== (.*?) ===/g, '<div style="font-weight: bold; text-decoration: underline; color: #007bff; margin: 15px 0 10px 0; font-size: 14px;">📋 $1</div>')
+        .replace(/\n/g, '<br>');
+      
+      // Ana checkbox'ları oluştur
+      const mainCheckboxesHtml = `
+        <div style="margin-bottom: 15px; padding: 12px; background: #e7f3ff; border: 1px solid #b8daff; border-radius: 6px;">
+          <div style="font-weight: bold; margin-bottom: 10px; color: #004085; font-size: 13px;">
+            ✅ Prompt İçeriği Seçenekleri
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_genelPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>🎨 Genel</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_haftalikPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>📅 ${haftaIndex + 1}. Hafta</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_hastaPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>👤 Hasta</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_ekPrompt" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>📝 Ek Not</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; background: white; border: 1px solid #dee2e6;">
+              <input type="checkbox" id="modal_beslenmeListesi" checked onchange="updatePromptPreview(${haftaIndex})">
+              <span>📄 Beslenme Listesi</span>
+            </label>
+          </div>
+        </div>
+      `;
+      
+      // Önceki analizler checkbox HTML'i oluştur (her hafta için ayrı checkbox)
+      let oncekiAnalizlerHtml = '';
+      if (oncekiAnalizler.length > 0) {
+        oncekiAnalizlerHtml = `
+          <div style="margin-bottom: 15px; padding: 12px; background: #fff9e6; border: 2px solid #ffc107; border-radius: 8px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);">
+            <div style="font-weight: bold; margin-bottom: 10px; color: #856404; display: flex; justify-content: space-between; align-items: center; font-size: 14px;">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                📚 Önceki Hafta Analizleri 
+                <span style="background: #856404; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                  ${oncekiAnalizler.length} hafta
+                </span>
+              </span>
+              <button onclick="toggleAllOncekiAnalizler(${oncekiAnalizler.length}, ${haftaIndex})" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">
+                ✓ Tümünü Seç/Kaldır
+              </button>
+            </div>
+            <div style="font-size: 12px; color: #856404; margin-bottom: 10px; padding: 8px; background: #fffbf0; border-left: 3px solid #ffc107; border-radius: 4px;">
+              ⚠️ <strong>Hangi haftaları dahil etmek istediğinizi seçebilirsiniz.</strong><br>
+              💡 Seçili haftaların <strong>TAM METNİ</strong> GPT'ye gönderilir (kısaltma yapılmaz)
+            </div>
+            <div style="max-height: 250px; overflow-y: auto; padding: 5px;">
+              ${oncekiAnalizler.map((analiz, index) => {
+                const karakterSayisi = analiz.icerik.length;
+                const tokenSayisi = Math.round(hesaplaToken(analiz.icerik));
+                // Önceki analizler sadece input olduğu için sadece input maliyetini hesapla
+                const maliyetObj = hesaplaMaliyet(tokenSayisi, 'gpt-4');
+                const sadecInputMaliyet = maliyetObj.inputMaliyet.toFixed(4);
+                const onizleme = analiz.icerik.substring(0, 150);
+                return `
+                <label style="
+                  display: block; 
+                  margin-bottom: 8px; 
+                  padding: 10px; 
+                  cursor: pointer; 
+                  font-size: 12px; 
+                  border-radius: 6px; 
+                  background: white; 
+                  border: 2px solid #28a745;
+                  transition: all 0.2s ease;
+                  position: relative;
+                " onmouseover="this.style.background='#e7f9e7'; this.style.borderColor='#1e7e34'" onmouseout="this.style.background=this.querySelector('input').checked ? 'white' : '#f8f9fa'; this.style.borderColor=this.querySelector('input').checked ? '#28a745' : '#dee2e6'">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <input type="checkbox" 
+                           id="oncekiAnaliz_${analiz.haftaNo}" 
+                           class="onceki-analiz-checkbox"
+                           checked 
+                           onchange="updatePromptPreview(${haftaIndex}); this.parentElement.parentElement.style.borderColor = this.checked ? '#28a745' : '#dee2e6'; this.parentElement.parentElement.style.background = this.checked ? 'white' : '#f8f9fa';"
+                           style="width: 16px; height: 16px; cursor: pointer;"> 
+                    <span style="font-weight: bold; color: #28a745; font-size: 13px;">🗓️ ${analiz.haftaNo}. Hafta Analizi</span>
+                    <span style="font-size: 10px; color: #007bff; background: #e7f3ff; padding: 2px 6px; border-radius: 3px;" title="Sadece bu haftanın input maliyeti - ${karakterSayisi} karakter">~${tokenSayisi} token · +$${sadecInputMaliyet}</span>
+                  </div>
+                  <div style="margin-left: 24px; color: #6c757d; font-size: 11px; line-height: 1.4; margin-bottom: 4px;">
+                    ${onizleme}...
+                  </div>
+                  <div style="margin-left: 24px; margin-top: 4px; font-size: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span style="color: #dc3545; font-weight: bold;">✅ Tam metin eklenecek</span>
+                    <span style="color: #6c757d;">(${karakterSayisi.toLocaleString()} karakter ≈ ${Math.round(karakterSayisi / 4)} kelime)</span>
+                  </div>
+                </label>
+              `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Modal HTML'i oluştur
+      const modalHtml = `
+        <div id="finalPromptModal" style="
+          position: fixed; 
+          top: 0; 
+          left: 0; 
+          width: 100%; 
+          height: 100%; 
+          background: rgba(0,0,0,0.7); 
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          z-index: 10000;
+        ">
+          <div style="
+            background: white; 
+            border-radius: 12px; 
+            padding: 25px; 
+            max-width: 90%; 
+            max-height: 90%; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          ">
+            <h3 style="margin: 0 0 15px 0; color: #004085; font-size: 18px; display: flex; align-items: center; gap: 10px;">
+              <span>🎯</span> GPT'ye Gönderilecek Nihai Prompt
+            </h3>
+            
+            <!-- Token ve Maliyet Bilgisi -->
+            <div class="modal-maliyet-panel" style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; border: 2px solid #28a745; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15);">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px; margin-bottom: 10px;">
+                <div style="background: white; padding: 8px; border-radius: 5px; border-left: 3px solid #007bff;">
+                  <div style="color: #666; font-size: 10px; margin-bottom: 3px;">Input Tokenları</div>
+                  <div><strong>📊</strong> <span id="tokenCount" style="font-size: 15px; color: #007bff; font-weight: bold;">~${tokenSayisi.toLocaleString()}</span> token</div>
+                  <div style="color: #666; font-size: 10px; margin-top: 2px;">Maliyet: ~$${maliyet.inputMaliyet.toFixed(4)}</div>
+                </div>
+                <div style="background: white; padding: 8px; border-radius: 5px; border-left: 3px solid #28a745;">
+                  <div style="color: #666; font-size: 10px; margin-bottom: 3px;">Output Tokenları (Tahmin)</div>
+                  <div><strong>🤖</strong> <span style="font-size: 15px; color: #28a745; font-weight: bold;">~${maliyet.outputToken.toLocaleString()}</span> token</div>
+                  <div style="color: #666; font-size: 10px; margin-top: 2px;">Maliyet: ~$${maliyet.outputMaliyet.toFixed(4)}</div>
+                </div>
+              </div>
+              <div style="background: white; padding: 10px; border-radius: 5px; border: 2px solid #ffc107; text-align: center;">
+                <div style="font-size: 11px; color: #856404; margin-bottom: 3px;">Model: <strong>${maliyet.model}</strong></div>
+                <div style="font-size: 16px; font-weight: bold; color: #28a745;">
+                  💰 Toplam Maliyet: <span id="costEstimate">~$${maliyet.toplamMaliyet.toFixed(4)}</span>
+                </div>
+                <div style="font-size: 10px; color: #666; margin-top: 3px;">
+                  (Input: $${maliyet.inputMaliyet.toFixed(4)} + Output: $${maliyet.outputMaliyet.toFixed(4)})
+                </div>
+              </div>
+              <div style="margin-top: 10px; font-size: 11px; color: #666; padding: 8px; background: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+                📚 <strong>${oncekiAnalizler.length}</strong> önceki hafta mevcut → Seçilenlerin <strong style="color: #dc3545;">TAM METNİ</strong> input'a eklenir<br>
+                💡 Checkbox'ları kaldırarak <strong>input token</strong> ve <strong>maliyeti</strong> azaltabilirsiniz (Output sabit kalır)
+              </div>
+            </div>
+            
+            ${mainCheckboxesHtml}
+            
+            ${oncekiAnalizlerHtml}
+            
+            <div style="margin-bottom: 15px; color: #666; font-size: 14px;">
+              <strong>📋 İçerik Özeti:</strong> Seçili prompt bölümleri, hasta bilgileri ve beslenme listesi birleştirilerek hazırlandı.
+            </div>
+            
+            <!-- Görsel önizleme -->
+            <div id="promptPreview" style="
+              width: 100%; 
+              height: 300px; 
+              padding: 15px; 
+              border: 2px solid #e3f2fd; 
+              border-radius: 8px; 
+              font-family: Arial, sans-serif; 
+              font-size: 12px; 
+              overflow-y: auto;
+              background: #f8f9fa;
+              margin-bottom: 15px;
+            ">${formattedPromptForDisplay}</div>
+            
+            <!-- Düzenlenebilir textarea (gizli) -->
+            <textarea id="finalPromptText" style="display: none;">${finalPrompt}</textarea>
+            
+            <!-- Düzenleme butonu -->
+            <div style="margin-bottom: 15px;">
+              <button id="editPromptBtn" onclick="toggleEditMode()" style="
+                padding: 8px 15px; 
+                background: #ffc107; 
+                color: #212529; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer;
+                font-size: 12px;
+              ">✏️ Düzenle</button>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+              <div style="color: #666; font-size: 12px;">
+                💡 <strong>İpucu:</strong> Checkbox'larla içeriği özelleştirebilir, prompt'u düzenleyebilir ve sonra GPT'ye gönderebilirsiniz.
+              </div>
+              
+              <div style="display: flex; gap: 10px;">
+                <button onclick="closeFinalPromptModal()" style="
+                  padding: 10px 20px; 
+                  background: #6c757d; 
+                  color: white; 
+                  border: none; 
+                  border-radius: 6px; 
+                  cursor: pointer;
+                  font-size: 14px;
+                ">❌ İptal</button>
+                
+                <button onclick="sendFinalPromptToGpt(${haftaIndex}, null, '${gptMesajTextarea.id}')" style="
+                  padding: 10px 20px; 
+                  background: linear-gradient(135deg, #007bff, #0056b3); 
+                  color: white; 
+                  border: none; 
+                  border-radius: 6px; 
+                  cursor: pointer;
+                  font-size: 14px;
+                  font-weight: bold;
+                ">🚀 GPT'ye Gönder</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Modal'ı sayfaya ekle
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Modal verilerini global değişkende sakla
+      window.currentModalData = {
+        haftaIndex: haftaIndex,
+        settings: settings,
+        oncekiAnalizler: oncekiAnalizler
+      };
+    }
+    
+    // Prompt önizlemesini güncelle (checkbox'lara göre)
+    async function updatePromptPreview(haftaIndex) {
+      if (!window.currentModalData) return;
+      
+      const { settings, oncekiAnalizler } = window.currentModalData;
+      const prompts = [];
+      
+      // Genel prompt
+      if (document.getElementById('modal_genelPrompt')?.checked) {
+        const genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+        if (genelPromptlar.length > 0) {
+          prompts.push('=== GENEL TALİMAT ===');
+          prompts.push(genelPromptlar[0].icerik);
+        }
+      }
+      
+      // Haftalık prompt
+      if (document.getElementById('modal_haftalikPrompt')?.checked) {
+        const haftalikPromptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+        const haftaPrompt = haftalikPromptlar.find(p => p.haftaNo === (haftaIndex + 1));
+        if (haftaPrompt) {
+          prompts.push('=== HAFTALIK TEMA ===');
+          prompts.push(haftaPrompt.icerik);
+        }
+      }
+      
+      // Hasta bilgileri
+      if (document.getElementById('modal_hastaPrompt')?.checked && seciliHasta) {
+        prompts.push('=== HASTA BİLGİLERİ ===');
+        prompts.push(`Hasta Adı: ${seciliHasta.hastaIsim || seciliHasta.isim || 'Bilinmiyor'}`);
+        if (seciliHasta.not) {
+          prompts.push(`Hasta Notu: ${seciliHasta.not}`);
+        }
+        if (seciliHasta.notlar) {
+          prompts.push(`Hasta Notları: ${seciliHasta.notlar}`);
+        }
+        if (seciliHasta.yasam) {
+          prompts.push(`Yaşam Bilgileri: ${seciliHasta.yasam}`);
+        }
+      }
+      
+      // Önceki analizler (seçili olanlar) - TAM METİN
+      const secilenOncekiAnalizler = [];
+      oncekiAnalizler.forEach(analiz => {
+        const checkbox = document.getElementById(`oncekiAnaliz_${analiz.haftaNo}`);
+        if (checkbox && checkbox.checked) {
+          secilenOncekiAnalizler.push(analiz);
+        }
+      });
+      
+      if (secilenOncekiAnalizler.length > 0) {
+        prompts.push('=== ÖNCEKİ HAFTALARIN GPT ANALİZLERİ (TUTARLILIK İÇİN) ===');
+        prompts.push('ÖNEMLİ: Aynı içeriği tekrar etmeyin. Önceki haftaları tamamlayan yeni öneriler üretin.');
+        prompts.push('');
+        secilenOncekiAnalizler.forEach(analiz => {
+          prompts.push(`--- ${analiz.haftaNo}. Hafta ---`);
+          prompts.push(analiz.icerik); // TAM METİN - substring yok
+          prompts.push('');
+        });
+      }
+      
+      // Ek notlar
+      if (document.getElementById('modal_ekPrompt')?.checked) {
+        const ekNotlarHam = document.getElementById(`ekNotlar_${haftaIndex}`)?.value?.trim();
+        if (ekNotlarHam) {
+          const temizEkNotlar = temizleEkBilgilerTekrarlari(ekNotlarHam);
+          if (temizEkNotlar) {
+            prompts.push('=== BU HAFTA İÇİN EK BİLGİLER ===');
+            prompts.push(temizEkNotlar);
+          }
+        }
+      }
+      
+      // Beslenme listesi
+      if (document.getElementById('modal_beslenmeListesi')?.checked) {
+        prompts.push('=== BESLENME LİSTESİ ===');
+        if (window.cleanedPdfContent) {
+          prompts.push(window.cleanedPdfContent);
+        } else {
+          prompts.push('Bu hafta için henüz beslenme listesi yüklenmemiş.');
+        }
+      }
+      
+      const yeniPrompt = prompts.length > 0 ? prompts.join('\n\n') : 'Hiçbir içerik seçilmedi.';
+      
+      // Prompt preview'ı güncelle
+      const promptPreview = document.getElementById('promptPreview');
+      if (promptPreview) {
+        const formattedPrompt = yeniPrompt
+          .replace(/=== (.*?) ===/g, '<div style="font-weight: bold; text-decoration: underline; color: #007bff; margin: 15px 0 10px 0; font-size: 14px;">📋 $1</div>')
+          .replace(/\n/g, '<br>');
+        promptPreview.innerHTML = formattedPrompt;
+      }
+      
+      // Textarea'yı güncelle
+      const finalPromptText = document.getElementById('finalPromptText');
+      if (finalPromptText) {
+        finalPromptText.value = yeniPrompt;
+      }
+      
+      // Token ve maliyet güncelle
+      const tokenSayisi = hesaplaToken(yeniPrompt);
+      const maliyet = hesaplaMaliyet(tokenSayisi, settings.model || 'gpt-4');
+      
+      // Input token sayısını güncelle
+      const tokenCountEl = document.getElementById('tokenCount');
+      if (tokenCountEl) {
+        tokenCountEl.innerHTML = `~${tokenSayisi.toLocaleString()}`;
+        // Input maliyetini de güncelle (tokenCount'un altındaki div)
+        const inputMaliyetDiv = tokenCountEl.parentElement.querySelector('div[style*="margin-top: 2px"]');
+        if (inputMaliyetDiv) {
+          inputMaliyetDiv.textContent = `Maliyet: ~$${maliyet.inputMaliyet.toFixed(4)}`;
+        }
+      }
+      
+      // Toplam maliyeti güncelle
+      const costEstimate = document.getElementById('costEstimate');
+      if (costEstimate) {
+        costEstimate.textContent = `~$${maliyet.toplamMaliyet.toFixed(4)}`;
+        // Maliyet detayını da güncelle
+        const maliyetDetayDiv = costEstimate.parentElement.querySelector('div[style*="margin-top: 3px"]');
+        if (maliyetDetayDiv) {
+          maliyetDetayDiv.textContent = `(Input: $${maliyet.inputMaliyet.toFixed(4)} + Output: $${maliyet.outputMaliyet.toFixed(4)})`;
+        }
+      }
+    }
+    
+    // Tüm önceki analizleri aç/kapat
+    function toggleAllOncekiAnalizler(count, haftaIndex) {
+      const checkboxes = document.querySelectorAll('.onceki-analiz-checkbox');
+      const firstCheckbox = checkboxes[0];
+      const yeniDurum = firstCheckbox ? !firstCheckbox.checked : true;
+      
+      checkboxes.forEach(cb => {
+        cb.checked = yeniDurum;
+      });
+      
+      updatePromptPreview(haftaIndex);
+    }
+    
+    // Modal'ı kapat
+    function closeFinalPromptModal() {
+      const modal = document.getElementById('finalPromptModal');
+      if (modal) {
+        modal.remove();
+      }
+      
+      // Geçici değişkenleri temizle
+      if (window.tempSettings) {
+        delete window.tempSettings;
+      }
+      if (window.cleanedPdfContent) {
+        delete window.cleanedPdfContent;
+      }
+      
+      // Loading durumunu sıfırla
+      const allTextareas = document.querySelectorAll('[id^="gptMesaj_"]');
+      allTextareas.forEach(textarea => {
+        if (textarea.value === '🤖 GPT analiz ediyor, lütfen bekleyin...') {
+          textarea.value = '';
+          textarea.disabled = false;
+        }
+      });
+    }
+    
+    // Düzenleme modunu toggle et
+    function toggleEditMode() {
+      const previewDiv = document.getElementById('promptPreview');
+      const textareaEl = document.getElementById('finalPromptText');
+      const editBtn = document.getElementById('editPromptBtn');
+      
+      if (textareaEl.style.display === 'none') {
+        // Düzenleme moduna geç
+        previewDiv.style.display = 'none';
+        textareaEl.style.display = 'block';
+        textareaEl.style.width = '100%';
+        textareaEl.style.height = '300px';
+        textareaEl.style.padding = '15px';
+        textareaEl.style.border = '2px solid #e3f2fd';
+        textareaEl.style.borderRadius = '8px';
+        textareaEl.style.fontFamily = 'monospace';
+        textareaEl.style.fontSize = '12px';
+        textareaEl.style.resize = 'vertical';
+        editBtn.textContent = '👁️ Önizleme';
+        editBtn.style.background = '#17a2b8';
+        editBtn.style.color = 'white';
+      } else {
+        // Önizleme moduna geç
+        const updatedText = textareaEl.value;
+        const formattedText = updatedText
+          .replace(/=== (.*?) ===/g, '<div style="font-weight: bold; text-decoration: underline; color: #007bff; margin: 15px 0 10px 0; font-size: 14px;">📋 $1</div>')
+          .replace(/\n/g, '<br>');
+        
+        previewDiv.innerHTML = formattedText;
+        previewDiv.style.display = 'block';
+        textareaEl.style.display = 'none';
+        editBtn.textContent = '✏️ Düzenle';
+        editBtn.style.background = '#ffc107';
+        editBtn.style.color = '#212529';
+      }
+    }
+    
+    // Düzenlenmiş prompt'u GPT'ye gönder
+    async function sendFinalPromptToGpt(haftaIndex, settings, textareaId) {
+      try {
+        const finalPromptText = document.getElementById('finalPromptText').value.trim();
+        const gptMesajTextarea = document.getElementById(textareaId);
+        
+        if (!finalPromptText) {
+          alert('❌ Prompt boş olamaz!');
+          return;
+        }
+        
+        // Settings'i doğru şekilde al
+        const currentSettings = window.tempSettings || JSON.parse(localStorage.getItem('gptSettings') || '{}');
+        
+        // Model seçimine göre API key kontrolü
+        let missingApiKey = false;
+        let apiKeyMessage = '';
+        
+        if (currentSettings.model && currentSettings.model.includes('claude')) {
+          if (!currentSettings.claudeApiKey) {
+            missingApiKey = true;
+            apiKeyMessage = 'Claude API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden Claude API Key\'inizi girin.';
+          }
+        } else if (currentSettings.model && currentSettings.model.includes('gemini')) {
+          if (!currentSettings.geminiApiKey) {
+            missingApiKey = true;
+            apiKeyMessage = 'Google Gemini API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden Gemini API Key\'inizi girin.';
+          }
+        } else {
+          if (!currentSettings.apiKey) {
+            missingApiKey = true;
+            apiKeyMessage = 'OpenAI API Key girilmemiş!\n\nLütfen AI Model Ayarları panelinden OpenAI API Key\'inizi girin.';
+          }
+        }
+        
+        if (missingApiKey) {
+          alert('❌ ' + apiKeyMessage);
+          closeFinalPromptModal();
+          return;
+        }
+        
+        // Modal'ı kapat
+        closeFinalPromptModal();
+        
+        // Loading göster
+        const modelName = currentSettings.model.includes('claude') ? 'Claude' : 
+                         currentSettings.model.includes('gemini') ? 'Gemini' : 'GPT';
+        gptMesajTextarea.value = `🤖 ${modelName} analiz ediyor, lütfen bekleyin...`;
+        gptMesajTextarea.disabled = true;
+        
+        // Model seçimine göre API'ye gönder
+        if (currentSettings.model.includes('claude')) {
+          await sendToClaude(finalPromptText, haftaIndex, currentSettings, gptMesajTextarea);
+        } else if (currentSettings.model.includes('gemini')) {
+          await sendToGemini(finalPromptText, haftaIndex, currentSettings, gptMesajTextarea);
+        } else {
+          await sendToGpt(finalPromptText, haftaIndex, currentSettings, gptMesajTextarea);
+        }
+        
+      } catch (error) {
+        console.error('Prompt gönderme hatası:', error);
+        alert(`❌ Hata: ${error.message}`);
+        closeFinalPromptModal();
+      }
+    }
+    
+    // Seçili analizlerle prompt'u güncelle (dinamik token/maliyet hesaplama ile)
+    function updatePromptWithSelectedAnalyses(haftaIndex) {
+      // Seçili analizleri topla
+      const selectedAnalyses = [];
+      const checkboxes = document.querySelectorAll('[id^="oncekiAnaliz_"]:checked');
+      
+      checkboxes.forEach(checkbox => {
+        const haftaNo = parseInt(checkbox.id.split('_')[1]);
+        const analiz = getOncekiGptAnalizleri(haftaIndex).find(a => a.haftaNo === haftaNo);
+        if (analiz) {
+          selectedAnalyses.push(analiz);
+        }
+      });
+      
+      // Yeni prompt oluştur (temel yapı)
+      const prompts = [];
+      
+      // 1. Genel prompt ekle
+      if (document.getElementById(`genelPrompt_${haftaIndex}`)?.checked) {
+        const genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+        if (genelPromptlar.length > 0) {
+          prompts.push('=== GENEL TALİMAT ===');
+          prompts.push(genelPromptlar[0].icerik);
+        }
+      }
+      
+      // 2. Haftalık prompt ekle
+      if (document.getElementById(`haftalikPrompt_${haftaIndex}`)?.checked) {
+        const haftalikPromptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+        const haftaPrompt = haftalikPromptlar.find(p => p.haftaNo === (haftaIndex + 1));
+        if (haftaPrompt) {
+          prompts.push('=== HAFTALIK TEMA ===');
+          prompts.push(haftaPrompt.icerik);
+        }
+      }
+      
+      // 3. Hasta bilgilerini ekle
+      if (document.getElementById(`hastaPrompt_${haftaIndex}`)?.checked && seciliHasta) {
+        prompts.push('=== HASTA BİLGİLERİ ===');
+        prompts.push(`Hasta Adı: ${seciliHasta.hastaIsim || seciliHasta.isim || 'Bilinmiyor'}`);
+        if (seciliHasta.not) {
+          prompts.push(`Hasta Notu: ${seciliHasta.not}`);
+        }
+        if (seciliHasta.notlar) {
+          prompts.push(`Hasta Notları: ${seciliHasta.notlar}`);
+        }
+        if (seciliHasta.yasam) {
+          prompts.push(`Yaşam Bilgileri: ${seciliHasta.yasam}`);
+        }
+      }
+      
+      // 4. Seçili önceki analizleri ekle
+      if (selectedAnalyses.length > 0) {
+        prompts.push('=== ÖNCEKİ HAFTALARIN GPT ANALİZLERİ (TUTARLILIK İÇİN) ===');
+        prompts.push('ÖNEMLİ: Bu içerikleri aynen tekrar etmeyin! Sadece tutarlılık sağlamak ve tekrardan kaçınmak için kullanın.');
+        prompts.push('Hasta ile daha önce konuştukları konuları tekrar etmek yerine, süreci ileriye taşıyan yeni bakış açıları sunun.');
+        prompts.push('');
+        selectedAnalyses.forEach(analiz => {
+          prompts.push(`--- ${analiz.haftaNo}. Hafta (Özet) ---`);
+          prompts.push(analiz.icerik.substring(0, 800) + '...');
+          prompts.push('');
+        });
+        prompts.push('--- Önceki analizlerin sonu ---');
+        prompts.push('Bu hafta için tamamen yeni, önceki haftaları tamamlayan içerik oluşturun.');
+      }
+      
+      // 5. Bu hafta ek bilgileri
+      if (document.getElementById(`ekPrompt_${haftaIndex}`)?.checked) {
+        const ekNotlarHam = document.getElementById(`ekNotlar_${haftaIndex}`)?.value?.trim();
+        if (ekNotlarHam) {
+          // Ek notları da temizle
+          const temizEkNotlar = temizleEkBilgilerTekrarlari(ekNotlarHam);
+          if (temizEkNotlar) {
+            prompts.push('=== BU HAFTA İÇİN EK BİLGİLER ===');
+            prompts.push(temizEkNotlar);
+          }
+        }
+      }
+      
+      // 6. Beslenme listesi (PDF içeriği) - Önceden temizlenmiş içeriği kullan
+      if (seciliHasta?.haftalar?.[haftaIndex]) {
+        const hafta = seciliHasta.haftalar[haftaIndex];
+        prompts.push('=== BESLENME LİSTESİ ===');
+        
+        // Global değişkenden temizlenmiş PDF içeriğini al (modal açılırken hazırlanmış)
+        if (window.cleanedPdfContent && window.cleanedPdfContent.trim()) {
+          prompts.push('PDF İçeriği (Optimize Edildi):');
+          prompts.push(window.cleanedPdfContent);
+        } else if (hafta.pdf && hafta.pdf.length > 1000) {
+          // Eğer temizlenmiş içerik yoksa, ham PDF'den tarif listesi al
+          prompts.push('Tarif Listesi:');
+          if (hafta.tarifler && hafta.tarifler.length > 0) {
+            prompts.push(hafta.tarifler.map(t => `• ${t}`).join('\n'));
+          } else {
+            prompts.push('PDF içeriği işlenmiş, temizlenmiş tarif listesi hazırlanıyor...');
+          }
+        } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+          // Tarif listesi var
+          prompts.push('Tarif Listesi:');
+          prompts.push(hafta.tarifler.map(t => `• ${t}`).join('\n'));
+        } else {
+          prompts.push('Bu hafta için henüz beslenme listesi yüklenmemiş.');
+        }
+      }
+      
+      // Final prompt oluştur
+      const updatedPrompt = prompts.join('\n\n');
+      
+      // Prompt alanlarını güncelle
+      document.getElementById('finalPromptText').value = updatedPrompt;
+      
+      // Önizleme alanını güncelle
+      const formattedPrompt = updatedPrompt
+        .replace(/=== (.*?) ===/g, '<div style="font-weight: bold; text-decoration: underline; color: #007bff; margin: 15px 0 10px 0; font-size: 14px;">📋 $1</div>')
+        .replace(/\n/g, '<br>');
+      
+      document.getElementById('promptPreview').innerHTML = formattedPrompt;
+      
+      // Token ve maliyet hesapla (GERÇEK ZAMANLI)
+      const tokenSayisi = hesaplaToken(updatedPrompt);
+      const settings = window.tempSettings || JSON.parse(localStorage.getItem('gptSettings') || '{}');
+      const maliyet = hesaplaMaliyet(tokenSayisi, settings.model || 'gpt-4');
+      
+      // Maliyet panelini dinamik güncelle
+      const maliyetPanel = document.querySelector('.modal-maliyet-panel');
+      if (!maliyetPanel) {
+        // İlk kez çalışıyorsa class ekle
+        const panel = document.querySelector('[style*="background: #f8f9fa"]');
+        if (panel) {
+          panel.classList.add('modal-maliyet-panel');
+        }
+      }
+      
+      const maliyetPaneli = document.querySelector('.modal-maliyet-panel') || document.querySelector('[style*="background: #f8f9fa"]');
+      if (maliyetPaneli) {
+        // Renk kodlaması: yeşil (ucuz), sarı (orta), kırmızı (pahalı)
+        let renkKodu = '#28a745'; // yeşil
+        if (maliyet.toplamMaliyet > 0.02) renkKodu = '#ffc107'; // sarı
+        if (maliyet.toplamMaliyet > 0.05) renkKodu = '#dc3545'; // kırmızı
+        
+        maliyetPaneli.innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 12px;">
+            <div><strong>📊 Token:</strong> ~${tokenSayisi.toLocaleString()}</div>
+            <div><strong>🤖 Model:</strong> ${maliyet.model}</div>
+            <div style="color: ${renkKodu}; font-weight: bold;"><strong>💰 Tahmini Maliyet:</strong> ~$${maliyet.toplamMaliyet.toFixed(4)}</div>
+            <div><strong>🔢 Toplam Token:</strong> ~${maliyet.toplamToken.toLocaleString()}</div>
+          </div>
+          <div style="margin-top: 8px; font-size: 11px; color: #666;">
+            📚 <strong>${selectedAnalyses.length}</strong> hafta analizi dahil | Tikleri kaldırarak token/maliyet azaltabilirsiniz
+          </div>
+        `;
+      }
+    }
+
+    // Model'e göre maksimum token sayısını belirle
+    function getModelMaxTokens(model) {
+      const modelTokenLimits = {
+        'gpt-4o-mini': 8192,
+        'gpt-4o': 8192,
+        'gpt-4o-audio-preview': 8192,
+        'gpt-4.1-mini': 8192,
+        'gpt-3.5-turbo': 4096,
+        'claude-3-5-sonnet': 8192,
+        'claude-3-opus': 4096,
+        'claude-3-5-haiku': 4096,
+        'gemini-pro-latest': 8192,
+        'gemini-2.5-pro': 8192,
+        'gemini-flash-latest': 8192,
+        'gemini-2.5-flash': 8192,
+        'gemini-2.0-flash': 8192
+      };
+      
+      return modelTokenLimits[model] || 4096;
+    }
+
+    // PDF'in ilk satırını çıkar (Google Sheets'ten gelen PDF için)
+    async function extractPdfFirstLine(pdfBlob) {
+      try {
+        // PDF.js kütüphanesi kullanarak PDF içeriğini oku
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        
+        // PDF.js kullanılabilir mi kontrol et
+        if (typeof pdfjsLib === 'undefined') {
+          console.warn('⚠️ PDF.js yüklü değil, text extraction için basit yöntem kullanılıyor');
+          // Alternatif: Blob'u text olarak okumayı dene (her zaman çalışmaz)
+          const text = await pdfBlob.text();
+          const firstLine = text.split('\n')[0];
+          return firstLine;
+        }
+        
+        // PDF.js ile ilk sayfayı yükle
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1); // İlk sayfa
+        const textContent = await page.getTextContent();
+        
+        // Text içeriğini birleştir
+        const textItems = textContent.items.map(item => item.str);
+        const fullText = textItems.join(' ');
+        
+        // İlk satırı al (ilk \n'ye kadar veya ilk 200 karakter)
+        const firstLine = fullText.split('\n')[0] || fullText.substring(0, 200);
+        
+        return firstLine.trim();
+        
+      } catch (error) {
+        console.error('❌ PDF ilk satır çıkarma hatası:', error);
+        // Hata durumunda boş string dön
+        return '';
+      }
+    }
+    
+    // PDF ilk satırını parse et
+    // Format: "FATMA ERDEN / 20-26 EKİM 2025" veya "HAVVA ÇİÇEK   / 20-26 EKİM   2025"
+    function parsePdfFirstLine(firstLine) {
+      const result = {
+        hastaAdiPdf: '',
+        tarihAralik: ''
+      };
+      
+      if (!firstLine) {
+        return result;
+      }
+      
+      // Slash (/) ile böl
+      const parts = firstLine.split('/');
+      
+      if (parts.length >= 2) {
+        // İlk kısım: Hasta adı
+        result.hastaAdiPdf = parts[0].trim();
+        
+        // İkinci kısım: Tarih aralığı (örn: "20-26 EKİM 2025" veya "20-26 EKİM   2025")
+        const tarihKisim = parts[1].trim();
+        
+        // Tarih aralığını çıkar: "20-26 EKİM" formatında
+        // Regex: sayı-sayı AYADI formatı
+        const tarihRegex = /(\d{1,2}-\d{1,2}\s+[A-ZÜĞİŞÇÖ]+)/i;
+        const tarihMatch = tarihKisim.match(tarihRegex);
+        
+        if (tarihMatch) {
+          result.tarihAralik = tarihMatch[1].trim().toUpperCase();
+        } else {
+          // Alternatif: Yılı çıkar ve sadece tarih+ay al
+          const yilsizTarih = tarihKisim.replace(/\d{4}/, '').trim();
+          result.tarihAralik = yilsizTarih;
+        }
+      } else {
+        // Slash yoksa, tüm satırı hasta adı olarak al
+        result.hastaAdiPdf = firstLine.trim();
+      }
+      
+      return result;
+    }
+
+    // Google Drive'dan PDF yükle
+    async function drivedenPdfYukle(haftaIndeks) {
+      try {
+        console.log(`🔄 Drive'dan PDF yükleniyor: Hafta ${haftaIndeks + 1}`);
+        
+        // Seçili hasta kontrolü
+        if (!seciliHasta) {
+          alert('❌ Önce bir hasta seçmelisiniz!');
+          return;
+        }
+        
+        const hasta = seciliHasta;
+        console.log('✅ Seçili hasta bulundu:', hasta.isim || hasta.hastaIsim);
+        
+        // Hafta kilit kontrolü
+        const hafta = hasta.haftalar[haftaIndeks];
+        if (hafta?.kilitli) {
+          alert('🔒 Bu hafta kilitli! PDF yüklemek için önce kilidi açın.');
+          return;
+        }
+        
+        // Google API'yi başlat
+        const signedIn = await signInToGoogle();
+        if (!signedIn) {
+          return;
+        }
+        
+        // Hasta sheet'ini ara
+        const hastaAdi = hasta.hastaIsim || hasta.isim;
+        console.log(`🔍 "${hastaAdi}" için Google Sheets araştırılıyor...`);
+        
+        const patientSheet = await findPatientSheet(hastaAdi);
+        if (!patientSheet) {
+          alert(`❌ "${hastaAdi}" için Google Sheets dosyası bulunamadı!\n\n💡 Çözüm:\n1. Google Drive'da "${hastaAdi}" isimli bir Google Sheets dosyası oluşturun\n2. "${haftaIndeks + 1}. hafta pdf" adında bir tab ekleyin\n3. Tekrar deneyin`);
+          return;
+        }
+        
+        console.log('✅ Hasta sheet\'i bulundu:', patientSheet.name);
+        
+        // PDF tab ismini oluştur - farklı varyasyonları dene
+        const haftaNo = haftaIndeks + 1;
+        const possibleTabNames = [
+          `${haftaNo}. hafta pdf`,
+          `${haftaNo}.hafta pdf`,
+          `${haftaNo} hafta pdf`,
+          `${haftaNo}hafta pdf`,
+          `${haftaNo}. hafta`,
+          `hafta ${haftaNo}`,
+          `Sayfa${haftaNo}`,
+          `Sheet${haftaNo}`,
+        ];
+        
+        console.log(`📄 Tab aranıyor, olası isimler:`, possibleTabNames);
+        
+        // İlk bulunan tab adını kullan
+        let pdfBlob = null;
+        let foundTabName = null;
+        
+        for (const tabName of possibleTabNames) {
+          try {
+            console.log(`🔍 Deneniyor: "${tabName}"`);
+            pdfBlob = await exportSheetTabAsPdf(patientSheet.id, tabName);
+            foundTabName = tabName;
+            console.log(`✅ Tab bulundu: "${tabName}"`);
+            break;
+          } catch (error) {
+            console.log(`❌ "${tabName}" bulunamadı`);
+            continue;
+          }
+        }
+        
+        if (!pdfBlob) {
+          alert(`❌ Hiçbir hafta tab'ı bulunamadı!\n\n🔍 Aranan isimler:\n${possibleTabNames.join('\n')}\n\n💡 Google Sheets'te yukardaki isimlerden birini kullanın.`);
+          return;
+        }
+        
+        console.log('✅ PDF blob alındı, boyut:', pdfBlob.size);
+        
+        // PDF içeriğini oku ve ilk satırı analiz et
+        const pdfFirstLine = await extractPdfFirstLine(pdfBlob);
+        console.log('📄 PDF ilk satır:', pdfFirstLine);
+        
+        // İlk satırdan hasta adı ve tarih aralığını çıkar
+        // Format: "FATMA ERDEN / 20-26 EKİM 2025" veya "FATMA ERDEN   / 20-26 EKİM   2025"
+        const { hastaAdiPdf, tarihAralik } = parsePdfFirstLine(pdfFirstLine);
+        
+        console.log('📋 PDF\'den çıkarılan bilgiler:', { hastaAdiPdf, tarihAralik });
+        
+        // Hasta adını doğrula
+        const mevcutHastaAdi = (hasta.hastaIsim || hasta.isim).trim().toUpperCase();
+        const pdfHastaAdi = hastaAdiPdf.trim().toUpperCase();
+        
+        if (pdfHastaAdi !== mevcutHastaAdi) {
+          const onay = confirm(
+            `⚠️ UYARI: PDF'deki hasta adı farklı!\n\n` +
+            `🔹 Sistemdeki Hasta: ${mevcutHastaAdi}\n` +
+            `🔹 PDF'deki Hasta: ${pdfHastaAdi}\n\n` +
+            `❓ Yine de devam etmek istiyor musunuz?\n\n` +
+            `✅ EVET = PDF'yi yükle\n` +
+            `❌ HAYIR = İşlemi iptal et`
+          );
+          
+          if (!onay) {
+            console.log('❌ Kullanıcı PDF yüklemeyi iptal etti (hasta adı uyumsuz)');
+            showToast('⚠️ İşlem iptal edildi - Hasta adı uyumsuz', 'warning', 3000);
+            return;
+          }
+          
+          console.log('⚠️ Kullanıcı hasta adı uyumsuzluğuna rağmen devam etti');
+        }
+        
+        // Dosya ismini oluştur: "FATMA ERDEN 20-26 EKİM 2. HAFTA.pdf"
+        let pdfFileName;
+        if (tarihAralik) {
+          pdfFileName = `${hastaAdi} ${tarihAralik} ${haftaNo}. HAFTA.pdf`;
+        } else {
+          // Tarih aralığı bulunamadıysa eski formatı kullan
+          pdfFileName = `${hastaAdi}_${haftaNo}_hafta.pdf`;
+        }
+        
+        console.log('📝 PDF dosya ismi belirlendi:', pdfFileName);
+        
+        // PDF dosyasını File objesine çevir
+        const pdfFile = new File([pdfBlob], pdfFileName, {
+          type: 'application/pdf'
+        });
+        
+        console.log('✅ PDF dosyası hazırlandı:', pdfFile.name);
+        
+        // Fake input objesi oluştur (pdfYukleHafta fonksiyonu input bekliyor)
+        const fakeInput = {
+          files: [pdfFile],
+          value: ''
+        };
+        
+        // Mevcut PDF yükleme fonksiyonunu kullan
+        await pdfYukleHafta(haftaIndeks, fakeInput);
+        
+        // Başarı mesajı göster
+        showToast(`✅ PDF başarıyla Drive'dan yüklendi: ${foundTabName}`, 'success', 3000);
+        
+      } catch (error) {
+        console.error('❌ Drive PDF yükleme hatası:', error);
+        console.error('❌ Hata detayı:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+        
+        if (error.message && error.message.includes('Google Drive\'a giriş yapmalısınız')) {
+          alert('⚠️ Önce Google Drive\'a giriş yapmalısınız!\n\n"Google Drive\'a Bağlan" butonunu kullanın.');
+        } else if (error.status === 403) {
+          alert(`❌ Google Drive Erişim Hatası!\n\n🔍 Sebep: İzin sorunu\n💡 Çözüm:\n1. Google Drive\'da "${hasta.isim || hasta.hastaIsim}" adında bir Google Sheets dosyası oluşturun\n2. Bu dosyayı herkese açık yapın\n3. Tekrar deneyin`);
+        } else {
+          alert(`❌ Hata: ${error.message}`);
+        }
+      }
+    }
+
+    // Google API durumunu kontrol et
+    function googleApiDurum() {
+      let durum = '🔍 Google Drive API Detaylı Durum:\n\n';
+      
+      // API anahtarlarını kontrol et
+      const googleApiKey = localStorage.getItem('googleDriveApiKey');
+      const googleClientId = localStorage.getItem('googleDriveClientId');
+      
+      if (googleApiKey) {
+        durum += '✅ API Key: Kayıtlı (' + googleApiKey.substring(0, 10) + '...)\n';
+      } else {
+        durum += '❌ API Key: Eksik (localStorage\'dan okunamadı)\n';
+      }
+      
+      if (googleClientId) {
+        durum += '✅ Client ID: Kayıtlı (' + googleClientId.substring(0, 15) + '...)\n';
+      } else {
+        durum += '❌ Client ID: Eksik (localStorage\'dan okunamadı)\n';
+      }
+      
+      // Google API kütüphanelerinin yüklenme durumu
+      if (typeof gapi !== 'undefined') {
+        durum += '✅ GAPI: Yüklü\n';
+        
+        if (gapi.client) {
+          durum += '✅ GAPI Client: Başlatıldı\n';
+        } else {
+          durum += '❌ GAPI Client: Başlatılmamış\n';
+        }
+      } else {
+        durum += '❌ GAPI: Yüklenmemiş\n';
+      }
+      
+      if (typeof google !== 'undefined' && google.accounts) {
+        durum += '✅ Google Identity Services: Yüklü\n';
+      } else {
+        durum += '❌ Google Identity Services: Yüklenmemiş\n';
+      }
+      
+      // Oturum durumu
+      if (window.accessToken) {
+        durum += '✅ OAuth Token: Mevcut\n';
+      } else {
+        durum += '❌ OAuth Token: Yok\n';
+      }
+      
+      if (window.googleSignedIn) {
+        durum += '✅ Drive Oturumu: Aktif\n';
+      } else {
+        durum += '❌ Drive Oturumu: İnaktif\n';
+      }
+      
+      if (window.tokenClient) {
+        durum += '✅ Token Client: Hazır\n';
+      } else {
+        durum += '❌ Token Client: Oluşturulmamış\n';
+      }
+      
+      durum += '\n� Troubleshooting:\n';
+      durum += '• API ayarlarını GPT Panel\'inde kontrol edin\n';
+      durum += '• Sayfayı yenileyin ve tekrar deneyin\n';
+      durum += '• Google API konsolda projenizi kontrol edin\n';
+      durum += '• İnternet bağlantınızı kontrol edin';
+      
+      alert(durum);
+    }
+
+    // OAuth Troubleshooting ve Google Console Yönlendirme
+    function showOAuthTroubleshooting() {
+      const googleClientId = localStorage.getItem('googleDriveClientId');
+      const projectId = googleClientId ? googleClientId.split('.')[0] : 'YOUR_PROJECT_ID';
+      
+      const troubleMsg = `
+🔧 Google OAuth Hatası Çözümü
+
+❌ Sorun: "Erişim engellendi: Yetkilendirme hatası"
+
+✅ Çözüm Adımları:
+
+1️⃣ GOOGLE CLOUD CONSOLE'A GİT:
+   https://console.cloud.google.com/apis/credentials/consent
+
+2️⃣ TEST KULLANICISI EKLE:
+   • "OAuth consent screen" > "Test users"
+   • "+ ADD USERS" butonuna tıkla
+   • Email'inizi ekleyin: lipodemmerkezi@gmail.com
+   • "SAVE" yapın
+
+3️⃣ REDIRECT URI'LERİNİ KONTROL ET:
+   • "Credentials" > OAuth 2.0 Client IDs
+   • "Authorized redirect URIs" bölümüne ekleyin:
+     - ${location.origin}
+     - http://localhost:8000
+     - http://127.0.0.1:8000
+
+4️⃣ PROJE DURUMU:
+   • Publishing status: "Testing" (geliştirme için yeterli)
+   • Test kullanıcıları maksimum 100 kişi
+
+💡 Bu hata geliştirme aşamasında normaldir!
+
+🔗 Hızlı Erişim:
+   Console: https://console.cloud.google.com/apis/credentials
+   Project: ${projectId}
+`;
+
+      if (confirm(troubleMsg + '\n\nGoogle Cloud Console\'u açmak ister misiniz?')) {
+        window.open('https://console.cloud.google.com/apis/credentials/consent', '_blank');
+      }
+    }
+
+    // Google Drive giriş fonksiyonu
+    async function signInToGoogle() {
+      try {
+        if (window.googleSignedIn) {
+          console.log('✅ Zaten Google Drive\'a bağlı');
+          showToast('✅ Zaten Google Drive\'a bağlısınız', 'success');
+          return true;
+        }
+        
+        console.log('🔄 Google Drive\'a giriş yapılıyor...');
+        
+        // API anahtarlarını kontrol et
+        const googleApiKey = localStorage.getItem('googleDriveApiKey');
+        const googleClientId = localStorage.getItem('googleDriveClientId');
+        
+        if (!googleApiKey || !googleClientId) {
+          showToast('❌ Google API ayarları eksik! Ayarları kontrol edin.', 'error');
+          return false;
+        }
+        
+        // Google API'nin yüklü olup olmadığını kontrol et
+        if (typeof gapi === 'undefined') {
+          showToast('❌ Google API henüz yüklenmedi! Sayfayı yenileyin.', 'error');
+          return false;
+        }
+        
+        // GAPI client'ı başlat (Drive API'yi yükle)
+        if (!window.gapiInitialized) {
+          try {
+            console.log('🔄 GAPI client başlatılıyor...');
+            
+            await new Promise((resolve, reject) => {
+              gapi.load('client', {
+                callback: resolve,
+                onerror: () => reject(new Error('GAPI client yüklenemedi'))
+              });
+            });
+            
+            // Drive API'yi yükle
+            await gapi.client.init({
+              apiKey: googleApiKey,
+              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+            });
+            
+            console.log('✅ GAPI client ve Drive API yüklendi');
+            window.gapiInitialized = true;
+          } catch (gapiError) {
+            console.error('❌ GAPI başlatma hatası:', gapiError);
+            showToast('❌ Google API başlatma hatası: ' + gapiError.message, 'error');
+            return false;
+          }
+        }
+        
+        // Google Identity Services için token client oluştur
+        if (!window.tokenClient) {
+          try {
+            // Geliştirme ortamı tespiti
+            const isDevelopment = location.hostname === 'localhost' || 
+                                location.hostname === '127.0.0.1' || 
+                                location.protocol === 'file:';
+            
+            console.log('🔍 Geliştirme ortamı:', isDevelopment);
+            console.log('🌐 Hostname:', location.hostname);
+            console.log('📍 Protocol:', location.protocol);
+            
+            const tokenConfig = {
+              client_id: googleClientId,
+              scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+              callback: '', // Callback'i aşağıda set edeceğiz
+            };
+            
+            // Geliştirme ortamında ek ayarlar
+            if (isDevelopment) {
+              console.log('⚡ Geliştirme modu aktif - OAuth ayarları optimizasyonu');
+              // Geliştirme için ek scope'lar ve ayarlar eklenebilir
+            }
+            
+            window.tokenClient = google.accounts.oauth2.initTokenClient(tokenConfig);
+            console.log('✅ Token client oluşturuldu:', tokenConfig);
+          } catch (err) {
+            console.error('❌ Token client oluşturma hatası:', err);
+            showToast('❌ Google OAuth hatası: ' + err.message, 'error');
+            
+            // Hata durumunda detaylı bilgi ver
+            console.log('🔧 OAuth Hata Çözüm Önerileri:');
+            console.log('1. Google Cloud Console\'da test kullanıcısı ekleyin');
+            console.log('2. Authorized redirect URIs\'e ekleyin:', location.origin);
+            console.log('3. Client ID formatını kontrol edin:', googleClientId);
+            
+            return false;
+          }
+        }
+        
+        // OAuth akışını başlat
+        return new Promise((resolve) => {
+          window.tokenClient.callback = async (response) => {
+            if (response.error !== undefined) {
+              console.error('❌ OAuth Token Hatası:', response);
+              showToast('❌ Google Drive giriş hatası: ' + response.error, 'error');
+              resolve(false);
+              return;
+            }
+            
+            try {
+              console.log('✅ OAuth Token alındı');
+              window.accessToken = response.access_token;
+              
+              // GAPI client'a token'ı set et
+              gapi.client.setToken({access_token: response.access_token});
+              
+              // Bağlantıyı test et - Drive API'nin yüklenip yüklenmediğini kontrol et
+              if (!gapi.client.drive) {
+                console.log('⚠️ Drive API henüz yüklenmemiş, yükleniyor...');
+                await gapi.client.load('drive', 'v3');
+                console.log('✅ Drive API yüklendi');
+              }
+              
+              const testResponse = await gapi.client.drive.about.get({
+                fields: 'user'
+              });
+              
+              if (testResponse.result && testResponse.result.user) {
+                window.googleSignedIn = true;
+                const userName = testResponse.result.user.displayName || testResponse.result.user.emailAddress || 'Kullanıcı';
+                console.log('✅ Google Drive\'a başarıyla bağlandı:', userName);
+                showToast('✅ Google Drive\'a başarıyla bağlandı!', 'success');
+                resolve(true);
+              } else {
+                throw new Error('Kullanıcı bilgileri alınamadı');
+              }
+            } catch (testError) {
+              console.error('❌ Google Drive bağlantı testi hatası:', testError);
+              
+              // Hata detaylarını göster
+              if (testError.result && testError.result.error) {
+                console.error('API Hata Detayı:', testError.result.error);
+                showToast('❌ Google Drive hatası: ' + testError.result.error.message, 'error');
+              } else {
+                showToast('❌ Google Drive bağlantı testi başarısız: ' + testError.message, 'error');
+              }
+              
+              resolve(false);
+            }
+          };
+          
+          // OAuth popup'ını aç
+          try {
+            console.log('🚀 OAuth popup açılıyor...');
+            window.tokenClient.requestAccessToken({
+              prompt: 'consent',
+              hint: 'Lütfen Google Drive erişim izinlerini onaylayın'
+            });
+          } catch (requestError) {
+            console.error('❌ OAuth istek hatası:', requestError);
+            
+            // OAuth hatası için detaylı çözüm önerileri
+            let errorMsg = '❌ Google OAuth Hatası!\n\n';
+            
+            if (requestError.message && requestError.message.includes('invalid_request')) {
+              errorMsg += '🔧 Çözüm Adımları:\n';
+              errorMsg += '1. Google Cloud Console > APIs & Services\n';
+              errorMsg += '2. OAuth consent screen > Test users\n';
+              errorMsg += '3. Email adresinizi ekleyin: ' + (localStorage.getItem('userEmail') || 'lipodemmerkezi@gmail.com') + '\n';
+              errorMsg += '4. Authorized redirect URIs ekleyin:\n';
+              errorMsg += '   - ' + location.origin + '\n';
+              errorMsg += '   - http://localhost:8000\n';
+              errorMsg += '   - http://127.0.0.1:8000\n\n';
+              errorMsg += '💡 Geliştirme aşamasında bu normal bir durumdur.';
+            } else {
+              errorMsg += 'Hata: ' + requestError.message;
+            }
+            
+            alert(errorMsg);
+            showToast('❌ OAuth hatası - Konsolu kontrol edin', 'error');
+            resolve(false);
+          }
+        });
+        
+      } catch (error) {
+        console.error('❌ Google Drive giriş hatası:', error);
+        showToast('❌ Google Drive giriş hatası: ' + error.message, 'error');
+        return false;
+      }
+    }
+
+    // Google Sheets'te hasta dosyası ara
+    async function findPatientSheet(hastaAdi) {
+      try {
+        if (!window.accessToken) {
+          throw new Error('Önce Google Drive\'a giriş yapmalısınız');
+        }
+        
+        const query = `name contains '${hastaAdi}' and mimeType='application/vnd.google-apps.spreadsheet'`;
+        
+        const response = await gapi.client.drive.files.list({
+          q: query,
+          fields: 'files(id,name,webViewLink)'
+        });
+        
+        const files = response.result.files;
+        console.log(`🔍 "${hastaAdi}" için ${files.length} adet sheet dosyası bulundu`);
+        
+        let exactMatch = files.find(file => 
+          file.name.toLowerCase().includes(hastaAdi.toLowerCase()) ||
+          hastaAdi.toLowerCase().includes(file.name.toLowerCase())
+        );
+        
+        if (exactMatch) {
+          console.log(`✅ En iyi eşleşme: "${exactMatch.name}"`);
+        } else if (files.length > 0) {
+          exactMatch = files[0];
+          console.log(`⚠️ Tam eşleşme yok, ilk dosya seçildi: "${exactMatch.name}"`);
+        }
+        
+        return exactMatch;
+        
+      } catch (error) {
+        console.error('❌ Google Sheets arama hatası:', error);
+        throw error;
+      }
+    }
+
+    // Google Sheets tab'ını PDF olarak export et
+    async function exportSheetTabAsPdf(sheetId, tabName) {
+      try {
+        console.log(`📄 Sheet PDF export ediliyor: ${sheetId}, Tab: ${tabName}`);
+        
+        const sheetsResponse = await gapi.client.request({
+          path: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}`,
+          params: {
+            fields: 'sheets.properties'
+          }
+        });
+        
+        const sheets = sheetsResponse.result.sheets;
+        console.log('📋 Mevcut tab\'lar:', sheets.map(s => s.properties.title));
+        
+        // Tab ara
+        let targetSheet = sheets.find(sheet => 
+          sheet.properties.title.toLowerCase() === tabName.toLowerCase()
+        );
+        
+        // Esnek arama
+        if (!targetSheet) {
+          const normalizeForSearch = (name) => {
+            return name.toLowerCase().replace(/\s+/g, '').replace(/[\.]/g, '');
+          };
+          
+          const targetNormalized = normalizeForSearch(tabName);
+          
+          for (const sheet of sheets) {
+            const sheetNormalized = normalizeForSearch(sheet.properties.title);
+            if (sheetNormalized === targetNormalized || 
+                sheetNormalized.includes(targetNormalized) || 
+                targetNormalized.includes(sheetNormalized)) {
+              targetSheet = sheet;
+              break;
+            }
+          }
+        }
+        
+        if (!targetSheet) {
+          throw new Error(`Tab bulunamadı: ${tabName}`);
+        }
+        
+        const sheetGid = targetSheet.properties.sheetId;
+        console.log(`✅ Tab bulundu: ${tabName} (ID: ${sheetGid})`);
+        
+        // PDF export URL
+        const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=pdf&gid=${sheetGid}&portrait=true&fitw=true`;
+        
+        const response = await fetch(exportUrl, {
+          headers: {
+            'Authorization': `Bearer ${window.accessToken}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`PDF export hatası: ${response.status}`);
+        }
+        
+        const pdfBlob = await response.blob();
+        console.log('✅ PDF başarıyla export edildi');
+        
+        return pdfBlob;
+        
+      } catch (error) {
+        console.error('❌ PDF export hatası:', error);
+        throw error;
+      }
+    }
+
+    // Toast mesajı göster
+    function showToast(message, type = 'info', duration = 3000) {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        z-index: 10000;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, duration);
+    }
+
+    // Global fonksiyon olarak export et
+    window.showGptPanel = showGptPanel;
+    window.hideGptPanel = hideGptPanel;
+    window.closeGptPanel = hideGptPanel; // Alias için
+    window.saveGptSettings = saveGptSettings;
+    window.analyzeWithAI = analyzeWithAI;
+  window.gptAnalizeEt = gptAnalizeEt;
+  window.getOncekiGptAnalizleri = getOncekiGptAnalizleri;
+  window.ekNotlarKaydetVeTemizle = ekNotlarKaydetVeTemizle;
+  window.guncelleEkBilgilerDinamik = guncelleEkBilgilerDinamik;
+    window.aiAnalizYap = aiAnalizYap;
+    window.showFinalPromptModal = showFinalPromptModal;
+    window.closeFinalPromptModal = closeFinalPromptModal;
+    window.toggleEditMode = toggleEditMode;
+    window.sendFinalPromptToGpt = sendFinalPromptToGpt;
+    window.updatePromptWithSelectedAnalyses = updatePromptWithSelectedAnalyses;
+    window.getModelMaxTokens = getModelMaxTokens;
+    window.drivedenPdfYukle = drivedenPdfYukle;
+    window.googleApiDurum = googleApiDurum;
+    window.signInToGoogle = signInToGoogle;
+    window.showOAuthTroubleshooting = showOAuthTroubleshooting;
+    window.showToast = showToast;
+
+    // Google API Config Modal
+    function showGoogleApiConfig() {
+      const modal = document.createElement('div');
+      modal.innerHTML = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+          <div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%;">
+            <h3>⚙️ Google API Ayarları</h3>
+            <div style="margin: 15px 0;">
+              <label>Google Drive API Key:</label>
+              <input type="text" id="modalApiKey" placeholder="YOUR_API_KEY_HERE" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div style="margin: 15px 0;">
+              <label>Google Drive Client ID:</label>
+              <input type="text" id="modalClientId" placeholder="YOUR_CLIENT_ID_HERE" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+              <button onclick="saveGoogleApiConfig()" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">💾 Kaydet</button>
+              <button onclick="this.closest('div').parentElement.remove()" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">❌ İptal</button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Mevcut değerleri yükle
+      const apiKey = localStorage.getItem('googleDriveApiKey') || '';
+      const clientId = localStorage.getItem('googleDriveClientId') || '';
+      
+      document.body.appendChild(modal);
+      
+      setTimeout(() => {
+        document.getElementById('modalApiKey').value = apiKey;
+        document.getElementById('modalClientId').value = clientId;
+      }, 100);
+    }
+
+    function saveGoogleApiConfig() {
+      const apiKey = document.getElementById('modalApiKey').value;
+      const clientId = document.getElementById('modalClientId').value;
+      
+      if (apiKey) localStorage.setItem('googleDriveApiKey', apiKey);
+      if (clientId) localStorage.setItem('googleDriveClientId', clientId);
+      
+      showToast('✅ Google API ayarları kaydedildi', 'success', 2000);
+      document.querySelector('[style*="position: fixed"]').remove();
+    }
+
+    window.showGoogleApiConfig = showGoogleApiConfig;
+    window.saveGoogleApiConfig = saveGoogleApiConfig;
+    
+    // Sayfa yüklendiğinde temel işlemler (GPT ayarları modal açıldığında yüklenecek)
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Sayfa yüklendi - GPT ayarları modal açıldığında yüklenecek');
     });
   </script>
 
 </body>
 </html>
+
+
+
+
 
 
 
