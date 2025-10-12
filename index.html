@@ -16578,7 +16578,7 @@ ${mesajlar.join('\n')}
         // GitHub repo bilgilerini al
         const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
         const owner = githubSettings.owner || 'mustafasacar35';
-        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
         const branch = githubSettings.branch || 'main';
 
         console.log('Promptlar yükleniyor:', { owner, repo, branch, hasToken: !!token });
@@ -16600,7 +16600,14 @@ ${mesajlar.join('\n')}
             const genelContent = base64DecodeUnicode(genelData.content);
             
             // JSON parse et
-            const genelObj = JSON.parse(genelContent);
+            let genelObj;
+            try {
+              genelObj = JSON.parse(genelContent);
+            } catch (parseError) {
+              console.error('❌ JSON parse hatası:', parseError);
+              console.error('📄 Sorunlu içerik (ilk 500 karakter):', genelContent.substring(0, 500));
+              throw new Error('GitHub\'daki genel_promptlar.json dosyası bozuk! Lütfen https://jsonlint.com ile kontrol edin.');
+            }
             
             // Eğer içerik tekrar JSON string ise bir kez daha parse et
             const finalGenelObj = typeof genelObj === 'string' ? JSON.parse(genelObj) : genelObj;
@@ -17608,7 +17615,16 @@ ${mesajlar.join('\n')}
         
         // Mevcut JSON içeriğini decode et (UTF-8 desteğiyle)
         const decodedContent = base64DecodeUnicode(fileData.content);
-        const currentContent = JSON.parse(decodedContent);
+        
+        let currentContent;
+        try {
+          currentContent = JSON.parse(decodedContent);
+        } catch (parseError) {
+          console.error('❌ JSON parse hatası:', parseError);
+          console.error('📄 Sorunlu içerik (ilk 500 karakter):', decodedContent.substring(0, 500));
+          alert('❌ GitHub\'daki genel_promptlar.json dosyası bozuk!\n\nLütfen https://jsonlint.com ile kontrol edin ve düzeltin.\n\nHata: ' + parseError.message);
+          throw parseError;
+        }
         
         // Özel prompt'ları ekle veya güncelle
         currentContent.ozelPromptlar = {
