@@ -1758,8 +1758,212 @@ function olcumlerKapat() {
 }
 
 function olcumGrafikGoster() {
-  alert('📊 Grafik özelliği yakında eklenecek!');
+  if (!seciliHasta || !seciliHasta.olcumler || seciliHasta.olcumler.length < 2) {
+    showToast('❌ Grafik oluşturmak için en az 2 ölçüm gerekli', 'error');
+    return;
+  }
+  
+  // Grafik modalını oluştur
+  let grafikModal = document.getElementById('olcumGrafikModal');
+  if (!grafikModal) {
+    const modalHTML = `
+      <div id="olcumGrafikModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001; overflow: auto;">
+        <div style="background: white; margin: 20px auto; max-width: 95%; max-height: 90vh; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #6c5ce7, #5b4cdb); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📊</div>
+              <div>
+                <h2 style="margin: 0; font-size: 20px;">Vücut Ölçümleri Grafiği</h2>
+                <p id="grafikHastaIsim" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p>
+              </div>
+            </div>
+            <button onclick="olcumGrafikKapat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button>
+          </div>
+          <div style="padding: 20px; max-height: calc(90vh - 100px); overflow-y: auto;">
+            <div id="grafikAlanlariContainer"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    grafikModal = document.getElementById('olcumGrafikModal');
+  }
+  
+  // Hasta ismini güncelle
+  document.getElementById('grafikHastaIsim').textContent = seciliHasta.isim || 'Hasta';
+  
+  // Ölçümleri tarihe göre sırala
+  const siraliOlcumler = [...seciliHasta.olcumler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+  
+  // Her alan için grafik oluştur
+  const grafikContainer = document.getElementById('grafikAlanlariContainer');
+  grafikContainer.innerHTML = '';
+  
+  const alanIsimler = {
+    'bel': 'Bel',
+    'kalca': 'Kalça',
+    'sagUyluk': 'Sağ Uyluk',
+    'solUyluk': 'Sol Uyluk',
+    'sagDiz': 'Sağ Diz',
+    'solDiz': 'Sol Diz',
+    'sagBaldir': 'Sağ Baldır',
+    'solBaldir': 'Sol Baldır',
+    'sagBilek': 'Sağ Bilek',
+    'solBilek': 'Sol Bilek',
+    'sagKol': 'Sağ Kol',
+    'solKol': 'Sol Kol',
+    'kilo': 'Kilo'
+  };
+  
+  olcumAlanlari.forEach((alan, alanIndex) => {
+    // Veri var mı kontrol et
+    const veriler = siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0);
+    if (veriler.length === 0) return; // Bu alan için veri yok, atla
+    
+    // Grafik kartı oluştur
+    const kartDiv = document.createElement('div');
+    kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+    
+    // Başlık
+    const baslik = document.createElement('h3');
+    baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px; display: flex; align-items: center; justify-content: space-between;';
+    
+    const ilk = veriler[0];
+    const son = veriler[veriler.length - 1];
+    const fark = son - ilk;
+    const farkRenk = fark < 0 ? '#00b894' : (fark > 0 ? '#ff6b6b' : '#636e72');
+    
+    baslik.innerHTML = `
+      <span>${alanIsimler[alan]}</span>
+      <span style="font-size: 14px; color: ${farkRenk}; font-weight: bold;">
+        ${ilk.toFixed(1)} → ${son.toFixed(1)} 
+        <span style="font-size: 12px;">(${fark > 0 ? '+' : ''}${fark.toFixed(1)})</span>
+      </span>
+    `;
+    kartDiv.appendChild(baslik);
+    
+    // Grafik canvas
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'position: relative; height: 200px; background: white; border-radius: 6px; padding: 15px; border: 1px solid #e0e0e0;';
+    
+    // Grafik çiz
+    const minVal = Math.min(...veriler);
+    const maxVal = Math.max(...veriler);
+    const range = maxVal - minVal || 1;
+    const padding = range * 0.1; // %10 padding
+    const chartMin = minVal - padding;
+    const chartMax = maxVal + padding;
+    const chartRange = chartMax - chartMin;
+    
+    // SVG oluştur
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '170');
+    svg.style.cssText = 'display: block;';
+    
+    const width = 1000; // SVG viewBox genişliği
+    const height = 170;
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    
+    // Grid çizgileri
+    for (let i = 0; i <= 4; i++) {
+      const y = (height / 4) * i;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', '0');
+      line.setAttribute('y1', y.toString());
+      line.setAttribute('x2', width.toString());
+      line.setAttribute('y2', y.toString());
+      line.setAttribute('stroke', '#e0e0e0');
+      line.setAttribute('stroke-width', '1');
+      svg.appendChild(line);
+      
+      // Y ekseni değerleri
+      const value = chartMax - (chartRange / 4) * i;
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', '5');
+      text.setAttribute('y', (y - 5).toString());
+      text.setAttribute('fill', '#666');
+      text.setAttribute('font-size', '12');
+      text.textContent = value.toFixed(1);
+      svg.appendChild(text);
+    }
+    
+    // Çizgi ve noktalar
+    const points = siraliOlcumler.map((o, i) => {
+      const val = parseFloat(o[alan]) || 0;
+      if (val === 0) return null;
+      
+      const x = (width / (siraliOlcumler.length - 1)) * i;
+      const y = height - ((val - chartMin) / chartRange) * height;
+      return { x, y, val, tarih: o.tarih, hafta: o.hafta };
+    }).filter(p => p !== null);
+    
+    // Çizgi çiz
+    if (points.length > 1) {
+      const pathData = points.map((p, i) => 
+        `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+      ).join(' ');
+      
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#6c5ce7');
+      path.setAttribute('stroke-width', '3');
+      svg.appendChild(path);
+    }
+    
+    // Noktalar ve etiketler
+    points.forEach((p, i) => {
+      // Nokta
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', p.x.toString());
+      circle.setAttribute('cy', p.y.toString());
+      circle.setAttribute('r', '5');
+      circle.setAttribute('fill', '#6c5ce7');
+      circle.setAttribute('stroke', 'white');
+      circle.setAttribute('stroke-width', '2');
+      svg.appendChild(circle);
+      
+      // Değer etiketi
+      const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      valueText.setAttribute('x', p.x.toString());
+      valueText.setAttribute('y', (p.y - 10).toString());
+      valueText.setAttribute('text-anchor', 'middle');
+      valueText.setAttribute('fill', '#6c5ce7');
+      valueText.setAttribute('font-size', '12');
+      valueText.setAttribute('font-weight', 'bold');
+      valueText.textContent = p.val.toFixed(1);
+      svg.appendChild(valueText);
+      
+      // Tarih etiketi (sadece ilk ve son)
+      if (i === 0 || i === points.length - 1) {
+        const dateText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        dateText.setAttribute('x', p.x.toString());
+        dateText.setAttribute('y', (height + 15).toString());
+        dateText.setAttribute('text-anchor', 'middle');
+        dateText.setAttribute('fill', '#666');
+        dateText.setAttribute('font-size', '11');
+        const tarihKisa = new Date(p.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+        dateText.textContent = `${tarihKisa} (${p.hafta || ''})`;
+        svg.appendChild(dateText);
+      }
+    });
+    
+    canvas.appendChild(svg);
+    kartDiv.appendChild(canvas);
+    grafikContainer.appendChild(kartDiv);
+  });
+  
+  // Modalı göster
+  grafikModal.style.display = 'block';
 }
+
+function olcumGrafikKapat() {
+  const modal = document.getElementById('olcumGrafikModal');
+  if (modal) modal.style.display = 'none';
+}
+
+window.olcumGrafikKapat = olcumGrafikKapat;
 
 
     // === TOAST MESAJ SİSTEMİ ===
