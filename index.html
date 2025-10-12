@@ -6651,12 +6651,25 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     // ⚡ SAYFA YÜKLENİRKEN GÜNCEL VERİ GARANTİSİ
     // localStorage'daki veriler eskiyebiliyor (hafta sayıları güncel değil)
-    // Çözüm: Sayfa her yüklendiğinde localStorage'ı temizle, GitHub'dan taze veri al
-    console.log('🧹 Sayfa yüklenirken localStorage temizleniyor (güncel veri için)...');
+    // ANCAK: telefonAranacak gibi özel alanları koru
+    console.log('🧹 Sayfa yüklenirken localStorage hafta verileri temizleniyor (güncel veri için)...');
     try {
+      // telefonAranacak bilgilerini sakla
+      const eskiTelefonBilgileri = {};
+      hastalar.forEach(h => {
+        if (h && h.id && h.telefonAranacak) {
+          eskiTelefonBilgileri[h.id] = h.telefonAranacak;
+        }
+      });
+      
       localStorage.removeItem(STORAGE_KEY);
-      console.log('✅ localStorage temizlendi - GitHub\'dan taze veriler yüklenecek');
+      console.log('✅ localStorage hafta verileri temizlendi - GitHub\'dan taze veriler yüklenecek');
+      console.log('📞 Telefon bilgileri saklandı:', Object.keys(eskiTelefonBilgileri).length, 'hasta');
+      
       hastalar = []; // Array'i de boşalt
+      
+      // Telefon bilgilerini window'a geçici olarak sakla (renderHastalarYeniSistem'de kullanılacak)
+      window.telefonBilgileriYedek = eskiTelefonBilgileri;
     } catch (e) {
       console.warn('⚠️ localStorage temizleme hatası:', e);
     }
@@ -6720,6 +6733,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Önce localStorage'dan kontrol et (ÖNCELIK: localStorage)
           const localHasta = hastalar.find(h => h && h.id === hasta.id);
+          console.log(`🔍 LocalHasta kontrolü (${hastaIsim}):`, localHasta ? 'Bulundu' : 'Bulunamadı', 'telefonAranacak:', localHasta?.telefonAranacak);
           if (localHasta && localHasta.haftalar && localHasta.haftalar.length > 0) {
             const haftaNumaralari = localHasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
             maxHafta = Math.max(...haftaNumaralari);
@@ -6787,8 +6801,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             maxHafta: maxHafta,
             hastaIsim: hastaIsim,
             hastaDetayiBulundu: hastaDetayiBulundu,
-            // localStorage'dan telefonAranacak bilgisini al
-            telefonAranacak: localHasta?.telefonAranacak || hasta.telefonAranacak || false
+            // telefonAranacak bilgisini koru - GitHub'dan gelen veriye güven
+            // hasta objesi zaten GitHub'dan geldiği için telefonAranacak varsa korunur
+            telefonAranacak: hasta.telefonAranacak || localHasta?.telefonAranacak || false
           };
         }));
         
@@ -7249,7 +7264,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             id: yeniHasta.id,
             isim: yeniHasta.isim,
             olusturmaTarihi: yeniHasta.olusturmaTarihi,
-            arsiv: yeniHasta.arsiv || false
+            arsiv: yeniHasta.arsiv || false,
+            telefonAranacak: yeniHasta.telefonAranacak || false // Telefon bilgisini de ekle
           };
           hastaListesi.push(yeniHastaListeItem);
           hastaListesi.sort((a, b) => {
@@ -14858,6 +14874,19 @@ ${mesajlar.join('\n')}
       
       // Toggle yap
       seciliHasta.telefonAranacak = !seciliHasta.telefonAranacak;
+      
+      // hastaListesi'ndeki hastayı da güncelle (hastalar_listesi.json için)
+      const listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
+      if (listedeHasta) {
+        listedeHasta.telefonAranacak = seciliHasta.telefonAranacak;
+        hastaListesiKaydet(hastaListesi); // GitHub'a kaydet
+        console.log('📞 hastaListesi güncellendi ve GitHub\'a kaydedildi');
+      }
+      
+      // Yedek bilgiyi de güncelle (sayfa yenilendiğinde kaybolmasın)
+      if (!window.telefonBilgileriYedek) window.telefonBilgileriYedek = {};
+      window.telefonBilgileriYedek[seciliHasta.id] = seciliHasta.telefonAranacak;
+      console.log('📞 Telefon yedek güncellendi:', seciliHasta.id, seciliHasta.telefonAranacak);
       
       // Butonu güncelle
       updateTelefonButonu();
