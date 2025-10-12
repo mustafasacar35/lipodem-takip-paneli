@@ -1713,6 +1713,13 @@ function olcumSatirEkle() {
 function olcumGuncelle(index, alan, deger) {
   if (!seciliHasta.olcumler[index]) return;
   seciliHasta.olcumler[index][alan] = deger;
+  
+  // Fark satırını dinamik olarak güncelle
+  const tfoot = document.getElementById('olcumlerFooter');
+  if (seciliHasta.olcumler.length >= 2) {
+    tfoot.innerHTML = '';
+    tfoot.appendChild(farkSatirOlustur());
+  }
 }
 
 function olcumSil(index) {
