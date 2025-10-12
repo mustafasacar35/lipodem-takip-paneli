@@ -1900,23 +1900,24 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
   const chartMax = maxVal + (maxVal - minVal) * 0.15;
   const chartRange = chartMax - chartMin;
   
-  // SVG oluştur
+  // SVG oluştur - sağda etiketler için ekstra alan
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', '100%');
   svg.setAttribute('height', '450');
   svg.style.cssText = 'display: block;';
   
-  const width = 1000;
+  const width = 1200; // Sağa etiketler için genişletildi (1000 -> 1200)
+  const grafikGenisligi = 950; // Gerçek grafik alanı
   const height = 450;
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   
-  // Grid çizgileri
+  // Grid çizgileri - sadece grafik alanında
   for (let i = 0; i <= 5; i++) {
     const y = (height / 5) * i;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', '40');
     line.setAttribute('y1', y.toString());
-    line.setAttribute('x2', width.toString());
+    line.setAttribute('x2', grafikGenisligi.toString());
     line.setAttribute('y2', y.toString());
     line.setAttribute('stroke', '#e0e0e0');
     line.setAttribute('stroke-width', '1');
@@ -1939,7 +1940,7 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
       const val = parseFloat(o[alan]) || 0;
       if (val === 0) return null;
       
-      const x = 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i;
+      const x = 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i;
       const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
       return { x, y, val, hafta: o.hafta };
     }).filter(p => p !== null);
@@ -1990,8 +1991,25 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     });
   });
   
-  // Renk kodlarını her çizginin sonuna ekle (sağ tarafta) - akıllı konumlandırma
-  // Tüm son noktaları ve etiket pozisyonlarını topla
+  // Hafta etiketleri (her nokta için)
+  const haftaPositions = siraliOlcumler.map((o, i) => ({
+    x: 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i,
+    hafta: o.hafta || `H${i + 1}`
+  }));
+  
+  haftaPositions.forEach((pos, i) => {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', pos.x.toString());
+    text.setAttribute('y', (height + 20).toString());
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#666');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-weight', 'bold');
+    text.textContent = pos.hafta;
+    svg.appendChild(text);
+  });
+  
+  // Renk kodlarını her çizginin sonuna ekle - grafik alanının DIŞINDA
   const etiketBilgileri = [];
   
   alanlar.forEach((alan, alanIdx) => {
@@ -1999,7 +2017,7 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
       const val = parseFloat(o[alan]) || 0;
       if (val === 0) return null;
       
-      const x = 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i;
+      const x = 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i;
       const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
       return { x, y, val };
     }).filter(p => p !== null);
@@ -2017,42 +2035,42 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     }
   });
   
-  // Y pozisyonuna göre sırala (yukarıdan aşağıya)
+  // Y pozisyonuna göre sırala
   etiketBilgileri.sort((a, b) => a.y - b.y);
   
-  // Etiketleri yerleştir - çakışma varsa X pozisyonunu kaydır
+  // Etiketleri yerleştir - akıllı konumlandırma
   const yerlestirilmisEtiketler = [];
-  const minYMesafe = 18; // Minimum dikey mesafe
-  const xOfset = 15; // X başlangıç ofseti
-  const xAdim = 80; // Yan yana yazmak için X adımı
+  const minYMesafe = 16; // Minimum dikey mesafe
+  const etiketBaslangicX = grafikGenisligi + 20; // Grafik alanının sağında başla
+  const sutunGenisligi = 90; // Her sütun genişliği
   
-  etiketBilgileri.forEach((etiket, idx) => {
+  etiketBilgileri.forEach((etiket) => {
     let labelY = etiket.y;
-    let labelX = etiket.x + xOfset;
-    let sutun = 0; // Hangi sütunda (0=ilk sütun, 1=ikinci sütun vb)
+    let labelX = etiketBaslangicX;
+    let sutun = 0;
     
-    // Önceki etiketlerle çakışma kontrolü
+    // Çakışma kontrolü
     let cakismaVar = true;
     let denemeSayisi = 0;
     
-    while (cakismaVar && denemeSayisi < 10) {
+    while (cakismaVar && denemeSayisi < 20) {
       cakismaVar = false;
       
       for (const yerlestirilmis of yerlestirilmisEtiketler) {
         const yMesafe = Math.abs(labelY - yerlestirilmis.finalY);
         const xMesafe = Math.abs(labelX - yerlestirilmis.finalX);
         
-        // Aynı X bölgesinde ve Y'de çok yakınsa
-        if (xMesafe < 75 && yMesafe < minYMesafe) {
+        // Aynı sütunda ve Y'de çok yakınsa
+        if (xMesafe < 70 && yMesafe < minYMesafe) {
           cakismaVar = true;
           
-          // Önce aşağı kaydırmayı dene
-          if (labelY < height - 50) {
+          // Önce aşağı kaydır
+          if (labelY + minYMesafe < height - 30) {
             labelY += minYMesafe;
           } else {
-            // Aşağı yer yoksa sağa kaydır (yan sütun)
+            // Aşağı yer yoksa yan sütuna geç
             sutun++;
-            labelX = etiket.x + xOfset + (sutun * xAdim);
+            labelX = etiketBaslangicX + (sutun * sutunGenisligi);
             labelY = etiket.y; // Y'yi sıfırla
           }
           break;
@@ -2064,43 +2082,24 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     
     // Sınır kontrolü
     if (labelY < 20) labelY = 20;
-    if (labelY > height - 50) labelY = height - 50;
-    if (labelX > width - 100) labelX = width - 100;
+    if (labelY > height - 30) labelY = height - 30;
     
-    // Etiketi yerleştir
+    // Yerleşimi kaydet
     yerlestirilmisEtiketler.push({
       finalX: labelX,
       finalY: labelY,
       ...etiket
     });
     
-    // SVG text elementi oluştur
+    // Etiketi çiz
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('x', labelX.toString());
     label.setAttribute('y', (labelY + 4).toString());
     label.setAttribute('fill', etiket.renk);
-    label.setAttribute('font-size', '10');
+    label.setAttribute('font-size', '11');
     label.setAttribute('font-weight', 'bold');
     label.textContent = etiket.isim;
     svg.appendChild(label);
-  });
-  
-  // Hafta etiketleri (her nokta için)
-  const haftaPositions = siraliOlcumler.map((o, i) => ({
-    x: 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i,
-    hafta: o.hafta || `H${i + 1}`
-  }));
-  
-  haftaPositions.forEach((pos, i) => {
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', pos.x.toString());
-    text.setAttribute('y', (height + 20).toString());
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#666');
-    text.setAttribute('font-size', '11');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = pos.hafta;
-    svg.appendChild(text);
   });
   
   canvas.appendChild(svg);
@@ -7199,6 +7198,26 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         // GitHub'dan hasta listesini al ve global değişkeni güncelle
         const yuklenmisList = await hastaListesiYukle();
+        
+        // Telefon bilgilerini GitHub listesinden al ve window.telefonBilgileriYedek'i güncelle
+        if (!window.telefonBilgileriYedek || Object.keys(window.telefonBilgileriYedek).length === 0) {
+          console.log('📞 Telefon bilgileri yedek boş, GitHub listesinden yükleniyor...');
+          const telefonBilgileri = {};
+          
+          if (yuklenmisList && yuklenmisList.length > 0) {
+            yuklenmisList.forEach(h => {
+              if (h && h.id && h.telefonAranacak) {
+                telefonBilgileri[h.id] = h.telefonAranacak;
+                console.log(`📞 GitHub'dan telefon bilgisi alındı: ${h.isim} (ID: ${h.id})`);
+              }
+            });
+            
+            window.telefonBilgileriYedek = telefonBilgileri;
+            console.log('✅ Telefon bilgileri GitHub\'dan yüklendi:', Object.keys(telefonBilgileri).length, 'hasta');
+          }
+        } else {
+          console.log('📞 Telefon bilgileri yedek zaten mevcut:', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
+        }
         
         if (yuklenmisList.length === 0) {
           ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok - Yeni hasta ekleyebilirsiniz</li>';
