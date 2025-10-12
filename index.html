@@ -3281,6 +3281,28 @@ window.olcumGrafikKapat = olcumGrafikKapat;
       const aktifHaftaNo = (aktifHasta.haftalar[aktifIndex]?.haftaNo) || (aktifIndex + 1);
 
       let yeniEslesmeyenler = [];
+
+      // 🛡️ Guard: Seçilen aralıkta hiç veri yoksa (PDF ya da tarif listesi) sayı/badge göstermeyelim
+      try {
+        const secilenAralik = aktifHasta.haftalar.filter((h, idx) => {
+          const hn = h.haftaNo || (idx + 1);
+          return hn <= aktifHaftaNo;
+        });
+        const araliktaGirdiVarMi = secilenAralik.some(h =>
+          Boolean(
+            h.pdf || h.pdfYolu || h.githubUrl || h.githubLink || h.githubRawLink || h.indirmeUrl ||
+            (h.tarifler && h.tarifler.length > 0)
+          )
+        );
+        if (!araliktaGirdiVarMi) {
+          eslesmeyenlerBaslik.textContent = '🚫 Eşleşmeyen Tarifler';
+          eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">ℹ️ Bu aralıkta PDF veya tarif verisi yok.</div>';
+          console.log('ℹ️ Eşleşmeyenler gösterimi atlandı: seçilen aralıkta veri yok');
+          return;
+        }
+      } catch (e) {
+        console.warn('⚠️ Eşleşmeyenler guard kontrolü hatası:', e?.message || e);
+      }
       
       // Önce JSON'dan kaydedilmiş eşleşmeyen tarifleri al (sadece aktif haftaya kadar)
       aktifHasta.haftalar.forEach((hafta, index) => {
@@ -3819,6 +3841,23 @@ window.olcumGrafikKapat = olcumGrafikKapat;
         
         // Hasta listesini yükle ve sonucu al
         const yuklenmisList = await hastaListesiYukle();
+        // 📞 İlk renderdan önce telefon bilgilerini hydrate et ki sidebar'da 📞 hemen gözüksün
+        try {
+          if (yuklenmisList && yuklenmisList.length > 0) {
+            const telefonMap = {};
+            yuklenmisList.forEach(h => {
+              if (h && h.id && h.telefonAranacak) {
+                telefonMap[h.id] = true;
+              }
+            });
+            if (Object.keys(telefonMap).length > 0) {
+              window.telefonBilgileriYedek = telefonMap;
+              if (!sessiz) console.log('📞 Telefon bilgileri hydrate edildi (ilk yükleme):', Object.keys(telefonMap).length, 'hasta');
+            }
+          }
+        } catch (e) {
+          if (!sessiz) console.warn('📞 Telefon bilgileri hydrate edilemedi:', e?.message || e);
+        }
         
         if (yuklenmisList.length > 0) {
           console.log('✅ GitHub\'dan hasta listesi yüklendi:', yuklenmisList.length, 'hasta');
