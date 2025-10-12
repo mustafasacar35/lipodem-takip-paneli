@@ -16594,6 +16594,29 @@ ${mesajlar.join('\n')}
               localStorage.setItem(GENEL_PROMPTLAR_KEY, JSON.stringify(finalGenelObj.promptlar));
               console.log('✅ Genel promptlar GitHub\'dan yüklendi:', finalGenelObj.promptlar.length, 'adet');
             }
+            
+            // Özel prompt'ları (Giriş ve Sonuç) da yükle
+            if (finalGenelObj.ozelPromptlar) {
+              const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+              if (finalGenelObj.ozelPromptlar.girisPrompt) {
+                settings.girisPrompt = finalGenelObj.ozelPromptlar.girisPrompt;
+              }
+              if (finalGenelObj.ozelPromptlar.sonucPrompt) {
+                settings.sonucPrompt = finalGenelObj.ozelPromptlar.sonucPrompt;
+              }
+              localStorage.setItem(GPT_SETTINGS_KEY, JSON.stringify(settings));
+              console.log('✅ Özel prompt\'lar GitHub\'dan yüklendi (Giriş ve Sonuç)');
+              
+              // UI'daki textarea'ları da güncelle
+              const girisPromptEl = document.getElementById('girisPrompt');
+              const sonucPromptEl = document.getElementById('sonucPrompt');
+              if (girisPromptEl && finalGenelObj.ozelPromptlar.girisPrompt) {
+                girisPromptEl.value = finalGenelObj.ozelPromptlar.girisPrompt;
+              }
+              if (sonucPromptEl && finalGenelObj.ozelPromptlar.sonucPrompt) {
+                sonucPromptEl.value = finalGenelObj.ozelPromptlar.sonucPrompt;
+              }
+            }
           }
         } catch (err) {
           console.warn('Genel promptlar yüklenemedi:', err);
@@ -17472,7 +17495,7 @@ ${mesajlar.join('\n')}
     }
     
     // GPT ayarlarını kaydet  
-    function saveGptSettings() {
+    async function saveGptSettings() {
       try {
         const settings = {};
         
@@ -17503,10 +17526,111 @@ ${mesajlar.join('\n')}
           localStorage.setItem('googleDriveClientId', settings.googleDriveClientId);
         }
         
+        // Giriş ve Sonuç prompt'larını GitHub'a da kaydet
+        await saveOzelPromptlarToGithub(settings.girisPrompt, settings.sonucPrompt);
+        
         alert('✅ GPT ayarları kaydedildi!');
       } catch (error) {
         console.error('GPT ayarları kaydetme hatası:', error);
         alert('❌ GPT ayarları kaydedilirken hata oluştu!');
+      }
+    }
+    
+    // Özel prompt'ları (Giriş ve Sonuç) GitHub'a kaydet
+    async function saveOzelPromptlarToGithub(girisPrompt, sonucPrompt) {
+      try {
+        // GitHub token'ı al
+        let token = localStorage.getItem('github_api_token');
+        
+        if (!token) {
+          const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+          token = githubSettings.token;
+        }
+        
+        if (!token) {
+          const tokenInput = document.getElementById('githubToken');
+          if (tokenInput) {
+            token = tokenInput.value.trim();
+          }
+        }
+        
+        if (!token) {
+          console.warn('⚠️ GitHub token bulunamadı, özel prompt\'lar sadece localStorage\'a kaydedildi.');
+          return;
+        }
+        
+        // GitHub repo bilgilerini al
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
+        const branch = githubSettings.branch || 'main';
+        const filePath = 'promptlar/genel_promptlar.json';
+        
+        // Mevcut dosyanın SHA'sını ve içeriğini al
+        const getFileResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`,
+          {
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+        
+        if (!getFileResponse.ok) {
+          console.error('GitHub API hatası:', getFileResponse.status);
+          return;
+        }
+        
+        const fileData = await getFileResponse.json();
+        const sha = fileData.sha;
+        
+        // Mevcut JSON içeriğini decode et
+        const currentContent = JSON.parse(atob(fileData.content));
+        
+        // Özel prompt'ları ekle veya güncelle
+        currentContent.ozelPromptlar = {
+          girisPrompt: girisPrompt || '',
+          sonucPrompt: sonucPrompt || '',
+          guncellemeTarihi: new Date().toISOString()
+        };
+        
+        // lastUpdated alanını güncelle
+        currentContent.lastUpdated = new Date().toISOString();
+        
+        // Base64 encode et (UTF-8 desteğiyle)
+        const encoder = new TextEncoder();
+        const uint8Array = encoder.encode(JSON.stringify(currentContent, null, 2));
+        const binaryString = String.fromCharCode.apply(null, uint8Array);
+        const base64Content = btoa(binaryString);
+        
+        // GitHub'a kaydet
+        const updateResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'Özel prompt\'lar güncellendi (Giriş ve Sonuç)',
+              content: base64Content,
+              sha: sha,
+              branch: branch
+            })
+          }
+        );
+        
+        if (!updateResponse.ok) {
+          console.error('GitHub güncelleme hatası:', updateResponse.status);
+          return;
+        }
+        
+        console.log('✅ Özel prompt\'lar GitHub\'a kaydedildi!');
+      } catch (error) {
+        console.error('Özel prompt\'lar GitHub\'a kaydedilirken hata:', error);
       }
     }
     
@@ -18644,6 +18768,9 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
         settings: settings,
         oncekiAnalizler: oncekiAnalizler
       };
+      
+      // İlk açılışta prompt önizlemesini güncelle
+      updatePromptPreview(haftaIndex);
     }
     
     // Prompt önizlemesini güncelle (checkbox'lara göre)
@@ -18653,24 +18780,13 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       const { settings, oncekiAnalizler } = window.currentModalData;
       const prompts = [];
       
-      // DEBUG: Settings içeriğini kontrol et
-      console.log('🔍 updatePromptPreview - settings:', settings);
-      console.log('🔍 girisPrompt değeri:', settings.girisPrompt);
-      console.log('🔍 sonucPrompt değeri:', settings.sonucPrompt);
-      
       // Giriş Prompt (en başta)
       if (document.getElementById('modal_girisPrompt')?.checked) {
         const girisPrompt = settings.girisPrompt?.trim();
-        console.log('✅ Giriş prompt checkbox tikli, değer:', girisPrompt);
         if (girisPrompt) {
           prompts.push('=== GİRİŞ TALİMATI ===');
           prompts.push(girisPrompt);
-          console.log('✅ Giriş prompt eklendi');
-        } else {
-          console.warn('⚠️ Giriş prompt boş!');
         }
-      } else {
-        console.log('ℹ️ Giriş prompt checkbox tikli değil');
       }
       
       // Genel prompt
@@ -18752,16 +18868,10 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       // Sonuç Prompt (en sonda)
       if (document.getElementById('modal_sonucPrompt')?.checked) {
         const sonucPrompt = settings.sonucPrompt?.trim();
-        console.log('✅ Sonuç prompt checkbox tikli, değer:', sonucPrompt);
         if (sonucPrompt) {
           prompts.push('=== SONUÇ TALİMATI ===');
           prompts.push(sonucPrompt);
-          console.log('✅ Sonuç prompt eklendi');
-        } else {
-          console.warn('⚠️ Sonuç prompt boş!');
         }
-      } else {
-        console.log('ℹ️ Sonuç prompt checkbox tikli değil');
       }
       
       const yeniPrompt = prompts.length > 0 ? prompts.join('\n\n') : 'Hiçbir içerik seçilmedi.';
