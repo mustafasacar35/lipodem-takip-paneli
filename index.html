@@ -1990,7 +1990,9 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     });
   });
   
-  // Renk kodlarını her çizginin sonuna ekle (sağ tarafta)
+  // Renk kodlarını her çizginin sonuna ekle (sağ tarafta) - akıllı konumlandırma
+  const sonNoktaKonumlari = [];
+  
   alanlar.forEach((alan, alanIdx) => {
     const points = siraliOlcumler.map((o, i) => {
       const val = parseFloat(o[alan]) || 0;
@@ -2005,10 +2007,33 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
       const sonNokta = points[points.length - 1];
       const renk = renkler[alanIdx];
       
+      // Y konumunu ayarla - diğer etiketlerle çakışıyorsa kaydır
+      let labelY = sonNokta.y;
+      const minMesafe = 20; // Minimum mesafe
+      
+      // Önceki etiketlerle çakışma kontrolü
+      for (const oncekiKonum of sonNoktaKonumlari) {
+        if (Math.abs(labelY - oncekiKonum.y) < minMesafe) {
+          // Çakışma var, yukarı veya aşağı kaydır
+          if (labelY < oncekiKonum.y) {
+            labelY = oncekiKonum.y - minMesafe;
+          } else {
+            labelY = oncekiKonum.y + minMesafe;
+          }
+        }
+      }
+      
+      // Sınırları kontrol et
+      if (labelY < 20) labelY = 20;
+      if (labelY > height - 50) labelY = height - 50;
+      
+      // Bu konumu kaydet
+      sonNoktaKonumlari.push({ y: labelY, alan: alan });
+      
       // Alan ismi etiketi (çizginin sağında)
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', (sonNokta.x + 15).toString());
-      label.setAttribute('y', (sonNokta.y + 4).toString());
+      label.setAttribute('y', (labelY + 4).toString());
       label.setAttribute('fill', renk);
       label.setAttribute('font-size', '11');
       label.setAttribute('font-weight', 'bold');
@@ -7220,12 +7245,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Telefon bilgisini güvenilir kaynaklardan al
           let telefonAranacak = false;
+          
+          console.log(`🔍 Telefon kontrolü (${hastaIsim}):`, {
+            'hasta.telefonAranacak': hasta.telefonAranacak,
+            'localHasta?.telefonAranacak': localHasta?.telefonAranacak,
+            'window.telefonBilgileriYedek[id]': window.telefonBilgileriYedek?.[hasta.id]
+          });
+          
           if (hasta.telefonAranacak) {
             telefonAranacak = true;
+            console.log(`✅ ${hastaIsim} - GitHub'dan telefon bilgisi alındı`);
           } else if (localHasta?.telefonAranacak) {
             telefonAranacak = true;
+            console.log(`✅ ${hastaIsim} - localStorage'dan telefon bilgisi alındı`);
           } else if (window.telefonBilgileriYedek && window.telefonBilgileriYedek[hasta.id]) {
             telefonAranacak = true;
+            console.log(`✅ ${hastaIsim} - Yedekten telefon bilgisi alındı`);
           }
           
           return {
@@ -7333,6 +7368,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           isimDiv.appendChild(isimSpan);
           
           // Telefon ikonu ekle (eğer telefonAranacak true ise)
+          console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${hasta.telefonAranacak}`);
           if (hasta.telefonAranacak) {
             const telefonSpan = document.createElement('span');
             telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
@@ -7340,6 +7376,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             telefonSpan.title = 'Telefon ile aranacak!';
             isimDiv.appendChild(telefonSpan);
             console.log('📞 Telefon ikonu eklendi:', hasta.hastaIsim);
+          } else {
+            console.log('❌ Telefon ikonu eklenmedi (false):', hasta.hastaIsim);
           }
           
           // Hafta bilgisini ekle (renkli)
