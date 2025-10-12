@@ -16576,7 +16576,7 @@ ${mesajlar.join('\n')}
         // GitHub repo bilgilerini al
         const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
         const owner = githubSettings.owner || 'mustafasacar35';
-        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
         const branch = githubSettings.branch || 'main';
 
         console.log('Promptlar yükleniyor:', { owner, repo, branch, hasToken: !!token });
@@ -17005,7 +17005,7 @@ ${mesajlar.join('\n')}
         // GitHub repo bilgilerini al
         const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
         const owner = githubSettings.owner || 'mustafasacar35';
-        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
         const fileName = tip === 'genel' ? 'genel_promptlar.json' : 'haftalik_promptlar.json';
         const filePath = `promptlar/${fileName}`;
         
@@ -17231,7 +17231,7 @@ ${mesajlar.join('\n')}
         // GitHub repo bilgilerini al
         const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
         const owner = githubSettings.owner || 'mustafasacar35';
-        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
         const branch = githubSettings.branch || 'main';
         
         console.log('GitHub ayarları:', { owner, repo, branch, tokenLength: token.length });
@@ -17576,7 +17576,7 @@ ${mesajlar.join('\n')}
         // GitHub repo bilgilerini al
         const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
         const owner = githubSettings.owner || 'mustafasacar35';
-        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli-6';
         const branch = githubSettings.branch || 'main';
         const filePath = 'promptlar/genel_promptlar.json';
         
@@ -17599,9 +17599,9 @@ ${mesajlar.join('\n')}
         const fileData = await getFileResponse.json();
         const sha = fileData.sha;
         
-        // Mevcut JSON içeriğini decode et (satır sonlarını temizle)
-        const cleanedBase64 = fileData.content.replace(/\n/g, '');
-        const currentContent = JSON.parse(atob(cleanedBase64));
+        // Mevcut JSON içeriğini decode et (UTF-8 desteğiyle)
+        const decodedContent = base64DecodeUnicode(fileData.content);
+        const currentContent = JSON.parse(decodedContent);
         
         // Özel prompt'ları ekle veya güncelle
         currentContent.ozelPromptlar = {
