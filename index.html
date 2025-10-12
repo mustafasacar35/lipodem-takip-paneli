@@ -1991,7 +1991,8 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
   });
   
   // Renk kodlarını her çizginin sonuna ekle (sağ tarafta) - akıllı konumlandırma
-  const sonNoktaKonumlari = [];
+  // Tüm son noktaları ve etiket pozisyonlarını topla
+  const etiketBilgileri = [];
   
   alanlar.forEach((alan, alanIdx) => {
     const points = siraliOlcumler.map((o, i) => {
@@ -2005,41 +2006,83 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     
     if (points.length > 0) {
       const sonNokta = points[points.length - 1];
-      const renk = renkler[alanIdx];
+      etiketBilgileri.push({
+        alan: alan,
+        alanIdx: alanIdx,
+        x: sonNokta.x,
+        y: sonNokta.y,
+        renk: renkler[alanIdx],
+        isim: alanIsimler[alan]
+      });
+    }
+  });
+  
+  // Y pozisyonuna göre sırala (yukarıdan aşağıya)
+  etiketBilgileri.sort((a, b) => a.y - b.y);
+  
+  // Etiketleri yerleştir - çakışma varsa X pozisyonunu kaydır
+  const yerlestirilmisEtiketler = [];
+  const minYMesafe = 18; // Minimum dikey mesafe
+  const xOfset = 15; // X başlangıç ofseti
+  const xAdim = 80; // Yan yana yazmak için X adımı
+  
+  etiketBilgileri.forEach((etiket, idx) => {
+    let labelY = etiket.y;
+    let labelX = etiket.x + xOfset;
+    let sutun = 0; // Hangi sütunda (0=ilk sütun, 1=ikinci sütun vb)
+    
+    // Önceki etiketlerle çakışma kontrolü
+    let cakismaVar = true;
+    let denemeSayisi = 0;
+    
+    while (cakismaVar && denemeSayisi < 10) {
+      cakismaVar = false;
       
-      // Y konumunu ayarla - diğer etiketlerle çakışıyorsa kaydır
-      let labelY = sonNokta.y;
-      const minMesafe = 20; // Minimum mesafe
-      
-      // Önceki etiketlerle çakışma kontrolü
-      for (const oncekiKonum of sonNoktaKonumlari) {
-        if (Math.abs(labelY - oncekiKonum.y) < minMesafe) {
-          // Çakışma var, yukarı veya aşağı kaydır
-          if (labelY < oncekiKonum.y) {
-            labelY = oncekiKonum.y - minMesafe;
+      for (const yerlestirilmis of yerlestirilmisEtiketler) {
+        const yMesafe = Math.abs(labelY - yerlestirilmis.finalY);
+        const xMesafe = Math.abs(labelX - yerlestirilmis.finalX);
+        
+        // Aynı X bölgesinde ve Y'de çok yakınsa
+        if (xMesafe < 75 && yMesafe < minYMesafe) {
+          cakismaVar = true;
+          
+          // Önce aşağı kaydırmayı dene
+          if (labelY < height - 50) {
+            labelY += minYMesafe;
           } else {
-            labelY = oncekiKonum.y + minMesafe;
+            // Aşağı yer yoksa sağa kaydır (yan sütun)
+            sutun++;
+            labelX = etiket.x + xOfset + (sutun * xAdim);
+            labelY = etiket.y; // Y'yi sıfırla
           }
+          break;
         }
       }
       
-      // Sınırları kontrol et
-      if (labelY < 20) labelY = 20;
-      if (labelY > height - 50) labelY = height - 50;
-      
-      // Bu konumu kaydet
-      sonNoktaKonumlari.push({ y: labelY, alan: alan });
-      
-      // Alan ismi etiketi (çizginin sağında)
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', (sonNokta.x + 15).toString());
-      label.setAttribute('y', (labelY + 4).toString());
-      label.setAttribute('fill', renk);
-      label.setAttribute('font-size', '11');
-      label.setAttribute('font-weight', 'bold');
-      label.textContent = alanIsimler[alan];
-      svg.appendChild(label);
+      denemeSayisi++;
     }
+    
+    // Sınır kontrolü
+    if (labelY < 20) labelY = 20;
+    if (labelY > height - 50) labelY = height - 50;
+    if (labelX > width - 100) labelX = width - 100;
+    
+    // Etiketi yerleştir
+    yerlestirilmisEtiketler.push({
+      finalX: labelX,
+      finalY: labelY,
+      ...etiket
+    });
+    
+    // SVG text elementi oluştur
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', labelX.toString());
+    label.setAttribute('y', (labelY + 4).toString());
+    label.setAttribute('fill', etiket.renk);
+    label.setAttribute('font-size', '10');
+    label.setAttribute('font-weight', 'bold');
+    label.textContent = etiket.isim;
+    svg.appendChild(label);
   });
   
   // Hafta etiketleri (her nokta için)
@@ -7100,23 +7143,32 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // localStorage'daki veriler eskiyebiliyor (hafta sayıları güncel değil)
     // ANCAK: telefonAranacak gibi özel alanları koru
     console.log('🧹 Sayfa yüklenirken localStorage hafta verileri temizleniyor (güncel veri için)...');
+    console.log('📊 Mevcut hastalar array uzunluğu:', hastalar.length);
+    
     try {
-      // telefonAranacak bilgilerini sakla
+      // telefonAranacak bilgilerini sakla - ÖNCE hastalar yüklü mü kontrol et
       const eskiTelefonBilgileri = {};
-      hastalar.forEach(h => {
-        if (h && h.id && h.telefonAranacak) {
-          eskiTelefonBilgileri[h.id] = h.telefonAranacak;
-        }
-      });
       
-      localStorage.removeItem(STORAGE_KEY);
-      console.log('✅ localStorage hafta verileri temizlendi - GitHub\'dan taze veriler yüklenecek');
-      console.log('📞 Telefon bilgileri saklandı:', Object.keys(eskiTelefonBilgileri).length, 'hasta');
-      
-      hastalar = []; // Array'i de boşalt
+      if (hastalar && Array.isArray(hastalar) && hastalar.length > 0) {
+        hastalar.forEach(h => {
+          if (h && h.id && h.telefonAranacak) {
+            eskiTelefonBilgileri[h.id] = h.telefonAranacak;
+            console.log(`📞 Telefon bilgisi kaydedildi: ${h.isim || h.ad} (ID: ${h.id})`);
+          }
+        });
+        console.log('📞 Toplam telefon bilgileri saklandı:', Object.keys(eskiTelefonBilgileri).length);
+      } else {
+        console.warn('⚠️ hastalar array boş veya geçersiz, telefon bilgileri kaydedilemedi');
+      }
       
       // Telefon bilgilerini window'a geçici olarak sakla (renderHastalarYeniSistem'de kullanılacak)
       window.telefonBilgileriYedek = eskiTelefonBilgileri;
+      console.log('💾 window.telefonBilgileriYedek kaydedildi:', window.telefonBilgileriYedek);
+      
+      localStorage.removeItem(STORAGE_KEY);
+      console.log('✅ localStorage hafta verileri temizlendi - GitHub\'dan taze veriler yüklenecek');
+      
+      hastalar = []; // Array'i de boşalt
     } catch (e) {
       console.warn('⚠️ localStorage temizleme hatası:', e);
     }
