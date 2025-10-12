@@ -1997,12 +1997,17 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
   });
   
   // Hafta etiketleri (her nokta için)
-  const haftaPositions = siraliOlcumler.map((o, i) => ({
-    x: siraliOlcumler.length === 1
+  const haftaPositions = siraliOlcumler.map((o, i) => {
+    const x = siraliOlcumler.length === 1
       ? 50 + (grafikGenisligi - 100) / 2
-      : 50 + ((grafikGenisligi - 100) / stepCount) * i,
-    hafta: o.hafta || `H${i + 1}`
-  }));
+      : 50 + ((grafikGenisligi - 100) / stepCount) * i;
+    // Hafta etiketini "X. hafta" formatına getir
+    const raw = (o.haftaNo !== undefined ? o.haftaNo : o.hafta);
+    let num = parseInt(raw);
+    if (isNaN(num) || num <= 0) num = i + 1;
+    const haftaLabel = `${num}. hafta`;
+    return { x, haftaLabel };
+  });
   
   haftaPositions.forEach((pos, i) => {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -2013,7 +2018,7 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
     text.setAttribute('fill', '#666');
     text.setAttribute('font-size', '11');
     text.setAttribute('font-weight', 'bold');
-    text.textContent = pos.hafta;
+    text.textContent = pos.haftaLabel;
     svg.appendChild(text);
   });
   
@@ -2248,7 +2253,15 @@ function tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renk, container) {
     haftaText.setAttribute('fill', '#666');
     haftaText.setAttribute('font-size', '11');
     haftaText.setAttribute('font-weight', 'bold');
-    haftaText.textContent = p.hafta;
+    // Hafta etiketini "X. hafta" formatına getir
+    const raw = (siraliOlcumler.find(o => (50 + ((width - 60) / stepCount) * siraliOlcumler.indexOf(o))) ? p.hafta : p.hafta);
+    let num = parseInt(p.hafta);
+    if (isNaN(num) || num <= 0) {
+      // p.hafta bir sayısal değer değilse, noktanın indeksine göre 1..N ver
+      const idx = siraliOlcumler.findIndex(o => (parseFloat(o[alan]) || 0) === p.val);
+      num = idx >= 0 ? (idx + 1) : 1;
+    }
+    haftaText.textContent = `${num}. hafta`;
     svg.appendChild(haftaText);
   });
   
