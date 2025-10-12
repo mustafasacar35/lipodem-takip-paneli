@@ -16539,6 +16539,19 @@ ${mesajlar.join('\n')}
       const decoder = new TextDecoder('utf-8');
       return decoder.decode(bytes);
     }
+    
+    function base64EncodeUnicode(str) {
+      // UTF-8 olarak encode et
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(str);
+      // Byte array'i binary string'e çevir
+      let binaryString = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binaryString += String.fromCharCode(bytes[i]);
+      }
+      // Binary string'i base64'e çevir
+      return btoa(binaryString);
+    }
 
     // GitHub'dan prompt şablonlarını yükle
     async function loadPromptlarFromGithub() {
@@ -17601,10 +17614,8 @@ ${mesajlar.join('\n')}
         currentContent.lastUpdated = new Date().toISOString();
         
         // Base64 encode et (UTF-8 desteğiyle)
-        const encoder = new TextEncoder();
-        const uint8Array = encoder.encode(JSON.stringify(currentContent, null, 2));
-        const binaryString = String.fromCharCode.apply(null, uint8Array);
-        const base64Content = btoa(binaryString);
+        const jsonString = JSON.stringify(currentContent, null, 2);
+        const base64Content = base64EncodeUnicode(jsonString);
         
         // GitHub'a kaydet
         const updateResponse = await fetch(
