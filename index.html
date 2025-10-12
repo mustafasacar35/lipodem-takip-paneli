@@ -1638,7 +1638,20 @@ function olcumlerAc(haftaIndex) {
   
   document.getElementById('olcumModalHastaIsim').textContent = seciliHasta.isim || 'Hasta';
   modal.style.display = 'block';
-  olcumleriYukle();
+  
+  // Eğer bu hafta için ölçüm yoksa, otomatik bir satır ekle
+  if (!seciliHasta.olcumler) seciliHasta.olcumler = [];
+  
+  // Bu haftanın numarasını kontrol et
+  const buHafta = `${aktifHaftaIndex + 1}. Hafta`;
+  const buHaftaOlcumu = seciliHasta.olcumler.find(olcum => olcum.hafta === buHafta);
+  
+  if (!buHaftaOlcumu) {
+    // Bu hafta için ölçüm yok, otomatik ekle
+    olcumSatirEkle();
+  } else {
+    olcumleriYukle();
+  }
 }
 
 function olcumleriYukle() {
