@@ -8189,7 +8189,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                   gap: 6px;
                   transition: transform 0.2s ease;
                 " ${hafta.kilitli ? 'disabled' : ''}>
-                  <span>🚀</span> Analize gönder
+                  <span>🚀</span> GPT ile Analiz Et
                 </button>
               </div>
 
@@ -18653,13 +18653,24 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       const { settings, oncekiAnalizler } = window.currentModalData;
       const prompts = [];
       
+      // DEBUG: Settings içeriğini kontrol et
+      console.log('🔍 updatePromptPreview - settings:', settings);
+      console.log('🔍 girisPrompt değeri:', settings.girisPrompt);
+      console.log('🔍 sonucPrompt değeri:', settings.sonucPrompt);
+      
       // Giriş Prompt (en başta)
       if (document.getElementById('modal_girisPrompt')?.checked) {
         const girisPrompt = settings.girisPrompt?.trim();
+        console.log('✅ Giriş prompt checkbox tikli, değer:', girisPrompt);
         if (girisPrompt) {
           prompts.push('=== GİRİŞ TALİMATI ===');
           prompts.push(girisPrompt);
+          console.log('✅ Giriş prompt eklendi');
+        } else {
+          console.warn('⚠️ Giriş prompt boş!');
         }
+      } else {
+        console.log('ℹ️ Giriş prompt checkbox tikli değil');
       }
       
       // Genel prompt
@@ -18741,10 +18752,16 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       // Sonuç Prompt (en sonda)
       if (document.getElementById('modal_sonucPrompt')?.checked) {
         const sonucPrompt = settings.sonucPrompt?.trim();
+        console.log('✅ Sonuç prompt checkbox tikli, değer:', sonucPrompt);
         if (sonucPrompt) {
           prompts.push('=== SONUÇ TALİMATI ===');
           prompts.push(sonucPrompt);
+          console.log('✅ Sonuç prompt eklendi');
+        } else {
+          console.warn('⚠️ Sonuç prompt boş!');
         }
+      } else {
+        console.log('ℹ️ Sonuç prompt checkbox tikli değil');
       }
       
       const yeniPrompt = prompts.length > 0 ? prompts.join('\n\n') : 'Hiçbir içerik seçilmedi.';
