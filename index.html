@@ -17526,10 +17526,11 @@ ${mesajlar.join('\n')}
           localStorage.setItem('googleDriveClientId', settings.googleDriveClientId);
         }
         
-        // Giriş ve Sonuç prompt'larını GitHub'a da kaydet
-        await saveOzelPromptlarToGithub(settings.girisPrompt, settings.sonucPrompt);
+        alert('✅ GPT ayarları localStorage\'a kaydedildi!');
         
-        alert('✅ GPT ayarları kaydedildi!');
+        // Giriş ve Sonuç prompt'larını GitHub'a da kaydet (arka planda)
+        saveOzelPromptlarToGithub(settings.girisPrompt, settings.sonucPrompt);
+        
       } catch (error) {
         console.error('GPT ayarları kaydetme hatası:', error);
         alert('❌ GPT ayarları kaydedilirken hata oluştu!');
@@ -17585,8 +17586,9 @@ ${mesajlar.join('\n')}
         const fileData = await getFileResponse.json();
         const sha = fileData.sha;
         
-        // Mevcut JSON içeriğini decode et
-        const currentContent = JSON.parse(atob(fileData.content));
+        // Mevcut JSON içeriğini decode et (satır sonlarını temizle)
+        const cleanedBase64 = fileData.content.replace(/\n/g, '');
+        const currentContent = JSON.parse(atob(cleanedBase64));
         
         // Özel prompt'ları ekle veya güncelle
         currentContent.ozelPromptlar = {
@@ -17624,13 +17626,18 @@ ${mesajlar.join('\n')}
         );
         
         if (!updateResponse.ok) {
-          console.error('GitHub güncelleme hatası:', updateResponse.status);
+          const errorData = await updateResponse.json();
+          console.error('GitHub güncelleme hatası:', updateResponse.status, errorData);
+          alert('❌ GitHub\'a kaydedilemedi: ' + (errorData.message || updateResponse.statusText));
           return;
         }
         
-        console.log('✅ Özel prompt\'lar GitHub\'a kaydedildi!');
+        const result = await updateResponse.json();
+        console.log('✅ Özel prompt\'lar GitHub\'a kaydedildi!', result);
+        alert('✅ Giriş ve Sonuç prompt\'ları GitHub\'a kaydedildi!');
       } catch (error) {
         console.error('Özel prompt\'lar GitHub\'a kaydedilirken hata:', error);
+        alert('❌ GitHub kayıt hatası: ' + error.message);
       }
     }
     
