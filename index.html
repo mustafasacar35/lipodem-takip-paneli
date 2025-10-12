@@ -1935,12 +1935,17 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
   }
   
   // Her alan için çizgi ve noktalar
+  // Nokta yerleşimi için adım sayısı (tek veri noktasında merkezde konumlandır)
+  const stepCount = Math.max(1, siraliOlcumler.length - 1);
+
   alanlar.forEach((alan, alanIdx) => {
     const points = siraliOlcumler.map((o, i) => {
       const val = parseFloat(o[alan]) || 0;
       if (val === 0) return null;
       
-      const x = 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i;
+      const x = siraliOlcumler.length === 1
+        ? 50 + (grafikGenisligi - 100) / 2
+        : 50 + ((grafikGenisligi - 100) / stepCount) * i;
       const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
       return { x, y, val, hafta: o.hafta };
     }).filter(p => p !== null);
@@ -1993,14 +1998,17 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
   
   // Hafta etiketleri (her nokta için)
   const haftaPositions = siraliOlcumler.map((o, i) => ({
-    x: 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i,
+    x: siraliOlcumler.length === 1
+      ? 50 + (grafikGenisligi - 100) / 2
+      : 50 + ((grafikGenisligi - 100) / stepCount) * i,
     hafta: o.hafta || `H${i + 1}`
   }));
   
   haftaPositions.forEach((pos, i) => {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', pos.x.toString());
-    text.setAttribute('y', (height + 20).toString());
+    // SVG yüksekliği içinde kalsın (alt boşluk üzerine yaz)
+    text.setAttribute('y', (height - 10).toString());
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('fill', '#666');
     text.setAttribute('font-size', '11');
@@ -2017,7 +2025,9 @@ function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMet
       const val = parseFloat(o[alan]) || 0;
       if (val === 0) return null;
       
-      const x = 50 + ((grafikGenisligi - 100) / (siraliOlcumler.length - 1)) * i;
+      const x = siraliOlcumler.length === 1
+        ? 50 + (grafikGenisligi - 100) / 2
+        : 50 + ((grafikGenisligi - 100) / stepCount) * i;
       const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
       return { x, y, val };
     }).filter(p => p !== null);
@@ -2180,11 +2190,14 @@ function tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renk, container) {
   }
   
   // Çizgi ve noktalar
+  const stepCount = Math.max(1, siraliOlcumler.length - 1);
   const points = siraliOlcumler.map((o, i) => {
     const val = parseFloat(o[alan]) || 0;
     if (val === 0) return null;
     
-    const x = 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i;
+    const x = siraliOlcumler.length === 1
+      ? 50 + (width - 60) / 2
+      : 50 + ((width - 60) / stepCount) * i;
     const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
     return { x, y, val, hafta: o.hafta || `H${i + 1}` };
   }).filter(p => p !== null);
@@ -2229,7 +2242,8 @@ function tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renk, container) {
     // Hafta etiketi (nokta altında)
     const haftaText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     haftaText.setAttribute('x', p.x.toString());
-    haftaText.setAttribute('y', (height + 20).toString());
+  // Alt boşluk içinde kalsın
+  haftaText.setAttribute('y', (height - 10).toString());
     haftaText.setAttribute('text-anchor', 'middle');
     haftaText.setAttribute('fill', '#666');
     haftaText.setAttribute('font-size', '11');
