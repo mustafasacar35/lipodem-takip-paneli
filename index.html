@@ -3273,10 +3273,19 @@ window.olcumGrafikKapat = olcumGrafikKapat;
         return;
       }
       
+      // Aktif hafta numarasını belirle (1-based). Eğer bilinmiyorsa tüm haftalar varsayılır
+      let aktifIndex = (typeof getAktifHaftaIndex === 'function') ? getAktifHaftaIndex() : (typeof aktifHaftaIndex !== 'undefined' ? aktifHaftaIndex : null);
+      if (aktifIndex === null || aktifIndex === undefined || isNaN(aktifIndex)) {
+        aktifIndex = aktifHasta.haftalar.length - 1;
+      }
+      const aktifHaftaNo = (aktifHasta.haftalar[aktifIndex]?.haftaNo) || (aktifIndex + 1);
+
       let yeniEslesmeyenler = [];
       
-      // Önce JSON'dan kaydedilmiş eşleşmeyen tarifleri al
-      aktifHasta.haftalar.forEach(hafta => {
+      // Önce JSON'dan kaydedilmiş eşleşmeyen tarifleri al (sadece aktif haftaya kadar)
+      aktifHasta.haftalar.forEach((hafta, index) => {
+        const haftaNo = hafta.haftaNo || (index + 1);
+        if (haftaNo > aktifHaftaNo) return;
         if (hafta.eslesmeyenTarifler && hafta.eslesmeyenTarifler.length > 0) {
           hafta.eslesmeyenTarifler.forEach(tarif => {
             if (!yeniEslesmeyenler.includes(tarif)) {
@@ -3286,9 +3295,11 @@ window.olcumGrafikKapat = olcumGrafikKapat;
         }
       });
       
-      // Eğer JSON'da eşleşmeyen tarif yoksa, eski yöntemle hesapla
+      // Eğer JSON'da eşleşmeyen tarif yoksa, eski yöntemle hesapla (sadece aktif haftaya kadar)
       if (yeniEslesmeyenler.length === 0) {
-        aktifHasta.haftalar.forEach(hafta => {
+        aktifHasta.haftalar.forEach((hafta, index) => {
+          const haftaNo = hafta.haftaNo || (index + 1);
+          if (haftaNo > aktifHaftaNo) return;
           if (hafta.tarifler && hafta.tarifler.length > 0) {
             hafta.tarifler.forEach(tarif => {
               // Normalize et
@@ -3331,7 +3342,7 @@ window.olcumGrafikKapat = olcumGrafikKapat;
       
       // UI'ı güncelle
       if (yeniEslesmeyenler.length > 0) {
-        eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${yeniEslesmeyenler.length})`;
+  eslesmeyenlerBaslik.textContent = `🚫 Eşleşmeyen Tarifler (${yeniEslesmeyenler.length})`;
         eslesmeyenlerContent.innerHTML = '';
         
         yeniEslesmeyenler.forEach(tarif => {
@@ -3371,7 +3382,7 @@ window.olcumGrafikKapat = olcumGrafikKapat;
         eslesmeyenlerContent.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">🎉 Tüm tarifler eşleştirildi!</div>';
       }
       
-      console.log('🔄 Eşleşmeyenler listesi güncellendi:', yeniEslesmeyenler.length, 'adet');
+      console.log(`🔄 Eşleşmeyenler listesi güncellendi (ilk ${aktifHaftaNo}. haftaya kadar):`, yeniEslesmeyenler.length, 'adet');
     }
 
     // Aktif hafta index'ini al
@@ -14030,6 +14041,15 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Yemek analizini her hafta değişiminde otomatik güncelle
       updateYemekAnalizi();
+
+      // Eşleşmeyen tarifleri de her hafta değişiminde güncelle
+      try {
+        if (typeof eslesmeyenlerListesiniGuncelle === 'function') {
+          eslesmeyenlerListesiniGuncelle();
+        }
+      } catch (err) {
+        console.warn('Eşleşmeyenler güncelleme hatası:', err);
+      }
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
 
