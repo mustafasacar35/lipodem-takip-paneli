@@ -16528,8 +16528,10 @@ ${mesajlar.join('\n')}
     
     // Base64 decode fonksiyonu (Türkçe karakter desteği ile)
     function base64DecodeUnicode(base64) {
+      // Satır sonlarını temizle
+      const cleanBase64 = base64.replace(/\s/g, '');
       // Base64'ü binary string'e çevir
-      const binaryString = atob(base64);
+      const binaryString = atob(cleanBase64);
       // Binary string'i byte array'e çevir
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
