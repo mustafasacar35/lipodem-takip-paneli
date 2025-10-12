@@ -109,6 +109,18 @@
   </script>
   
   <style>
+    /* Telefon ikonu animasyonu */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+      }
+    }
+    
     /* Prompt Şablon Butonları */
     .prompt-sablon-item {
       padding: 12px;
@@ -768,6 +780,7 @@
           </div>
           <div id="hastaBilgiButonlar" style="display: none; flex-shrink: 0; margin-left: 15px;">
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button id="telefonIkonu" onclick="toggleTelefonAranacak()" style="padding: 6px 10px; background: #e0e0e0; color: #666; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;" title="Telefon ile aranacak olarak işaretle">📞 Aranacak</button>
               <button onclick="duzenleHasta()" style="padding: 6px 10px; background: #ffc107; color: #000; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✏️ Düzenle</button>
               <button onclick="arsivleHasta()" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">📦 Arşivle</button>
               <button onclick="silHasta()" style="padding: 6px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;" title="Dosyayı arşivle ve listeden kaldır">🗑️ Sil</button>
@@ -6866,8 +6879,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
-          isimSpan.textContent = `${hasta.arsiv ? '  ' : ''}${hasta.hastaIsim}`;
+          isimSpan.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.hastaIsim}`;
           isimDiv.appendChild(isimSpan);
+          
+          // Telefon ikonu ekle (eğer telefonAranacak true ise)
+          if (hasta.telefonAranacak) {
+            const telefonSpan = document.createElement('span');
+            telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; animation: pulse 2s infinite;`;
+            telefonSpan.textContent = '📞';
+            telefonSpan.title = 'Telefon ile aranacak!';
+            isimDiv.appendChild(telefonSpan);
+          }
           
           // Hafta bilgisini ekle (renkli)
           const haftaSpan = document.createElement('span');
@@ -14806,6 +14828,9 @@ ${mesajlar.join('\n')}
       seciliHasta = hastalar[index];
       console.log('👤 Hasta seçildi:', seciliHasta.isim);
       
+      // Telefon butonunu güncelle
+      updateTelefonButonu();
+      
       // UI'ı güncelle
       updateHastaListesi(); // Seçimi güncelle
       if (typeof renderHastalarYeniSistem === 'function') {
@@ -14815,6 +14840,54 @@ ${mesajlar.join('\n')}
 
     // Global erişim için
     window.hastaSecildi = hastaSecildi;
+    
+    // Telefon aranacak toggle fonksiyonu
+    function toggleTelefonAranacak() {
+      if (!seciliHasta) return;
+      
+      // Toggle yap
+      seciliHasta.telefonAranacak = !seciliHasta.telefonAranacak;
+      
+      // Butonu güncelle
+      updateTelefonButonu();
+      
+      // Kaydet
+      saveToStorage();
+      hastayiAyriKaydet(seciliHasta);
+      
+      // Sidebar'ı güncelle
+      if (typeof renderHastalarYeniSistem === 'function') {
+        renderHastalarYeniSistem();
+      }
+      
+      // Toast mesajı
+      const mesaj = seciliHasta.telefonAranacak ? '📞 Telefon aranacak olarak işaretlendi' : '✅ Telefon işareti kaldırıldı';
+      showToast(mesaj, 'success');
+    }
+    
+    // Telefon butonunu güncelle
+    function updateTelefonButonu() {
+      const btn = document.getElementById('telefonIkonu');
+      if (!btn || !seciliHasta) return;
+      
+      if (seciliHasta.telefonAranacak) {
+        // Aktif durumu
+        btn.style.background = '#ff6b6b';
+        btn.style.color = 'white';
+        btn.innerHTML = '📞 Aranacak ✓';
+        btn.title = 'Telefon ile aranacak işaretini kaldır';
+      } else {
+        // Pasif durumu
+        btn.style.background = '#e0e0e0';
+        btn.style.color = '#666';
+        btn.innerHTML = '📞 Aranacak';
+        btn.title = 'Telefon ile aranacak olarak işaretle';
+      }
+    }
+    
+    // Global erişim
+    window.toggleTelefonAranacak = toggleTelefonAranacak;
+    window.updateTelefonButonu = updateTelefonButonu;
 
     //  ️ TOPLU ZIP FONKSİYONU
     async function topluZipIndir() {
