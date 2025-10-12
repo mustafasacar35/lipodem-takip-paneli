@@ -1757,6 +1757,8 @@ function olcumlerKapat() {
   document.getElementById('olcumlerModal').style.display = 'none';
 }
 
+let grafikGosterimModu = 'birlesik'; // 'birlesik' veya 'ayri'
+
 function olcumGrafikGoster() {
   if (!seciliHasta || !seciliHasta.olcumler || seciliHasta.olcumler.length < 2) {
     showToast('❌ Grafik oluşturmak için en az 2 ölçüm gerekli', 'error');
@@ -1777,7 +1779,10 @@ function olcumGrafikGoster() {
                 <p id="grafikHastaIsim" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p>
               </div>
             </div>
-            <button onclick="olcumGrafikKapat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button id="grafikModButton" onclick="grafikModuDegistir()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 13px; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 500;">📊 Ayrı Grafiklerde Göster</button>
+              <button onclick="olcumGrafikKapat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
           </div>
           <div style="padding: 20px; max-height: calc(90vh - 100px); overflow-y: auto;">
             <div id="grafikAlanlariContainer"></div>
@@ -1789,15 +1794,31 @@ function olcumGrafikGoster() {
     grafikModal = document.getElementById('olcumGrafikModal');
   }
   
+  // Varsayılan mod birleşik
+  grafikGosterimModu = 'birlesik';
+  
   // Hasta ismini güncelle
   document.getElementById('grafikHastaIsim').textContent = seciliHasta.isim || 'Hasta';
   
-  // Ölçümleri tarihe göre sırala
-  const siraliOlcumler = [...seciliHasta.olcumler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+  // Grafikleri çiz
+  grafikCiz();
   
-  // Her alan için grafik oluştur
+  // Modalı göster
+  grafikModal.style.display = 'block';
+}
+
+function grafikModuDegistir() {
+  grafikGosterimModu = grafikGosterimModu === 'birlesik' ? 'ayri' : 'birlesik';
+  const buton = document.getElementById('grafikModButton');
+  buton.textContent = grafikGosterimModu === 'birlesik' ? '📊 Ayrı Grafiklerde Göster' : '📊 Birleşik Grafikte Göster';
+  grafikCiz();
+}
+
+function grafikCiz() {
   const grafikContainer = document.getElementById('grafikAlanlariContainer');
   grafikContainer.innerHTML = '';
+  
+  const siraliOlcumler = [...seciliHasta.olcumler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
   
   const alanIsimler = {
     'bel': 'Bel',
@@ -1815,90 +1836,119 @@ function olcumGrafikGoster() {
     'kilo': 'Kilo'
   };
   
-  olcumAlanlari.forEach((alan, alanIndex) => {
-    // Veri var mı kontrol et
-    const veriler = siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0);
-    if (veriler.length === 0) return; // Bu alan için veri yok, atla
+  // Renk paleti - her alan için farklı renk
+  const renkler = [
+    '#6c5ce7', '#00b894', '#ff6b6b', '#fdcb6e', 
+    '#e17055', '#74b9ff', '#a29bfe', '#fd79a8',
+    '#636e72', '#00cec9', '#ff7675', '#fab1a0'
+  ];
+  
+  if (grafikGosterimModu === 'birlesik') {
+    // Kilo hariç tüm bölgesel ölçümler tek grafikte
+    const bolgeselAlanlar = olcumAlanlari.filter(a => a !== 'kilo');
+    cokluGrafikCiz(siraliOlcumler, bolgeselAlanlar, alanIsimler, renkler, 'Bölgesel Ölçümler', grafikContainer);
     
-    // Grafik kartı oluştur
-    const kartDiv = document.createElement('div');
-    kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+    // Kilo ayrı grafikte
+    tekGrafikCiz(siraliOlcumler, 'kilo', alanIsimler, '#6c5ce7', grafikContainer);
     
-    // Başlık
-    const baslik = document.createElement('h3');
-    baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px; display: flex; align-items: center; justify-content: space-between;';
+  } else {
+    // Her alan ayrı grafikte
+    olcumAlanlari.forEach((alan, index) => {
+      tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renkler[index % renkler.length], grafikContainer);
+    });
+  }
+}
+
+function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMetni, container) {
+  // Veri var mı kontrol et
+  const tumVeriler = alanlar.map(alan => 
+    siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0)
+  );
+  
+  if (tumVeriler.every(v => v.length === 0)) return;
+  
+  // Grafik kartı
+  const kartDiv = document.createElement('div');
+  kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+  
+  // Başlık
+  const baslik = document.createElement('h3');
+  baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px;';
+  baslik.textContent = baslikMetni;
+  kartDiv.appendChild(baslik);
+  
+  // Renk açıklama
+  const legend = document.createElement('div');
+  legend.style.cssText = 'display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; padding: 10px; background: white; border-radius: 6px;';
+  alanlar.forEach((alan, idx) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'display: flex; align-items: center; gap: 6px; font-size: 12px;';
+    item.innerHTML = `<div style="width: 12px; height: 12px; background: ${renkler[idx]}; border-radius: 2px;"></div><span>${alanIsimler[alan]}</span>`;
+    legend.appendChild(item);
+  });
+  kartDiv.appendChild(legend);
+  
+  // Grafik canvas
+  const canvas = document.createElement('div');
+  canvas.style.cssText = 'position: relative; height: 300px; background: white; border-radius: 6px; padding: 15px; border: 1px solid #e0e0e0;';
+  
+  // Tüm verilerin min/max değerlerini bul
+  const tumDegerler = tumVeriler.flat();
+  const minVal = Math.min(...tumDegerler);
+  const maxVal = Math.max(...tumDegerler);
+  const chartMin = minVal - (maxVal - minVal) * 0.1;
+  const chartMax = maxVal + (maxVal - minVal) * 0.1;
+  const chartRange = chartMax - chartMin;
+  
+  // SVG oluştur
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '300');
+  svg.style.cssText = 'display: block;';
+  
+  const width = 1000;
+  const height = 300;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  
+  // Grid çizgileri
+  for (let i = 0; i <= 5; i++) {
+    const y = (height / 5) * i;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '40');
+    line.setAttribute('y1', y.toString());
+    line.setAttribute('x2', width.toString());
+    line.setAttribute('y2', y.toString());
+    line.setAttribute('stroke', '#e0e0e0');
+    line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
     
-    const ilk = veriler[0];
-    const son = veriler[veriler.length - 1];
-    const fark = son - ilk;
-    const farkRenk = fark < 0 ? '#00b894' : (fark > 0 ? '#ff6b6b' : '#636e72');
-    
-    baslik.innerHTML = `
-      <span>${alanIsimler[alan]}</span>
-      <span style="font-size: 14px; color: ${farkRenk}; font-weight: bold;">
-        ${ilk.toFixed(1)} → ${son.toFixed(1)} 
-        <span style="font-size: 12px;">(${fark > 0 ? '+' : ''}${fark.toFixed(1)})</span>
-      </span>
-    `;
-    kartDiv.appendChild(baslik);
-    
-    // Grafik canvas
-    const canvas = document.createElement('div');
-    canvas.style.cssText = 'position: relative; height: 200px; background: white; border-radius: 6px; padding: 15px; border: 1px solid #e0e0e0;';
-    
-    // Grafik çiz
-    const minVal = Math.min(...veriler);
-    const maxVal = Math.max(...veriler);
-    const range = maxVal - minVal || 1;
-    const padding = range * 0.1; // %10 padding
-    const chartMin = minVal - padding;
-    const chartMax = maxVal + padding;
-    const chartRange = chartMax - chartMin;
-    
-    // SVG oluştur
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '170');
-    svg.style.cssText = 'display: block;';
-    
-    const width = 1000; // SVG viewBox genişliği
-    const height = 170;
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    
-    // Grid çizgileri
-    for (let i = 0; i <= 4; i++) {
-      const y = (height / 4) * i;
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', '0');
-      line.setAttribute('y1', y.toString());
-      line.setAttribute('x2', width.toString());
-      line.setAttribute('y2', y.toString());
-      line.setAttribute('stroke', '#e0e0e0');
-      line.setAttribute('stroke-width', '1');
-      svg.appendChild(line);
-      
-      // Y ekseni değerleri
-      const value = chartMax - (chartRange / 4) * i;
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', '5');
-      text.setAttribute('y', (y - 5).toString());
-      text.setAttribute('fill', '#666');
-      text.setAttribute('font-size', '12');
-      text.textContent = value.toFixed(1);
-      svg.appendChild(text);
-    }
-    
-    // Çizgi ve noktalar
+    // Y ekseni değerleri
+    const value = chartMax - (chartRange / 5) * i;
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '5');
+    text.setAttribute('y', (y + 4).toString());
+    text.setAttribute('fill', '#666');
+    text.setAttribute('font-size', '11');
+    text.textContent = value.toFixed(1);
+    svg.appendChild(text);
+  }
+  
+  // Her alan için çizgi ve noktalar
+  alanlar.forEach((alan, alanIdx) => {
     const points = siraliOlcumler.map((o, i) => {
       const val = parseFloat(o[alan]) || 0;
       if (val === 0) return null;
       
-      const x = (width / (siraliOlcumler.length - 1)) * i;
+      const x = 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i;
       const y = height - ((val - chartMin) / chartRange) * height;
-      return { x, y, val, tarih: o.tarih, hafta: o.hafta };
+      return { x, y, val, hafta: o.hafta };
     }).filter(p => p !== null);
     
-    // Çizgi çiz
+    if (points.length < 1) return;
+    
+    const renk = renkler[alanIdx];
+    
+    // Çizgi
     if (points.length > 1) {
       const pathData = points.map((p, i) => 
         `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
@@ -1907,55 +1957,182 @@ function olcumGrafikGoster() {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', pathData);
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', '#6c5ce7');
-      path.setAttribute('stroke-width', '3');
+      path.setAttribute('stroke', renk);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('opacity', '0.8');
       svg.appendChild(path);
     }
     
-    // Noktalar ve etiketler
-    points.forEach((p, i) => {
-      // Nokta
+    // Noktalar
+    points.forEach((p) => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', p.x.toString());
       circle.setAttribute('cy', p.y.toString());
-      circle.setAttribute('r', '5');
-      circle.setAttribute('fill', '#6c5ce7');
+      circle.setAttribute('r', '4');
+      circle.setAttribute('fill', renk);
       circle.setAttribute('stroke', 'white');
       circle.setAttribute('stroke-width', '2');
       svg.appendChild(circle);
-      
-      // Değer etiketi
-      const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      valueText.setAttribute('x', p.x.toString());
-      valueText.setAttribute('y', (p.y - 10).toString());
-      valueText.setAttribute('text-anchor', 'middle');
-      valueText.setAttribute('fill', '#6c5ce7');
-      valueText.setAttribute('font-size', '12');
-      valueText.setAttribute('font-weight', 'bold');
-      valueText.textContent = p.val.toFixed(1);
-      svg.appendChild(valueText);
-      
-      // Tarih etiketi (sadece ilk ve son)
-      if (i === 0 || i === points.length - 1) {
-        const dateText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        dateText.setAttribute('x', p.x.toString());
-        dateText.setAttribute('y', (height + 15).toString());
-        dateText.setAttribute('text-anchor', 'middle');
-        dateText.setAttribute('fill', '#666');
-        dateText.setAttribute('font-size', '11');
-        const tarihKisa = new Date(p.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
-        dateText.textContent = `${tarihKisa} (${p.hafta || ''})`;
-        svg.appendChild(dateText);
-      }
     });
-    
-    canvas.appendChild(svg);
-    kartDiv.appendChild(canvas);
-    grafikContainer.appendChild(kartDiv);
   });
   
-  // Modalı göster
-  grafikModal.style.display = 'block';
+  // Hafta etiketleri (her nokta için)
+  const haftaPositions = siraliOlcumler.map((o, i) => ({
+    x: 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i,
+    hafta: o.hafta || `H${i + 1}`
+  }));
+  
+  haftaPositions.forEach((pos, i) => {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', pos.x.toString());
+    text.setAttribute('y', (height + 20).toString());
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#666');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-weight', 'bold');
+    text.textContent = pos.hafta;
+    svg.appendChild(text);
+  });
+  
+  canvas.appendChild(svg);
+  kartDiv.appendChild(canvas);
+  container.appendChild(kartDiv);
+}
+
+function tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renk, container) {
+  // Veri var mı kontrol et
+  const veriler = siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0);
+  if (veriler.length === 0) return;
+  
+  // Grafik kartı
+  const kartDiv = document.createElement('div');
+  kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+  
+  // Başlık
+  const baslik = document.createElement('h3');
+  baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px; display: flex; align-items: center; justify-content: space-between;';
+  
+  const ilk = veriler[0];
+  const son = veriler[veriler.length - 1];
+  const fark = son - ilk;
+  const farkRenk = fark < 0 ? '#00b894' : (fark > 0 ? '#ff6b6b' : '#636e72');
+  
+  baslik.innerHTML = `
+    <span>${alanIsimler[alan]}</span>
+    <span style="font-size: 14px; color: ${farkRenk}; font-weight: bold;">
+      ${ilk.toFixed(1)} → ${son.toFixed(1)} 
+      <span style="font-size: 12px;">(${fark > 0 ? '+' : ''}${fark.toFixed(1)})</span>
+    </span>
+  `;
+  kartDiv.appendChild(baslik);
+  
+  // Grafik canvas
+  const canvas = document.createElement('div');
+  canvas.style.cssText = 'position: relative; height: 200px; background: white; border-radius: 6px; padding: 15px; border: 1px solid #e0e0e0;';
+  
+  const minVal = Math.min(...veriler);
+  const maxVal = Math.max(...veriler);
+  const range = maxVal - minVal || 1;
+  const padding = range * 0.1;
+  const chartMin = minVal - padding;
+  const chartMax = maxVal + padding;
+  const chartRange = chartMax - chartMin;
+  
+  // SVG oluştur
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '200');
+  svg.style.cssText = 'display: block;';
+  
+  const width = 1000;
+  const height = 200;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  
+  // Grid çizgileri
+  for (let i = 0; i <= 4; i++) {
+    const y = (height / 4) * i;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '40');
+    line.setAttribute('y1', y.toString());
+    line.setAttribute('x2', width.toString());
+    line.setAttribute('y2', y.toString());
+    line.setAttribute('stroke', '#e0e0e0');
+    line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    
+    // Y ekseni değerleri
+    const value = chartMax - (chartRange / 4) * i;
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '5');
+    text.setAttribute('y', (y + 4).toString());
+    text.setAttribute('fill', '#666');
+    text.setAttribute('font-size', '11');
+    text.textContent = value.toFixed(1);
+    svg.appendChild(text);
+  }
+  
+  // Çizgi ve noktalar
+  const points = siraliOlcumler.map((o, i) => {
+    const val = parseFloat(o[alan]) || 0;
+    if (val === 0) return null;
+    
+    const x = 50 + ((width - 60) / (siraliOlcumler.length - 1)) * i;
+    const y = height - ((val - chartMin) / chartRange) * height;
+    return { x, y, val, hafta: o.hafta || `H${i + 1}` };
+  }).filter(p => p !== null);
+  
+  // Çizgi çiz
+  if (points.length > 1) {
+    const pathData = points.map((p, i) => 
+      `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+    ).join(' ');
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', renk);
+    path.setAttribute('stroke-width', '3');
+    svg.appendChild(path);
+  }
+  
+  // Noktalar ve hafta etiketleri
+  points.forEach((p) => {
+    // Nokta
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', p.x.toString());
+    circle.setAttribute('cy', p.y.toString());
+    circle.setAttribute('r', '5');
+    circle.setAttribute('fill', renk);
+    circle.setAttribute('stroke', 'white');
+    circle.setAttribute('stroke-width', '2');
+    svg.appendChild(circle);
+    
+    // Değer etiketi (nokta üstünde)
+    const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    valueText.setAttribute('x', p.x.toString());
+    valueText.setAttribute('y', (p.y - 10).toString());
+    valueText.setAttribute('text-anchor', 'middle');
+    valueText.setAttribute('fill', renk);
+    valueText.setAttribute('font-size', '11');
+    valueText.setAttribute('font-weight', 'bold');
+    valueText.textContent = p.val.toFixed(1);
+    svg.appendChild(valueText);
+    
+    // Hafta etiketi (nokta altında)
+    const haftaText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    haftaText.setAttribute('x', p.x.toString());
+    haftaText.setAttribute('y', (height + 20).toString());
+    haftaText.setAttribute('text-anchor', 'middle');
+    haftaText.setAttribute('fill', '#666');
+    haftaText.setAttribute('font-size', '11');
+    haftaText.setAttribute('font-weight', 'bold');
+    haftaText.textContent = p.hafta;
+    svg.appendChild(haftaText);
+  });
+  
+  canvas.appendChild(svg);
+  kartDiv.appendChild(canvas);
+  container.appendChild(kartDiv);
 }
 
 function olcumGrafikKapat() {
