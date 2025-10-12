@@ -6879,7 +6879,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
-          isimSpan.textContent = `${hasta.arsiv ? '📦 ' : ''}${hasta.hastaIsim}`;
+          isimSpan.textContent = hasta.hastaIsim;
+          if (hasta.arsiv) {
+            isimSpan.textContent = '📦 ' + isimSpan.textContent;
+          }
           isimDiv.appendChild(isimSpan);
           
           // Telefon ikonu ekle (eğer telefonAranacak true ise)
@@ -7053,6 +7056,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           if (secilenHastaIsim) secilenHastaIsim.textContent = hastaDetay.isim;
           if (secilenHastaNot) secilenHastaNot.textContent = hastaDetay.not || 'Not yok';
           if (hastaBilgiButonlar) hastaBilgiButonlar.style.display = 'block'; // Butonları göster
+          
+          // Telefon butonunu güncelle
+          if (typeof updateTelefonButonu === 'function') {
+            updateTelefonButonu();
+          }
           
           // Seçili hastayı vurgula
           vurgulaSeciliHasta(hastaBilgi.id);
