@@ -6786,7 +6786,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             ...hasta,
             maxHafta: maxHafta,
             hastaIsim: hastaIsim,
-            hastaDetayiBulundu: hastaDetayiBulundu
+            hastaDetayiBulundu: hastaDetayiBulundu,
+            // localStorage'dan telefonAranacak bilgisini al
+            telefonAranacak: localHasta?.telefonAranacak || hasta.telefonAranacak || false
           };
         }));
         
@@ -6888,10 +6890,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           // Telefon ikonu ekle (eğer telefonAranacak true ise)
           if (hasta.telefonAranacak) {
             const telefonSpan = document.createElement('span');
-            telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; animation: pulse 2s infinite;`;
+            telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
             telefonSpan.textContent = '📞';
             telefonSpan.title = 'Telefon ile aranacak!';
             isimDiv.appendChild(telefonSpan);
+            console.log('📞 Telefon ikonu eklendi:', hasta.hastaIsim);
           }
           
           // Hafta bilgisini ekle (renkli)
