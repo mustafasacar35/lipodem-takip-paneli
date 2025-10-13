@@ -18863,7 +18863,11 @@ ${mesajlar.join('\n')}
           }
 
           const errorText = await response.text();
-          lastError = { status: response.status, text: errorText, version };
+          const err = new Error(`Gemini API hatası: ${response.status} - ${errorText}`);
+          err.status = response.status;
+          err.details = errorText;
+          err.versionTried = version;
+          lastError = err;
 
           if (response.status === 404 && version === 'v1') {
             console.warn('Gemini v1 endpoint modeli bulamadı, v1beta deneniyor.');
@@ -18875,7 +18879,7 @@ ${mesajlar.join('\n')}
             continue;
           }
 
-          throw new Error(`Gemini API hatası: ${response.status} - ${errorText}`);
+          throw err;
         } catch (fetchError) {
           if (fetchError?.message?.includes('Gemini API hatası')) {
             throw fetchError;
@@ -18886,17 +18890,23 @@ ${mesajlar.join('\n')}
       }
 
       if (lastError) {
-        if (typeof lastError === 'object' && lastError !== null && 'status' in lastError) {
-          throw new Error(`Gemini API hatası: ${lastError.status} - ${lastError.text}`);
+        if (lastError instanceof Error) {
+          throw lastError;
         }
-        throw new Error(lastError.message || 'Gemini API hatası: Bilinmeyen hata');
+        const err = new Error('Gemini API hatası: Bilinmeyen hata');
+        err.status = lastError?.status;
+        err.details = lastError?.details || lastError?.text;
+        throw err;
       }
 
-      throw new Error('Gemini API hatası: Bilinmeyen hata');
+      const err = new Error('Gemini API hatası: Bilinmeyen hata');
+      err.status = 500;
+      throw err;
     }
 
     // Google Gemini API'ye prompt gönder
     async function sendToGemini(finalPrompt, haftaIndex, settings, gptMesajTextarea) {
+      let lastTriedModel = null;
       try {
         const geminiModelMap = {
           'gemini-pro-latest': 'gemini-1.5-pro-latest',
@@ -18909,8 +18919,18 @@ ${mesajlar.join('\n')}
           'gemini-1.5-flash': 'gemini-1.5-flash'
         };
 
-        const modelKey = (settings.model || '').toLowerCase().trim();
-        const actualModelName = geminiModelMap[modelKey] || settings.model || 'gemini-1.5-pro-latest';
+        const requestedModel = (settings.model || 'gemini-2.5-pro').trim();
+        const modelKey = requestedModel.toLowerCase();
+        const initialModel = geminiModelMap[modelKey] || requestedModel;
+        const fallbackModels = Array.from(new Set([
+          initialModel,
+          'gemini-2.5-pro-latest',
+          'gemini-2.5-pro',
+          'gemini-1.5-pro-latest',
+          'gemini-1.5-pro',
+          'gemini-1.5-flash'
+        ]));
+
         const payload = {
           contents: [{
             parts: [{
@@ -18923,25 +18943,49 @@ ${mesajlar.join('\n')}
           }
         };
 
-        const { data } = await geminiGenerateContent(actualModelName, settings.geminiApiKey, payload);
+        let responseData = null;
+        let usedModel = null;
+        let lastError = null;
+
+        for (const modelName of fallbackModels) {
+          lastTriedModel = modelName;
+          try {
+            const { data } = await geminiGenerateContent(modelName, settings.geminiApiKey, payload);
+            responseData = data;
+            usedModel = modelName;
+            break;
+          } catch (modelError) {
+            lastError = modelError;
+            if (modelError?.status === 404) {
+              console.warn(`Gemini modeli bulunamadı (${modelName}), alternatif denenecek.`);
+              continue;
+            }
+            throw modelError;
+          }
+        }
+
+        if (!responseData) {
+          if (lastError) throw lastError;
+          throw new Error('Gemini API hatası: Herhangi bir modelden yanıt alınamadı');
+        }
 
         let geminiYanit;
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-          if (data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-            geminiYanit = data.candidates[0].content.parts[0].text;
+        if (responseData.candidates && responseData.candidates[0] && responseData.candidates[0].content) {
+          if (responseData.candidates[0].content.parts && responseData.candidates[0].content.parts[0]) {
+            geminiYanit = responseData.candidates[0].content.parts[0].text;
           } else {
-            geminiYanit = data.candidates[0].content;
+            geminiYanit = responseData.candidates[0].content;
           }
-        } else if (data.text) {
-          geminiYanit = data.text;
+        } else if (responseData.text) {
+          geminiYanit = responseData.text;
         } else {
-          throw new Error('Gemini API yanıt formatı beklenmedik: ' + JSON.stringify(data));
+          throw new Error('Gemini API yanıt formatı beklenmedik: ' + JSON.stringify(responseData));
         }
 
         gptMesajTextarea.value = geminiYanit;
         gptMesajTextarea.disabled = false;
 
-        showToast('✅ Gemini analizi tamamlandı!', 'success', 3000);
+        showToast(`✅ Gemini analizi tamamlandı! (Model: ${usedModel})`, 'success', 3000);
 
       } catch (error) {
         console.error('Gemini API hatası:', error);
@@ -18958,11 +19002,11 @@ ${mesajlar.join('\n')}
             alert('❌ Gemini API Erişim Reddedildi (403)!\n\n🔧 Olası Nedenler:\n• API key\'in Gemini AI erişimi yok\n• Kotanız dolmuş olabilir\n• Bölgenizde Gemini AI desteklenmiyor\n\n💡 Çözüm: Google AI Studio\'da (aistudio.google.com) hesabınızı kontrol edin');
           }
         } else if (error.message.includes('404') || error.message.includes('not found')) {
-          alert('❌ Gemini Model Bulunamadı!\n\n🔧 Çözüm:\n• Model: "Gemini 1.5 Pro Latest" seçin\n• En stabil ve çalışan model budur\n\nModel: ' + actualModelName);
+          alert('❌ Gemini Model Bulunamadı!\n\n🔧 Çözüm:\n• Model seçeneklerinden "Gemini 2.5 Pro" veya "Gemini 1.5 Pro"yu deneyin\n• API anahtarınızın bu modellere erişimi olduğundan emin olun\n\nSon denenen model: ' + (lastTriedModel || settings.model || 'bilinmiyor'));
         } else if (error.message.includes('429')) {
           alert('❌ Gemini API Limit Aşıldı!\n\n⏳ Çözüm:\nBirkaç dakika bekleyip tekrar deneyin');
         } else {
-          alert('❌ Gemini API Hatası:\n\n' + error.message + '\n\nKullanılan Model: ' + actualModelName);
+          alert('❌ Gemini API Hatası:\n\n' + error.message + '\n\nSon denenen model: ' + (lastTriedModel || settings.model || 'bilinmiyor'));
         }
         
         gptMesajTextarea.value = 'Hata: ' + error.message;
