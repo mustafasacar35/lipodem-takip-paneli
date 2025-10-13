@@ -15645,7 +15645,19 @@ ${mesajlar.join('\n')}
       }
 
       // hastaListesi'ndeki hastayı da güncelle (hastalar_listesi.json için)
-      const listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
+      let listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
+      if (!listedeHasta) {
+        try {
+          const guncelListe = await hastaListesiYukle();
+          if (Array.isArray(guncelListe) && guncelListe.length > 0) {
+            hastaListesi = guncelListe;
+            listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
+          }
+        } catch (listeYenilemeHatasi) {
+          console.warn('📞 GitHub hasta listesini yenilerken hata:', listeYenilemeHatasi?.message || listeYenilemeHatasi);
+        }
+      }
+
       if (listedeHasta) {
         listedeHasta.telefonAranacak = seciliHasta.telefonAranacak;
         try {
@@ -15654,6 +15666,8 @@ ${mesajlar.join('\n')}
         } catch (telefonKaydetHatasi) {
           console.warn('📞 Telefon bilgisi GitHub kaydetme hatası:', telefonKaydetHatasi?.message || telefonKaydetHatasi);
         }
+      } else {
+        console.warn('📞 GitHub hasta listesinde hasta bulunamadı, telefon durumu kaydedilemedi:', seciliHasta?.isim);
       }
       
       // Butonu güncelle
@@ -15665,7 +15679,7 @@ ${mesajlar.join('\n')}
       
       // Sidebar'ı güncelle
       if (typeof renderHastalarYeniSistem === 'function') {
-        renderHastalarYeniSistem();
+        await renderHastalarYeniSistem();
       }
       
       // Toast mesajı
