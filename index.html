@@ -3994,8 +3994,8 @@ window.olcumGrafikKapat = olcumGrafikKapat;
           const key = hastaKopyasi.id !== undefined && hastaKopyasi.id !== null ? String(hastaKopyasi.id) : null;
           if (key && telefonHaritasi[key]) {
             hastaKopyasi.telefonAranacak = true;
-          } else if (hastaKopyasi.telefonAranacak) {
-            delete hastaKopyasi.telefonAranacak;
+          } else {
+            hastaKopyasi.telefonAranacak = !!hastaKopyasi.telefonAranacak;
           }
           return hastaKopyasi;
         });
@@ -7349,77 +7349,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
         const yuklenmisList = await hastaListesiYukle(); // GitHub'dan hasta listesini al ve global değişkeni güncelle
 
-        // Local yedekte saklanan telefon bilgilerini yükle ve mevcut harita ile birleştir
-        const mevcutWindowHarita = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
-        const lokalTelefonHarita = loadTelefonFlagBackup();
-        const birlesikTelefonHaritasi = mergeTelefonFlagSources(mevcutWindowHarita, lokalTelefonHarita);
-        if (Object.keys(birlesikTelefonHaritasi).length !== Object.keys(mevcutWindowHarita).length || Object.keys(lokalTelefonHarita).length > 0) {
-          console.log('📞 Telefon bilgileri yerel yedek ile senkronlandı:', Object.keys(birlesikTelefonHaritasi).length, 'hasta');
-        }
-        window.telefonBilgileriYedek = birlesikTelefonHaritasi;
-        persistTelefonFlagBackup(window.telefonBilgileriYedek);
-        
-        // Telefon bilgilerini GitHub listesinden al ve window.telefonBilgileriYedek'i güncelle
-        if (!window.telefonBilgileriYedek || Object.keys(window.telefonBilgileriYedek).length === 0) {
-          console.log('📞 Telefon bilgileri yedek boş, GitHub listesinden yükleniyor...');
-          const telefonBilgileri = {};
-
-          if (yuklenmisList && yuklenmisList.length > 0) {
-            yuklenmisList.forEach(h => {
-              if (h && h.id && h.telefonAranacak) {
-                telefonBilgileri[h.id] = h.telefonAranacak;
-                console.log(`📞 GitHub'dan telefon bilgisi alındı: ${h.isim} (ID: ${h.id})`);
-              }
-            });
-
-            const oncekiHarita = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
-            window.telefonBilgileriYedek = mergeTelefonFlagSources(oncekiHarita, telefonBilgileri);
-            persistTelefonFlagBackup(window.telefonBilgileriYedek);
-            console.log('✅ Telefon bilgileri GitHub\'dan yüklendi:', Object.keys(telefonBilgileri).length, 'hasta');
-            console.log('📞 Telefon bilgileri toplam (GitHub + yedek):', Object.keys(window.telefonBilgileriYedek).length);
-          }
-        } else {
-          console.log('📞 Telefon bilgileri yedek zaten mevcut:', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
-        }
-
-        // Yedek telefon bilgilerini yüklenen listeyle eşleştir (ikonlar ilk renderda görünsün)
-        const telefonHaritasi = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
-        window.telefonBilgileriYedek = telefonHaritasi;
-        let telefonHaritasiDegisti = false;
-        let githubTelefonEksikleriTamamlandi = false;
-
-        if (Object.keys(telefonHaritasi).length > 0 || yuklenmisList.some(h => h && h.telefonAranacak)) {
+        // GitHub listesindeki telefon bilgilerini kaynak olarak al
+        const githubTelefonHaritasi = {};
+        if (Array.isArray(yuklenmisList) && yuklenmisList.length > 0) {
           yuklenmisList.forEach(h => {
-            if (!h || !h.id) return;
-            const key = String(h.id);
-            const yedekDeger = telefonHaritasi[key];
-
-            if (yedekDeger) {
-              if (!h.telefonAranacak) {
-                h.telefonAranacak = true;
-                githubTelefonEksikleriTamamlandi = true;
+            if (h && h.id) {
+              if (h.telefonAranacak) {
+                githubTelefonHaritasi[String(h.id)] = true;
               }
-            } else if (h.telefonAranacak) {
-              telefonHaritasi[key] = true;
-              telefonHaritasiDegisti = true;
             }
           });
         }
 
-        if (telefonHaritasiDegisti) {
-          window.telefonBilgileriYedek = normalizeTelefonFlagMap(telefonHaritasi);
-          persistTelefonFlagBackup(window.telefonBilgileriYedek);
-          console.log('📞 Telefon haritası güncellendi (render):', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
-        }
+        window.telefonBilgileriYedek = normalizeTelefonFlagMap(githubTelefonHaritasi);
+        persistTelefonFlagBackup(window.telefonBilgileriYedek);
 
-        if (githubTelefonEksikleriTamamlandi) {
-          try {
-            await hastaListesiKaydet(yuklenmisList);
-            console.log('📞 Telefon bilgileri GitHub listesi ile senkronlandı (render)');
-          } catch (githubTelefonHatasi) {
-            console.warn('📞 Telefon bilgileri GitHub senkron hatası:', githubTelefonHatasi?.message || githubTelefonHatasi);
-          }
-        }
+        console.log('📞 Telefon bilgileri GitHub kaynaklı yenilendi:', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
         
         if (yuklenmisList.length === 0) {
           ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Henüz hasta kaydı yok - Yeni hasta ekleyebilirsiniz</li>';
@@ -7519,22 +7464,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           // Telefon bilgisini güvenilir kaynaklardan al
           let telefonAranacak = false;
           
+          telefonAranacak = Boolean(window.telefonBilgileriYedek && window.telefonBilgileriYedek[String(hasta.id)]);
           console.log(`🔍 Telefon kontrolü (${hastaIsim}):`, {
-            'hasta.telefonAranacak': hasta.telefonAranacak,
-            'localHasta?.telefonAranacak': localHasta?.telefonAranacak,
-            'window.telefonBilgileriYedek[id]': window.telefonBilgileriYedek?.[hasta.id]
+            'githubMap': telefonAranacak,
+            'eskiHasta.telefonAranacak': hasta.telefonAranacak,
+            'localHasta?.telefonAranacak': localHasta?.telefonAranacak
           });
-          
-          if (hasta.telefonAranacak) {
-            telefonAranacak = true;
-            console.log(`✅ ${hastaIsim} - GitHub'dan telefon bilgisi alındı`);
-          } else if (localHasta?.telefonAranacak) {
-            telefonAranacak = true;
-            console.log(`✅ ${hastaIsim} - localStorage'dan telefon bilgisi alındı`);
-          } else if (window.telefonBilgileriYedek && window.telefonBilgileriYedek[hasta.id]) {
-            telefonAranacak = true;
-            console.log(`✅ ${hastaIsim} - Yedekten telefon bilgisi alındı`);
-          }
           
           return {
             ...hasta,
@@ -7641,12 +7576,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           isimDiv.appendChild(isimSpan);
           
           // Telefon ikonu ekle (eğer telefonAranacak true ise)
-          const telefonIconGorunecek = Boolean(hasta.telefonAranacak || (telefonHaritasi && telefonHaritasi[String(hasta.id)]));
+          const telefonIconGorunecek = Boolean(window.telefonBilgileriYedek && window.telefonBilgileriYedek[String(hasta.id)]);
+          hasta.telefonAranacak = telefonIconGorunecek;
           console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek}`);
           if (telefonIconGorunecek) {
-            if (!hasta.telefonAranacak) {
-              hasta.telefonAranacak = true;
-            }
             const telefonSpan = document.createElement('span');
             telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
             telefonSpan.textContent = '📞';
