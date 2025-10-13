@@ -7273,8 +7273,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           return;
         }
         
-        // GitHub'dan hasta listesini al ve global değişkeni güncelle
-        const yuklenmisList = await hastaListesiYukle();
+  // GitHub'dan hasta listesini al ve global değişkeni güncelle
+  const yuklenmisList = await hastaListesiYukle();
         
         // Telefon bilgilerini GitHub listesinden al ve window.telefonBilgileriYedek'i güncelle
         if (!window.telefonBilgileriYedek || Object.keys(window.telefonBilgileriYedek).length === 0) {
@@ -7294,6 +7294,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
         } else {
           console.log('📞 Telefon bilgileri yedek zaten mevcut:', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
+        }
+
+        // Yedek telefon bilgilerini yüklenen listeyle eşleştir (ikonlar ilk renderda görünsün)
+        const telefonHaritasi = window.telefonBilgileriYedek || {};
+        if (Object.keys(telefonHaritasi).length > 0) {
+          yuklenmisList.forEach(h => {
+            if (h && h.id) {
+              const yedekDeger = telefonHaritasi[h.id];
+              if (yedekDeger !== undefined) {
+                h.telefonAranacak = Boolean(yedekDeger);
+              }
+            }
+          });
         }
         
         if (yuklenmisList.length === 0) {
