@@ -18901,13 +18901,16 @@ ${mesajlar.join('\n')}
         const geminiModelMap = {
           'gemini-pro-latest': 'gemini-1.5-pro-latest',
           'gemini-2.0-flash-exp': 'gemini-2.0-flash-exp', 
+          'gemini-2.5-pro': 'gemini-2.5-pro',
+          'gemini-2.5-pro-latest': 'gemini-2.5-pro-latest',
           'gemini-1.5-pro-latest': 'gemini-1.5-pro-latest',
           'gemini-pro': 'gemini-1.5-pro',
           'gemini-1.5-pro': 'gemini-1.5-pro',
           'gemini-1.5-flash': 'gemini-1.5-flash'
         };
 
-        const actualModelName = geminiModelMap[settings.model] || 'gemini-pro-latest';
+        const modelKey = (settings.model || '').toLowerCase().trim();
+        const actualModelName = geminiModelMap[modelKey] || settings.model || 'gemini-1.5-pro-latest';
         const payload = {
           contents: [{
             parts: [{
