@@ -7328,7 +7328,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const ul = document.getElementById('hastaListesi');
       const ara = document.getElementById('hastaAra').value.toLowerCase();
       const filtre = document.getElementById('arsivFiltre').value;
-      ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Yükleniyor...</li>';
+      if (!ul) {
+        console.warn('⚠️ hastaListesi elementi bulunamadı (renderHastalarYeniSistem)');
+        return;
+      }
+
+      const mevcutListeOgeSayisi = ul.querySelectorAll('li').length;
+      const dahaOnceListeYuklendi = mevcutListeOgeSayisi > 0 && !ul.innerHTML.includes('Henüz hasta kaydı yok');
+      if (!dahaOnceListeYuklendi) {
+        ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #666;">Yükleniyor...</li>';
+      }
       
       try {
         // Token kontrolü
@@ -7417,7 +7426,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           return;
         }
         
-        ul.innerHTML = '';
+  ul.innerHTML = '';
         
         // Filtreleme ve sıralama - yüklenen listeyi kullan
         const filtreliHastalar = yuklenmisList.filter(hasta => {
