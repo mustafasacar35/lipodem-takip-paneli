@@ -7633,8 +7633,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           isimDiv.appendChild(isimSpan);
           
           // Telefon ikonu ekle (eğer telefonAranacak true ise)
-          console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${hasta.telefonAranacak}`);
-          if (hasta.telefonAranacak) {
+          const telefonIconGorunecek = Boolean(hasta.telefonAranacak || (telefonHaritasi && telefonHaritasi[String(hasta.id)]));
+          console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek}`);
+          if (telefonIconGorunecek) {
+            if (!hasta.telefonAranacak) {
+              hasta.telefonAranacak = true;
+            }
             const telefonSpan = document.createElement('span');
             telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
             telefonSpan.textContent = '📞';
@@ -7642,7 +7646,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             isimDiv.appendChild(telefonSpan);
             console.log('📞 Telefon ikonu eklendi:', hasta.hastaIsim);
           } else {
-            console.log('❌ Telefon ikonu eklenmedi (false):', hasta.hastaIsim);
+            console.log('❌ Telefon ikonu eklenmedi:', hasta.hastaIsim);
           }
           
           // Hafta bilgisini ekle (renkli)
@@ -15617,6 +15621,21 @@ ${mesajlar.join('\n')}
       // Toggle yap
       seciliHasta.telefonAranacak = !seciliHasta.telefonAranacak;
       
+      // Yedek bilgiyi de güncelle (sayfa yenilendiğinde kaybolmasın)
+      window.telefonBilgileriYedek = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
+      const telefonKey = seciliHasta.id !== undefined && seciliHasta.id !== null ? String(seciliHasta.id) : null;
+      if (telefonKey) {
+        if (seciliHasta.telefonAranacak) {
+          window.telefonBilgileriYedek[telefonKey] = true;
+        } else {
+          delete window.telefonBilgileriYedek[telefonKey];
+        }
+        persistTelefonFlagBackup(window.telefonBilgileriYedek);
+        console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
+      } else {
+        console.warn('📞 Telefon yedeği güncellenemedi: hasta ID bulunamadı');
+      }
+
       // hastaListesi'ndeki hastayı da güncelle (hastalar_listesi.json için)
       const listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
       if (listedeHasta) {
@@ -15628,17 +15647,6 @@ ${mesajlar.join('\n')}
           console.warn('📞 Telefon bilgisi GitHub kaydetme hatası:', telefonKaydetHatasi?.message || telefonKaydetHatasi);
         }
       }
-      
-      // Yedek bilgiyi de güncelle (sayfa yenilendiğinde kaybolmasın)
-      window.telefonBilgileriYedek = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
-      const telefonKey = String(seciliHasta.id);
-      if (seciliHasta.telefonAranacak) {
-        window.telefonBilgileriYedek[telefonKey] = true;
-      } else {
-        delete window.telefonBilgileriYedek[telefonKey];
-      }
-      persistTelefonFlagBackup(window.telefonBilgileriYedek);
-      console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
       
       // Butonu güncelle
       updateTelefonButonu();
