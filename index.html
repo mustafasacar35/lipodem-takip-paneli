@@ -1621,6 +1621,1001 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
+    // ==================== ÖLÇÜM SİSTEMİ ====================
+    let aktifHaftaIndex = 0;
+    const olcumAlanlari = ['bel', 'kalca', 'sagUyluk', 'solUyluk', 'sagDiz', 'solDiz', 'sagBaldir', 'solBaldir', 'sagBilek', 'solBilek', 'sagKol', 'solKol', 'kilo'];
+
+    // Ölçümler modalını aç
+    function olcumlerAc(haftaIndex) {
+      aktifHaftaIndex = haftaIndex;
+      if (!seciliHasta) return;
+      
+      let modal = document.getElementById('olcumlerModal');
+      if (!modal) {
+        const modalHTML = `<div id="olcumlerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; overflow: auto;"><div style="background: white; margin: 20px auto; max-width: 95%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"><div style="background: linear-gradient(135deg, #6c5ce7, #5b4cdb); color: white; padding: 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 12px;"><div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📏</div><div><h2 style="margin: 0; font-size: 20px;">Vücut Ölçümleri</h2><p id="olcumModalHastaIsim" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p></div></div><button onclick="olcumlerKapat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button></div><div style="padding: 20px;"><div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;"><button onclick="olcumSatirEkle()" style="padding: 10px 16px; background: #00b894; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">➕ Yeni Satır</button><button onclick="olcumleriKaydet()" style="padding: 10px 16px; background: #6c5ce7; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">💾 Kaydet</button><button onclick="olcumGrafikGoster()" style="padding: 10px 16px; background: #fd79a8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">📊 Grafik</button></div><div style="overflow-x: auto; border-radius: 8px; border: 1px solid #dfe6e9;"><table id="olcumlerTablosu" style="width: 100%; border-collapse: collapse; font-size: 13px;"><thead><tr style="background: #6c5ce7; color: white;"><th style="padding: 2px; min-width: 120px;">Tarih / Hafta</th><th style="padding: 2px;">Bel<br>(cm)</th><th style="padding: 2px;">Kalça<br>(cm)</th><th style="padding: 2px;">Sağ Uyluk<br>(cm)</th><th style="padding: 2px;">Sol Uyluk<br>(cm)</th><th style="padding: 2px;">Sağ Diz<br>(cm)</th><th style="padding: 2px;">Sol Diz<br>(cm)</th><th style="padding: 2px;">Sağ Baldır<br>(cm)</th><th style="padding: 2px;">Sol Baldır<br>(cm)</th><th style="padding: 2px;">Sağ Bilek<br>(cm)</th><th style="padding: 2px;">Sol Bilek<br>(cm)</th><th style="padding: 2px;">Sağ Kol<br>(cm)</th><th style="padding: 2px;">Sol Kol<br>(cm)</th><th style="padding: 2px;">Kilo<br>(kg)</th><th style="padding: 2px;">İşlem</th></tr></thead><tbody id="olcumlerBody"></tbody><tfoot id="olcumlerFooter"></tfoot></table></div></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        modal = document.getElementById('olcumlerModal');
+      }
+      
+      document.getElementById('olcumModalHastaIsim').textContent = seciliHasta.isim || 'Hasta';
+      modal.style.display = 'block';
+      
+      // Eğer bu hafta için ölçüm yoksa, otomatik bir satır ekle
+      if (!seciliHasta.olcumler) seciliHasta.olcumler = [];
+      
+      // Bu haftanın numarasını kontrol et
+      const buHafta = `${aktifHaftaIndex + 1}. Hafta`;
+      const buHaftaOlcumu = seciliHasta.olcumler.find(olcum => olcum.hafta === buHafta);
+      
+      if (!buHaftaOlcumu) {
+        // Bu hafta için ölçüm yok, otomatik ekle
+        olcumSatirEkle();
+      }
+      
+      // Her durumda tabloyu yenile (aktif hafta değiştiğinde arka plan renklerini güncelle)
+      olcumleriYukle();
+    }
+
+    function olcumleriYukle() {
+      if (!seciliHasta.olcumler) seciliHasta.olcumler = [];
+      const tbody = document.getElementById('olcumlerBody');
+      const tfoot = document.getElementById('olcumlerFooter');
+      tbody.innerHTML = '';
+      tfoot.innerHTML = '';
+      seciliHasta.olcumler.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+      seciliHasta.olcumler.forEach((olcum, index) => tbody.appendChild(olcumSatirOlustur(olcum, index)));
+      if (seciliHasta.olcumler.length >= 2) tfoot.appendChild(farkSatirOlustur());
+      const sayiSpan = document.getElementById(`olcumSayisi_${aktifHaftaIndex}`);
+      if (sayiSpan) sayiSpan.textContent = seciliHasta.olcumler.length > 0 ? seciliHasta.olcumler.length + ' kayıt' : 'Kayıt yok';
+    }
+
+    function olcumSatirOlustur(olcum, index) {
+      const tr = document.createElement('tr');
+      const buHafta = `${aktifHaftaIndex + 1}. Hafta`;
+      const arkaplan = olcum.hafta === buHafta ? '#fffbea' : 'white';
+      tr.style.cssText = `border-bottom: 1px solid #dfe6e9; background: ${arkaplan};`;
+      tr.innerHTML = `<td style="padding: 2px; border-right: 1px solid #dfe6e9;"><input type="date" value="${olcum.tarih}" onchange="olcumGuncelle(${index}, 'tarih', this.value)" style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; font-size: 13px;"><input type="text" value="${olcum.hafta || ''}" placeholder="1. Hafta" onchange="olcumGuncelle(${index}, 'hafta', this.value)" style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; margin-top: 2px; font-size: 12px;"></td>${olcumAlanlari.map(alan => `<td style="padding: 2px; text-align: center; border-right: 1px solid #dfe6e9;"><input type="number" step="0.1" value="${olcum[alan] || ''}" onchange="olcumGuncelle(${index}, '${alan}', this.value)" style="width: 70px; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; text-align: center; font-size: 13px;"></td>`).join('')}<td style="padding: 2px; text-align: center;"><button onclick="olcumSil(${index})" style="background: #ff6b6b; color: white; border: none; padding: 6px 10px; border-radius: 3px; cursor: pointer; font-size: 11px;">🗑️</button></td>`;
+      return tr;
+    }
+
+    function farkSatirOlustur() {
+      const tr = document.createElement('tr');
+      tr.style.cssText = 'background: #f8f9fa; font-weight: bold; border-top: 2px solid #6c5ce7;';
+      const ilk = seciliHasta.olcumler[0];
+      const son = seciliHasta.olcumler[seciliHasta.olcumler.length - 1];
+      const haftaFarki = Math.round((new Date(son.tarih) - new Date(ilk.tarih)) / (7 * 24 * 60 * 60 * 1000));
+      tr.innerHTML = `<td style="padding: 8px 2px; color: #6c5ce7; border-right: 1px solid #dfe6e9;"><div>FARK</div><div style="font-size: 11px; font-weight: normal;">${haftaFarki} Hafta</div></td>${olcumAlanlari.map(alan => {
+        const fark = (son[alan] || 0) - (ilk[alan] || 0);
+        const renk = fark < 0 ? '#00b894' : (fark > 0 ? '#ff6b6b' : '#636e72');
+        return `<td style="padding: 8px 2px; text-align: center; border-right: 1px solid #dfe6e9; color: ${renk}; font-size: 13px;">${fark > 0 ? '+' : ''}${fark.toFixed(1)}</td>`;
+      }).join('')}<td></td>`;
+      return tr;
+    }
+
+    function olcumSatirEkle() {
+      if (!seciliHasta.olcumler) seciliHasta.olcumler = [];
+      const hafta = getHaftaListesi()[aktifHaftaIndex];
+      let defaultTarih = new Date().toISOString().split('T')[0];
+      if (hafta && hafta.baslangic) {
+        const baslangic = new Date(hafta.baslangic);
+        const gun = baslangic.getDay();
+        const pazartesiOffset = gun === 0 ? -6 : 1 - gun;
+        baslangic.setDate(baslangic.getDate() + pazartesiOffset);
+        defaultTarih = baslangic.toISOString().split('T')[0];
+      }
+      const yeniOlcum = {
+        tarih: defaultTarih,
+        hafta: `${aktifHaftaIndex + 1}. Hafta`,
+        bel: '', kalca: '', sagUyluk: '', solUyluk: '',
+        sagDiz: '', solDiz: '', sagBaldir: '', solBaldir: '',
+        sagBilek: '', solBilek: '', sagKol: '', solKol: '', 
+        kilo: '', agirlik: '' // agirlik ve kilo aynı değer
+      };
+      seciliHasta.olcumler.push(yeniOlcum);
+      olcumleriYukle();
+    }
+
+    function olcumGuncelle(index, alan, deger) {
+      if (!seciliHasta.olcumler[index]) return;
+      seciliHasta.olcumler[index][alan] = deger;
+      
+      // Kilo değeri girildiğinde aynı zamanda agirlik olarak da kaydet (PDF için)
+      if (alan === 'kilo') {
+        seciliHasta.olcumler[index]['agirlik'] = deger;
+      }
+      
+      // Fark satırını dinamik olarak güncelle
+      const tfoot = document.getElementById('olcumlerFooter');
+      if (seciliHasta.olcumler.length >= 2) {
+        tfoot.innerHTML = '';
+        tfoot.appendChild(farkSatirOlustur());
+      }
+    }
+
+    function olcumSil(index) {
+      if (!confirm('Bu ölçüm kaydını silmek istediğinizden emin misiniz?')) return;
+      seciliHasta.olcumler.splice(index, 1);
+      olcumleriYukle();
+    }
+
+    async function olcumleriKaydet() {
+      if (!seciliHasta) return;
+      seciliHasta.olcumler.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+      saveToStorage();
+      await hastayiAyriKaydet(seciliHasta);
+      showToast('✅ Ölçümler kaydedildi', 'success');
+      olcumleriYukle();
+    }
+
+    function olcumlerKapat() {
+      document.getElementById('olcumlerModal').style.display = 'none';
+    }
+
+    let grafikGosterimModu = 'birlesik'; // 'birlesik' veya 'ayri'
+
+    function olcumGrafikGoster() {
+      if (!seciliHasta || !seciliHasta.olcumler || seciliHasta.olcumler.length < 2) {
+        showToast('❌ Grafik oluşturmak için en az 2 ölçüm gerekli', 'error');
+        return;
+      }
+      
+      // Grafik modalını oluştur
+      let grafikModal = document.getElementById('olcumGrafikModal');
+      if (!grafikModal) {
+        const modalHTML = `
+          <div id="olcumGrafikModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001; overflow: auto;">
+            <div style="background: white; margin: 20px auto; max-width: 95%; max-height: 90vh; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #6c5ce7, #5b4cdb); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📊</div>
+                  <div>
+                    <h2 style="margin: 0; font-size: 20px;">Vücut Ölçümleri Grafiği</h2>
+                    <p id="grafikHastaIsim" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <button onclick="olcumPdfIndir()" style="background: rgba(255,255,255,0.95); border: none; color: #6c5ce7; font-size: 13px; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" onmouseover="this.style.background='white'" onmouseout="this.style.background='rgba(255,255,255,0.95)'">
+                    <span style="font-size: 16px;">📄</span> PDF İndir
+                  </button>
+                  <button id="grafikModButton" onclick="grafikModuDegistir()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 13px; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 500;">📊 Ayrı Grafiklerde Göster</button>
+                  <button onclick="olcumGrafikKapat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button>
+                </div>
+              </div>
+              <div style="padding: 20px; max-height: calc(90vh - 100px); overflow-y: auto;">
+                <div id="grafikAlanlariContainer"></div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        grafikModal = document.getElementById('olcumGrafikModal');
+      }
+      
+      // Varsayılan mod birleşik
+      grafikGosterimModu = 'birlesik';
+      
+      // Hasta ismini güncelle
+      document.getElementById('grafikHastaIsim').textContent = seciliHasta.isim || 'Hasta';
+      
+      // Grafikleri çiz
+      grafikCiz();
+      
+      // Modalı göster
+      grafikModal.style.display = 'block';
+    }
+
+    function grafikModuDegistir() {
+      grafikGosterimModu = grafikGosterimModu === 'birlesik' ? 'ayri' : 'birlesik';
+      const buton = document.getElementById('grafikModButton');
+      buton.textContent = grafikGosterimModu === 'birlesik' ? '📊 Ayrı Grafiklerde Göster' : '📊 Birleşik Grafikte Göster';
+      grafikCiz();
+    }
+
+    function grafikCiz() {
+      const grafikContainer = document.getElementById('grafikAlanlariContainer');
+      grafikContainer.innerHTML = '';
+      
+      const siraliOlcumler = [...seciliHasta.olcumler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+      
+      const alanIsimler = {
+        'bel': 'Bel',
+        'kalca': 'Kalça',
+        'sagUyluk': 'Sağ Uyluk',
+        'solUyluk': 'Sol Uyluk',
+        'sagDiz': 'Sağ Diz',
+        'solDiz': 'Sol Diz',
+        'sagBaldir': 'Sağ Baldır',
+        'solBaldir': 'Sol Baldır',
+        'sagBilek': 'Sağ Bilek',
+        'solBilek': 'Sol Bilek',
+        'sagKol': 'Sağ Kol',
+        'solKol': 'Sol Kol',
+        'kilo': 'Kilo'
+      };
+      
+      // Renk paleti - her alan için farklı renk
+      const renkler = [
+        '#6c5ce7', '#00b894', '#ff6b6b', '#fdcb6e', 
+        '#e17055', '#74b9ff', '#a29bfe', '#fd79a8',
+        '#636e72', '#00cec9', '#ff7675', '#fab1a0'
+      ];
+      
+      if (grafikGosterimModu === 'birlesik') {
+        // Kilo hariç tüm bölgesel ölçümler tek grafikte
+        const bolgeselAlanlar = olcumAlanlari.filter(a => a !== 'kilo');
+        cokluGrafikCiz(siraliOlcumler, bolgeselAlanlar, alanIsimler, renkler, 'Bölgesel Ölçümler', grafikContainer);
+        
+        // Kilo ayrı grafikte
+        tekGrafikCiz(siraliOlcumler, 'kilo', alanIsimler, '#6c5ce7', grafikContainer);
+        
+      } else {
+        // Her alan ayrı grafikte
+        olcumAlanlari.forEach((alan, index) => {
+          tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renkler[index % renkler.length], grafikContainer);
+        });
+      }
+    }
+
+    function cokluGrafikCiz(siraliOlcumler, alanlar, alanIsimler, renkler, baslikMetni, container) {
+      // Veri var mı kontrol et
+      const tumVeriler = alanlar.map(alan => 
+        siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0)
+      );
+      
+      if (tumVeriler.every(v => v.length === 0)) return;
+      
+      // Grafik kartı
+      const kartDiv = document.createElement('div');
+      kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+      
+      // Başlık
+      const baslik = document.createElement('h3');
+      baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px;';
+      baslik.textContent = baslikMetni;
+      kartDiv.appendChild(baslik);
+      
+      // Renk açıklama
+      const legend = document.createElement('div');
+      legend.style.cssText = 'display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; padding: 10px; background: white; border-radius: 6px;';
+      alanlar.forEach((alan, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; align-items: center; gap: 6px; font-size: 12px;';
+        item.innerHTML = `<div style="width: 12px; height: 12px; background: ${renkler[idx]}; border-radius: 2px;"></div><span>${alanIsimler[alan]}</span>`;
+        legend.appendChild(item);
+      });
+      kartDiv.appendChild(legend);
+      
+      // Grafik canvas - yüksekliği artırdık
+      const canvas = document.createElement('div');
+      canvas.style.cssText = 'position: relative; height: 450px; background: white; border-radius: 6px; padding: 20px 15px 40px 15px; border: 1px solid #e0e0e0;';
+      
+      // Tüm verilerin min/max değerlerini bul
+      const tumDegerler = tumVeriler.flat();
+      const minVal = Math.min(...tumDegerler);
+      const maxVal = Math.max(...tumDegerler);
+      const chartMin = minVal - (maxVal - minVal) * 0.15;
+      const chartMax = maxVal + (maxVal - minVal) * 0.15;
+      const chartRange = chartMax - chartMin;
+      
+      // SVG oluştur - sağda etiketler için ekstra alan
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '450');
+      svg.style.cssText = 'display: block;';
+      
+      const width = 1200; // Sağa etiketler için genişletildi (1000 -> 1200)
+      const grafikGenisligi = 950; // Gerçek grafik alanı
+      const height = 450;
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      
+      // Grid çizgileri - sadece grafik alanında
+      for (let i = 0; i <= 5; i++) {
+        const y = (height / 5) * i;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '40');
+        line.setAttribute('y1', y.toString());
+        line.setAttribute('x2', grafikGenisligi.toString());
+        line.setAttribute('y2', y.toString());
+        line.setAttribute('stroke', '#e0e0e0');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+        
+        // Y ekseni değerleri
+        const value = chartMax - (chartRange / 5) * i;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '5');
+        text.setAttribute('y', (y + 4).toString());
+        text.setAttribute('fill', '#666');
+        text.setAttribute('font-size', '11');
+        text.textContent = value.toFixed(1);
+        svg.appendChild(text);
+      }
+      
+      // Her alan için çizgi ve noktalar
+      // Nokta yerleşimi için adım sayısı (tek veri noktasında merkezde konumlandır)
+      const stepCount = Math.max(1, siraliOlcumler.length - 1);
+
+      alanlar.forEach((alan, alanIdx) => {
+        const points = siraliOlcumler.map((o, i) => {
+          const val = parseFloat(o[alan]) || 0;
+          if (val === 0) return null;
+          
+          const x = siraliOlcumler.length === 1
+            ? 50 + (grafikGenisligi - 100) / 2
+            : 50 + ((grafikGenisligi - 100) / stepCount) * i;
+          const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
+          return { x, y, val, hafta: o.hafta };
+        }).filter(p => p !== null);
+        
+        if (points.length < 1) return;
+        
+        const renk = renkler[alanIdx];
+        
+        // Çizgi
+        if (points.length > 1) {
+          const pathData = points.map((p, i) => 
+            `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+          ).join(' ');
+          
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', pathData);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', renk);
+          path.setAttribute('stroke-width', '2.5');
+          path.setAttribute('opacity', '0.9');
+          svg.appendChild(path);
+        }
+        
+        // Noktalar ve değer etiketleri
+        points.forEach((p, pIdx) => {
+          // Nokta
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', p.x.toString());
+          circle.setAttribute('cy', p.y.toString());
+          circle.setAttribute('r', '5');
+          circle.setAttribute('fill', renk);
+          circle.setAttribute('stroke', 'white');
+          circle.setAttribute('stroke-width', '2');
+          svg.appendChild(circle);
+          
+          // Değer etiketi (nokta üstünde) - sadece ilk ve son nokta
+          if (pIdx === 0 || pIdx === points.length - 1) {
+            const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            valueText.setAttribute('x', p.x.toString());
+            valueText.setAttribute('y', (p.y - 12).toString());
+            valueText.setAttribute('text-anchor', 'middle');
+            valueText.setAttribute('fill', renk);
+            valueText.setAttribute('font-size', '10');
+            valueText.setAttribute('font-weight', 'bold');
+            valueText.textContent = p.val.toFixed(1);
+            svg.appendChild(valueText);
+          }
+        });
+      });
+      
+      // Hafta etiketleri (her nokta için)
+      const haftaPositions = siraliOlcumler.map((o, i) => {
+        const x = siraliOlcumler.length === 1
+          ? 50 + (grafikGenisligi - 100) / 2
+          : 50 + ((grafikGenisligi - 100) / stepCount) * i;
+        // Hafta etiketini "X. hafta" formatına getir
+        const raw = (o.haftaNo !== undefined ? o.haftaNo : o.hafta);
+        let num = parseInt(raw);
+        if (isNaN(num) || num <= 0) num = i + 1;
+        const haftaLabel = `${num}. hafta`;
+        return { x, haftaLabel };
+      });
+      
+      haftaPositions.forEach((pos, i) => {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', pos.x.toString());
+        // SVG yüksekliği içinde kalsın (alt boşluk üzerine yaz)
+        text.setAttribute('y', (height - 10).toString());
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#666');
+        text.setAttribute('font-size', '11');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = pos.haftaLabel;
+        svg.appendChild(text);
+      });
+      
+      // Renk kodlarını her çizginin sonuna ekle - grafik alanının DIŞINDA
+      const etiketBilgileri = [];
+      
+      alanlar.forEach((alan, alanIdx) => {
+        const points = siraliOlcumler.map((o, i) => {
+          const val = parseFloat(o[alan]) || 0;
+          if (val === 0) return null;
+          
+          const x = siraliOlcumler.length === 1
+            ? 50 + (grafikGenisligi - 100) / 2
+            : 50 + ((grafikGenisligi - 100) / stepCount) * i;
+          const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
+          return { x, y, val };
+        }).filter(p => p !== null);
+        
+        if (points.length > 0) {
+          const sonNokta = points[points.length - 1];
+          etiketBilgileri.push({
+            alan: alan,
+            alanIdx: alanIdx,
+            x: sonNokta.x,
+            y: sonNokta.y,
+            renk: renkler[alanIdx],
+            isim: alanIsimler[alan]
+          });
+        }
+      });
+      
+      // Y pozisyonuna göre sırala
+      etiketBilgileri.sort((a, b) => a.y - b.y);
+      
+      // Etiketleri yerleştir - akıllı konumlandırma
+      const yerlestirilmisEtiketler = [];
+      const minYMesafe = 16; // Minimum dikey mesafe
+      const etiketBaslangicX = grafikGenisligi + 20; // Grafik alanının sağında başla
+      const sutunGenisligi = 90; // Her sütun genişliği
+      
+      etiketBilgileri.forEach((etiket) => {
+        let labelY = etiket.y;
+        let labelX = etiketBaslangicX;
+        let sutun = 0;
+        
+        // Çakışma kontrolü
+        let cakismaVar = true;
+        let denemeSayisi = 0;
+        
+        while (cakismaVar && denemeSayisi < 20) {
+          cakismaVar = false;
+          
+          for (const yerlestirilmis of yerlestirilmisEtiketler) {
+            const yMesafe = Math.abs(labelY - yerlestirilmis.finalY);
+            const xMesafe = Math.abs(labelX - yerlestirilmis.finalX);
+            
+            // Aynı sütunda ve Y'de çok yakınsa
+            if (xMesafe < 70 && yMesafe < minYMesafe) {
+              cakismaVar = true;
+              
+              // Önce aşağı kaydır
+              if (labelY + minYMesafe < height - 30) {
+                labelY += minYMesafe;
+              } else {
+                // Aşağı yer yoksa yan sütuna geç
+                sutun++;
+                labelX = etiketBaslangicX + (sutun * sutunGenisligi);
+                labelY = etiket.y; // Y'yi sıfırla
+              }
+              break;
+            }
+          }
+          
+          denemeSayisi++;
+        }
+        
+        // Sınır kontrolü
+        if (labelY < 20) labelY = 20;
+        if (labelY > height - 30) labelY = height - 30;
+        
+        // Yerleşimi kaydet
+        yerlestirilmisEtiketler.push({
+          finalX: labelX,
+          finalY: labelY,
+          ...etiket
+        });
+        
+        // Etiketi çiz
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', labelX.toString());
+        label.setAttribute('y', (labelY + 4).toString());
+        label.setAttribute('fill', etiket.renk);
+        label.setAttribute('font-size', '11');
+        label.setAttribute('font-weight', 'bold');
+        label.textContent = etiket.isim;
+        svg.appendChild(label);
+      });
+      
+      canvas.appendChild(svg);
+      kartDiv.appendChild(canvas);
+      container.appendChild(kartDiv);
+    }
+
+    function tekGrafikCiz(siraliOlcumler, alan, alanIsimler, renk, container) {
+      // Veri var mı kontrol et
+      const veriler = siraliOlcumler.map(o => parseFloat(o[alan]) || 0).filter(v => v > 0);
+      if (veriler.length === 0) return;
+      
+      // Grafik kartı
+      const kartDiv = document.createElement('div');
+      kartDiv.style.cssText = 'margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;';
+      
+      // Başlık
+      const baslik = document.createElement('h3');
+      baslik.style.cssText = 'margin: 0 0 15px 0; color: #6c5ce7; font-size: 16px; display: flex; align-items: center; justify-content: space-between;';
+      
+      const ilk = veriler[0];
+      const son = veriler[veriler.length - 1];
+      const fark = son - ilk;
+      const farkRenk = fark < 0 ? '#00b894' : (fark > 0 ? '#ff6b6b' : '#636e72');
+      
+      // Kilo için özel başlık
+      const baslikMetni = alan === 'kilo' ? 'Vücut Ağırlığı' : alanIsimler[alan];
+      
+      baslik.innerHTML = `
+        <span>${baslikMetni}</span>
+        <span style="font-size: 14px; color: ${farkRenk}; font-weight: bold;">
+          ${ilk.toFixed(1)} → ${son.toFixed(1)} 
+          <span style="font-size: 12px;">(${fark > 0 ? '+' : ''}${fark.toFixed(1)})</span>
+        </span>
+      `;
+      kartDiv.appendChild(baslik);
+      
+      // Grafik canvas - yüksekliği artırdık
+      const canvas = document.createElement('div');
+      canvas.style.cssText = 'position: relative; height: 280px; background: white; border-radius: 6px; padding: 20px 15px 40px 15px; border: 1px solid #e0e0e0;';
+      
+      const minVal = Math.min(...veriler);
+      const maxVal = Math.max(...veriler);
+      const range = maxVal - minVal || 1;
+      const padding = range * 0.15;
+      const chartMin = minVal - padding;
+      const chartMax = maxVal + padding;
+      const chartRange = chartMax - chartMin;
+      
+      // SVG oluştur
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '280');
+      svg.style.cssText = 'display: block;';
+      
+      const width = 1000;
+      const height = 280;
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      
+      // Grid çizgileri
+      for (let i = 0; i <= 4; i++) {
+        const y = (height / 4) * i;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '40');
+        line.setAttribute('y1', y.toString());
+        line.setAttribute('x2', width.toString());
+        line.setAttribute('y2', y.toString());
+        line.setAttribute('stroke', '#e0e0e0');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+        
+        // Y ekseni değerleri
+        const value = chartMax - (chartRange / 4) * i;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '5');
+        text.setAttribute('y', (y + 4).toString());
+        text.setAttribute('fill', '#666');
+        text.setAttribute('font-size', '11');
+        text.textContent = value.toFixed(1);
+        svg.appendChild(text);
+      }
+      
+      // Çizgi ve noktalar
+      const stepCount = Math.max(1, siraliOlcumler.length - 1);
+      const points = siraliOlcumler.map((o, i) => {
+        const val = parseFloat(o[alan]) || 0;
+        if (val === 0) return null;
+        
+        const x = siraliOlcumler.length === 1
+          ? 50 + (width - 60) / 2
+          : 50 + ((width - 60) / stepCount) * i;
+        const y = height - 50 - ((val - chartMin) / chartRange) * (height - 50);
+        return { x, y, val, hafta: o.hafta || `H${i + 1}` };
+      }).filter(p => p !== null);
+      
+      // Çizgi çiz
+      if (points.length > 1) {
+        const pathData = points.map((p, i) => 
+          `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+        ).join(' ');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', renk);
+        path.setAttribute('stroke-width', '3');
+        svg.appendChild(path);
+      }
+      
+      // Noktalar ve hafta etiketleri
+      points.forEach((p) => {
+        // Nokta
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x.toString());
+        circle.setAttribute('cy', p.y.toString());
+        circle.setAttribute('r', '5');
+        circle.setAttribute('fill', renk);
+        circle.setAttribute('stroke', 'white');
+        circle.setAttribute('stroke-width', '2');
+        svg.appendChild(circle);
+        
+        // Değer etiketi (nokta üstünde)
+        const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        valueText.setAttribute('x', p.x.toString());
+        valueText.setAttribute('y', (p.y - 12).toString());
+        valueText.setAttribute('text-anchor', 'middle');
+        valueText.setAttribute('fill', renk);
+        valueText.setAttribute('font-size', '11');
+        valueText.setAttribute('font-weight', 'bold');
+        valueText.textContent = p.val.toFixed(1);
+        svg.appendChild(valueText);
+        
+        // Hafta etiketi (nokta altında)
+        const haftaText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        haftaText.setAttribute('x', p.x.toString());
+        // Alt boşluk içinde kalsın
+        haftaText.setAttribute('y', (height - 10).toString());
+        haftaText.setAttribute('text-anchor', 'middle');
+        haftaText.setAttribute('fill', '#666');
+        haftaText.setAttribute('font-size', '11');
+        haftaText.setAttribute('font-weight', 'bold');
+        // Hafta etiketini "X. hafta" formatına getir
+        const raw = (siraliOlcumler.find(o => (50 + ((width - 60) / stepCount) * siraliOlcumler.indexOf(o))) ? p.hafta : p.hafta);
+        let num = parseInt(p.hafta);
+        if (isNaN(num) || num <= 0) {
+          // p.hafta bir sayısal değer değilse, noktanın indeksine göre 1..N ver
+          const idx = siraliOlcumler.findIndex(o => (parseFloat(o[alan]) || 0) === p.val);
+          num = idx >= 0 ? (idx + 1) : 1;
+        }
+        haftaText.textContent = `${num}. hafta`;
+        svg.appendChild(haftaText);
+      });
+      
+      canvas.appendChild(svg);
+      kartDiv.appendChild(canvas);
+      container.appendChild(kartDiv);
+    }
+
+    function olcumGrafikKapat() {
+      const modal = document.getElementById('olcumGrafikModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    // PDF İNDİRME FONKSİYONU
+    async function olcumPdfIndir() {
+      if (!seciliHasta || !seciliHasta.olcumler || seciliHasta.olcumler.length === 0) {
+        showToast('❌ PDF oluşturmak için ölçüm verisi gerekli', 'error');
+        return;
+      }
+
+      showToast('📄 PDF oluşturuluyor...', 'info', 3000);
+
+      try {
+        // jsPDF kütüphanesini dinamik olarak yükle
+        if (typeof window.jspdf === 'undefined') {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          document.head.appendChild(script);
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+          });
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        
+        // Türkçe karakter desteği için font ayarla
+        doc.setFont('helvetica');
+        doc.setLanguage('tr');
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 10; // Kenar boşluğu azaltıldı (20->10)
+        let yPos = 15;
+
+        // Başlık
+        doc.setFontSize(18);
+        doc.setTextColor(108, 92, 231);
+        const baslik = 'Vucut Olcumleri Raporu'; // Türkçe karakter yerine ASCII
+        doc.text(baslik, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 10;
+
+        // Hasta bilgisi
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        const hastaIsim = (seciliHasta.isim || 'Bilinmiyor')
+          .replace(/ş/g, 's').replace(/Ş/g, 'S')
+          .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+          .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+          .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+          .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+          .replace(/ı/g, 'i').replace(/İ/g, 'I');
+        doc.text(`Hasta: ${hastaIsim}`, margin, yPos);
+        yPos += 7;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, margin, yPos);
+        yPos += 10;
+
+        // TABLO - Kompakt Format
+        doc.setFontSize(14);
+        doc.setTextColor(108, 92, 231);
+        doc.text('Olcum Tablosu', margin, yPos);
+        yPos += 8;
+
+        const siraliOlcumler = [...seciliHasta.olcumler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+        
+        // Vücut ağırlığı tablosu ÖNCE
+        const agirlikOlcumleri = siraliOlcumler.filter(o => o.agirlik && parseFloat(o.agirlik) > 0);
+        if (agirlikOlcumleri.length > 0) {
+          doc.setFontSize(12);
+          doc.setTextColor(108, 92, 231);
+          doc.text('Vucut Agirligi', 10, yPos);
+          yPos += 6;
+          
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+          doc.setFillColor(231, 236, 239);
+          doc.rect(10, yPos, pageWidth - 20, 7, 'F');
+          
+          doc.setFont('helvetica', 'bold');
+          doc.text('Tarih', 12, yPos + 5);
+          doc.text('Hafta', 42, yPos + 5);
+          doc.text('Agirlik (kg)', 72, yPos + 5);
+          doc.text('Fark', 112, yPos + 5);
+          yPos += 7;
+          
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          
+          agirlikOlcumleri.forEach((olcum, index) => {
+            if (yPos > pageHeight - 30) {
+              doc.addPage();
+              yPos = 20;
+            }
+            
+            if (index % 2 === 0) {
+              doc.setFillColor(248, 249, 250);
+              doc.rect(10, yPos, pageWidth - 20, 6, 'F');
+            }
+            
+            const tarih = new Date(olcum.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+            const haftaNum = olcum.hafta ? olcum.hafta.replace(/\D/g, '') : '-';
+            const agirlik = parseFloat(olcum.agirlik).toFixed(1);
+            
+            doc.setTextColor(0, 0, 0);
+            doc.text(tarih, 12, yPos + 4.5);
+            doc.text(haftaNum, 42, yPos + 4.5);
+            doc.text(agirlik, 72, yPos + 4.5);
+            
+            // Fark hesapla
+            if (index > 0) {
+              const oncekiAgirlik = parseFloat(agirlikOlcumleri[index - 1].agirlik);
+              const fark = parseFloat(olcum.agirlik) - oncekiAgirlik;
+              const farkStr = fark > 0 ? `+${fark.toFixed(1)}` : fark.toFixed(1);
+              doc.setTextColor(fark < 0 ? 0 : 255, fark < 0 ? 184 : 107, fark < 0 ? 148 : 107);
+              doc.text(farkStr, 112, yPos + 4.5);
+            } else {
+              doc.setTextColor(100, 100, 100);
+              doc.text('-', 112, yPos + 4.5);
+            }
+            
+            yPos += 6;
+          });
+          
+          // Toplam fark
+          if (agirlikOlcumleri.length >= 2) {
+            yPos += 2;
+            doc.setFillColor(255, 243, 205);
+            doc.rect(10, yPos, pageWidth - 20, 6, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text('TOPLAM FARK:', 12, yPos + 4.5);
+            
+            const ilkAgirlik = parseFloat(agirlikOlcumleri[0].agirlik);
+            const sonAgirlik = parseFloat(agirlikOlcumleri[agirlikOlcumleri.length - 1].agirlik);
+            const toplamFark = sonAgirlik - ilkAgirlik;
+            const farkStr = toplamFark > 0 ? `+${toplamFark.toFixed(1)} kg` : `${toplamFark.toFixed(1)} kg`;
+            doc.setTextColor(toplamFark < 0 ? 0 : 255, toplamFark < 0 ? 184 : 107, toplamFark < 0 ? 148 : 107);
+            doc.text(farkStr, 72, yPos + 4.5);
+            yPos += 10;
+          }
+          
+          yPos += 5;
+        }
+        
+        // VÜCUT ÖLÇÜMLERİ TABLOSU - TÜM ALANLAR
+        doc.setFontSize(12);
+        doc.setTextColor(108, 92, 231);
+        doc.text('Vucut Olcumleri', 10, yPos);
+        yPos += 6;
+        
+        // Tablo başlıkları - TÜM ALANLAR (Kenar boşlukları azaltıldı: 20->10, 40->35)
+        doc.setFontSize(7);
+        doc.setTextColor(0, 0, 0);
+        doc.setFillColor(231, 236, 239);
+        doc.rect(10, yPos, pageWidth - 20, 10, 'F');
+        
+        // Kolon başlıkları (daha geniş aralıklarla)
+        const kolonBasliklari = [
+          { text: 'Tarih', x: 10, w: 14 },
+          { text: 'Hafta', x: 24, w: 11 },
+          { text: 'Bel', x: 35, w: 12 },
+          { text: 'Kalca', x: 47, w: 12 },
+          { text: 'Sag\nUyluk', x: 59, w: 12 },
+          { text: 'Sol\nUyluk', x: 71, w: 12 },
+          { text: 'Sag\nDiz', x: 83, w: 12 },
+          { text: 'Sol\nDiz', x: 95, w: 12 },
+          { text: 'Sag\nBaldir', x: 107, w: 12 },
+          { text: 'Sol\nBaldir', x: 119, w: 12 },
+          { text: 'Sag\nBilek', x: 131, w: 12 },
+          { text: 'Sol\nBilek', x: 143, w: 12 },
+          { text: 'Sag\nKol', x: 155, w: 12 },
+          { text: 'Sol\nKol', x: 167, w: 12 },
+          { text: 'Kilo', x: 179, w: 12 }
+        ];
+        
+        doc.setFont('helvetica', 'bold');
+        kolonBasliklari.forEach(kolon => {
+          const lines = kolon.text.split('\n');
+          if (lines.length > 1) {
+            doc.text(lines[0], kolon.x + 2, yPos + 4);
+            doc.text(lines[1], kolon.x + 2, yPos + 8);
+          } else {
+            doc.text(kolon.text, kolon.x + 2, yPos + 6);
+          }
+        });
+        yPos += 10;
+
+        // Tablo satırları
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        
+        siraliOlcumler.forEach((olcum, index) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          // Satır arka planı
+          if (index % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(10, yPos, pageWidth - 20, 6, 'F');
+          }
+
+          doc.setTextColor(0, 0, 0);
+          const tarih = new Date(olcum.tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+          const haftaNum = olcum.hafta ? olcum.hafta.replace(/\D/g, '') : '-';
+          
+          // Tüm değerleri sırayla yazdır (güncellenmiş X pozisyonları)
+          const degerler = [
+            { val: tarih, x: 10 },
+            { val: haftaNum, x: 24 },
+            { val: olcum.bel || '-', x: 35 },
+            { val: olcum.kalca || '-', x: 47 },
+            { val: olcum.sagUyluk || '-', x: 59 },
+            { val: olcum.solUyluk || '-', x: 71 },
+            { val: olcum.sagDiz || '-', x: 83 },
+            { val: olcum.solDiz || '-', x: 95 },
+            { val: olcum.sagBaldir || '-', x: 107 },
+            { val: olcum.solBaldir || '-', x: 119 },
+            { val: olcum.sagBilek || '-', x: 131 },
+            { val: olcum.solBilek || '-', x: 143 },
+            { val: olcum.sagKol || '-', x: 155 },
+            { val: olcum.solKol || '-', x: 167 },
+            { val: olcum.kilo || '-', x: 179 }
+          ];
+
+          degerler.forEach(d => {
+            doc.text(String(d.val), d.x + 2, yPos + 4.5);
+          });
+          
+          yPos += 6;
+        });
+
+        // Fark satırı (varsa)
+        if (siraliOlcumler.length >= 2) {
+          yPos += 2;
+          doc.setFillColor(255, 243, 205);
+          doc.rect(10, yPos, pageWidth - 20, 6, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(0, 0, 0);
+          
+          doc.text('FARK:', 10 + 2, yPos + 4.5);
+
+          const ilk = siraliOlcumler[0];
+          const son = siraliOlcumler[siraliOlcumler.length - 1];
+          
+          // Tüm alanlar için fark hesapla (güncellenmiş X pozisyonları)
+          const alanlar = ['bel', 'kalca', 'sagUyluk', 'solUyluk', 'sagDiz', 'solDiz', 
+                          'sagBaldir', 'solBaldir', 'sagBilek', 'solBilek', 
+                          'sagKol', 'solKol', 'kilo'];
+          const farkXler = [35, 47, 59, 71, 83, 95, 107, 119, 131, 143, 155, 167, 179];
+          
+          alanlar.forEach((alan, i) => {
+            const fark = (parseFloat(son[alan]) || 0) - (parseFloat(ilk[alan]) || 0);
+            if (fark !== 0) {
+              const farkStr = fark > 0 ? `+${fark.toFixed(1)}` : fark.toFixed(1);
+              doc.setTextColor(fark < 0 ? 0 : 255, fark < 0 ? 184 : 107, fark < 0 ? 148 : 107);
+              doc.text(farkStr, farkXler[i] + 2, yPos + 4.5);
+            } else {
+              doc.setTextColor(100, 100, 100);
+              doc.text('-', farkXler[i] + 2, yPos + 4.5);
+            }
+          });
+          yPos += 10;
+        }
+
+        // GRAFİKLER
+        if (siraliOlcumler.length >= 2) {
+          yPos += 5;
+          
+          if (yPos > pageHeight - 100) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          doc.setFontSize(14);
+          doc.setTextColor(108, 92, 231);
+          const grafikBaslik = grafikGosterimModu === 'birlesik' ? 'Grafik - Birlesik Gorum' : 'Grafik - Ayri Gorum';
+          doc.text(grafikBaslik, 10, yPos);
+          yPos += 8;
+
+          // Grafik container'dan SVG'leri al
+          const grafikContainer = document.getElementById('grafikAlanlariContainer');
+          const svgElements = grafikContainer.querySelectorAll('svg');
+
+          if (svgElements.length > 0) {
+            for (let i = 0; i < svgElements.length; i++) {
+              if (yPos > pageHeight - 80) {
+                doc.addPage();
+                yPos = 20;
+              }
+
+              const svg = svgElements[i];
+              const svgString = new XMLSerializer().serializeToString(svg);
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              const img = new Image();
+
+              await new Promise((resolve) => {
+                img.onload = () => {
+                  canvas.width = svg.viewBox.baseVal.width;
+                  canvas.height = svg.viewBox.baseVal.height;
+                  ctx.fillStyle = 'white';
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, 0, 0);
+                  
+                  const imgData = canvas.toDataURL('image/png');
+                  const imgHeight = grafikGosterimModu === 'birlesik' ? 85 : 55;
+                  // Kenar boşlukları azaltıldı: 20->10, 40->20
+                  doc.addImage(imgData, 'PNG', 10, yPos, pageWidth - 20, imgHeight);
+                  yPos += imgHeight + 10;
+                  resolve();
+                };
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+              });
+
+              if (grafikGosterimModu === 'ayri' && i < svgElements.length - 1 && yPos > pageHeight - 60) {
+                doc.addPage();
+                yPos = 20;
+              }
+            }
+          }
+        }
+
+        // PDF'i indir
+        const dosyaAdi = `${seciliHasta.isim || 'hasta'}_olcumler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.pdf`;
+        doc.save(dosyaAdi);
+        showToast('✅ PDF başarıyla indirildi!', 'success');
+      } catch (error) {
+        console.error('PDF oluşturma hatası:', error);
+        showToast('❌ PDF oluşturulurken hata oluştu', 'error');
+      }
+    }
+    
+    window.olcumlerAc = olcumlerAc;
+    window.olcumlerKapat = olcumlerKapat;
+    window.olcumPdfIndir = olcumPdfIndir;
+    window.olcumGrafikKapat = olcumGrafikKapat;
+    // ==================== ÖLÇÜM SİSTEMİ SONU ====================
+    
     // === TOAST MESAJ SİSTEMİ ===
     function showToast(message, type = 'success', duration = 2500) {
       // Mevcut toast'ları temizle
@@ -8242,6 +9237,39 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                           placeholder="Bu hafta hakkında kısa not..."
                           onchange="aciklamaKaydet(${i})" ${hafta.kilitli ? 'readonly' : ''}>${hafta.aciklama||''}</textarea>
               </div>
+
+              <!-- Ölçümler Bölümü -->
+              <div style="padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #6c5ce7;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="background: #6c5ce7; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">📏</div>
+                    <h4 style="margin: 0; color: #6c5ce7; font-size: 14px;">Vücut Ölçümleri</h4>
+                  </div>
+                  <span id="olcumSayisi_${i}" style="font-size: 11px; color: #666; background: white; padding: 4px 8px; border-radius: 12px; border: 1px solid #dee2e6;">
+                    ${(seciliHasta.olcumler && seciliHasta.olcumler.length > 0) ? seciliHasta.olcumler.length + ' kayıt' : 'Kayıt yok'}
+                  </span>
+                </div>
+                <button onclick="olcumlerAc(${i})" style="
+                  width: 100%;
+                  padding: 10px 15px; 
+                  background: linear-gradient(135deg, #6c5ce7, #5b4cdb); 
+                  color: white; 
+                  border: none; 
+                  border-radius: 6px; 
+                  font-size: 13px;
+                  font-weight: bold;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 8px;
+                  transition: all 0.3s ease;
+                  box-shadow: 0 2px 4px rgba(108, 92, 231, 0.2);
+                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(108, 92, 231, 0.3)'" 
+                   onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(108, 92, 231, 0.2)'">
+                  <span style="font-size: 16px;">📊</span> Ölçümleri Görüntüle
+                </button>
+              </div>
             </div>
 
             <!-- GPT Analiz Paneli -->
@@ -13679,7 +14707,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     // MANUEL KART EKLEME SİSTEMİ
     // ========================
     
-    let aktifHaftaIndex = null;
+    // aktifHaftaIndex yukarıda ölçüm sistemi ile tanımlandı
     let secilenManuelKartlar = [];
     
     // YEMEK ANALİZİ DEĞİŞKENLERİ
