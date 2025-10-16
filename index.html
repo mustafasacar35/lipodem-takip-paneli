@@ -315,6 +315,18 @@
       border: 2px solid #dc3545 !important;
       box-shadow: 0 0 10px rgba(220, 53, 69, 0.3) !important;
       transform: scale(1.02) !important;
+      background: #fff5f5 !important;
+    }
+    
+    #hastaListesi li.secili-hasta::before {
+      content: '';
+      position: absolute;
+      left: -2px;
+      top: -2px;
+      bottom: -2px;
+      width: 4px;
+      background: #dc3545;
+      border-radius: 4px 0 0 4px;
     }
     
     #hastaListesi li.secili-hasta::after {
@@ -1018,12 +1030,12 @@
             </div>
             <div style="flex:1;">
               <label style="display:block; margin-bottom:5px; font-weight:bold;">Eşleşecek Kart:</label>
-              <input type="text" id="manuelKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #ddd; border-radius:5px;" />
-              <select id="manuelKartSecim" size="8" style="width:100%; border:1px solid #ddd; border-radius:5px; padding:5px;">
-                <option value="">Önce kart ara...</option>
-              </select>
+              <input type="text" id="manuelKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #ddd; border-radius:5px;" oninput="manuelKartAramaYap(this.value)" />
+              <div id="manuelKartListe" style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f8f9fa;">
+                <!-- Dinamik kart listesi buraya gelecek -->
+              </div>
               <small style="display:block; color:#666; margin-top:5px;">
-                Eşleşmesini istediğiniz kartı seçin
+                Eşleşmesini istediğiniz kartları seçin (çoklu seçim)
               </small>
             </div>
           </div>
@@ -3485,17 +3497,31 @@
       }
     }
     
-    // UTF-8 encoding için yardımcı fonksiyon
+    // UTF-8 encoding için yardımcı fonksiyon (büyük verilerde taşma yapmaz)
     function encodeUTF8ToBase64(jsonData) {
       try {
         const jsonString = JSON.stringify(jsonData, null, 2);
-        const encoder = new TextEncoder();
-        const utf8Bytes = encoder.encode(jsonString);
-        return btoa(String.fromCharCode(...utf8Bytes));
+        // En güvenlisi: encodeURIComponent + unescape ile UTF-8'e çevirip btoa yapmak
+        // Bu yöntem büyük içeriklerde ...spread kaynaklı call stack hatalarını engeller
+        return btoa(unescape(encodeURIComponent(jsonString)));
       } catch (error) {
-        console.warn('UTF-8 encode başarısız, fallback kullanılıyor:', error);
-        // Fallback: Eski yöntem
-        return btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+        console.warn('UTF-8 encode başarısız, chunked TextEncoder yöntemine geçiliyor:', error);
+        try {
+          // Alternatif: TextEncoder + chunked binary string oluşturma
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(JSON.stringify(jsonData, null, 2));
+          let binary = '';
+          const chunkSize = 0x8000; // 32KB
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+          }
+          return btoa(binary);
+        } catch (e2) {
+          console.error('UTF-8 encode tamamen başarısız:', e2);
+          // En son çare: boş içerik yazma (asla atmamak için)
+          return btoa('"ENCODE_ERROR"');
+        }
       }
     }
     
@@ -5160,18 +5186,38 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       document.getElementById('manuelEslestirmeConsole').style.display = 'block';
       showToast('🔗 Manuel Eşleştirme Paneli açıldı', 'success');
       
-      // Kartları yükle
-      if (tariflerKlasoruGorselleri.length === 0) {
-        await tariflerKlasoruGorselleriniYukle();
+      // Seçili kartlar dizisini sıfırla
+      if (typeof secilenManuelKartlar !== 'undefined') {
+        secilenManuelKartlar = [];
+        console.log('🔄 secilenManuelKartlar dizisi sıfırlandı');
       }
       
-      // Kart listesini doldur
-      manuelKartListesiniGoster();
+      // Kartları yükle (window.tarifKartlari için)
+      if (tariflerKlasoruGorselleri.length === 0 || !window.tarifKartlari || window.tarifKartlari.length === 0) {
+        console.log('📦 Tarifler klasörü boş veya window.tarifKartlari yüklenmemiş, yükleniyor...');
+        await tariflerKlasoruGorselleriniYukle();
+        console.log('✅ Tarifler yüklendi:', {
+          tariflerKlasoruGorselleri: tariflerKlasoruGorselleri.length,
+          windowTarifKartlari: window.tarifKartlari ? window.tarifKartlari.length : 'undefined'
+        });
+      } else {
+        console.log('✅ Tarifler zaten yüklü:', {
+          tariflerKlasoruGorselleri: tariflerKlasoruGorselleri.length,
+          windowTarifKartlari: window.tarifKartlari ? window.tarifKartlari.length : 'undefined'
+        });
+      }
       
-      // Arama işlevi
-      document.getElementById('manuelKartArama').oninput = function() {
-        manuelKartListesiniGoster(this.value);
-      };
+      // manuelEslestirmeConsole için kart listesini doldur
+      // NOT: Bu konsol manuelKartAramaYap() fonksiyonunu kullanıyor
+      const aramaInput = document.getElementById('manuelKartArama');
+      if (aramaInput) {
+        aramaInput.value = '';
+        // Başlangıçta tüm kartları göster
+        manuelKartAramaYap('');
+        console.log('🔍 manuelKartAramaYap(\'\') çağrıldı - tüm kartlar yüklendi');
+      } else {
+        console.error('❌ manuelKartArama elementi bulunamadı!');
+      }
       
       // Manuel eşleştirmeleri göster (zaten yüklü olmalı)
       manuelEslestirmeListesiniGoster();
@@ -5274,9 +5320,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     function manuelKartListesiniGoster(aramaMetni = '') {
       const div = document.getElementById('manuelKartListesi');
+      if (!div) {
+        console.error('❌ manuelKartListesi elementi bulunamadı!');
+        return;
+      }
+      
       div.innerHTML = '';
 
       console.log('🔍 Manuel kart listesi gösteriliyor, arama metni:', aramaMetni);
+      console.log('📦 Toplam tarif kartı sayısı:', tariflerKlasoruGorselleri.length);
+      
+      // Tarifler yüklenmemişse uyarı göster
+      if (!tariflerKlasoruGorselleri || tariflerKlasoruGorselleri.length === 0) {
+        div.innerHTML = '<div style="padding:10px; color:#856404; background:#fff3cd; border:1px solid #ffeaa7; border-radius:4px;">⚠️ Tarifler GitHub\'dan yüklenemiyor. Lütfen bekleyin veya sayfayı yenileyin.</div>';
+        console.warn('⚠️ tariflerKlasoruGorselleri boş veya tanımlı değil!');
+        return;
+      }
       
       // Arama metnini kelimelere ayır ve türkçe karakterleri normalize et
       const aramaKelimeleri = aramaMetni.trim().split(/\s+/).filter(k => k.length > 0)
@@ -5383,8 +5442,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     function manuelEslestirmeEkle() {
       const tarifAdi = document.getElementById('manuelTarifAdi').value.trim();
-      const checkboxes = document.querySelectorAll('#manuelKartListesi input[type="checkbox"]:checked');
-      const secilenKartlar = Array.from(checkboxes).map(cb => cb.getAttribute('data-kart'));
+      
+      // İki farklı panel olabilir - hangisi açıksa ondan kartları al
+      let secilenKartlar = [];
+      
+      // 1. Önce manuelEslestirmeConsole panelindeki secilenManuelKartlar dizisini kontrol et
+      if (typeof secilenManuelKartlar !== 'undefined' && secilenManuelKartlar.length > 0) {
+        secilenKartlar = [...secilenManuelKartlar];
+        console.log('✅ Seçilen kartlar (Console panelinden - global array):', secilenKartlar);
+      }
+      // 2. Yoksa manuelEslestirmePanel panelindeki checkbox'ları kontrol et
+      else {
+        const checkboxes = document.querySelectorAll('#manuelKartListesi input[type="checkbox"]:checked');
+        secilenKartlar = Array.from(checkboxes).map(cb => cb.getAttribute('data-kart'));
+        console.log('✅ Seçilen kartlar (Panel panelinden - checkbox):', secilenKartlar);
+      }
       
       if (!tarifAdi) {
         manuelEslestirmeStatusGoster('Yemek adı boş olamaz!', 'error');
@@ -5393,6 +5465,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       if (secilenKartlar.length === 0) {
         manuelEslestirmeStatusGoster('En az bir kart seçmelisiniz!', 'error');
+        console.error('❌ Seçili kart bulunamadı! secilenManuelKartlar:', secilenManuelKartlar);
         return;
       }
       
@@ -5446,7 +5519,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // Formu temizle
       document.getElementById('manuelTarifAdi').value = '';
+      
+      // manuelKartListesi paneli için checkbox'ları temizle
       document.querySelectorAll('#manuelKartListesi input[type="checkbox"]').forEach(cb => cb.checked = false);
+      
+      // manuelEslestirmeConsole paneli için secilenManuelKartlar dizisini temizle ve listeyi yenile
+      if (typeof secilenManuelKartlar !== 'undefined') {
+        secilenManuelKartlar = [];
+        console.log('🔄 secilenManuelKartlar dizisi temizlendi');
+        
+        // Listeyi yeniden yükle (eğer manuelKartArama elementi varsa)
+        const aramaInput = document.getElementById('manuelKartArama');
+        if (aramaInput) {
+          manuelKartAramaYap(aramaInput.value || '');
+          console.log('🔄 Kart listesi yenilendi');
+        }
+      }
     }
 
     function manuelEslestirmeleriTemizle() {
@@ -7445,6 +7533,45 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     
     // Global telefon bilgileri yedek
     window.telefonBilgileriYedek = loadTelefonFlagBackup();
+
+    // GitHub ile telefon flag'lerini eşitleyen yardımcı fonksiyon (arka plan)
+    async function reconcileTelefonFlagsWithGitHub(birlesikMap, githubMap, mevcutGitHubListe) {
+      try {
+        // GitHub token yoksa çık
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) return;
+
+        // GitHub listesi yoksa yükle
+        let liste = Array.isArray(mevcutGitHubListe) ? mevcutGitHubListe : [];
+        if (liste.length === 0) {
+          try { liste = await hastaListesiYukle(); } catch (_) { /* sessiz */ }
+        }
+
+        // Local'de true olup GitHub haritasında olmayan anahtarları bul
+        const eklenecekIdler = Object.keys(birlesikMap).filter(id => birlesikMap[id] && !githubMap[id]);
+        if (eklenecekIdler.length === 0) return; // Eşitlenecek yok
+
+        let degisimYapildi = false;
+        eklenecekIdler.forEach(id => {
+          const idx = Array.isArray(liste) ? liste.findIndex(h => String(h.id) === String(id)) : -1;
+          if (idx >= 0) {
+            // Varsa güncelle
+            liste[idx] = { ...liste[idx], telefonAranacak: true, sonGuncelleme: new Date().toISOString() };
+            degisimYapildi = true;
+          } else {
+            // Yoksa minimal kayıt ekle (isim bilinmiyorsa boş geçme, ikon için yeterli)
+            liste.push({ id: id, isim: (window.hastalar?.find(h => String(h.id) === String(id))?.isim) || `HASTA_${id}`, arsiv: false, not: '', telefonAranacak: true, sonGuncelleme: new Date().toISOString() });
+            degisimYapildi = true;
+          }
+        });
+
+        if (degisimYapildi) {
+          try { await hastaListesiKaydet(liste); } catch (e) { console.warn('📞 Reconcile kaydetme uyarısı:', e?.message || e); }
+        }
+      } catch (err) {
+        console.warn('📞 Reconcile genel uyarı:', err?.message || err);
+      }
+    }
     
     function saveToStorage() {
       try {
@@ -7594,7 +7721,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const yuklenmisList = await hastaListesiYukle();
         
         // GitHub listesindeki telefon bilgilerini kaynak olarak al
-        const githubTelefonHaritasi = {};
+  const githubTelefonHaritasi = {};
         if (Array.isArray(yuklenmisList) && yuklenmisList.length > 0) {
           yuklenmisList.forEach(h => {
             if (h && h.id) {
@@ -7605,8 +7732,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           });
         }
 
-        window.telefonBilgileriYedek = normalizeTelefonFlagMap(githubTelefonHaritasi);
-        persistTelefonFlagBackup(window.telefonBilgileriYedek);
+  // GitHub + local backup'u birleştir (ilk yüklemede ikonların görünmesi için)
+  // Not: GitHub SSoT kalır; eksikler arka planda GitHub'a reconcile edilir.
+  const localBackupMap = loadTelefonFlagBackup();
+  const birlesikTelefonMap = mergeTelefonFlagSources(githubTelefonHaritasi, localBackupMap);
+  window.telefonBilgileriYedek = normalizeTelefonFlagMap(birlesikTelefonMap);
+  persistTelefonFlagBackup(window.telefonBilgileriYedek);
+
+  // Eksik olanları GitHub listesiyle arka planda eşitle (sadece 1 kez)
+  try {
+    if (!window._telefonFlagsReconciled) {
+      await reconcileTelefonFlagsWithGitHub(window.telefonBilgileriYedek, githubTelefonHaritasi, yuklenmisList);
+      window._telefonFlagsReconciled = true;
+    }
+  } catch (reconcileErr) {
+    console.warn('📞 Telefon flag reconcile uyarısı:', reconcileErr?.message || reconcileErr);
+  }
 
         console.log('📞 Telefon bilgileri GitHub kaynaklı yenilendi:', Object.keys(window.telefonBilgileriYedek).length, 'hasta');
         
@@ -7818,8 +7959,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
           isimDiv.appendChild(isimSpan);
           
-          // Telefon ikonu ekle - SADECE GitHub'daki gerçek değeri kullan
-          const telefonIconGorunecek = Boolean(hasta.telefonAranacak);
+          // Telefon ikonu ekle - Birleşik haritayı kullan (GitHub + local backup)
+          const telefonIconGorunecek = Boolean(window.telefonBilgileriYedek[String(hasta.id)]);
           console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek} (ID: ${hasta.id})`);
           if (telefonIconGorunecek) {
             const telefonSpan = document.createElement('span');
@@ -7859,6 +8000,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         });
         
         console.log(`✅ Yeni sistem hasta listesi güncellendi: ${filtreliHastalar.length} hasta gösteriliyor`);
+        
+        // Liste yenilendikten sonra mevcut seçimi tekrar vurgula
+        try {
+          if (seciliHasta && seciliHasta.id) {
+            vurgulaSeciliHasta(seciliHasta.id);
+          }
+        } catch (e) { console.warn('⚠️ Vurgu yenileme sırasında uyarı:', e.message); }
         
         // Sidebar'daki hasta sayılarını güncelle
         await guncelleHastaSayilari();
@@ -8056,15 +8204,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       const tumHastalar = document.querySelectorAll('.hasta-item');
       tumHastalar.forEach(hasta => {
         hasta.classList.remove('secili-hasta');
+        hasta.removeAttribute('aria-selected');
       });
       
       // Seçilen hastayı vurgula
-      const secilenHasta = document.querySelector(`[data-hasta-id="${hastaId}"]`);
-      if (secilenHasta) {
-        secilenHasta.classList.add('secili-hasta');
+      const secilenHastaEl = document.querySelector(`[data-hasta-id="${hastaId}"]`);
+      if (secilenHastaEl) {
+        secilenHastaEl.classList.add('secili-hasta');
+        secilenHastaEl.setAttribute('aria-selected', 'true');
+        // Liste içinde görünür kıl (nerede kaldığımı anla)
+        try { secilenHastaEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
         console.log('✅ Hasta vurgulandı:', hastaId);
       } else {
-        console.log('⚠️ Vurgulanacak hasta bulunamadı:', hastaId);
+        console.log('⚠️ Vurgulanacak hasta bulunamadı veya filtre nedeniyle listede değil:', hastaId);
       }
     }
 
@@ -15808,45 +15960,61 @@ ${mesajlar.join('\n')}
       }
 
       // hastaListesi'ndeki hastayı da güncelle (hastalar_listesi.json için)
-      let listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
-      if (!listedeHasta) {
+      let listedeHastaIndex = Array.isArray(hastaListesi) ? hastaListesi.findIndex(h => String(h.id) === String(seciliHasta.id)) : -1;
+      if (listedeHastaIndex === -1) {
         try {
           const guncelListe = await hastaListesiYukle();
           if (Array.isArray(guncelListe) && guncelListe.length > 0) {
             hastaListesi = guncelListe;
-            listedeHasta = hastaListesi.find(h => h.id === seciliHasta.id);
+            listedeHastaIndex = hastaListesi.findIndex(h => String(h.id) === String(seciliHasta.id));
           }
         } catch (listeYenilemeHatasi) {
           console.warn('📞 GitHub hasta listesini yenilerken hata:', listeYenilemeHatasi?.message || listeYenilemeHatasi);
         }
       }
 
-      if (listedeHasta) {
-        listedeHasta.telefonAranacak = seciliHasta.telefonAranacak;
-        try {
-          await hastaListesiKaydet(hastaListesi); // GitHub'a kaydet
-          console.log('📞 hastaListesi güncellendi ve GitHub\'a kaydedildi');
-        } catch (telefonKaydetHatasi) {
-          console.warn('📞 Telefon bilgisi GitHub kaydetme hatası:', telefonKaydetHatasi?.message || telefonKaydetHatasi);
-        }
+      if (listedeHastaIndex >= 0) {
+        hastaListesi[listedeHastaIndex] = {
+          ...hastaListesi[listedeHastaIndex],
+          telefonAranacak: Boolean(seciliHasta.telefonAranacak),
+          sonGuncelleme: new Date().toISOString()
+        };
       } else {
-        console.warn('📞 GitHub hasta listesinde hasta bulunamadı, telefon durumu kaydedilemedi:', seciliHasta?.isim);
+        // Listede yoksa ekle (tek otorite GitHub listesi olmalı)
+        const yeniKayit = {
+          id: seciliHasta.id,
+          isim: seciliHasta.isim,
+          not: seciliHasta.not || '',
+          arsiv: Boolean(seciliHasta.arsiv),
+          telefonAranacak: Boolean(seciliHasta.telefonAranacak),
+          sonGuncelleme: new Date().toISOString()
+        };
+        hastaListesi.push(yeniKayit);
+        console.log('📞 GitHub hasta listesine yeni kayıt eklendi (telefon işareti için):', yeniKayit.isim);
+      }
+      try {
+        await hastaListesiKaydet(hastaListesi); // GitHub'a kaydet
+        console.log('📞 hastaListesi güncellendi ve GitHub\'a kaydedildi');
+      } catch (telefonKaydetHatasi) {
+        console.warn('📞 Telefon bilgisi GitHub kaydetme hatası:', telefonKaydetHatasi?.message || telefonKaydetHatasi);
       }
       
-      // Butonu güncelle
+      // Butonu güncelle (anında görsel geri bildirim)
       updateTelefonButonu();
+      
+      // Not: Anlık DOM güncellemesi kaldırıldı. Tek otorite GitHub listesi olacak.
       
       // Kaydet
       saveToStorage();
       hastayiAyriKaydet(seciliHasta);
       
-      // Sidebar'ı güncelle
+      // Sidebar'ı güncelle (tam senkronizasyon)
       if (typeof renderHastalarYeniSistem === 'function') {
         await renderHastalarYeniSistem();
       }
       
       // Toast mesajı
-      const mesaj = seciliHasta.telefonAranacak ? '📞 Telefon aranacak olarak işaretlendi' : '✅ Telefon işareti kaldırıldı';
+  const mesaj = seciliHasta.telefonAranacak ? '📞 Telefon aranacak olarak işaretlendi (GitHub ile senkronize ediliyor...)' : '✅ Telefon işareti kaldırıldı (GitHub ile senkronize ediliyor...)';
       showToast(mesaj, 'success');
     }
     
@@ -15861,12 +16029,14 @@ ${mesajlar.join('\n')}
         btn.style.color = 'white';
         btn.innerHTML = '📞 Aranacak ✓';
         btn.title = 'Telefon ile aranacak işaretini kaldır';
+        btn.setAttribute('aria-pressed', 'true');
       } else {
         // Pasif durumu
         btn.style.background = '#e0e0e0';
         btn.style.color = '#666';
         btn.innerHTML = '📞 Aranacak';
         btn.title = 'Telefon ile aranacak olarak işaretle';
+        btn.setAttribute('aria-pressed', 'false');
       }
     }
     
