@@ -28,6 +28,7 @@
   <!-- Google API yükleme fonksiyonu -->
   <script>
     // Google API yüklendikten sonra çağrılan global fonksiyon
+
     function onGoogleApiLoad() {
       window.isGoogleApiLoaded = true;
       console.log('✅ Google API başarıyla yüklendi!');
@@ -7483,7 +7484,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // --- Hasta Yönetimi Modülü ---
     // --- Kalıcı veri yönetimi ---
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
-    const TELEFON_STORAGE_KEY = 'lipedem_telefon_bilgileri';
+  const TELEFON_STORAGE_KEY = 'lipedem_telefon_bilgileri';
+  const TELEFON_PENDING_KEY = 'lipedem_telefon_pending';
     
     // Telefon yardımcı fonksiyonları
     function normalizeTelefonFlagMap(raw) {
@@ -7531,6 +7533,26 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
     
+    // Pending senkron listesi (sadece bu tarayıcıda, token yokken yapılan true işaretlemeleri)
+    function loadTelefonPending() {
+      try {
+        const raw = localStorage.getItem(TELEFON_PENDING_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        return (obj && typeof obj === 'object') ? obj : {};
+      } catch (e) {
+        console.warn('📞 Pending senkron okuma hatası:', e);
+        return {};
+      }
+    }
+    function persistTelefonPending(pendingMap) {
+      try {
+        localStorage.setItem(TELEFON_PENDING_KEY, JSON.stringify(pendingMap || {}));
+      } catch (e) {
+        console.warn('📞 Pending senkron kaydetme hatası:', e);
+      }
+    }
+    
     // Global telefon bilgileri yedek
     window.telefonBilgileriYedek = loadTelefonFlagBackup();
 
@@ -7547,8 +7569,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           try { liste = await hastaListesiYukle(); } catch (_) { /* sessiz */ }
         }
 
-        // Local'de true olup GitHub haritasında olmayan anahtarları bul
-        const eklenecekIdler = Object.keys(birlesikMap).filter(id => birlesikMap[id] && !githubMap[id]);
+        // Sadece bu tarayıcıda bekleyen (pending) true işaretlerini GitHub'a ekle
+  const pending = loadTelefonPending();
+  const pendingTrueIds = Object.keys(pending).filter(id => pending[id] === true);
+  // Local birleşik map'te true olan ve GitHub haritasında true olmayan (yok veya false) ID'ler
+  const eklenecekIdler = pendingTrueIds.filter(id => birlesikMap[id] === true && githubMap[id] !== true);
         if (eklenecekIdler.length === 0) return; // Eşitlenecek yok
 
         let degisimYapildi = false;
@@ -7566,7 +7591,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         });
 
         if (degisimYapildi) {
-          try { await hastaListesiKaydet(liste); } catch (e) { console.warn('📞 Reconcile kaydetme uyarısı:', e?.message || e); }
+          try { 
+            await hastaListesiKaydet(liste);
+            // Başarılıysa pending'den bu id'leri kaldır
+            eklenecekIdler.forEach(id => { delete pending[id]; });
+            persistTelefonPending(pending);
+          } catch (e) { console.warn('📞 Reconcile kaydetme uyarısı:', e?.message || e); }
         }
       } catch (err) {
         console.warn('📞 Reconcile genel uyarı:', err?.message || err);
@@ -7720,29 +7750,52 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // GitHub'dan hasta listesini al ve global değişkeni güncelle
         const yuklenmisList = await hastaListesiYukle();
         
-        // GitHub listesindeki telefon bilgilerini kaynak olarak al
-  const githubTelefonHaritasi = {};
+        // GitHub listesindeki telefon bilgilerini kaynak olarak al (EN GÜNCEL kayda göre)
+  const githubTelefonHaritasiTam = {};
         if (Array.isArray(yuklenmisList) && yuklenmisList.length > 0) {
+          // Aynı ID için birden fazla kayıt olabilir; en güncel sonGuncelleme'ye sahip olanı kullan
+          const enGuncelKayitMap = {};
           yuklenmisList.forEach(h => {
             if (h && h.id) {
-              if (h.telefonAranacak) {
-                githubTelefonHaritasi[String(h.id)] = true;
+              const key = String(h.id);
+              const ts = Date.parse(h.sonGuncelleme || 0) || 0;
+              const prev = enGuncelKayitMap[key];
+              if (!prev || ts >= prev._ts) {
+                enGuncelKayitMap[key] = { _ts: ts, telefonAranacak: Boolean(h.telefonAranacak) };
               }
             }
           });
+          Object.keys(enGuncelKayitMap).forEach(id => {
+            githubTelefonHaritasiTam[id] = enGuncelKayitMap[id].telefonAranacak === true;
+          });
+          console.log('📞 GitHub telefon haritası oluşturuldu (en güncel kayda göre, tam):', Object.keys(githubTelefonHaritasiTam).length, 'hasta');
         }
 
-  // GitHub + local backup'u birleştir (ilk yüklemede ikonların görünmesi için)
-  // Not: GitHub SSoT kalır; eksikler arka planda GitHub'a reconcile edilir.
+  // GitHub + local backup'u birleştir (GitHub öncelikli)
   const localBackupMap = loadTelefonFlagBackup();
-  const birlesikTelefonMap = mergeTelefonFlagSources(githubTelefonHaritasi, localBackupMap);
+  const birlesikTelefonMap = {};
+  // Önce local true'ları ekle
+  Object.keys(localBackupMap).forEach(id => { if (localBackupMap[id] === true) birlesikTelefonMap[id] = true; });
+  // GitHub ile override et: true ise ekle, false ise kaldır
+  Object.keys(githubTelefonHaritasiTam).forEach(id => {
+    if (githubTelefonHaritasiTam[id] === true) {
+      birlesikTelefonMap[id] = true;
+    } else {
+      delete birlesikTelefonMap[id];
+    }
+  });
+  // Pending (optimiztik UI) bayraklarını da uygula: pending=true ise ikon göster
+  try {
+    const pending = loadTelefonPending();
+    Object.keys(pending).forEach(id => { if (pending[id] === true) birlesikTelefonMap[id] = true; });
+  } catch (_) {}
   window.telefonBilgileriYedek = normalizeTelefonFlagMap(birlesikTelefonMap);
   persistTelefonFlagBackup(window.telefonBilgileriYedek);
 
   // Eksik olanları GitHub listesiyle arka planda eşitle (sadece 1 kez)
   try {
     if (!window._telefonFlagsReconciled) {
-      await reconcileTelefonFlagsWithGitHub(window.telefonBilgileriYedek, githubTelefonHaritasi, yuklenmisList);
+  await reconcileTelefonFlagsWithGitHub(window.telefonBilgileriYedek, githubTelefonHaritasiTam, yuklenmisList);
       window._telefonFlagsReconciled = true;
     }
   } catch (reconcileErr) {
@@ -9492,6 +9545,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                           onchange="gptMesajKaydet(${i}, 'ana')"
                           ${hafta.kilitli ? 'disabled' : ''}>${hafta.gptMesaj||''}</textarea>
               </div>
+
+                <!-- Revizyon Promptu -->
+                <div style="margin-top: 12px;">
+                  <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #6f42c1; font-size: 12px;">🔁 Revizyon / Prompt</label>
+                  <textarea id="gptRevizePrompt_${i}" rows="3" style="width: 100%; padding: 10px; border: 1px solid #d6d8db; border-radius: 6px; font-family: Arial, sans-serif; font-size: 12px;" placeholder="Örn: 2. paragrafı daha net yaz. Tınıyı daha samimi yap. Maddeleri 5’e düşür. Gereksiz tekrarları kaldır." ${hafta.kilitli ? 'disabled' : ''}></textarea>
+                  <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                    <button onclick="gptAnalizRevizeEt(${i})" style="background: #6f42c1; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" ${hafta.kilitli ? 'disabled' : ''}>🔁 Revize Et</button>
+                    <span style="color: #6c757d; font-size: 11px;">Mevcut metin, yukarıdaki prompta göre güncellenir.</span>
+                  </div>
+                </div>
 
               <!-- Haftalık Analiz Kaydı -->
               <div>
@@ -15950,8 +16013,15 @@ ${mesajlar.join('\n')}
       if (telefonKey) {
         if (seciliHasta.telefonAranacak) {
           window.telefonBilgileriYedek[telefonKey] = true;
+          // Pending'e işaretle (optimistik ve senkron güvencesi için)
+          const pending = loadTelefonPending();
+          pending[telefonKey] = true;
+          persistTelefonPending(pending);
         } else {
           delete window.telefonBilgileriYedek[telefonKey];
+          // Pending'den de çıkar
+          const pending = loadTelefonPending();
+          if (pending[telefonKey]) { delete pending[telefonKey]; persistTelefonPending(pending); }
         }
         persistTelefonFlagBackup(window.telefonBilgileriYedek);
         console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
@@ -15992,9 +16062,33 @@ ${mesajlar.join('\n')}
         hastaListesi.push(yeniKayit);
         console.log('📞 GitHub hasta listesine yeni kayıt eklendi (telefon işareti için):', yeniKayit.isim);
       }
+      // Aynı ID için birden fazla kayıt varsa, en güncel olanı bırak (kaydetmeden önce temizle)
+      try {
+        const tmpMap = {};
+        const hedefId = String(seciliHasta.id);
+        hastaListesi.forEach(kayit => {
+          const key = String(kayit.id);
+          const ts = Date.parse(kayit.sonGuncelleme || 0) || 0;
+          const prev = tmpMap[key];
+          // Eğer bu kayıt güncellediğimiz hasta ise onu her zaman tercih et
+          if (key === hedefId) {
+            tmpMap[key] = { _ts: Number.MAX_SAFE_INTEGER, data: kayit };
+          } else if (!prev || ts >= prev._ts) {
+            tmpMap[key] = { _ts: ts, data: kayit };
+          }
+        });
+        hastaListesi = Object.values(tmpMap).map(x => x.data);
+      } catch (e) {
+        console.warn('📞 Kayıt deduplikasyon uyarısı:', e?.message || e);
+      }
       try {
         await hastaListesiKaydet(hastaListesi); // GitHub'a kaydet
         console.log('📞 hastaListesi güncellendi ve GitHub\'a kaydedildi');
+        // Başarılıysa pending temizle (bu id için)
+        if (telefonKey) {
+          const pending = loadTelefonPending();
+          if (pending[telefonKey]) { delete pending[telefonKey]; persistTelefonPending(pending); }
+        }
       } catch (telefonKaydetHatasi) {
         console.warn('📞 Telefon bilgisi GitHub kaydetme hatası:', telefonKaydetHatasi?.message || telefonKaydetHatasi);
       }
@@ -19362,6 +19456,89 @@ ${mesajlar.join('\n')}
         alert('❌ GPT API hatası: ' + error.message);
         gptMesajTextarea.value = 'Hata: ' + error.message;
         gptMesajTextarea.disabled = false;
+      }
+    }
+
+    // Mevcut 🎯 Haftalık Analiz metnini ve kullanıcı promptunu alıp modele revizyon olarak gönderir
+    async function gptAnalizRevizeEt(haftaIndex) {
+      try {
+        if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[haftaIndex]) {
+          alert('❌ Hasta veya hafta verisi bulunamadı!');
+          return;
+        }
+
+        const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+        if (!settings.model) settings.model = 'gemini-pro-latest';
+
+        if (settings.model.includes('claude') && !settings.claudeApiKey) {
+          alert('❌ Claude API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+        if (settings.model.includes('gemini') && !settings.geminiApiKey) {
+          alert('❌ Google Gemini API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+        if (!settings.model.includes('claude') && !settings.model.includes('gemini') && !settings.apiKey) {
+          alert('❌ GPT API Key girilmemiş!');
+          showGptPanel();
+          return;
+        }
+
+        const gptMesajTextarea = document.getElementById(`gptMesaj_${haftaIndex}`);
+        const revizeInput = document.getElementById(`gptRevizePrompt_${haftaIndex}`);
+        if (!gptMesajTextarea) { alert('❌ Analiz alanı bulunamadı!'); return; }
+
+        const mevcutMetin = (gptMesajTextarea.value || '').trim();
+        const revizePrompt = (revizeInput?.value || '').trim();
+        if (!mevcutMetin) { alert('✋ Önce bir analiz üretin veya metin girin.'); return; }
+        if (!revizePrompt) { alert('✋ Lütfen bir revizyon promptu yazın.'); return; }
+
+        // Birleştirilmiş final prompt
+        const finalPrompt = `Aşağıdaki metni verilen talimatlara göre revize et.
+Kurallar:
+- Orijinal içeriği koru, yalnızca gerekli düzenlemeleri yap.
+- İstenmeyen tekrarları azalt.
+- Akıcılığı ve netliği artır.
+- Gerektiğinde maddeleri sadeleştir.
+\n=== TALİMAT ===\n${revizePrompt}\n\n=== ORİJİNAL METİN ===\n${mevcutMetin}\n\n=== ÇIKTI ===`;
+
+        // UI: yükleniyor
+        const eskiDeger = gptMesajTextarea.value;
+        gptMesajTextarea.value = '🔁 Revizyon yapılıyor, lütfen bekleyin...';
+        gptMesajTextarea.disabled = true;
+
+        try {
+          if (settings.model.includes('claude')) {
+            await sendToClaude(finalPrompt, haftaIndex, settings, gptMesajTextarea);
+          } else if (settings.model.includes('gemini')) {
+            await sendToGemini(finalPrompt, haftaIndex, settings, gptMesajTextarea);
+          } else {
+            await sendToGpt(finalPrompt, haftaIndex, settings, gptMesajTextarea);
+          }
+
+          // Değişikliği haftaya yaz ve kaydet
+          if (seciliHasta?.haftalar?.[haftaIndex]) {
+            seciliHasta.haftalar[haftaIndex].gptMesaj = gptMesajTextarea.value;
+            saveToStorage();
+            try { await hastayiAyriKaydet(seciliHasta); } catch (_) {}
+          }
+
+          // Revizyon promptunu temizle
+          if (revizeInput) revizeInput.value = '';
+
+          showToast('✅ Revize edildi', 'success', 2500);
+        } catch (err) {
+          console.error('Revizyon hatası:', err);
+          gptMesajTextarea.value = eskiDeger;
+          alert('❌ Revizyon sırasında hata: ' + (err?.message || err));
+        } finally {
+          gptMesajTextarea.disabled = false;
+        }
+      } catch (e) {
+        console.error(e);
+        alert('❌ Revizyon başlatılamadı: ' + (e?.message || e));
       }
     }
     
