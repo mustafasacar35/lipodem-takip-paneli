@@ -7486,6 +7486,12 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
   const TELEFON_STORAGE_KEY = 'lipedem_telefon_bilgileri';
   const TELEFON_PENDING_KEY = 'lipedem_telefon_pending';
+
+    // ID normalize helper (stringify + trim)
+    function normalizeIdKey(x) {
+      if (x === undefined || x === null) return '';
+      return String(x).trim();
+    }
     
     // Telefon yardımcı fonksiyonları
     function normalizeTelefonFlagMap(raw) {
@@ -7757,7 +7763,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const enGuncelKayitMap = {};
           yuklenmisList.forEach(h => {
             if (h && h.id) {
-              const key = String(h.id);
+              const key = normalizeIdKey(h.id);
               const ts = Date.parse(h.sonGuncelleme || 0) || 0;
               const prev = enGuncelKayitMap[key];
               if (!prev || ts >= prev._ts) {
@@ -7768,11 +7774,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           Object.keys(enGuncelKayitMap).forEach(id => {
             githubTelefonHaritasiTam[id] = enGuncelKayitMap[id].telefonAranacak === true;
           });
+          window.githubTelefonDurumMap = githubTelefonHaritasiTam;
           console.log('📞 GitHub telefon haritası oluşturuldu (en güncel kayda göre, tam):', Object.keys(githubTelefonHaritasiTam).length, 'hasta');
         }
 
   // GitHub + local backup'u birleştir (GitHub öncelikli)
   const localBackupMap = loadTelefonFlagBackup();
+  const pendingMap = loadTelefonPending();
   const birlesikTelefonMap = {};
   // Önce local true'ları ekle
   Object.keys(localBackupMap).forEach(id => { if (localBackupMap[id] === true) birlesikTelefonMap[id] = true; });
@@ -7785,10 +7793,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     }
   });
   // Pending (optimiztik UI) bayraklarını da uygula: pending=true ise ikon göster
-  try {
-    const pending = loadTelefonPending();
-    Object.keys(pending).forEach(id => { if (pending[id] === true) birlesikTelefonMap[id] = true; });
-  } catch (_) {}
+  Object.keys(pendingMap).forEach(id => { if (pendingMap[id] === true) birlesikTelefonMap[id] = true; });
   window.telefonBilgileriYedek = normalizeTelefonFlagMap(birlesikTelefonMap);
   persistTelefonFlagBackup(window.telefonBilgileriYedek);
 
@@ -7898,22 +7903,34 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             }
           }
           
-          // Telefon bilgisini güvenilir kaynaklardan al
-          let telefonAranacak = false;
-          
-          telefonAranacak = Boolean(window.telefonBilgileriYedek && window.telefonBilgileriYedek[String(hasta.id)]);
+          const hastaIdKey = normalizeIdKey(hasta.id);
+          const githubTelefonTrue = Boolean(githubTelefonHaritasiTam && githubTelefonHaritasiTam[hastaIdKey]);
+          const localTelefonTrue = Boolean(localBackupMap && localBackupMap[hastaIdKey]);
+          const pendingTelefonTrue = Boolean(pendingMap && pendingMap[hastaIdKey]);
+          // Telefon bilgisi: GitHub öncelikli, ardından local/pending fallback
+          let telefonAranacak = githubTelefonTrue || localTelefonTrue || pendingTelefonTrue;
           console.log(`🔍 Telefon kontrolü (${hastaIsim}):`, {
-            'githubMap': telefonAranacak,
+            'githubTamHarita': githubTelefonTrue,
+            'localBackup': localTelefonTrue,
+            'pending': pendingTelefonTrue,
             'eskiHasta.telefonAranacak': hasta.telefonAranacak,
             'localHasta?.telefonAranacak': localHasta?.telefonAranacak
           });
+
+          // Hasta kaydını güncel telefon bilgisiyle senkronla
+          hasta.telefonAranacak = telefonAranacak;
           
           return {
             ...hasta,
             maxHafta: maxHafta,
             hastaIsim: hastaIsim,
             hastaDetayiBulundu: hastaDetayiBulundu,
-            telefonAranacak: telefonAranacak
+            telefonAranacak: telefonAranacak,
+            telefonKaynakBilgisi: {
+              github: githubTelefonTrue,
+              localBackup: localTelefonTrue,
+              pending: pendingTelefonTrue
+            }
           };
         }));
         
@@ -8012,8 +8029,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
           isimDiv.appendChild(isimSpan);
           
-          // Telefon ikonu ekle - Birleşik haritayı kullan (GitHub + local backup)
-          const telefonIconGorunecek = Boolean(window.telefonBilgileriYedek[String(hasta.id)]);
+          // Telefon ikonu - hasta.telefonAranacak (GitHub eşzamanlı) baz alınır
+          const hastaIdKey = normalizeIdKey(hasta.id);
+          let telefonIconGorunecek = Boolean(hasta.telefonAranacak);
+          // Ek güvence: seçili hasta bu id ise ve seciliHasta.telefonAranacak true ise ikonu göster (buton durumu)
+          try {
+            if (!telefonIconGorunecek && seciliHasta && normalizeIdKey(seciliHasta.id) === hastaIdKey && seciliHasta.telefonAranacak === true) {
+              telefonIconGorunecek = true;
+            }
+          } catch (_) {}
           console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek} (ID: ${hasta.id})`);
           if (telefonIconGorunecek) {
             const telefonSpan = document.createElement('span');
@@ -16009,7 +16033,7 @@ ${mesajlar.join('\n')}
       
       // Yedek bilgiyi de güncelle (sayfa yenilendiğinde kaybolmasın)
       window.telefonBilgileriYedek = normalizeTelefonFlagMap(window.telefonBilgileriYedek);
-      const telefonKey = seciliHasta.id !== undefined && seciliHasta.id !== null ? String(seciliHasta.id) : null;
+  const telefonKey = seciliHasta.id !== undefined && seciliHasta.id !== null ? normalizeIdKey(seciliHasta.id) : null;
       if (telefonKey) {
         if (seciliHasta.telefonAranacak) {
           window.telefonBilgileriYedek[telefonKey] = true;
@@ -16030,13 +16054,13 @@ ${mesajlar.join('\n')}
       }
 
       // hastaListesi'ndeki hastayı da güncelle (hastalar_listesi.json için)
-      let listedeHastaIndex = Array.isArray(hastaListesi) ? hastaListesi.findIndex(h => String(h.id) === String(seciliHasta.id)) : -1;
+  let listedeHastaIndex = Array.isArray(hastaListesi) ? hastaListesi.findIndex(h => normalizeIdKey(h.id) === normalizeIdKey(seciliHasta.id)) : -1;
       if (listedeHastaIndex === -1) {
         try {
           const guncelListe = await hastaListesiYukle();
           if (Array.isArray(guncelListe) && guncelListe.length > 0) {
             hastaListesi = guncelListe;
-            listedeHastaIndex = hastaListesi.findIndex(h => String(h.id) === String(seciliHasta.id));
+            listedeHastaIndex = hastaListesi.findIndex(h => normalizeIdKey(h.id) === normalizeIdKey(seciliHasta.id));
           }
         } catch (listeYenilemeHatasi) {
           console.warn('📞 GitHub hasta listesini yenilerken hata:', listeYenilemeHatasi?.message || listeYenilemeHatasi);
@@ -16052,7 +16076,7 @@ ${mesajlar.join('\n')}
       } else {
         // Listede yoksa ekle (tek otorite GitHub listesi olmalı)
         const yeniKayit = {
-          id: seciliHasta.id,
+          id: normalizeIdKey(seciliHasta.id),
           isim: seciliHasta.isim,
           not: seciliHasta.not || '',
           arsiv: Boolean(seciliHasta.arsiv),
@@ -16065,9 +16089,9 @@ ${mesajlar.join('\n')}
       // Aynı ID için birden fazla kayıt varsa, en güncel olanı bırak (kaydetmeden önce temizle)
       try {
         const tmpMap = {};
-        const hedefId = String(seciliHasta.id);
+        const hedefId = normalizeIdKey(seciliHasta.id);
         hastaListesi.forEach(kayit => {
-          const key = String(kayit.id);
+          const key = normalizeIdKey(kayit.id);
           const ts = Date.parse(kayit.sonGuncelleme || 0) || 0;
           const prev = tmpMap[key];
           // Eğer bu kayıt güncellediğimiz hasta ise onu her zaman tercih et
