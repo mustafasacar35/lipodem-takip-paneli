@@ -4037,10 +4037,7 @@
         
         // Eğer bir hasta seçiliyse paneli güncelle
         if (seciliHasta) {
-          const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-          const secilenHastaNot = document.getElementById('secilenHastaNot');
-          if (secilenHastaIsim) secilenHastaIsim.textContent = seciliHasta.isim;
-          if (secilenHastaNot) secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
+          renderSeciliHastaBaslik(seciliHasta, { notMetni: seciliHasta.not || 'Not bulunmuyor' });
         }
         
         console.log(`🎉 RADIKAL DÜZELTMe TAmamlandı: ${degisiklikSayisi} hasta ismi düzeltildi!`);
@@ -7865,6 +7862,114 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     // Global telefon bilgileri yedek
     window.telefonBilgileriYedek = loadTelefonFlagBackup();
 
+    // Hasta başlığında telefon ikonunu yönetmek için yardımcılar
+    function resolveHastaIdKey(hasta) {
+      if (!hasta || typeof hasta !== 'object') return '';
+      const candidates = [
+        hasta.id,
+        hasta.hastaId,
+        hasta.hastaID,
+        hasta.hasta_id,
+        hasta.uniqueId,
+        hasta.hastaKey
+      ];
+      for (const candidate of candidates) {
+        const key = normalizeIdKey(candidate);
+        if (key) return key;
+      }
+      return '';
+    }
+
+    function resolveTelefonFlagForHasta(hasta) {
+      if (!hasta) return false;
+      const idKey = resolveHastaIdKey(hasta);
+      if (!idKey) return Boolean(hasta.telefonAranacak);
+      if (window.telefonDurumOverride && Object.prototype.hasOwnProperty.call(window.telefonDurumOverride, idKey)) {
+        return Boolean(window.telefonDurumOverride[idKey]);
+      }
+      if (window.telefonBilgileriYedek && window.telefonBilgileriYedek[idKey] === true) {
+        return true;
+      }
+      if (window.githubTelefonDurumMap && window.githubTelefonDurumMap[idKey] === true) {
+        return true;
+      }
+      return Boolean(hasta.telefonAranacak);
+    }
+
+    function renderSeciliHastaBaslik(hasta, options = {}) {
+      const isimEl = document.getElementById('secilenHastaIsim');
+      const notEl = document.getElementById('secilenHastaNot');
+      if (!isimEl) return;
+
+      if (!hasta) {
+        isimEl.textContent = options.isim || 'Hasta Seçilmedi';
+        if (notEl) {
+          const varsayilanNot = options.notMetni !== undefined ? options.notMetni : 'Lütfen sol menüden bir hasta seçin';
+          notEl.textContent = varsayilanNot;
+        }
+        return;
+      }
+
+      const hastaIsmi = options.isim || hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
+      isimEl.textContent = hastaIsmi;
+
+      const telefonAranacak = options.telefonAranacak !== undefined ? Boolean(options.telefonAranacak) : resolveTelefonFlagForHasta(hasta);
+      if (telefonAranacak) {
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = '📞';
+        iconSpan.title = 'Telefon ile aranacak!';
+        iconSpan.style.marginLeft = '8px';
+        iconSpan.style.color = '#ff6b6b';
+        iconSpan.style.fontSize = '16px';
+        iconSpan.style.verticalAlign = 'middle';
+        isimEl.appendChild(iconSpan);
+      }
+
+      if (notEl) {
+        const notMetni = options.notMetni !== undefined ? options.notMetni : (hasta.not || 'Not yok');
+        notEl.textContent = notMetni;
+      }
+    }
+    window.renderSeciliHastaBaslik = renderSeciliHastaBaslik;
+
+    function updateSidebarTelefonIkonu(hastaIdRaw, aranacakMi) {
+      try {
+        const hastaKey = normalizeIdKey(hastaIdRaw);
+        if (!hastaKey) return;
+        const ul = document.getElementById('hastaListesi');
+        if (!ul) return;
+        const li = ul.querySelector(`li[data-hasta-id="${hastaKey}"]`);
+        if (!li) return;
+        const isimDiv = li.querySelector('.hasta-ad-wrapper');
+        if (!isimDiv) return;
+
+        let telefonSpan = isimDiv.querySelector('.telefon-icon');
+        if (aranacakMi) {
+          if (!telefonSpan) {
+            telefonSpan = document.createElement('span');
+            telefonSpan.classList.add('telefon-icon');
+            telefonSpan.textContent = '📞';
+            telefonSpan.title = 'Telefon ile aranacak!';
+            telefonSpan.style.marginLeft = '6px';
+            telefonSpan.style.color = '#ff6b6b';
+            telefonSpan.style.fontSize = '14px';
+            telefonSpan.style.fontWeight = 'bold';
+            const haftaBilgi = isimDiv.querySelector('.hasta-hafta-bilgi');
+            if (haftaBilgi) {
+              isimDiv.insertBefore(telefonSpan, haftaBilgi);
+            } else {
+              isimDiv.appendChild(telefonSpan);
+            }
+          }
+        } else if (telefonSpan) {
+          telefonSpan.remove();
+        }
+      } catch (sidebarTelefonHata) {
+        console.warn('📞 Sidebar telefon ikonu güncellenemedi:', sidebarTelefonHata?.message || sidebarTelefonHata);
+      }
+    }
+    window.updateSidebarTelefonIkonu = updateSidebarTelefonIkonu;
+
     // GitHub ile telefon flag'lerini eşitleyen yardımcı fonksiyon (arka plan)
     async function reconcileTelefonFlagsWithGitHub(birlesikMap, githubMap, mevcutGitHubListe) {
       try {
@@ -8087,15 +8192,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
   const birlesikTelefonMap = {};
   // Önce local true'ları ekle
   Object.keys(localBackupMap).forEach(id => { if (localBackupMap[id] === true) birlesikTelefonMap[id] = true; });
-  // GitHub ile override et: true ise ekle, false ise kaldır
+  // GitHub verisi: true değerleri ekle, false değerleri sadece başka kaynak yoksa kaldır
   Object.keys(githubTelefonHaritasiTam).forEach(id => {
-    if (githubTelefonHaritasiTam[id] === true) {
+    const githubTrue = githubTelefonHaritasiTam[id] === true;
+    const localTrue = localBackupMap[id] === true;
+    const pendingTrue = pendingMap[id] === true;
+    if (githubTrue) {
       birlesikTelefonMap[id] = true;
-    } else {
+    } else if (!localTrue && !pendingTrue) {
       delete birlesikTelefonMap[id];
-    }
-    if (!Object.prototype.hasOwnProperty.call(window.telefonDurumOverride, id)) {
-      window.telefonDurumOverride[id] = githubTelefonHaritasiTam[id] === true;
     }
   });
   // Pending (optimiztik UI) bayraklarını da uygula: pending=true ise ikon göster
@@ -8324,6 +8429,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
           const isimDiv = document.createElement('div');
+          isimDiv.classList.add('hasta-ad-wrapper');
           isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : renkSemasi.textColor}; font-size: 13px;`;
           
           // Sıra numarasını ekle
@@ -8334,6 +8440,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // İsim kısmını ekle
           const isimSpan = document.createElement('span');
+          isimSpan.classList.add('hasta-ad-isim');
           isimSpan.textContent = hasta.hastaIsim;
           if (hasta.arsiv) {
             isimSpan.textContent = '📦 ' + isimSpan.textContent;
@@ -8342,16 +8449,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Telefon ikonu - hasta.telefonAranacak (GitHub eşzamanlı) baz alınır
           const hastaIdKey = normalizeIdKey(hasta.id);
-          let telefonIconGorunecek = Boolean(hasta.telefonAranacak);
+          const telefonFlagMap = window.telefonBilgileriYedek || {};
+          let telefonIconGorunecek = Boolean(telefonFlagMap[hastaIdKey] || hasta.telefonAranacak);
           // Ek güvence: seçili hasta bu id ise ve seciliHasta.telefonAranacak true ise ikonu göster (buton durumu)
           try {
             if (!telefonIconGorunecek && seciliHasta && normalizeIdKey(seciliHasta.id) === hastaIdKey && seciliHasta.telefonAranacak === true) {
               telefonIconGorunecek = true;
             }
+            if (telefonIconGorunecek) {
+              window.telefonDurumOverride[hastaIdKey] = true;
+            }
           } catch (_) {}
           console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek} (ID: ${hasta.id})`);
           if (telefonIconGorunecek) {
             const telefonSpan = document.createElement('span');
+            telefonSpan.classList.add('telefon-icon');
             telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
             telefonSpan.textContent = '📞';
             telefonSpan.title = 'Telefon ile aranacak!';
@@ -8363,6 +8475,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           
           // Hafta bilgisini ekle (renkli)
           const haftaSpan = document.createElement('span');
+          haftaSpan.classList.add('hasta-hafta-bilgi');
           haftaSpan.style.cssText = `color: ${renkSemasi.borderColor}; font-weight: bold; font-size: 11px;`; // Border renginde ve bold
           if (hasta.maxHafta > 0) {
             haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
@@ -8382,7 +8495,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           // }
           
           li.onclick = () => hastaSecYeniSistem(hasta);
-          li.dataset.hastaId = hasta.id;
+          li.dataset.hastaId = normalizeIdKey(hasta.id);
           li.classList.add('hasta-item'); // CSS vurgulama için
           ul.appendChild(li);
         });
@@ -8523,13 +8636,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           autoSaveHastaData(seciliHasta);
           
           // UI'ı güncelle
-          const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-          const secilenHastaNot = document.getElementById('secilenHastaNot');
           const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
-          
-          if (secilenHastaIsim) secilenHastaIsim.textContent = hastaDetay.isim;
-          if (secilenHastaNot) secilenHastaNot.textContent = hastaDetay.not || 'Not yok';
           if (hastaBilgiButonlar) hastaBilgiButonlar.style.display = 'block'; // Butonları göster
+
+          renderSeciliHastaBaslik(hastaDetay, { notMetni: hastaDetay.not || 'Not yok' });
           
           // Telefon butonunu güncelle
           updateTelefonButonu();
@@ -8775,21 +8885,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // Hasta bilgi panelini güncelle ve göster
       const hastaBilgiPanel = document.getElementById('hastaBilgiPanel');
-      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-      const secilenHastaNot = document.getElementById('secilenHastaNot');
+      const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
       
       console.log('🔍 Hasta bilgi paneli elementleri:', {
         hastaBilgiPanel: !!hastaBilgiPanel,
-        secilenHastaIsim: !!secilenHastaIsim,
-        secilenHastaNot: !!secilenHastaNot
+        secilenHastaIsim: !!document.getElementById('secilenHastaIsim'),
+        secilenHastaNot: !!document.getElementById('secilenHastaNot')
       });
       
-      if (hastaBilgiPanel && secilenHastaIsim && secilenHastaNot) {
-        secilenHastaIsim.textContent = turkceKarakterDuzelt(hastaIsim);
-        secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
-        
+      if (hastaBilgiPanel) {
+        renderSeciliHastaBaslik(seciliHasta, {
+          isim: turkceKarakterDuzelt(hastaIsim),
+          notMetni: seciliHasta.not || 'Not bulunmuyor'
+        });
+
         // Butonları göster
-        const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
         if (hastaBilgiButonlar) {
           hastaBilgiButonlar.style.display = 'block';
         }
@@ -8846,15 +8956,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       saveToStorage();
       
       // Ekranı güncelle
-      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-      const secilenHastaNot = document.getElementById('secilenHastaNot');
-      
-      if (secilenHastaIsim) {
-        secilenHastaIsim.textContent = duzeltilmisIsim;
-      }
-      if (secilenHastaNot) {
-        secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
-      }
+      renderSeciliHastaBaslik(seciliHasta, {
+        isim: duzeltilmisIsim,
+        notMetni: seciliHasta.not || 'Not bulunmuyor'
+      });
       
       // Hasta listesini yenile ve sırala
       hastalar.sort((a, b) => {
@@ -8909,10 +9014,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           await renderHastalarYeniSistem();
           
           // Hasta bilgi panelini güncelle
-          const secilenHastaNot = document.getElementById('secilenHastaNot');
-          if (secilenHastaNot) {
-            secilenHastaNot.textContent = seciliHasta.not || 'Not bulunmuyor';
-          }
+          renderSeciliHastaBaslik(seciliHasta, { notMetni: seciliHasta.not || 'Not bulunmuyor' });
         } else {
           // Hata durumunda geri al
           seciliHasta.arsiv = !seciliHasta.arsiv;
@@ -9136,16 +9238,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
     function kapatDetay() {
       // Hasta bilgi panelindeki bilgileri sıfırla
-      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-      const secilenHastaNot = document.getElementById('secilenHastaNot');
       const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
       
-      if (secilenHastaIsim) {
-        secilenHastaIsim.textContent = 'Hasta Seçilmedi';
-      }
-      if (secilenHastaNot) {
-        secilenHastaNot.textContent = 'Lütfen sol menüden bir hasta seçin';
-      }
+      renderSeciliHastaBaslik(null);
       if (hastaBilgiButonlar) {
         hastaBilgiButonlar.style.display = 'none';
       }
@@ -16375,6 +16470,7 @@ ${mesajlar.join('\n')}
         persistTelefonFlagBackup(window.telefonBilgileriYedek);
   window.telefonDurumOverride[telefonKey] = Boolean(seciliHasta.telefonAranacak);
   console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
+        updateSidebarTelefonIkonu(telefonKey, seciliHasta.telefonAranacak);
       } else {
         console.warn('📞 Telefon yedeği güncellenemedi: hasta ID bulunamadı');
       }
@@ -16465,8 +16561,27 @@ ${mesajlar.join('\n')}
     // Telefon butonunu güncelle
     function updateTelefonButonu() {
       const btn = document.getElementById('telefonIkonu');
-      if (!btn || !seciliHasta) return;
-      
+      if (!btn) return;
+
+      if (!seciliHasta) {
+        btn.style.background = '#e0e0e0';
+        btn.style.color = '#666';
+        btn.innerHTML = '📞 Aranacak';
+        btn.title = 'Telefon ile aranacak olarak işaretle';
+        btn.setAttribute('aria-pressed', 'false');
+        btn.disabled = true;
+        const isimEl = document.getElementById('secilenHastaIsim');
+        const notEl = document.getElementById('secilenHastaNot');
+        const temizIsim = isimEl ? isimEl.textContent : undefined;
+        const temizNot = notEl ? notEl.textContent : undefined;
+        renderSeciliHastaBaslik(null, {
+          isim: temizIsim,
+          notMetni: temizNot
+        });
+        return;
+      }
+
+      btn.disabled = false;
       if (seciliHasta.telefonAranacak) {
         // Aktif durumu
         btn.style.background = '#ff6b6b';
@@ -16482,6 +16597,13 @@ ${mesajlar.join('\n')}
         btn.title = 'Telefon ile aranacak olarak işaretle';
         btn.setAttribute('aria-pressed', 'false');
       }
+
+      const notEl = document.getElementById('secilenHastaNot');
+      const renderOptions = {};
+      if (notEl) {
+        renderOptions.notMetni = notEl.textContent;
+      }
+      renderSeciliHastaBaslik(seciliHasta, renderOptions);
     }
     
     // Global erişim
@@ -17215,12 +17337,9 @@ ${mesajlar.join('\n')}
       seciliHasta = null;
       
       // Hasta bilgilerini gizle
-      const secilenHastaIsim = document.getElementById('secilenHastaIsim');
-      const secilenHastaNot = document.getElementById('secilenHastaNot');
       const hastaBilgiButonlar = document.getElementById('hastaBilgiButonlar');
       
-      if (secilenHastaIsim) secilenHastaIsim.textContent = 'Hasta seçilmedi';
-      if (secilenHastaNot) secilenHastaNot.textContent = '';
+      renderSeciliHastaBaslik(null, { isim: 'Hasta seçilmedi', notMetni: '' });
       if (hastaBilgiButonlar) hastaBilgiButonlar.style.display = 'none';
       
       // Hafta tablarını temizle
