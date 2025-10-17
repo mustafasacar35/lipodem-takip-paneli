@@ -1032,7 +1032,7 @@
             <div style="flex:1;">
               <label style="display:block; margin-bottom:5px; font-weight:bold;">Eşleşecek Kart:</label>
               <input type="text" id="manuelKartArama" placeholder="Kart adında ara..." style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #ddd; border-radius:5px;" oninput="manuelKartAramaYap(this.value)" />
-              <div id="manuelKartListe" style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f8f9fa;">
+              <div id="manuelKartListeConsole" style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f8f9fa;">
                 <!-- Dinamik kart listesi buraya gelecek -->
               </div>
               <small style="display:block; color:#666; margin-top:5px;">
@@ -1620,7 +1620,7 @@
       <div style="padding: 20px;">
         <input type="text" id="eskiModal_manuelKartArama" placeholder="Tarif ara (boş bırakın tümünü görmek için)..." style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" oninput="manuelKartAramaYap(this.value)">
         
-        <div id="manuelKartListe" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+  <div id="manuelKartListeModal" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
           <div style="text-align: center; color: #666; padding: 20px;">Yükleniyor...</div>
         </div>
       </div>
@@ -3780,6 +3780,38 @@
       // Önce manuel eşleştirmeleri yükle
       manuelEslestirmeleriYukle();
       eslesmemeKurallariniYukle();
+
+      (async () => {
+        const tokenInput = document.getElementById('githubToken');
+        const otomatikToken = tokenInput ? tokenInput.value.trim() : '';
+        try {
+          if (otomatikToken) {
+            await Promise.allSettled([
+              manuelEslestirmeleriGitHubYukle(true),
+              eslesmemeKurallariniGitHubYukle(true)
+            ]);
+          } else if (typeof loadPublicGitHubData === 'function') {
+            await loadPublicGitHubData();
+          }
+        } catch (otomatikHata) {
+          console.warn('⚠️ Açılışta GitHub yükleme hatası:', otomatikHata.message);
+        } finally {
+          try {
+            if (typeof manuelEslestirmeListesiniGoster === 'function') {
+              manuelEslestirmeListesiniGoster();
+            }
+          } catch (listeHatasi) {
+            console.warn('⚠️ Manuel eşleştirme listesi güncellenemedi:', listeHatasi.message);
+          }
+          try {
+            if (typeof eslesmemeListesiniGoster === 'function') {
+              eslesmemeListesiniGoster();
+            }
+          } catch (yasakListeHatasi) {
+            console.warn('⚠️ Eşleşme yasakları listesi güncellenemedi:', yasakListeHatasi.message);
+          }
+        }
+      })();
       
       // Sadece yeni sistemi başlat
       loadHastaDataFromGitHub().then(() => {
@@ -4868,6 +4900,13 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       eslesmemeKurallariniKaydet();
       eslesmemeListesiniGoster();
+
+      (async () => {
+        const sonuc = await appendEslesmemeRuleToGitHub(normalizeEdilmis, eslesmemeKurallari[normalizeEdilmis]);
+        if (!sonuc.ok && sonuc.reason !== 'token-missing') {
+          eslesmemeStatusGoster(`⚠️ GitHub kaydı başarısız: ${sonuc.hataMesaji || 'Bilinmeyen hata'}`, 'warning');
+        }
+      })();
       
       eslesmemeStatusGoster(`✅ Yasak eklendi! "${tarifAdi}" → ${secilenKartlar.length} kart yasaklandı`, 'success');
       
@@ -5495,6 +5534,14 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       manuelEslestirmeleriKaydet();
       manuelEslestirmeListesiniGoster();
 
+      // Yeni: GitHub manuel eşleştirme dosyasına append et
+      (async () => {
+        const sonuc = await appendManualMatchToGitHub(normalizeEdilmis, manuelEslestirmeler[normalizeEdilmis]);
+        if (!sonuc.ok && sonuc.reason !== 'token-missing') {
+          manuelEslestirmeStatusGoster(`⚠️ GitHub kaydı başarısız: ${sonuc.hataMesaji || 'Bilinmeyen hata'}`, 'warning');
+        }
+      })();
+
       // Karakter düzeltme fonksiyonu
       function karakterDuzelt(text) {
         if (!text) return text;
@@ -5827,6 +5874,166 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Bu fonksiyon yukarıda initManuelEslestirmeler() ile birleştirildi
       // Çift yüklemeyi önlemek için kaldırıldı
     });
+
+    async function appendManualMatchToGitHub(anahtar, eslestirmeVerisi) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        console.log('ℹ️ GitHub token yok, manuel eşleştirme append işlemi yapılmadı');
+        return { ok: false, reason: 'token-missing' };
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/manuel_eslestirmeler.json';
+      const branch = 'main';
+
+      try {
+        let sha = undefined;
+        let mevcutEslestirmeler = {};
+        let mevcutVersion = '1.0';
+
+        // Mevcut dosyayı oku
+        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+
+        if (getResp.ok) {
+          const data = await getResp.json();
+          sha = data.sha;
+          const jsonContent = decodeBase64UTF8(data.content);
+          if (jsonContent) {
+            try {
+              const parsed = JSON.parse(jsonContent);
+              if (parsed.eslestirmeler) {
+                mevcutEslestirmeler = parsed.eslestirmeler;
+                mevcutVersion = parsed.version || '1.0';
+              } else {
+                mevcutEslestirmeler = parsed;
+              }
+            } catch (parseError) {
+              console.warn('⚠️ Manuel eşleştirme dosyası parse edilemedi, yeni obje oluşturulacak', parseError.message);
+            }
+          }
+        } else if (getResp.status !== 404) {
+          throw new Error(`GitHub okuma hatası: ${getResp.status}`);
+        }
+
+        // Yeni eşleştirmeyi ekle/güncelle
+        mevcutEslestirmeler[anahtar] = eslestirmeVerisi;
+
+        const kayitVerisi = {
+          version: mevcutVersion || '1.0',
+          sonGuncelleme: new Date().toISOString(),
+          eslestirmeler: mevcutEslestirmeler
+        };
+
+        const content = encodeUTF8ToBase64(kayitVerisi);
+
+        const putResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Manuel eşleştirme eklendi: ${eslestirmeVerisi.orijinalMetin || anahtar}`,
+            content,
+            branch,
+            sha
+          })
+        });
+
+        if (putResp.ok) {
+          console.log('✅ Manuel eşleştirme GitHub dosyasına eklendi:', anahtar);
+          return { ok: true };
+        }
+
+        throw new Error(await putResp.text());
+
+      } catch (error) {
+        console.error('❌ Manuel eşleştirme append hatası:', error);
+        return { ok: false, reason: 'error', hataMesaji: error.message };
+      }
+    }
+
+    async function appendEslesmemeRuleToGitHub(anahtar, kuralVerisi) {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) {
+        console.log('ℹ️ GitHub token yok, eşleşme yasağı append işlemi yapılmadı');
+        return { ok: false, reason: 'token-missing' };
+      }
+
+      const owner = 'mustafasacar35';
+      const repo = 'lipodem-takip-paneli';
+      const path = 'data/eslesmeme_kurallari.json';
+      const branch = 'main';
+
+      try {
+        let sha = undefined;
+        let mevcutKurallar = {};
+        let mevcutVersion = '1.0';
+
+        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          headers: { 'Authorization': `token ${token}` }
+        });
+
+        if (getResp.ok) {
+          const data = await getResp.json();
+          sha = data.sha;
+          const jsonContent = decodeBase64UTF8(data.content);
+          if (jsonContent) {
+            try {
+              const parsed = JSON.parse(jsonContent);
+              if (parsed.eslesmemeKurallari) {
+                mevcutKurallar = parsed.eslesmemeKurallari;
+                mevcutVersion = parsed.version || '1.0';
+              } else {
+                mevcutKurallar = parsed;
+              }
+            } catch (parseError) {
+              console.warn('⚠️ Eşleşme yasakları dosyası parse edilemedi, yeni obje oluşturulacak', parseError.message);
+            }
+          }
+        } else if (getResp.status !== 404) {
+          throw new Error(`GitHub okuma hatası: ${getResp.status}`);
+        }
+
+        mevcutKurallar[anahtar] = kuralVerisi;
+
+        const kayitVerisi = {
+          version: mevcutVersion || '1.0',
+          sonGuncelleme: new Date().toISOString(),
+          eslesmemeKurallari: mevcutKurallar
+        };
+
+        const content = encodeUTF8ToBase64(kayitVerisi);
+
+        const putResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Eşleşme yasağı eklendi: ${kuralVerisi.orijinalMetin || anahtar}`,
+            content,
+            branch,
+            sha
+          })
+        });
+
+        if (putResp.ok) {
+          console.log('✅ Eşleşme yasağı GitHub dosyasına eklendi:', anahtar);
+          return { ok: true };
+        }
+
+        throw new Error(await putResp.text());
+
+      } catch (error) {
+        console.error('❌ Eşleşme yasağı append hatası:', error);
+        return { ok: false, reason: 'error', hataMesaji: error.message };
+      }
+    }
 
     // GitHub'a manuel eşleştirmeleri kaydetme
     async function manuelEslestirmeleriGitHubKaydet(sessizKaydetme = false) {
@@ -6544,8 +6751,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         kartDiv.style.cssText = 'padding:8px; margin:4px 0; border:1px solid #ddd; border-radius:4px; cursor:pointer; background:white; display:flex; align-items:center; gap:10px;';
         
         // Kart önizlemesi
-        const img = document.createElement('img');
-        img.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`;
+  const img = document.createElement('img');
+  img.src = buildTarifKartUrl(kartAdi);
         img.style.cssText = 'width:40px; height:40px; object-fit:cover; border-radius:4px;';
         img.onerror = () => {
           img.style.display = 'none';
@@ -6694,7 +6901,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       // Önizleme resmini göster
       const onizlemeImg = document.getElementById('duzenleKartOnizleme');
-      onizlemeImg.src = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`;
+  onizlemeImg.src = buildTarifKartUrl(kartAdi);
       onizlemeImg.style.display = 'block';
       
       showToast(`✏️ "${gosterimAdi}" kartı düzenleme için hazır`, 'success');
@@ -6740,7 +6947,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         
         for (const fileName of currentContent) {
           try {
-            const checkResponse = await fetch(`https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${fileName}`, {
+            const fileCheckUrl = buildTarifKartUrl(fileName);
+            const checkResponse = await fetch(fileCheckUrl, {
               method: 'HEAD'
             });
             
@@ -6873,7 +7081,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             gorselBase64 = await dosyayiBase64Cevir(yeniDosya);
           } else {
             // Dosya seçilmemişse mevcut dosyayı indir ve tekrar yükle
-            const mevcutResponse = await fetch(`https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${seciliDuzenleKart}`);
+            const mevcutResponse = await fetch(buildTarifKartUrl(seciliDuzenleKart));
             const mevcutBlob = await mevcutResponse.blob();
             gorselBase64 = await new Promise(resolve => {
               const reader = new FileReader();
@@ -7320,6 +7528,51 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         statusGoster(`❌ Hata: ${error.message}`, 'error');
       }
     }
+    // --- GitHub repo yardımcıları ---
+    function getActiveRepoInfo() {
+      let repoValue = '';
+      const repoElement = document.getElementById('githubRepo');
+      if (repoElement && repoElement.value.trim()) {
+        repoValue = repoElement.value.trim();
+      } else if (typeof GITHUB_REPO !== 'undefined' && GITHUB_REPO) {
+        repoValue = GITHUB_REPO;
+      }
+
+      if (!repoValue || !repoValue.includes('/')) {
+        repoValue = 'mustafasacar35/lipodem-takip-paneli';
+      }
+
+      const parts = repoValue.split('/');
+      const owner = parts[0];
+      const repo = parts.slice(1).join('/') || 'lipodem-takip-paneli';
+      const branch = 'main';
+
+      const pagesBase = `https://${owner}.github.io/${repo}`;
+      const rawBase = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}`;
+
+      return {
+        owner,
+        repo,
+        branch,
+        repoSlug: `${owner}/${repo}`,
+        pagesBase,
+        rawBase
+      };
+    }
+
+    function buildTarifKartUrl(fileName, fallbackBase) {
+      if (!fileName) return '';
+      const repoInfo = getActiveRepoInfo();
+      const primaryBase = window.tarifKartBaseUrl && typeof window.tarifKartBaseUrl === 'string'
+        ? window.tarifKartBaseUrl
+        : (fallbackBase || `${repoInfo.pagesBase}/tarifler`);
+      const base = primaryBase || `${repoInfo.rawBase}/tarifler`;
+      const sanitizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+      return `${sanitizedBase}/${fileName}`;
+    }
+
+    window.tarifKartBaseUrl = window.tarifKartBaseUrl || '';
+
     // --- Tarifler klasörü görsellerini otomatik yükle (GitHub Pages uyumlu) ---
     let tariflerKlasoruGorselleri = [];
     
@@ -7344,56 +7597,100 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
       
       try {
-        // Her zaman bulunduğun dizinin köküne göre tarifler/ yolunu oluştur
-        // Önce GitHub'dan tarifler yüklemeyi deneyelim
+        const repoInfo = getActiveRepoInfo();
+        const tokenElement = document.getElementById('githubToken');
+        const token = tokenElement ? tokenElement.value.trim() : '';
+
         console.log('🌐 GitHub\'dan tarifler yükleniyor...');
-        const githubTariflerUrl = 'https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/list.json';
-        
+        const githubPagesUrl = `${repoInfo.pagesBase}/tarifler/list.json`;
+        const githubApiUrl = `https://api.github.com/repos/${repoInfo.repoSlug}/contents/tarifler/list.json?ref=${repoInfo.branch}`;
+
+        const apiHeaders = token ? { 'Authorization': `token ${token}` } : {};
+        let githubResponseText = null;
+        let sourceBase = null;
+
         try {
-          const githubResp = await fetch(githubTariflerUrl);
+          const githubResp = await fetch(githubPagesUrl);
           if (githubResp.ok) {
-            const responseText = await githubResp.text();
-            console.log('Tarifler GitHub\'dan yüklendi (ilk 200 karakter):', responseText.substring(0, 200));
-            
-            const files = JSON.parse(responseText);
-            console.log('GitHub\'dan yüklenen tarif dosyaları:', files.length, 'adet');
-            
-            // Yeni format (object array) veya eski format (string array) kontrolü
-            tariflerKlasoruGorselleri = files.map(item => {
+            githubResponseText = await githubResp.text();
+            sourceBase = `${repoInfo.pagesBase}/tarifler`;
+            console.log('Tarifler GitHub Pages\'den yüklendi (ilk 200 karakter):', githubResponseText.substring(0, 200));
+          } else {
+            console.warn('⚠️ GitHub Pages listesi bulunamadı:', githubResp.status, githubPagesUrl);
+          }
+        } catch (pagesError) {
+          console.warn('⚠️ GitHub Pages üzerinden tarif yüklenemedi:', pagesError.message);
+        }
+
+        if (!githubResponseText) {
+          try {
+            const apiResp = await fetch(githubApiUrl, {
+              headers: {
+                'Accept': 'application/vnd.github+json',
+                ...apiHeaders
+              }
+            });
+            if (apiResp.ok) {
+              const apiData = await apiResp.json();
+              if (apiData && apiData.content) {
+                githubResponseText = decodeBase64UTF8(apiData.content);
+                sourceBase = `${repoInfo.rawBase}/tarifler`;
+                console.log('Tarifler GitHub API üzerinden yüklendi (ilk 200 karakter):', githubResponseText.substring(0, 200));
+              } else {
+                console.warn('⚠️ GitHub API yanıtı beklenen formatta değil:', apiData);
+              }
+            } else {
+              console.warn('⚠️ GitHub API list.json okunamadı:', apiResp.status, githubApiUrl);
+            }
+          } catch (apiError) {
+            console.warn('⚠️ GitHub API list.json yüklenemedi:', apiError.message);
+          }
+        }
+
+        if (githubResponseText) {
+          try {
+            const files = JSON.parse(githubResponseText);
+            console.log('GitHub\'dan yüklenen tarif dosyaları:', Array.isArray(files) ? files.length : 'format bilinmiyor');
+
+            tariflerKlasoruGorselleri = (Array.isArray(files) ? files : []).map(item => {
               if (typeof item === 'string') {
-                // Eski format: sadece dosya adı
                 return {
                   name: item,
-                  url: 'https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/' + item,
+                  url: buildTarifKartUrl(item, sourceBase),
                   tags: []
                 };
               } else if (item && (item.file || item.name)) {
-                // Yeni format: obje ile dosya adı ve taglar
                 const fileName = item.file || item.name;
                 return {
                   name: fileName,
-                  url: 'https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/' + fileName,
+                  url: buildTarifKartUrl(fileName, sourceBase),
                   tags: item.tags || []
                 };
-              } else {
-                console.warn('Geçersiz item formatı:', item);
-                return null;
               }
-            }).filter(item => item !== null); // null olanları filtrele
-            
-            // Geriye uyumluluk için eski formatı koru
-            window.tarifKartlari = files.map(item => typeof item === 'string' ? item : item.file)
-              .filter(item => item !== null && item !== undefined && typeof item === 'string'); // ⚡ Daha güvenli filtre
+              console.warn('Geçersiz item formatı:', item);
+              return null;
+            }).filter(Boolean);
+
+            window.tarifKartlari = (Array.isArray(files) ? files : []).map(item => {
+              if (typeof item === 'string') return item;
+              if (item && (item.file || item.name)) return item.file || item.name;
+              return null;
+            }).filter(item => item && typeof item === 'string');
+
+            if (sourceBase) {
+              window.tarifKartBaseUrl = sourceBase.endsWith('/') ? sourceBase.slice(0, -1) : sourceBase;
+            }
+
             console.log('🔧 window.tarifKartlari GitHub\'dan ayarlandı:', window.tarifKartlari.length, 'kart');
-            console.log(`✅ GitHub\'dan ${tariflerKlasoruGorselleri.length} tarif görsel yüklendi`);
-            
+            console.log(`✅ GitHub üzerinden ${tariflerKlasoruGorselleri.length} tarif görsel yüklendi`);
+
             durumGuncelle();
-            return; // Başarılı, devam etme
+            return;
+          } catch (jsonParseError) {
+            console.warn('⚠️ list.json parse edilirken hata oluştu, local fallback denenecek:', jsonParseError.message);
           }
-        } catch (githubError) {
-          console.warn('⚠️ GitHub\'dan tarif yükleme başarısız:', githubError.message);
         }
-        
+
         // GitHub başarısız olduysa local denemeyi yap
         console.log('📁 Local dosya yükleme deneniyor...');
         let basePath = window.location.pathname;
@@ -7433,12 +7730,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         console.log('Tarifler klasöründen yüklenen dosyalar:', files);
         
         // Yeni format (object array) veya eski format (string array) kontrolü
+        const localBase = tariflerPath.endsWith('/') ? tariflerPath.slice(0, -1) : tariflerPath;
+        window.tarifKartBaseUrl = localBase;
+
         tariflerKlasoruGorselleri = files.map(item => {
           if (typeof item === 'string') {
             // Eski format: sadece dosya adı
             return {
               name: item,
-              url: tariflerPath + item,
+              url: buildTarifKartUrl(item, localBase),
               tags: []
             };
           } else if (item && (item.file || item.name)) {
@@ -7446,7 +7746,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             const fileName = item.file || item.name;
             return {
               name: fileName,
-              url: tariflerPath + fileName,
+              url: buildTarifKartUrl(fileName, localBase),
               tags: item.tags || []
             };
           } else {
@@ -7486,6 +7786,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     const STORAGE_KEY = 'lipedem_hasta_kayitlari';
   const TELEFON_STORAGE_KEY = 'lipedem_telefon_bilgileri';
   const TELEFON_PENDING_KEY = 'lipedem_telefon_pending';
+  window.telefonDurumOverride = window.telefonDurumOverride || {};
 
     // ID normalize helper (stringify + trim)
     function normalizeIdKey(x) {
@@ -7791,6 +8092,9 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
     } else {
       delete birlesikTelefonMap[id];
     }
+    if (!Object.prototype.hasOwnProperty.call(window.telefonDurumOverride, id)) {
+      window.telefonDurumOverride[id] = githubTelefonHaritasiTam[id] === true;
+    }
   });
   // Pending (optimiztik UI) bayraklarını da uygula: pending=true ise ikon göster
   Object.keys(pendingMap).forEach(id => { if (pendingMap[id] === true) birlesikTelefonMap[id] = true; });
@@ -7909,6 +8213,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const pendingTelefonTrue = Boolean(pendingMap && pendingMap[hastaIdKey]);
           // Telefon bilgisi: GitHub öncelikli, ardından local/pending fallback
           let telefonAranacak = githubTelefonTrue || localTelefonTrue || pendingTelefonTrue;
+          if (Object.prototype.hasOwnProperty.call(window.telefonDurumOverride, hastaIdKey)) {
+            telefonAranacak = Boolean(window.telefonDurumOverride[hastaIdKey]);
+          } else {
+            window.telefonDurumOverride[hastaIdKey] = telefonAranacak;
+          }
           console.log(`🔍 Telefon kontrolü (${hastaIsim}):`, {
             'githubTamHarita': githubTelefonTrue,
             'localBackup': localTelefonTrue,
@@ -12661,7 +12970,7 @@ function duzenleHafta(i) {
       (hafta.tarifKartlar||[]).forEach(kart => {
         const img = document.createElement('img');
         // Güvenli src atama - undefined hatası önleme
-        img.src = kart.data || kart.kartData || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.kartResmi || 'default.jpg'}`;
+  img.src = kart.data || kart.kartData || buildTarifKartUrl(kart.kartResmi || 'default.jpg');
         img.alt = kart.name || kart.tarifAdi || 'Tarif kartı';
         img.style.width = '100px';
         img.style.margin = '4px';
@@ -13039,7 +13348,7 @@ function duzenleHafta(i) {
         grup.kartlar.forEach(kart => {
           const img = document.createElement('img');
           // Güvenli src atama - undefined hatası önleme
-          img.src = kart.data || kart.kartData || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.kartResmi || kart.name || 'default.jpg'}`;
+          img.src = kart.data || kart.kartData || buildTarifKartUrl(kart.kartResmi || kart.name || 'default.jpg');
           img.alt = tarif;
           img.title = kart.name || kart.tarifAdi || 'Tarif kartı';
           img.style.width = '120px';
@@ -13154,7 +13463,7 @@ function duzenleHafta(i) {
   hafta.tarifKartlar = eslesenKartlarListesi.map(e => ({
     tarifAdi: e.tarif,
     kartResmi: e.kart.name,
-    kartData: e.kart.data || `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${e.kart.name}`,
+  kartData: e.kart.data || buildTarifKartUrl(e.kart.name),
     eslesmeTuru: e.tip
   }));
   
@@ -15020,7 +15329,19 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
     }
     
     function manuelKartAramaYap(aramaMetni) {
-      const liste = document.getElementById('manuelKartListe');
+      const listeElemanlari = [];
+      const modalListe = document.getElementById('manuelKartListeModal');
+      const consoleListe = document.getElementById('manuelKartListeConsole');
+      const legacyListe = document.getElementById('manuelKartListe');
+
+      if (modalListe) listeElemanlari.push(modalListe);
+      if (consoleListe) listeElemanlari.push(consoleListe);
+      if (legacyListe && !listeElemanlari.includes(legacyListe)) listeElemanlari.push(legacyListe);
+
+      if (listeElemanlari.length === 0) {
+        console.warn('❌ manuelKartListe container bulunamadı');
+        return;
+      }
       
       console.log('🔍 Manuel kart arama debug:', {
         aramaMetni,
@@ -15031,7 +15352,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       // Tarif kartları listesinden ara
       if (!window.tarifKartlari || window.tarifKartlari.length === 0) {
         console.log('❌ Tarif kartları yüklenmemiş veya boş!');
-        liste.innerHTML = '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmemiş!</div>';
+        const hataHtml = '<div style="text-align: center; color: #dc3545; padding: 20px;">Tarif kartları yüklenmemiş!</div>';
+        listeElemanlari.forEach(el => el.innerHTML = hataHtml);
         return;
       }
       
@@ -15120,7 +15442,8 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       }
       
       if (tumKartlar.length === 0) {
-        liste.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Sonuç bulunamadı</div>';
+        const bosHtml = '<div style="text-align: center; color: #666; padding: 20px;">Sonuç bulunamadı</div>';
+        listeElemanlari.forEach(el => el.innerHTML = bosHtml);
         return;
       }
       
@@ -15189,7 +15512,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       });
       
       html += '</div>';
-      liste.innerHTML = html;
+      listeElemanlari.forEach(el => el.innerHTML = html);
     }
     
     function manuelKartToggle(kartAdi) {
@@ -15272,7 +15595,7 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       secilenManuelKartlar.forEach(kartAdi => {
         hafta.manuelKartlar.push({
           name: kartAdi,
-          data: `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kartAdi}`,
+          data: buildTarifKartUrl(kartAdi),
           eklenmeTarihi: new Date().toISOString()
         });
       });
@@ -16048,7 +16371,8 @@ ${mesajlar.join('\n')}
           if (pending[telefonKey]) { delete pending[telefonKey]; persistTelefonPending(pending); }
         }
         persistTelefonFlagBackup(window.telefonBilgileriYedek);
-        console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
+  window.telefonDurumOverride[telefonKey] = Boolean(seciliHasta.telefonAranacak);
+  console.log('📞 Telefon yedek güncellendi:', telefonKey, seciliHasta.telefonAranacak);
       } else {
         console.warn('📞 Telefon yedeği güncellenemedi: hasta ID bulunamadı');
       }
@@ -17377,7 +17701,7 @@ ${mesajlar.join('\n')}
         let yuklendiSayisi = 0;
         for (const kart of secilenKartlar) {
           try {
-            const url = `https://mustafasacar35.github.io/lipodem-takip-paneli/tarifler/${kart.name}`;
+            const url = buildTarifKartUrl(kart.name);
             const response = await fetch(url);
             if (response.ok) {
               const blob = await response.blob();
