@@ -3638,61 +3638,63 @@
         return;
       }
       
+      const aktifHaftaIndex = getAktifHaftaIndex();
+      if (aktifHaftaIndex === null || aktifHaftaIndex === undefined) {
+        console.log('ℹ️ Aktif hafta index bulunamadı, eşleşmeyenler güncellenmedi');
+        return;
+      }
+
+      const aktifHafta = aktifHasta.haftalar[aktifHaftaIndex];
+      if (!aktifHafta) {
+        console.log('ℹ️ Aktif hafta verisi bulunamadı');
+        return;
+      }
+
+      const haftaLabel = aktifHafta.haftaNo ? `${aktifHafta.haftaNo}. Hafta` : 'Seçili Hafta';
       let yeniEslesmeyenler = [];
       
-      // Önce JSON'dan kaydedilmiş eşleşmeyen tarifleri al
-      aktifHasta.haftalar.forEach(hafta => {
-        if (hafta.eslesmeyenTarifler && hafta.eslesmeyenTarifler.length > 0) {
-          hafta.eslesmeyenTarifler.forEach(tarif => {
-            if (!yeniEslesmeyenler.includes(tarif)) {
-              yeniEslesmeyenler.push(tarif);
-            }
-          });
-        }
-      });
-      
-      // Eğer JSON'da eşleşmeyen tarif yoksa, eski yöntemle hesapla
-      if (yeniEslesmeyenler.length === 0) {
-        aktifHasta.haftalar.forEach(hafta => {
-          if (hafta.tarifler && hafta.tarifler.length > 0) {
-            hafta.tarifler.forEach(tarif => {
-              // Normalize et
-              function normalizeLocal(str) {
-                return str
-                  .toLowerCase()
-                  .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
-                  .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
-                  .replace(/i̇/g, 'i')
-                  .replace(/[_*\/()]/g, ' ')
-                  .replace(/\s+/g, ' ')
-                  .replace(/[^a-z0-9\s]/g, '')
-                  .trim();
-              }
-              
-              const normalizedTarif = normalizeLocal(tarif);
-              
-              // Otomatik eşleşme kontrolü
-              const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
-                const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
-                return normalizedKart.includes(normalizedTarif) || 
-                       normalizedTarif.includes(normalizedKart) ||
-                       normalizedKart === normalizedTarif;
-              });
-              
-              // Manuel eşleşme kontrolü  
-              const manuelEslesen = manuelEslestirmeler[normalizedTarif];
-              
-              // Yasak kural kontrolü
-              const yasakMi = eslesmemeKurallari[normalizedTarif];
-              
-              // Eğer hiçbir yerde eşleşmiyor ve yasaklanmamışsa eşleşmeyen listesine ekle
-              if (!otomatikEslesen && !manuelEslesen && !yasakMi && !yeniEslesmeyenler.includes(tarif)) {
-                yeniEslesmeyenler.push(tarif);
-              }
-            });
+      if (Array.isArray(aktifHafta.eslesmeyenTarifler) && aktifHafta.eslesmeyenTarifler.length > 0) {
+        yeniEslesmeyenler = [...new Set(aktifHafta.eslesmeyenTarifler)];
+        console.log(`📄 ${haftaLabel} için kaydedilmiş ${yeniEslesmeyenler.length} eşleşmeyen tarif yüklendi`);
+      } else if (aktifHafta.tarifler && aktifHafta.tarifler.length > 0) {
+        console.log(`🔍 ${haftaLabel} için PDF satırları analiz ediliyor...`);
+        const normalizeLocal = (str) => {
+          return (str || '')
+            .toLowerCase()
+            .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+            .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i')
+            .replace(/i̇/g, 'i')
+            .replace(/[_*\/()]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/[^a-z0-9\s]/g, '')
+            .trim();
+        };
+
+        yeniEslesmeyenler = aktifHafta.tarifler.reduce((liste, tarif) => {
+          const normalizedTarif = normalizeLocal(tarif);
+          if (!normalizedTarif) {
+            return liste;
           }
-        });
+
+          const otomatikEslesen = tariflerKlasoruGorselleri.some(kart => {
+            const normalizedKart = normalizeLocal(kart.name.replace(/\.[^/.]+$/, ''));
+            return normalizedKart.includes(normalizedTarif) ||
+                   normalizedTarif.includes(normalizedKart) ||
+                   normalizedKart === normalizedTarif;
+          });
+
+          const manuelEslesen = manuelEslestirmeler[normalizedTarif];
+          const yasakMi = eslesmemeKurallari[normalizedTarif];
+
+          if (!otomatikEslesen && !manuelEslesen && !yasakMi && !liste.includes(tarif)) {
+            liste.push(tarif);
+          }
+
+          return liste;
+        }, []);
       }
+      
+      console.log(`📋 ${haftaLabel} için eşleşmeyen tarif sayısı: ${yeniEslesmeyenler.length}`);
       
       // UI'ı güncelle
       if (yeniEslesmeyenler.length > 0) {
