@@ -8500,6 +8500,18 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           ul.appendChild(li);
         });
         
+          try {
+            const overrideMap = window.telefonDurumOverride || {};
+            const yedekMap = window.telefonBilgileriYedek || {};
+            ul.querySelectorAll('li[data-hasta-id]').forEach(li => {
+              const hastaKey = li.dataset.hastaId;
+              const aranacak = Boolean((overrideMap && overrideMap[hastaKey]) || (yedekMap && yedekMap[hastaKey]));
+              updateSidebarTelefonIkonu(hastaKey, aranacak);
+            });
+          } catch (topluTelefonIkonHatasi) {
+            console.warn('📞 Toplu telefon ikonu sonrası güncelleme uyarısı:', topluTelefonIkonHatasi?.message || topluTelefonIkonHatasi);
+          }
+
         console.log(`✅ Yeni sistem hasta listesi güncellendi: ${filtreliHastalar.length} hasta gösteriliyor`);
         
         // Liste yenilendikten sonra mevcut seçimi tekrar vurgula
@@ -15026,6 +15038,11 @@ Detaylı bilgiler için tarayıcı konsolunu (F12) açın.`);
       
       // Yemek analizini her hafta değişiminde otomatik güncelle
       updateYemekAnalizi();
+      try {
+        eslesmeyenlerListesiniGuncelle();
+      } catch (eslesmeyenHata) {
+        console.warn('⚠️ Hafta değişiminde eşleşmeyen tarifler güncellenemedi:', eslesmeyenHata?.message || eslesmeyenHata);
+      }
     }
     window.haftaTabSecildiginde = haftaTabSecildiginde;
 
