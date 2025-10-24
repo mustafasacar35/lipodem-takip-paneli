@@ -76,14 +76,17 @@ export default async function handler(req, res) {
         // 2. Bilgileri güncelle
         const updatedData = {
             ...currentContent,
-            name,
-            surname,
-            age: parseInt(age),
-            gender,
-            weight: parseFloat(weight),
-            height: parseFloat(height),
-            bmi: (parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1),
-            lastUpdated: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            personalInfo: {
+                ...(currentContent.personalInfo || {}),
+                name,
+                surname,
+                age: parseInt(age),
+                gender,
+                weight: parseFloat(weight),
+                height: parseFloat(height),
+                bmi: parseFloat((parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1))
+            }
         };
 
         // Şifre güncellemesi varsa

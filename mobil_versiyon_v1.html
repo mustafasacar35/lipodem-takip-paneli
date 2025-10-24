@@ -1339,13 +1339,16 @@
                 const patientData = await response.json();
                 console.log('✅ Hasta verisi yüklendi:', patientData);
                 
+                // Veri yapısını kontrol et (personalInfo içinde mi yoksa direkt mi?)
+                const info = patientData.personalInfo || patientData;
+                
                 // Form alanlarını doldur
-                document.getElementById('userName').value = patientData.name || '';
-                document.getElementById('userSurname').value = patientData.surname || '';
-                document.getElementById('userAge').value = patientData.age || '';
-                document.getElementById('userGender').value = patientData.gender || '';
-                document.getElementById('userWeight').value = patientData.weight || '';
-                document.getElementById('userHeight').value = patientData.height || '';
+                document.getElementById('userName').value = info.name || '';
+                document.getElementById('userSurname').value = info.surname || '';
+                document.getElementById('userAge').value = info.age || '';
+                document.getElementById('userGender').value = info.gender || '';
+                document.getElementById('userWeight').value = info.weight || '';
+                document.getElementById('userHeight').value = info.height || '';
                 document.getElementById('userUsername').value = cleanUsername;
                 document.getElementById('userPassword').value = ''; // Şifre alanı boş
                 
