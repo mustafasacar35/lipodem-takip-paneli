@@ -137,11 +137,11 @@ export default async function handler(req, res) {
                     );
 
                     // Kullanıcıyı bul ve güncelle
-                    const userIndex = indexContent.findIndex(u => u.username === username);
+                    const userIndex = indexContent.patients.findIndex(u => u.username === username);
                     if (userIndex !== -1) {
-                        indexContent[userIndex].passwordHash = passwordHash;
-                        indexContent[userIndex].name = name;
-                        indexContent[userIndex].surname = surname;
+                        indexContent.patients[userIndex].passwordHash = passwordHash;
+                        indexContent.patients[userIndex].name = name;
+                        indexContent.patients[userIndex].surname = surname;
 
                         // index.json'u güncelle
                         await fetch(indexUrl, {
