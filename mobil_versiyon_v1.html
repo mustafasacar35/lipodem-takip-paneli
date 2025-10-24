@@ -1307,10 +1307,14 @@
             const modal = document.getElementById('userSettingsModal');
             const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
             
+            console.log('🔐 Session bilgisi:', session);
+            
             if (!session.username) {
-                alert('⚠️ Giriş yapılmamış!');
+                alert('⚠️ Giriş yapılmamış!\n\nLütfen önce giriş yapın.');
                 return;
             }
+
+            console.log('👤 Kullanıcı adı:', session.username);
 
             // GitHub'dan hasta bilgilerini çek
             fetchPatientData(session.username);
@@ -1319,13 +1323,21 @@
         // GitHub'dan hasta verilerini çek
         async function fetchPatientData(username) {
             try {
-                const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/patient_${username}.json`);
+                // Username'i temizle (patient_ prefix'i varsa kaldır)
+                const cleanUsername = username.replace(/^patient_/i, '');
+                const fileName = `patient_${cleanUsername}.json`;
+                
+                console.log('🔍 Hasta verisi çekiliyor:', fileName);
+                
+                const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${fileName}`);
                 
                 if (!response.ok) {
-                    throw new Error('Hasta dosyası bulunamadı');
+                    console.error('❌ Dosya bulunamadı:', fileName);
+                    throw new Error(`Hasta dosyası bulunamadı: ${fileName}`);
                 }
 
                 const patientData = await response.json();
+                console.log('✅ Hasta verisi yüklendi:', patientData);
                 
                 // Form alanlarını doldur
                 document.getElementById('userName').value = patientData.name || '';
@@ -1334,7 +1346,7 @@
                 document.getElementById('userGender').value = patientData.gender || '';
                 document.getElementById('userWeight').value = patientData.weight || '';
                 document.getElementById('userHeight').value = patientData.height || '';
-                document.getElementById('userUsername').value = username;
+                document.getElementById('userUsername').value = cleanUsername;
                 document.getElementById('userPassword').value = ''; // Şifre alanı boş
                 
                 // BMI hesapla
@@ -1344,8 +1356,8 @@
                 document.getElementById('userSettingsModal').style.display = 'flex';
                 
             } catch (error) {
-                console.error('Hasta verileri yüklenemedi:', error);
-                alert('❌ Hasta bilgileri yüklenemedi: ' + error.message);
+                console.error('❌ Hasta verileri yüklenemedi:', error);
+                alert('❌ Hasta bilgileri yüklenemedi!\n\nDosya: hastalar/patient_' + username.replace(/^patient_/i, '') + '.json\n\nHata: ' + error.message + '\n\nLütfen admin ile iletişime geçin.');
             }
         }
 
