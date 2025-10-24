@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Hasta Paneli">
+    <meta name="application-name" content="Hasta Paneli">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link id="manifestLink" rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    <!-- / PWA ve Mobil Uygulama Meta Etiketleri -->
+
+    <title>Hasta Paneli - Lipodem Takip</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .patient-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .patient-info h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.8);
+            transform: translateY(-1px);
+        }
+
+        .app-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 15px;
+            }
+
+            .patient-info h2 {
+                font-size: 16px;
+            }
+
+            .logout-btn {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="patient-info">
+            <span>👤</span>
+            <h2 id="patientName">Yükleniyor...</h2>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+            🚪 Çıkış
+        </button>
+    </div>
+
+    <div class="app-container">
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Yükleniyor...</p>
+        </div>
+        <iframe 
+            id="appIframe" 
+            src="mobil_versiyon_v1.html" 
+            class="app-frame"
+            style="display: none;"
+            title="Yemek Alternatif Bulucu"
+        ></iframe>
+    </div>
+
+    <!-- Auth Library -->
+    <script src="auth.js"></script>
+
+    <script>
+        // Check authentication and load patient data
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Require authentication
+            const session = PatientAuth.requireAuth('login.html');
+            
+            if (session) {
+                // Update header with patient name
+                document.getElementById('patientName').textContent = `${session.name} ${session.surname}`;
+                
+                // Show iframe, hide loading
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('appIframe').style.display = 'block';
+            }
+        });
+
+        // Logout
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                PatientAuth.logout();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Refresh session periodically (every 5 minutes)
+        setInterval(() => {
+            PatientAuth.refreshSession();
+        }, 5 * 60 * 1000);
+
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            if (isSecureOrigin) {
+                const CACHE_NAME = 'patient-dashboard-v1';
+                const manifest = {
+                    "short_name": "Hasta Paneli",
+                    "name": "Hasta Paneli",
+                    "start_url": ".",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                // GitHub Pages blob: URL desteklemiyor, ServiceWorker'ı devre dışı bırak
+                console.log('ℹ️ ServiceWorker GitHub Pages için devre dışı (blob: URL desteklenmiyor)');
+                
+                // const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+                // const swURL = URL.createObjectURL(swBlob);
+                // navigator.serviceWorker.register(swURL)
+                //     .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                //     .catch(err => console.log('ServiceWorker registration failed:', err));
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
+        (function preventZoom() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, { passive: false });
+        })();
+
+        // PWA Install Prompt - Otomatik Yükleme Önerisi
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            setTimeout(() => {
+                showInstallPrompt();
+            }, 2000);
+        });
+
+        function showInstallPrompt() {
+            if (!deferredPrompt) return;
+            
+            const installBtn = confirm('📱 Hasta Paneli uygulamasını telefonunuza yüklemek ister misiniz?\n\n✓ Ana ekranınıza eklenecek\n✓ Uygulama gibi çalışacak\n✓ Daha hızlı erişim');
+            
+            if (installBtn) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Kullanıcı uygulamayı yükledi');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ Uygulama başarıyla yüklendi!');
+            deferredPrompt = null;
+        });
+    </script>
+
+    <!-- iOS Install Prompt Script -->
+    <script src="ios-install-prompt.js"></script>
+</body>
+</html>
+
+

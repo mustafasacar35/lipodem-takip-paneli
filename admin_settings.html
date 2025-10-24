@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Yönetici Ayarları">
+    <meta name="application-name" content="Yönetici Ayarları">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link id="manifestLink" rel="manifest">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    <!-- / PWA ve Mobil Uygulama Meta Etiketleri -->
+
+    <title>Yönetici Ayarları</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .settings-wrapper {
+            width: min(760px, 100%);
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 30px 65px rgba(15, 23, 42, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-header {
+            padding: 22px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .settings-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .settings-body {
+            padding: 26px 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            max-height: 78vh;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            border: 1px solid #e0e7ff;
+            border-radius: 14px;
+            padding: 18px;
+            background: #f8fafc;
+        }
+
+        .settings-section h2 {
+            margin: 0 0 14px 0;
+            font-size: 16px;
+            color: #4338ca;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .settings-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 13px;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        input[type="password"],
+        textarea {
+            padding: 11px 13px;
+            border: 1px solid #cbd5f5;
+            border-radius: 9px;
+            font-size: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+        }
+
+        input.disabled {
+            background: #e2e8f0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .settings-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(102, 126, 234, 0.12);
+            color: #4338ca;
+            font-size: 12px;
+        }
+
+        .settings-chip button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: inherit;
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .empty-hint {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 28px;
+            border-top: 1px solid #e0e7ff;
+            background: #f8fafc;
+        }
+
+        .actions-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            padding: 11px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+            color: #ffffff;
+            box-shadow: 0 14px 28px rgba(59, 130, 246, 0.30);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .status-text strong {
+            font-weight: 700;
+        }
+
+        .info-banner {
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.35);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #0f172a;
+            margin-top: 4px;
+        }
+
+        .info-banner code {
+            background: rgba(15, 23, 42, 0.08);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .suggestion-hint {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        details {
+            background: #e0f2fe;
+            border-radius: 10px;
+            padding: 10px 12px;
+            border: 1px solid rgba(14, 165, 233, 0.35);
+            font-size: 12px;
+            color: #0369a1;
+        }
+
+        details summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .suggestions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .suggestions-grid span {
+            background: rgba(14, 165, 233, 0.15);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        /* Filtreleme Kriterleri Grid Layout */
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .criteria-item {
+            border: 1px solid #e0e7ff;
+            border-radius: 10px;
+            padding: 14px;
+            background: white;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .criteria-item:hover {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+        }
+
+        .criteria-header {
+            margin-bottom: 10px;
+        }
+
+        .criteria-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        .criteria-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .criteria-label {
+            user-select: none;
+        }
+
+        .criteria-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-left: 26px;
+        }
+
+        .criteria-select,
+        select {
+            padding: 9px 11px;
+            border: 1px solid #cbd5f5;
+            border-radius: 8px;
+            font-size: 13px;
+            background: white;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .criteria-select:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
+        .criteria-select:disabled,
+        select:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .info-hint ul {
+            list-style-type: disc;
+        }
+
+        .info-hint li {
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .criteria-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .settings-wrapper {
+                border-radius: 14px;
+            }
+
+            .settings-header, .settings-body, .actions-row {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .settings-header h1 {
+                font-size: 21px;
+            }
+
+            .settings-section {
+                padding: 16px;
+            }
+
+            .actions-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .actions-right {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-wrapper">
+        <header class="settings-header">
+            <div>
+                <h1>Yönetici Ayarları</h1>
+                <p>Bu panelden <code>settings/config.json</code> dosyasını düzenleyebilirsiniz. Kaydetmek için repo yazma yetkisi olan bir GitHub token'ı gerekir.</p>
+            </div>
+            <div class="info-banner">
+                Token'ı tarayıcıda tutmak için <strong>Yerel depolama</strong> kullanılır. Ortak cihazlarda <em>Kaydet</em> işleminden sonra <strong>token'ı temizlemeyi</strong> unutmayın.
+            </div>
+        </header>
+
+        <main class="settings-body">
+            <section class="settings-section">
+                <h2>Genel</h2>
+                <div class="settings-row">
+                    <label for="defaultAlternativeCountInput">Varsayılan alternatif sayısı</label>
+                    <input type="number" id="defaultAlternativeCountInput" min="1" max="10">
+                </div>
+                <div class="settings-row checkbox-row">
+                    <label for="enableTagFilterInput">
+                        <input type="checkbox" id="enableTagFilterInput"> Tag filtrelemesini aktifleştir
+                    </label>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Tag İstisnaları</h2>
+                <div class="settings-row">
+                    <label for="tagExclusionInput">Yeni istisna tagı ekle</label>
+                    <input type="text" id="tagExclusionInput" placeholder="Örn: mevsim" autocomplete="off">
+                    <span class="suggestion-hint">Enter veya odak dışında bırakmak listedeki yeni tag'ı ekler.</span>
+                </div>
+                <div class="settings-chip-list" id="tagExclusionList"></div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Muaf Rol ve Kategoriler</h2>
+                <div class="settings-row">
+                    <label for="roleExclusionInput">Rol istisnası ekle</label>
+                    <input type="text" id="roleExclusionInput" placeholder="Örn: Diyetisyen" list="rolesDatalist" autocomplete="off">
+                    <datalist id="rolesDatalist"></datalist>
+                </div>
+                <div class="settings-chip-list" id="roleExclusionList"></div>
+
+                <div class="settings-row">
+                    <label for="categoryExclusionInput">Kategori istisnası ekle</label>
+                    <input type="text" id="categoryExclusionInput" placeholder="Örn: Atıştırmalık" list="categoriesDatalist" autocomplete="off">
+                    <datalist id="categoriesDatalist"></datalist>
+                </div>
+                <div class="settings-chip-list" id="categoryExclusionList"></div>
+
+                <details id="suggestionsPanel" hidden>
+                    <summary>⚙️ Önerilen rol/kategori listesi</summary>
+                    <div class="suggestions-grid" id="roleSuggestions"></div>
+                    <div class="suggestions-grid" id="categorySuggestions"></div>
+                </details>
+            </section>
+
+            <section class="settings-section">
+                <h2>Rotasyon</h2>
+                <div class="settings-row checkbox-row">
+                    <label for="rotationEnabledInput">
+                        <input type="checkbox" id="rotationEnabledInput"> Rotasyonu aktifleştir
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <label for="rotationChunkSizeInput">Günlük alternatif sayısı</label>
+                    <input type="number" id="rotationChunkSizeInput" min="1" max="10">
+                </div>
+                <div class="settings-row">
+                    <label for="rotationResetDayInput">Rotasyon sıfırlama günü (0 = Pazartesi)</label>
+                    <input type="number" id="rotationResetDayInput" min="0" max="6" placeholder="Boş bırakılırsa ISO haftası baz alınır">
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>🔍 Filtreleme Kriterleri</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Kullanıcı panelinde hangi filtreleme kriterlerinin gösterileceğini ve zorunlu/opsiyonel olduğunu ayarlayın.
+                </p>
+                
+                <div class="criteria-grid">
+                    <!-- Role (Yemek Türü) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaRoleVisible" checked>
+                                <span class="criteria-label">👨‍🍳 Yemek Türü (Role)</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaRoleMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaRoleMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaRoleDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaRoleDefault" class="criteria-select">
+                                <option value="active" selected>Aktif (Filtre açık)</option>
+                                <option value="inactive">Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Diet Type (Diyet Türü) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaDietTypeVisible" checked>
+                                <span class="criteria-label">🥗 Diyet Türü</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaDietTypeMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaDietTypeMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaDietTypeDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaDietTypeDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Category (Kategori) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaCategoryVisible">
+                                <span class="criteria-label">📂 Kategori</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaCategoryMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaCategoryMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaCategoryDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaCategoryDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Season (Sezon) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaSeasonVisible">
+                                <span class="criteria-label">🌤️ Sezon</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaSeasonMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaSeasonMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaSeasonDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaSeasonDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- MealType (Öğün) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaMealTypeVisible">
+                                <span class="criteria-label">🍽️ Öğün</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaMealTypeMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaMealTypeMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaMealTypeDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaMealTypeDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong> 
+                    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                        <li><strong>Opsiyonel:</strong> Kullanıcı panelinde rozet gösterilir, kullanıcı tıklayarak aktif/pasif edebilir.</li>
+                        <li><strong>Zorunlu:</strong> Filtreleme her zaman aktiftir, kullanıcı değiştiremez (rozet gizlidir).</li>
+                        <li><strong>Sayfa açıldığında:</strong> İlk açılışta filtrenin aktif mi pasif mi olacağını belirler (sadece opsiyoneller için geçerli).</li>
+                        <li>Checkbox işaretsizse kriter tamamen gizlenir ve kullanılmaz.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>GitHub Erişimi</h2>
+                <div class="settings-row">
+                    <label for="githubTokenInput">Kişisel Erişim Token'ı</label>
+                    <input type="password" id="githubTokenInput" placeholder="ghp_...">
+                </div>
+                <div class="settings-row">
+                    <button class="btn-secondary" id="clearTokenButton" type="button">Token'ı Temizle</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="actions-row">
+            <p class="status-text" id="statusText"><strong>Hazır.</strong></p>
+            <div class="actions-right">
+                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yeniden Yükle</button>
+                <button class="btn-primary" id="saveSettingsButton" type="button">Kaydet</button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const REPO_OWNER = 'mustafasacar35';
+    const REPO_NAME = 'lipodem-takip-paneli';
+        const SETTINGS_PATH = 'settings/config.json';
+        const SETTINGS_BRANCH = 'main';
+        const LOCAL_STORAGE_TOKEN_KEY = 'lipodemSettingsGithubToken';
+
+        const defaultSettings = {
+            version: 1,
+            updatedAt: new Date().toISOString(),
+            defaultAlternativeCount: 3,
+            enableTagFilter: true,
+            tagExclusions: [],
+            tagExemptions: {
+                roles: [],
+                categories: []
+            },
+            rotation: {
+                enabled: true,
+                chunkSize: 3
+            },
+            filterCriteria: {
+                role: {
+                    visible: true,
+                    mode: 'optional',
+                    defaultState: 'active'
+                },
+                dietType: {
+                    visible: true,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                category: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                season: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                mealType: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                }
+            }
+        };
+
+        let appSettings = { ...defaultSettings };
+        let settingsSha = null;
+        let settingsDraft = null;
+        let isSaving = false;
+        let isLoading = false;
+        let availableRoles = new Set();
+        let availableCategories = new Set();
+
+        const statusText = document.getElementById('statusText');
+        const defaultAlternativeCountInput = document.getElementById('defaultAlternativeCountInput');
+        const enableTagFilterInput = document.getElementById('enableTagFilterInput');
+        const tagExclusionInput = document.getElementById('tagExclusionInput');
+        const roleExclusionInput = document.getElementById('roleExclusionInput');
+        const categoryExclusionInput = document.getElementById('categoryExclusionInput');
+        const rotationEnabledInput = document.getElementById('rotationEnabledInput');
+        const rotationChunkSizeInput = document.getElementById('rotationChunkSizeInput');
+        const rotationResetDayInput = document.getElementById('rotationResetDayInput');
+        const githubTokenInput = document.getElementById('githubTokenInput');
+        const clearTokenButton = document.getElementById('clearTokenButton');
+        const reloadButton = document.getElementById('reloadButton');
+        const saveSettingsButton = document.getElementById('saveSettingsButton');
+        const tagExclusionList = document.getElementById('tagExclusionList');
+        const roleExclusionList = document.getElementById('roleExclusionList');
+        const categoryExclusionList = document.getElementById('categoryExclusionList');
+        const rolesDatalist = document.getElementById('rolesDatalist');
+        const categoriesDatalist = document.getElementById('categoriesDatalist');
+        const suggestionsPanel = document.getElementById('suggestionsPanel');
+        const roleSuggestions = document.getElementById('roleSuggestions');
+        const categorySuggestions = document.getElementById('categorySuggestions');
+
+        // Filtreleme Kriterleri Input Referansları
+        const criteriaRoleVisible = document.getElementById('criteriaRoleVisible');
+        const criteriaRoleMode = document.getElementById('criteriaRoleMode');
+        const criteriaRoleDefault = document.getElementById('criteriaRoleDefault');
+        const criteriaDietTypeVisible = document.getElementById('criteriaDietTypeVisible');
+        const criteriaDietTypeMode = document.getElementById('criteriaDietTypeMode');
+        const criteriaDietTypeDefault = document.getElementById('criteriaDietTypeDefault');
+        const criteriaCategoryVisible = document.getElementById('criteriaCategoryVisible');
+        const criteriaCategoryMode = document.getElementById('criteriaCategoryMode');
+        const criteriaCategoryDefault = document.getElementById('criteriaCategoryDefault');
+        const criteriaSeasonVisible = document.getElementById('criteriaSeasonVisible');
+        const criteriaSeasonMode = document.getElementById('criteriaSeasonMode');
+        const criteriaSeasonDefault = document.getElementById('criteriaSeasonDefault');
+        const criteriaMealTypeVisible = document.getElementById('criteriaMealTypeVisible');
+        const criteriaMealTypeMode = document.getElementById('criteriaMealTypeMode');
+        const criteriaMealTypeDefault = document.getElementById('criteriaMealTypeDefault');
+
+        function fixTurkishChars(text) {
+            if (!text || typeof text !== 'string') return text;
+            let fixed = text;
+            for (let i = 0; i < 2; i++) {
+                try {
+                    const decoded = decodeURIComponent(escape(fixed));
+                    if (decoded === fixed) break;
+                    fixed = decoded;
+                } catch (error) {
+                    break;
+                }
+            }
+
+            const charMap = {
+                'Ä±': 'ı', 'ä±': 'ı', 'Ã': 'Ç', 'Ã§': 'ç', 'ã‡': 'Ç', 'ã§': 'ç', 'ÅŸ': 'ş', 'åŸ': 'ş',
+                'Åž': 'Ş', 'åž': 'Ş', 'Ä°': 'İ', 'ä°': 'İ', 'Ã¶': 'ö', 'ã¶': 'ö', 'Ã–': 'Ö', 'ã–': 'Ö',
+                'Ã¼': 'ü', 'ã¼': 'ü', 'Ãœ': 'Ü', 'ãœ': 'Ü', 'ÄŸ': 'ğ', 'äŸ': 'ğ', 'Äž': 'Ğ', 'äž': 'Ğ',
+                'ÃÂ±': 'ı', 'ÃÂ°': 'İ', 'ÃÂ': 'ğ', 'ÃÂ': 'Ğ', 'ÃÂŸ': 'ş', 'ÃÂ': 'Ş', 'ÃÂ§': 'ç',
+                'ÃÂ': 'Ç', 'ÃÂ¶': 'ö', 'ÃÂ': 'Ö', 'ÃÂ¼': 'ü', 'ÃÂ': 'Ü', 'ÃÂ½': 'ı', 'ÃÂ': 'İ',
+                'ÃÂ±': 'ñ', 'ÃÂ': 'ß', 'ÃÂ¿': 'ÿ', 'Ã': '', '×': '', 'Â': ' '
+            };
+
+            let previous;
+            do {
+                previous = fixed;
+                for (const [wrong, correct] of Object.entries(charMap)) {
+                    fixed = fixed.replace(new RegExp(wrong, 'g'), correct);
+                }
+            } while (fixed !== previous);
+
+            return fixed;
+        }
+
+        function normalizeText(str) {
+            if (!str) return '';
+            const cleaned = fixTurkishChars(str);
+            return cleaned
+                .toLowerCase()
+                .replace(/ç/g, 'c')
+                .replace(/ğ/g, 'g')
+                .replace(/ı/g, 'i')
+                .replace(/i̇/g, 'i')
+                .replace(/ö/g, 'o')
+                .replace(/ş/g, 's')
+                .replace(/ü/g, 'u')
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        function sanitizeString(value) {
+            if (typeof value !== 'string') return '';
+            return fixTurkishChars(value).trim();
+        }
+
+        function sanitizeStringList(values) {
+            if (!Array.isArray(values)) return [];
+            const unique = new Set();
+            const result = [];
+            values.forEach(item => {
+                const cleaned = sanitizeString(item);
+                const normalized = normalizeText(cleaned);
+                if (!cleaned || !normalized || unique.has(normalized)) return;
+                unique.add(normalized);
+                result.push(cleaned);
+            });
+            return result;
+        }
+
+        function showStatus(message, tone = 'info') {
+            const palette = {
+                success: '#059669',
+                error: '#dc2626',
+                info: '#475569'
+            };
+            statusText.textContent = message;
+            statusText.style.color = palette[tone] || palette.info;
+        }
+
+        function setLoadingState(active) {
+            isLoading = active;
+            const disabled = active || isSaving;
+            [defaultAlternativeCountInput, enableTagFilterInput, tagExclusionInput,
+                roleExclusionInput, categoryExclusionInput, rotationEnabledInput,
+                rotationChunkSizeInput, rotationResetDayInput, githubTokenInput,
+                saveSettingsButton, reloadButton, clearTokenButton]
+                .forEach(element => {
+                    element.disabled = !!disabled;
+                    if (element.tagName === 'INPUT' && element.type !== 'checkbox') {
+                        element.classList.toggle('disabled', !!disabled && element !== githubTokenInput);
+                    }
+                });
+        }
+
+        function setSavingState(active) {
+            isSaving = active;
+            const disabled = active || isLoading;
+            saveSettingsButton.disabled = !!disabled;
+            reloadButton.disabled = !!disabled;
+        }
+
+        function ensureSorted(values) {
+            return values.sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }));
+        }
+
+        function renderChipList(container, values, onRemove) {
+            container.innerHTML = '';
+            if (!values || values.length === 0) {
+                const hint = document.createElement('span');
+                hint.className = 'empty-hint';
+                hint.textContent = 'Henüz eklenmedi.';
+                container.appendChild(hint);
+                return;
+            }
+            const sanitized = sanitizeStringList(values);
+            ensureSorted(sanitized);
+            sanitized.forEach(value => {
+                const chip = document.createElement('span');
+                chip.className = 'settings-chip';
+                chip.textContent = value;
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = '×';
+                removeBtn.setAttribute('aria-label', `${value} kaydını sil`);
+                removeBtn.addEventListener('click', () => onRemove(value));
+                chip.appendChild(removeBtn);
+                container.appendChild(chip);
+            });
+        }
+
+        function addValueToList(list, rawValue) {
+            if (!rawValue) return false;
+            const trimmed = sanitizeString(rawValue);
+            if (!trimmed) return false;
+            const normalized = normalizeText(trimmed);
+            if (!normalized) return false;
+            const exists = list.some(item => normalizeText(item) === normalized);
+            if (exists) return false;
+            list.push(trimmed);
+            return true;
+        }
+
+        function buildSettingsDraft() {
+            const rotation = appSettings.rotation || {};
+            const filterCriteria = appSettings.filterCriteria || {};
+            
+            return {
+                defaultAlternativeCount: Number.isFinite(appSettings.defaultAlternativeCount) ? appSettings.defaultAlternativeCount : 3,
+                enableTagFilter: !!appSettings.enableTagFilter,
+                tagExclusions: sanitizeStringList(Array.isArray(appSettings.tagExclusions) ? appSettings.tagExclusions : []),
+                tagExemptions: {
+                    roles: sanitizeStringList(Array.isArray(appSettings.tagExemptions?.roles) ? appSettings.tagExemptions.roles : []),
+                    categories: sanitizeStringList(Array.isArray(appSettings.tagExemptions?.categories) ? appSettings.tagExemptions.categories : [])
+                },
+                rotation: {
+                    enabled: rotation.enabled !== undefined ? !!rotation.enabled : true,
+                    chunkSize: Number.isFinite(rotation.chunkSize) && rotation.chunkSize > 0 ? rotation.chunkSize : 3,
+                    resetDay: Number.isFinite(rotation.resetDay) ? rotation.resetDay : ''
+                },
+                filterCriteria: {
+                    role: {
+                        visible: filterCriteria.role?.visible !== undefined ? !!filterCriteria.role.visible : true,
+                        mode: filterCriteria.role?.mode || 'optional',
+                        defaultState: filterCriteria.role?.defaultState || 'active'
+                    },
+                    dietType: {
+                        visible: filterCriteria.dietType?.visible !== undefined ? !!filterCriteria.dietType.visible : true,
+                        mode: filterCriteria.dietType?.mode || 'optional',
+                        defaultState: filterCriteria.dietType?.defaultState || 'inactive'
+                    },
+                    category: {
+                        visible: filterCriteria.category?.visible !== undefined ? !!filterCriteria.category.visible : false,
+                        mode: filterCriteria.category?.mode || 'optional',
+                        defaultState: filterCriteria.category?.defaultState || 'inactive'
+                    },
+                    season: {
+                        visible: filterCriteria.season?.visible !== undefined ? !!filterCriteria.season.visible : false,
+                        mode: filterCriteria.season?.mode || 'optional',
+                        defaultState: filterCriteria.season?.defaultState || 'inactive'
+                    },
+                    mealType: {
+                        visible: filterCriteria.mealType?.visible !== undefined ? !!filterCriteria.mealType.visible : false,
+                        mode: filterCriteria.mealType?.mode || 'optional',
+                        defaultState: filterCriteria.mealType?.defaultState || 'inactive'
+                    }
+                }
+            };
+        }
+
+        function populateSettingsForm() {
+            settingsDraft = buildSettingsDraft();
+            defaultAlternativeCountInput.value = settingsDraft.defaultAlternativeCount;
+            enableTagFilterInput.checked = settingsDraft.enableTagFilter;
+            rotationEnabledInput.checked = settingsDraft.rotation.enabled;
+            rotationChunkSizeInput.value = settingsDraft.rotation.chunkSize;
+            rotationResetDayInput.value = settingsDraft.rotation.resetDay === '' ? '' : settingsDraft.rotation.resetDay;
+            githubTokenInput.value = getStoredToken();
+
+            // Filtreleme Kriterleri Ayarlarını Doldur
+            if (settingsDraft.filterCriteria) {
+                criteriaRoleVisible.checked = settingsDraft.filterCriteria.role?.visible ?? true;
+                criteriaRoleMode.value = settingsDraft.filterCriteria.role?.mode ?? 'optional';
+                criteriaRoleDefault.value = settingsDraft.filterCriteria.role?.defaultState ?? 'active';
+                
+                criteriaDietTypeVisible.checked = settingsDraft.filterCriteria.dietType?.visible ?? true;
+                criteriaDietTypeMode.value = settingsDraft.filterCriteria.dietType?.mode ?? 'optional';
+                criteriaDietTypeDefault.value = settingsDraft.filterCriteria.dietType?.defaultState ?? 'inactive';
+                
+                criteriaCategoryVisible.checked = settingsDraft.filterCriteria.category?.visible ?? false;
+                criteriaCategoryMode.value = settingsDraft.filterCriteria.category?.mode ?? 'optional';
+                criteriaCategoryDefault.value = settingsDraft.filterCriteria.category?.defaultState ?? 'inactive';
+                
+                criteriaSeasonVisible.checked = settingsDraft.filterCriteria.season?.visible ?? false;
+                criteriaSeasonMode.value = settingsDraft.filterCriteria.season?.mode ?? 'optional';
+                criteriaSeasonDefault.value = settingsDraft.filterCriteria.season?.defaultState ?? 'inactive';
+                
+                criteriaMealTypeVisible.checked = settingsDraft.filterCriteria.mealType?.visible ?? false;
+                criteriaMealTypeMode.value = settingsDraft.filterCriteria.mealType?.mode ?? 'optional';
+                criteriaMealTypeDefault.value = settingsDraft.filterCriteria.mealType?.defaultState ?? 'inactive';
+            }
+
+            renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+            renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+            renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+
+            updateRotationFieldStates();
+        }
+
+        function removeTagExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExclusions = settingsDraft.tagExclusions.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+        }
+
+        function removeRoleExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExemptions.roles = settingsDraft.tagExemptions.roles.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+        }
+
+        function removeCategoryExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExemptions.categories = settingsDraft.tagExemptions.categories.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+        }
+
+        function collectPayloadFromForm() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const parsedDefault = parseInt(defaultAlternativeCountInput.value, 10);
+            const parsedChunk = parseInt(rotationChunkSizeInput.value, 10);
+            const parsedReset = rotationResetDayInput.value === '' ? '' : parseInt(rotationResetDayInput.value, 10);
+
+            settingsDraft.defaultAlternativeCount = Number.isFinite(parsedDefault) && parsedDefault > 0 ? parsedDefault : 3;
+            settingsDraft.enableTagFilter = enableTagFilterInput.checked;
+            settingsDraft.rotation.enabled = rotationEnabledInput.checked;
+            settingsDraft.rotation.chunkSize = Number.isFinite(parsedChunk) && parsedChunk > 0 ? parsedChunk : settingsDraft.defaultAlternativeCount;
+            settingsDraft.rotation.resetDay = Number.isFinite(parsedReset) && parsedReset >= 0 && parsedReset <= 6 ? parsedReset : '';
+
+            // Filtreleme Kriterleri Güncelle
+            settingsDraft.filterCriteria.role.visible = criteriaRoleVisible.checked;
+            settingsDraft.filterCriteria.role.mode = criteriaRoleMode.value;
+            settingsDraft.filterCriteria.role.defaultState = criteriaRoleDefault.value;
+            
+            settingsDraft.filterCriteria.dietType.visible = criteriaDietTypeVisible.checked;
+            settingsDraft.filterCriteria.dietType.mode = criteriaDietTypeMode.value;
+            settingsDraft.filterCriteria.dietType.defaultState = criteriaDietTypeDefault.value;
+            
+            settingsDraft.filterCriteria.category.visible = criteriaCategoryVisible.checked;
+            settingsDraft.filterCriteria.category.mode = criteriaCategoryMode.value;
+            settingsDraft.filterCriteria.category.defaultState = criteriaCategoryDefault.value;
+            
+            settingsDraft.filterCriteria.season.visible = criteriaSeasonVisible.checked;
+            settingsDraft.filterCriteria.season.mode = criteriaSeasonMode.value;
+            settingsDraft.filterCriteria.season.defaultState = criteriaSeasonDefault.value;
+            
+            settingsDraft.filterCriteria.mealType.visible = criteriaMealTypeVisible.checked;
+            settingsDraft.filterCriteria.mealType.mode = criteriaMealTypeMode.value;
+            settingsDraft.filterCriteria.mealType.defaultState = criteriaMealTypeDefault.value;
+
+            const rotationPayload = {
+                enabled: settingsDraft.rotation.enabled,
+                chunkSize: settingsDraft.rotation.chunkSize
+            };
+            if (settingsDraft.rotation.resetDay !== '') {
+                rotationPayload.resetDay = settingsDraft.rotation.resetDay;
+            }
+
+            return {
+                ...appSettings,
+                defaultAlternativeCount: settingsDraft.defaultAlternativeCount,
+                enableTagFilter: settingsDraft.enableTagFilter,
+                tagExclusions: sanitizeStringList(settingsDraft.tagExclusions),
+                tagExemptions: {
+                    roles: sanitizeStringList(settingsDraft.tagExemptions.roles),
+                    categories: sanitizeStringList(settingsDraft.tagExemptions.categories)
+                },
+                rotation: rotationPayload,
+                filterCriteria: settingsDraft.filterCriteria,
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        function getStoredToken() {
+            try {
+                return window.localStorage ? (window.localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY) || '') : '';
+            } catch (error) {
+                console.warn('⚠️ Token okunamadı:', error);
+                return '';
+            }
+        }
+
+        function persistToken(token) {
+            try {
+                if (!window.localStorage) return;
+                if (token) window.localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
+                else window.localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);
+            } catch (error) {
+                console.warn('⚠️ Token kaydedilemedi:', error);
+            }
+        }
+
+        function updateRotationFieldStates() {
+            const isEnabled = rotationEnabledInput.checked;
+            rotationChunkSizeInput.disabled = !isEnabled;
+            rotationResetDayInput.disabled = !isEnabled;
+            rotationChunkSizeInput.classList.toggle('disabled', !isEnabled);
+            rotationResetDayInput.classList.toggle('disabled', !isEnabled);
+        }
+
+        function registerInputHandlers() {
+            tagExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddTagExclusion();
+                }
+            });
+            tagExclusionInput.addEventListener('blur', tryAddTagExclusion);
+
+            roleExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddRoleExclusion();
+                }
+            });
+            roleExclusionInput.addEventListener('blur', tryAddRoleExclusion);
+
+            categoryExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddCategoryExclusion();
+                }
+            });
+            categoryExclusionInput.addEventListener('blur', tryAddCategoryExclusion);
+
+            rotationEnabledInput.addEventListener('change', updateRotationFieldStates);
+        }
+
+        function tryAddTagExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExclusions, tagExclusionInput.value);
+            if (added) {
+                renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+                tagExclusionInput.value = '';
+                showStatus('Tag listesine eklendi.', 'success');
+            }
+        }
+
+        function tryAddRoleExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExemptions.roles, roleExclusionInput.value);
+            if (added) {
+                renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+                roleExclusionInput.value = '';
+                showStatus('Rol listesine eklendi.', 'success');
+            }
+        }
+
+        function tryAddCategoryExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExemptions.categories, categoryExclusionInput.value);
+            if (added) {
+                renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+                categoryExclusionInput.value = '';
+                showStatus('Kategori listesine eklendi.', 'success');
+            }
+        }
+
+        async function loadSettingsFromGitHub() {
+            setLoadingState(true);
+            showStatus('Ayarlar yükleniyor...', 'info');
+            settingsSha = null;
+            try {
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SETTINGS_PATH}?ref=${SETTINGS_BRANCH}`);
+                if (!response.ok) throw new Error(`Ayarlar yüklenemedi: ${response.status}`);
+                const data = await response.json();
+                settingsSha = data.sha;
+                const decoded = atob((data.content || '').replace(/\n/g, ''));
+                appSettings = { ...defaultSettings, ...JSON.parse(decoded) };
+                appSettings.tagExclusions = sanitizeStringList(appSettings.tagExclusions);
+                appSettings.tagExemptions = {
+                    roles: sanitizeStringList(appSettings.tagExemptions?.roles),
+                    categories: sanitizeStringList(appSettings.tagExemptions?.categories)
+                };
+                showStatus('Ayarlar GitHub üzerinden yüklendi.', 'success');
+            } catch (error) {
+                console.warn('⚠️ Ayarlar API ile alınamadı:', error.message);
+                try {
+                    const fallback = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${SETTINGS_PATH}`);
+                    if (fallback.ok) {
+                        const fallbackSettings = await fallback.json();
+                        appSettings = { ...defaultSettings, ...fallbackSettings };
+                        appSettings.tagExclusions = sanitizeStringList(appSettings.tagExclusions);
+                        appSettings.tagExemptions = {
+                            roles: sanitizeStringList(appSettings.tagExemptions?.roles),
+                            categories: sanitizeStringList(appSettings.tagExemptions?.categories)
+                        };
+                        showStatus('Ham dosyadan yüklendi (salt okunur).', 'info');
+                    } else {
+                        appSettings = { ...defaultSettings };
+                        showStatus('Ayar dosyası bulunamadı. Varsayılanlar kullanılacak.', 'error');
+                    }
+                } catch (fallbackError) {
+                    console.warn('⚠️ Ayarların ham dosyası da alınamadı:', fallbackError.message);
+                    appSettings = { ...defaultSettings };
+                    showStatus('Ayarlar yüklenemedi. Varsayılan değerler kullanılıyor.', 'error');
+                }
+            } finally {
+                setLoadingState(false);
+                populateSettingsForm();
+            }
+        }
+
+        async function saveSettingsToGitHub(payload, token) {
+            const endpoint = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SETTINGS_PATH}`;
+            const prepared = JSON.stringify(payload, null, 4);
+            const encodedContent = btoa(unescape(encodeURIComponent(prepared)));
+            const requestBody = {
+                message: 'Admin paneli üzerinden ayar güncellemesi',
+                content: encodedContent,
+                branch: SETTINGS_BRANCH
+            };
+            if (settingsSha) requestBody.sha = settingsSha;
+
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(errorBody.message || `GitHub güncellemesi başarısız: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        async function fetchSuggestions() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/food_list.json');
+                if (!response.ok) return;
+                const data = await response.json();
+                availableRoles = new Set();
+                availableCategories = new Set();
+                if (Array.isArray(data.categories)) {
+                    data.categories.forEach(category => {
+                        if (Array.isArray(category.items)) {
+                            category.items.forEach(item => {
+                                const roleValue = sanitizeString(item.role);
+                                const categoryValue = sanitizeString(item.category);
+                                if (roleValue) availableRoles.add(roleValue);
+                                if (categoryValue) availableCategories.add(categoryValue);
+                            });
+                        }
+                    });
+                }
+                updateSuggestionPanels();
+            } catch (error) {
+                console.warn('⚠️ Rol/kategori önerileri alınamadı:', error.message);
+            }
+        }
+
+        function updateSuggestionPanels() {
+            const roleValues = ensureSorted(Array.from(availableRoles));
+            const categoryValues = ensureSorted(Array.from(availableCategories));
+
+            rolesDatalist.innerHTML = roleValues.map(value => `<option value="${value}"></option>`).join('');
+            categoriesDatalist.innerHTML = categoryValues.map(value => `<option value="${value}"></option>`).join('');
+
+            if (roleValues.length || categoryValues.length) {
+                suggestionsPanel.hidden = false;
+                roleSuggestions.innerHTML = roleValues.slice(0, 40).map(value => `<span>${value}</span>`).join('');
+                categorySuggestions.innerHTML = categoryValues.slice(0, 40).map(value => `<span>${value}</span>`).join('');
+            }
+        }
+
+        function attachActionHandlers() {
+            saveSettingsButton.addEventListener('click', async () => {
+                if (isSaving) return;
+                const token = githubTokenInput.value.trim();
+                if (!token) {
+                    showStatus('Kaydetmek için bir GitHub token gerekli.', 'error');
+                    return;
+                }
+                const payload = collectPayloadFromForm();
+                try {
+                    setSavingState(true);
+                    saveSettingsButton.textContent = 'Kaydediliyor...';
+                    showStatus('GitHub üzerinde güncelleniyor...', 'info');
+                    const result = await saveSettingsToGitHub(payload, token);
+                    persistToken(token);
+                    settingsSha = result.content?.sha || settingsSha;
+                    appSettings = payload;
+                    showStatus('Ayarlar kaydedildi.', 'success');
+                } catch (error) {
+                    console.error('❌ Ayarlar kaydedilemedi:', error);
+                    showStatus(error.message || 'Ayarlar kaydedilemedi.', 'error');
+                } finally {
+                    setSavingState(false);
+                    saveSettingsButton.textContent = 'Kaydet';
+                }
+            });
+
+            reloadButton.addEventListener('click', () => {
+                if (isSaving) return;
+                loadSettingsFromGitHub();
+            });
+
+            clearTokenButton.addEventListener('click', () => {
+                persistToken('');
+                githubTokenInput.value = '';
+                showStatus('Token yerel depolamadan temizlendi.', 'info');
+            });
+        }
+
+        (function init() {
+            registerInputHandlers();
+            attachActionHandlers();
+            fetchSuggestions();
+            loadSettingsFromGitHub();
+        })();
+
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            if (isSecureOrigin) {
+                const CACHE_NAME = 'admin-settings-v1';
+                const manifest = {
+                    "short_name": "Yönetici Ayarları",
+                    "name": "Yönetici Ayarları Paneli",
+                    "start_url": ".",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+                const swURL = URL.createObjectURL(swBlob);
+
+                navigator.serviceWorker.register(swURL)
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(err => console.log('ServiceWorker registration failed:', err));
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
+        (function preventZoom() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, { passive: false });
+        })();
+    </script>
+</body>
+</html>

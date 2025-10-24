@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🍽️ Yemek Alternatif Bulucu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            overflow-x: hidden;
+            overflow-y: visible;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow-x: hidden;
+            overflow-y: visible;
+            box-sizing: border-box;
+        }
+        
+        /* Mobil için padding ayarla */
+        @media (max-width: 576px) {
+            body {
+                padding: 5px;
+            }
+            .container {
+                padding: 10px;
+                border-radius: 10px;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 10px;
+            z-index: 10000;
+        }
+
+        #yemekArama {
+            width: 100%;
+            padding: 10px 40px 10px 12px;
+            font-size: 14px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+
+        .autocomplete-dropdown {
+            position: fixed;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: all 0.15s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover, .autocomplete-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .autocomplete-item.active .food-meta-text,
+        .autocomplete-item:hover .food-meta-text {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .autocomplete-item .food-name-text {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 3px;
+            font-size: 13px;
+        }
+
+        .autocomplete-item .food-meta-text {
+            font-size: 10px;
+            color: #666;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-section {
+            margin: 8px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .filter-section h4 {
+            margin: 0 0 6px 0;
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn, .checkbox-btn {
+            padding: 5px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+
+        .filter-btn:hover, .checkbox-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .checkbox-btn {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .checkbox-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .checkbox-btn.active::before {
+            content: '✓ ';
+        }
+
+        .selected-food {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: white;
+            margin: 8px 0;
+            display: none;
+            position: relative;
+            overflow: hidden;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .selected-food.show {
+            display: block;
+        }
+
+        /* Navigation buttons artık inline style ile makroların altında */
+        
+        .nav-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: 3px solid #ffd700;
+            color: white;
+            padding: 0;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.4);
+            min-width: 40px;
+            width: 40px;
+            height: 40px;
+            line-height: 1;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .selected-food h3 {
+            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* Mor alandaki tarif rozeti */
+        .selected-food .recipe-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .selected-food .recipe-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Alternatif Yemek Alanı */
+        .alternative-food {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: white;
+            margin: 8px 0;
+            display: none;
+            position: relative;
+            overflow: hidden;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .alternative-food.show {
+            display: block;
+        }
+
+        .alternative-food h3 {
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Yeşil alandaki tarif rozeti - mor alandaki gibi */
+        .alternative-food .recipe-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .alternative-food .recipe-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .selected-macros {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+
+        .macro-box {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 8px;
+            border-radius: 6px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 3px;
+            flex: 1 1 auto;
+            min-width: fit-content;
+        }
+
+        .macro-box strong {
+            font-size: 14px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .macro-box span {
+            font-size: 9px;
+            opacity: 0.9;
+            white-space: nowrap;
+        }
+
+        .selected-info {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        .info-tag {
+            background: white;
+            color: #667eea;
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3);
+            line-height: 1;
+            display: inline-block;
+        }
+        
+        .clickable-tag {
+            transition: all 0.2s;
+            cursor: pointer;
+            background: white;
+            color: #667eea;
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            line-height: 1;
+            display: inline-block;
+        }
+        
+        .clickable-tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .clickable-tag.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .result-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin: 15px 0 8px 0;
+            display: none;
+            cursor: pointer;
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .result-header.show {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-header:hover {
+            background: #e9ecef;
+            transform: translateX(2px);
+        }
+
+        .result-header .arrow {
+            transition: transform 0.3s;
+            font-size: 16px;
+        }
+
+        .result-header.collapsed .arrow {
+            transform: rotate(-90deg);
+        }
+
+        .result-header .count {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        /* Tablo container - scroll yapılabilir + akordiyon */
+        #resultsList {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: max-height 0.3s, opacity 0.3s;
+        }
+
+        #resultsList.collapsed {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .food-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        .food-table thead {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .food-table th {
+            padding: 8px 6px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .food-table td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+        }
+
+        .food-table tbody tr {
+            cursor: pointer !important;
+            transition: all 0.15s;
+        }
+
+        .food-table tbody tr:hover {
+            background: #f8f9fa !important;
+            transform: translateX(1px);
+        }
+
+        .food-table tbody tr.highlighted {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            border: 2px solid #667eea !important;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+            outline: 2px solid rgba(102, 126, 234, 0.3);
+            outline-offset: 2px;
+        }
+        
+        .food-table tbody tr.highlighted td {
+            border-color: transparent !important;
+        }
+        
+        .food-table tbody tr.highlighted td:first-child {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+        
+        .food-table tbody tr.highlighted td:last-child {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        .food-name {
+            font-weight: 600;
+            color: #333;
+            max-width: 300px;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+
+        .similarity-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 0;
+        }
+
+        .macro-value {
+            text-align: center;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .macro-diff {
+            font-size: 10px;
+            color: #666;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .macro-diff.positive {
+            color: #dc3545;
+        }
+
+        .macro-diff.negative {
+            color: #28a745;
+        }
+
+        .food-meta {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 3px;
+        }
+
+        .meta-tag {
+            background: white;
+            color: #28a745;
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            line-height: 1;
+            display: inline-block;
+        }
+
+        .meta-tag[style*="cursor: pointer"]:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .modal-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .selected-macros {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .food-table {
+                font-size: 12px;
+            }
+
+            .food-table th, .food-table td {
+                padding: 8px 4px;
+            }
+
+            .food-name {
+                max-width: 150px;
+            }
+
+            .modal-content {
+                max-width: 95%;
+                max-height: 85vh;
+            }
+
+            .modal-close {
+                width: 35px;
+                height: 35px;
+                font-size: 20px;
+            }
+        }
+
+        /* � TABLET/KÜÇÜK MASAÜSTÜ (577px - 992px) */
+        @media (min-width: 577px) and (max-width: 992px) {
+            .nav-btn {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 16px !important;
+                min-width: 36px !important;
+            }
+            
+            .navigation-buttons {
+                gap: 5px !important;
+            }
+        }
+
+        /* �📱 MOBIL RESPONSIVE - TELEFON (0-576px) */
+        @media (max-width: 576px) {
+            /* Search box */
+            #yemekArama {
+                font-size: 16px; /* iOS zoom engellemek için minimum 16px */
+                padding: 12px 45px 12px 12px;
+            }
+
+            .search-icon {
+                font-size: 18px;
+                right: 15px;
+            }
+
+            /* Benzerlik butonları - mobilde tek satır, yazı kısalt */
+            .filter-section {
+                margin-bottom: 8px;
+            }
+            
+            .filter-section > div {
+                gap: 4px !important;
+            }
+            
+            .filter-section span {
+                display: none; /* "📊 Benzerlik:" yazısını gizle */
+            }
+
+            .filter-btn {
+                font-size: 10px;
+                padding: 4px 8px;
+                white-space: nowrap;
+            }
+            
+            /* "Tüm Makrolar" çok uzun, kısalt */
+            .filter-btn[data-score="all"] {
+                font-size: 0;
+            }
+            .filter-btn[data-score="all"]::after {
+                content: "Tümü";
+                font-size: 10px;
+            }
+            
+            /* "Karbonhidrat" çok uzun, kısalt */
+            .filter-btn[data-score="carbs"] {
+                font-size: 0;
+            }
+            .filter-btn[data-score="carbs"]::after {
+                content: "Karb";
+                font-size: 10px;
+            }
+
+            /* Mor ve yeşil alanlar */
+            .selected-food, .alternative-food {
+                padding: 12px;
+                margin: 10px 0;
+            }
+
+            .selected-food h3, .alternative-food h3 {
+                font-size: 16px !important;
+                margin-bottom: 10px !important;
+            }
+
+            /* Makro kutularını mobilde TEK SATIRDA tut */
+            .selected-macros {
+                flex-direction: row !important; /* Yatay dizilim */
+                gap: 4px !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+            }
+
+            .macro-box {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 6px 4px !important;
+                text-align: center;
+            }
+
+            .macro-box strong {
+                font-size: 14px;
+                display: block;
+            }
+
+            .macro-box span {
+                font-size: 9px;
+                display: block;
+            }
+            
+            /* Makro farkları - daha küçük */
+            .macro-box > div {
+                font-size: 11px !important;
+                margin-top: 1px !important;
+            }
+
+            /* Etiketler - mobilde daha küçük */
+            .info-tag, .meta-tag, .clickable-tag {
+                font-size: 9px !important;
+                padding: 4px 8px !important;
+                border-radius: 8px !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+            }
+            
+            /* Mor alandaki etiket container - tek satırda tut */
+            .selected-info {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                overflow-x: hidden !important;
+                gap: 4px !important;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+                width: 100% !important;
+            }
+            
+            /* Mor alandaki tüm container'lar tek satırda */
+            .selected-food {
+                overflow-x: hidden !important;
+            }
+            
+            /* Mor alandaki butonlar ile etiketler aynı hizada - FLEX CONTAINER */
+            .selected-food > div[style*="flex"] {
+                flex-wrap: nowrap !important;
+                overflow-x: hidden !important;
+                gap: 4px !important;
+                width: 100% !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* İç etiket container da nowrap */
+            .selected-food .selected-info {
+                flex: 1 !important;
+                min-width: 0 !important;
+            }
+            
+            /* Yeşil alandaki etiketler de tek satırda */
+            #alternativeTags {
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            #alternativeTags > div {
+                flex-wrap: wrap !important;
+            }
+
+            .recipe-badge {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
+            /* Navigasyon butonları - mobilde kompakt ama tıklanabilir */
+            .nav-btn {
+                width: 32px !important;
+                height: 32px !important;
+                min-width: 32px !important;
+                max-width: 32px !important;
+                min-height: 32px !important;
+                max-height: 32px !important;
+                font-size: 14px !important;
+                flex-shrink: 0 !important;
+                border-radius: 50% !important;
+            }
+            
+            /* Buton container'ı - tek satırda tut */
+            .navigation-buttons {
+                flex-shrink: 0 !important;
+                gap: 4px !important;
+            }
+
+            /* Benzerlik rozeti */
+            .similarity-badge {
+                font-size: 14px !important;
+                padding: 4px 8px !important;
+            }
+
+            /* Akordiyon başlık */
+            .result-header {
+                font-size: 13px;
+                padding: 10px 12px;
+            }
+
+            .result-header .count {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+
+            /* Tablo - mobilde kart görünümü */
+            .food-table {
+                font-size: 12px;
+            }
+
+            .food-table th,
+            .food-table td {
+                padding: 8px 4px;
+                font-size: 11px;
+            }
+
+            /* İlk sütun (yemek adı) daha geniş */
+            .food-table th:first-child,
+            .food-table td:first-child {
+                min-width: 120px;
+            }
+
+            /* Sayı sütunları dar */
+            .food-table th:not(:first-child),
+            .food-table td:not(:first-child) {
+                min-width: 45px;
+                text-align: center;
+            }
+
+            /* Autocomplete dropdown */
+            .autocomplete-dropdown {
+                font-size: 13px;
+            }
+
+            .autocomplete-item {
+                padding: 10px 12px;
+            }
+        }
+
+        /* 📱 TABLET (577-768px) */
+        @media (min-width: 577px) and (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .selected-macros {
+                gap: 6px;
+            }
+
+            .macro-box {
+                padding: 6px 10px;
+            }
+
+            .filter-btn {
+                font-size: 11px;
+                padding: 5px 10px;
+            }
+
+            .nav-btn {
+                width: 48px;
+                height: 48px;
+            }
+        }
+
+        /* 🖥️ BÜYÜK EKRANLAR (1200px+) */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1000px;
+                padding: 20px;
+            }
+        }
+
+        /* 👆 TOUCH-FRIENDLY - Tüm dokunmatik cihazlar */
+        @media (hover: none) and (pointer: coarse) {
+            /* Hover yerine active/focus kullan */
+            .filter-btn:active,
+            .nav-btn:active,
+            .result-header:active {
+                transform: scale(0.95);
+            }
+
+            /* Minimum dokunma alanı */
+            button, .clickable-tag {
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            /* Tablodaki satırlar daha büyük */
+            .food-table tbody tr {
+                min-height: 48px;
+            }
+        }
+
+        /* 🌙 Dark mode için hazırlık (opsiyonel) */
+        @media (prefers-color-scheme: dark) {
+            /* İleride eklenebilir */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="yemekArama" 
+                placeholder="🍽️ Yemek Alternatif Bulucu - Yemek adı yazın (ör: Izgara Tavuk)"
+                autocomplete="off"
+            >
+            <span class="search-icon">🔍</span>
+            <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+        </div>
+
+        <!-- Benzerlik Skorlama - Tek satırda -->
+        <div class="filter-section">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 12px; font-weight: 600; color: #495057;">📊 Benzerlik:</span>
+                <button class="filter-btn active" data-score="all">Tüm Makrolar</button>
+                <button class="filter-btn" data-score="calories">Kalori</button>
+                <button class="filter-btn" data-score="protein">Protein</button>
+                <button class="filter-btn" data-score="carbs">Karbonhidrat</button>
+                <button class="filter-btn" data-score="fat">Yağ</button>
+            </div>
+        </div>
+
+        <!-- Seçili Yemek -->
+        <div class="selected-food" id="selectedFood">
+            <h3 id="selectedName"></h3>
+            <div class="selected-macros" id="selectedMacros"></div>
+            
+            <!-- Etiketler tek satırda -->
+            <div class="selected-info" id="selectedInfo" style="margin-top: 12px;">
+                <!-- Etiketler buraya gelecek -->
+            </div>
+            
+            <!-- Tarif kartları ve butonlar yan yana -->
+            <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <!-- Tarif kartları solda -->
+                <div id="selectedTarifler" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <!-- Tarif kartları buraya gelecek -->
+                </div>
+                
+                <!-- Butonlar sağda -->
+                <div class="navigation-buttons" style="display: flex; gap: 6px; overflow: hidden; max-width: 100%; flex-shrink: 0;">
+                    <button class="nav-btn" id="prevBtn" title="Önceki Alternatif">◀</button>
+                    <button class="nav-btn" id="nextBtn" title="Sonraki Alternatif">▶</button>
+                    <button class="nav-btn" id="resetBtn" title="İlk Alternatife Dön">↻</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alternatif Yemek -->
+        <div class="alternative-food" id="alternativeFood">
+            <h3 style="margin-bottom: 12px; font-size: 20px; text-align: left;">
+                <span style="opacity: 0.7;">Alternatif:</span> <span id="alternativeName"></span>
+                <span id="similarityBadgeContainer" style="float: right;"></span>
+            </h3>
+            <div class="selected-macros" id="alternativeMacros"></div>
+            <div class="selected-info" id="alternativeTags" style="margin-top: 12px;">
+                <!-- Etiketler buraya gelecek -->
+            </div>
+            <!-- Tarif kartları ayrı satırda -->
+            <div id="alternativeTarifler" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                <!-- Tarif kartları buraya gelecek -->
+            </div>
+        </div>
+
+        <!-- Sonuçlar -->
+        <div class="result-header collapsed" id="resultHeader">
+            <span>
+                Benzer Alternatifler<span class="count" id="resultCount">0</span>
+            </span>
+            <span class="arrow">▼</span>
+        </div>
+        <div id="resultsList" class="collapsed">
+            <div class="no-results">👆 Yukarıdan yemek arayın</div>
+        </div>
+    </div>
+
+    <!-- Tarif Kartı Modal -->
+    <div class="modal-overlay" id="tarifModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <img id="modalImage" class="modal-image" src="" alt="Tarif Kartı">
+        </div>
+    </div>
+
+    <script>
+        // Türkçe karakter düzeltme fonksiyonu
+        function fixTurkishChars(text) {
+            if (!text || typeof text !== 'string') return text;
+            
+            const charMap = {
+                'Ä±': 'ı', 'ä±': 'ı',
+                'Ã§': 'ç', 'ã§': 'ç',
+                'ÅŸ': 'ş', 'åŸ': 'ş',
+                'Ä°': 'İ', 'ä°': 'İ',
+                'Ã¶': 'ö', 'ã¶': 'ö',
+                'Ã¼': 'ü', 'ã¼': 'ü',
+                'ÄŸ': 'ğ', 'äŸ': 'ğ',
+                'Ã‡': 'Ç', 'ã‡': 'Ç',
+                'Åž': 'Ş', 'åž': 'Ş',
+                'Ã–': 'Ö', 'ã–': 'Ö',
+                'Ãœ': 'Ü', 'ãœ': 'Ü',
+                'ÄŸ': 'Ğ', 'äž': 'Ğ'
+            };
+            
+            let fixed = text;
+            for (let [wrong, correct] of Object.entries(charMap)) {
+                fixed = fixed.replace(new RegExp(wrong, 'g'), correct);
+            }
+            return fixed;
+        }
+        
+        let foodDatabase = [];
+        let selectedFood = null;
+        let scoreBy = ['calories', 'protein', 'carbs', 'fat']; // Çoklu seçim için array
+        let matchCriteria = {
+            mealType: false,
+            role: true,      // Sadece role default aktif
+            category: false,
+            dietType: false
+        };
+        let tarifKartlari = [];
+        let currentAlternatives = [];
+        let currentIndex = 0;
+        let originalSelectedFood = null; // İlk seçilen yemek
+
+        // Manuel eşleştirme ve yasak kuralları
+        let manuelEslestirmeler = {};
+        let eslesmemeKurallari = {};
+
+        // Navigasyon butonları
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentAlternatives.length === 0) return;
+            currentIndex--;
+            if (currentIndex < 0) currentIndex = 0;
+            navigateToFood(currentIndex);
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentAlternatives.length === 0) return;
+            currentIndex++;
+            if (currentIndex >= currentAlternatives.length) currentIndex = currentAlternatives.length - 1;
+            navigateToFood(currentIndex);
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (currentAlternatives.length === 0) return;
+            currentIndex = 0;
+            navigateToFood(0); // İlk alternatife dön
+        });
+
+        function navigateToFood(index) {
+            if (!currentAlternatives[index]) return;
+            
+            currentIndex = index;
+            const food = currentAlternatives[index];
+            selectedFood = food;
+            
+            // Yeşil alan her zaman görünür - alternatifi göster
+            showAlternativeFood(food);
+            
+            highlightTableRow(index);
+            
+            // Highlight edilen satıra scroll - sadece tablo içinde
+            const resultsList = document.getElementById('resultsList');
+            const rows = document.querySelectorAll('.food-table tbody tr');
+            if (rows[index] && resultsList) {
+                const rowTop = rows[index].offsetTop;
+                const rowHeight = rows[index].offsetHeight;
+                const containerHeight = resultsList.clientHeight;
+                const scrollTop = resultsList.scrollTop;
+                
+                // Satır görünmüyorsa scroll yap
+                if (rowTop < scrollTop || rowTop + rowHeight > scrollTop + containerHeight) {
+                    resultsList.scrollTo({
+                        top: rowTop - (containerHeight / 2) + (rowHeight / 2),
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
+
+        function showAlternativeFood(food) {
+            const alternativeFood = document.getElementById('alternativeFood');
+            const alternativeName = document.getElementById('alternativeName');
+            const alternativeMacros = document.getElementById('alternativeMacros');
+            const alternativeTags = document.getElementById('alternativeTags');
+            const similarityBadgeContainer = document.getElementById('similarityBadgeContainer');
+
+            // ✨ Benzerlik rozetini başlık satırına sağa yerleştir
+            if (food.similarity !== undefined) {
+                similarityBadgeContainer.innerHTML = `
+                    <span class="similarity-badge" style="font-size: 16px; padding: 6px 12px;">
+                        ${food.similarity}%
+                    </span>
+                `;
+            } else {
+                similarityBadgeContainer.innerHTML = '';
+            }
+
+            // Tarif kartları kontrolü (birden fazla olabilir)
+            const tarifKartlari = findTarifKartlari(food.name);
+            const tarifBadges = tarifKartlari.map((tarif, index) => {
+                const imageUrl = tarif.download_url || 
+                                `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${tarif.name}`;
+                // Birden fazla tarif varsa "Tarif 1", "Tarif 2", tek varsa sadece "Tarif"
+                const tarifLabel = tarifKartlari.length > 1 ? `Tarif ${index + 1}` : 'Tarif';
+                return `<span class="recipe-badge" onclick="openModal('${imageUrl}')" style="cursor: pointer;">📖 ${tarifLabel} 👆</span>`;
+            });
+
+            // Sadece yemek adını yaz (tarif rozeti etiketlerin sonunda olacak)
+            alternativeName.textContent = food.name;
+            
+            // Makrolar - Tam sayıya yuvarla - Mor alandaki gibi format + FARKLAR
+            const selectedFood = originalSelectedFood;
+            const calorieDiff = selectedFood ? Math.round((food.calories || 0) - (selectedFood.calories || 0)) : 0;
+            const carbDiff = selectedFood ? Math.round((food.carbs || 0) - (selectedFood.carbs || 0)) : 0;
+            const proteinDiff = selectedFood ? Math.round((food.protein || 0) - (selectedFood.protein || 0)) : 0;
+            const fatDiff = selectedFood ? Math.round((food.fat || 0) - (selectedFood.fat || 0)) : 0;
+            
+            const formatDiff = (diff) => {
+                if (diff === 0) return '';
+                const sign = diff > 0 ? '+' : '';
+                return `<div style="font-size: 14px; color: white; margin-top: 2px; font-weight: normal;">(${sign}${diff})</div>`;
+            };
+            
+            alternativeMacros.innerHTML = `
+                <div class="macro-box">
+                    <strong>${Math.round(food.calories || 0)}</strong>
+                    <span>Kalori</span>
+                    ${formatDiff(calorieDiff)}
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.carbs || 0)}g</strong>
+                    <span>Karb</span>
+                    ${formatDiff(carbDiff)}
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.protein || 0)}g</strong>
+                    <span>Protein</span>
+                    ${formatDiff(proteinDiff)}
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.fat || 0)}g</strong>
+                    <span>Yağ</span>
+                    ${formatDiff(fatDiff)}
+                </div>
+            `;
+
+            // Ek bilgiler (kategori kaldırıldı)
+            const tags = [];
+            if (food.role) tags.push(`<span class="meta-tag">👨‍🍳 ${food.role}</span>`);
+            if (food.mealType) tags.push(`<span class="meta-tag">🍽️ ${food.mealType}</span>`);
+            if (food.keto) tags.push(`<span class="meta-tag keto">🥗 Keto</span>`);
+            else if (food.lowcarb) tags.push(`<span class="meta-tag lowcarb">🥗 LowCarb</span>`);
+
+            // Yeşil alandaki etiketleri göster (tarif kartları ayrı)
+            alternativeTags.innerHTML = `
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    ${tags.join('')}
+                </div>
+            `;
+            
+            // Tarif kartlarını ayrı div'e ekle
+            document.getElementById('alternativeTarifler').innerHTML = tarifBadges.join('');
+            
+            alternativeFood.classList.add('show');
+        }
+
+        function highlightTableRow(index) {
+            const rows = document.querySelectorAll('.food-table tbody tr');
+            rows.forEach((row, i) => {
+                if (i === index) {
+                    row.classList.add('highlighted');
+                } else {
+                    row.classList.remove('highlighted');
+                }
+            });
+        }
+
+        // Modal fonksiyonları
+        function openModal(imageUrl) {
+            const modal = document.getElementById('tarifModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageUrl;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('tarifModal');
+            modal.classList.remove('active');
+        }
+
+        // Modal dışına tıklayınca kapat
+        document.getElementById('tarifModal').addEventListener('click', (e) => {
+            if (e.target.id === 'tarifModal') {
+                closeModal();
+            }
+        });
+
+        // ESC tuşu ile kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Veritabanını yükle
+        async function loadFoodData() {
+            try {
+                document.getElementById('resultsList').innerHTML = '<div class="loading">Yemek veritabanı yükleniyor...</div>';
+                
+                const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli-3___yedek/main/food_list.json');
+                const data = await response.json();
+                
+                foodDatabase = [];
+                if (data.categories && Array.isArray(data.categories)) {
+                    data.categories.forEach(category => {
+                        if (category.items && Array.isArray(category.items)) {
+                            category.items.forEach(item => {
+                                // Türkçe karakterleri düzelt
+                                if (item.name) item.name = fixTurkishChars(item.name);
+                                if (item.category) item.category = fixTurkishChars(item.category);
+                                if (item.role) item.role = fixTurkishChars(item.role);
+                                if (item.mealType) item.mealType = fixTurkishChars(item.mealType);
+                                foodDatabase.push(item);
+                            });
+                        }
+                    });
+                }
+                
+                console.log('✅ Yemek veritabanı yüklendi:', foodDatabase.length, 'yemek');
+                
+                // Tarif kartlarını da yükle
+                await loadTarifKartlari();
+                
+                // Manuel eşleştirme ve yasak kurallarını yükle
+                await loadManuelEslestirmeler();
+                
+                document.getElementById('resultsList').innerHTML = '<div class="no-results">👆 Yukarıdan yemek arayın</div>';
+            } catch (error) {
+                console.error('❌ Veritabanı hatası:', error);
+                document.getElementById('resultsList').innerHTML = '<div class="no-results">❌ Veritabanı yüklenemedi</div>';
+            }
+        }
+
+        // Manuel eşleştirme ve yasak kurallarını yükle
+        async function loadManuelEslestirmeler() {
+            try {
+                console.log('📥 Manuel eşleştirmeler yükleniyor...');
+                const manuelUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json';
+                
+                try {
+                    const manuelResp = await fetch(manuelUrl);
+                    if (manuelResp.ok) {
+                        const manuelData = await manuelResp.json();
+                        if (manuelData.eslestirmeler) {
+                            manuelEslestirmeler = manuelData.eslestirmeler;
+                        } else {
+                            manuelEslestirmeler = manuelData;
+                        }
+                        console.log('✅ Manuel eşleştirmeler yüklendi:', Object.keys(manuelEslestirmeler).length, 'adet');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Manuel eşleştirme yüklenemedi:', error.message);
+                }
+
+                console.log('📥 Eşleşme yasakları yükleniyor...');
+                const yasakUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/eslesmeme_kurallari.json';
+                
+                try {
+                    const yasakResp = await fetch(yasakUrl);
+                    if (yasakResp.ok) {
+                        const yasakData = await yasakResp.json();
+                        
+                        // Format: { version, sonGuncelleme, eslesmemeKurallari: {...} }
+                        if (yasakData.eslesmemeKurallari) {
+                            eslesmemeKurallari = yasakData.eslesmemeKurallari;
+                        } else if (yasakData.kurallar) {
+                            eslesmemeKurallari = yasakData.kurallar;
+                        } else {
+                            eslesmemeKurallari = yasakData;
+                        }
+                        
+                        console.log('✅ Eşleşme yasakları yüklendi:', Object.keys(eslesmemeKurallari).length, 'adet');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Eşleşme yasakları yüklenemedi:', error.message);
+                }
+                
+                // Debug: Manuel eşleştirmeleri listele
+                if (Object.keys(manuelEslestirmeler).length > 0) {
+                    console.log('📋 Manuel eşleştirmeler:', manuelEslestirmeler);
+                }
+            } catch (error) {
+                console.error('❌ Manuel eşleştirme data yükleme hatası:', error);
+            }
+        }
+
+        // Tarif kartlarını yükle
+        async function loadTarifKartlari() {
+            try {
+                // Yöntem 1: list.json dosyası (EN İYİ - rate limit yok, CORS yok)
+                let response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/list.json');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Array kontrolü ve format tespiti
+                    if (Array.isArray(data)) {
+                        tarifKartlari = data
+                            .map(item => {
+                                // String ise direkt kullan
+                                if (typeof item === 'string') return item;
+                                // Object ise name veya filename özelliğini al
+                                if (typeof item === 'object') return item.name || item.filename || item.file || null;
+                                return null;
+                            })
+                            .filter(name => name && typeof name === 'string' && name.match(/\.(jpg|jpeg|png)$/i))
+                            .map(name => ({
+                                name: name,
+                                type: 'file',
+                                download_url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}`
+                            }));
+                        
+                        console.log('✅ Tarif kartları list.json ile yüklendi:', tarifKartlari.length, 'kart');
+                        return;
+                    }
+                }
+                
+                console.warn(`⚠️ list.json yüklenemedi (${response.status}), GitHub API deneniyor...`);
+                
+                // Yöntem 2: GitHub API (token gerekebilir)
+                response = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/tarifler');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (Array.isArray(data)) {
+                        tarifKartlari = data.filter(file => 
+                            file.type === 'file' && 
+                            (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.png'))
+                        );
+                        console.log('✅ Tarif kartları GitHub API ile yüklendi:', tarifKartlari.length, 'kart');
+                        return;
+                    }
+                }
+                
+                throw new Error('Tüm yöntemler başarısız');
+                
+            } catch (error) {
+                console.error('❌ Tarif kartları yüklenemedi:', error.message);
+                
+                // FALLBACK: Manuel eşleştirmelerden tarif listesini çıkar
+                console.log('📦 Fallback: Manuel eşleştirmelerden tarif listesi oluşturuluyor...');
+                
+                // Manuel eşleştirmeleri bekle
+                if (Object.keys(manuelEslestirmeler).length === 0) {
+                    await loadManuelEslestirmeler();
+                }
+                
+                // Manuel eşleştirmelerdeki tüm kartları topla
+                const uniqueTarifler = new Set();
+                Object.values(manuelEslestirmeler).forEach(eslestirme => {
+                    if (eslestirme && typeof eslestirme === 'object' && eslestirme.kartlar) {
+                        eslestirme.kartlar.forEach(kart => uniqueTarifler.add(kart));
+                    } else if (typeof eslestirme === 'string') {
+                        uniqueTarifler.add(eslestirme);
+                    }
+                });
+                
+                tarifKartlari = [...uniqueTarifler].map(name => ({
+                    name: name,
+                    type: 'file',
+                    download_url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}`
+                }));
+                
+                console.log('✅ Fallback tarif kartları yüklendi:', tarifKartlari.length, 'kart (manuel eşleştirmelerden)');
+            }
+        }
+
+        // Türkçe karakter normalize
+        function normalizeText(str) {
+            if (!str) return '';
+            return str.toLowerCase()
+                .replace(/ç/g, 'c')
+                .replace(/ğ/g, 'g')
+                .replace(/ı/g, 'i')
+                .replace(/i̇/g, 'i')
+                .replace(/ö/g, 'o')
+                .replace(/ş/g, 's')
+                .replace(/ü/g, 'u')
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        // Tarif kartı bul - Manuel eşleştirme ve yasak kuralları ile
+        // ARTIK ARRAY DÖNDÜRÜYOR (birden fazla kart olabilir)
+        function findTarifKartlari(yemekAdi) {
+            if (!tarifKartlari.length) return [];
+            
+            // Yemek adını temizle (miktarlar ve parantezler)
+            let cleanedYemekAdi = yemekAdi;
+            
+            // 1. Parantez içindeki detayları temizle: (2 adet), (200g), vb.
+            cleanedYemekAdi = cleanedYemekAdi.replace(/\([^)]*\)/g, '');
+            
+            // 2. Başındaki miktarları temizle
+            // Örnekler: "2 adet", "100 gram", "1 dilim", "2. dilim", "3 çorba kaşığı"
+            cleanedYemekAdi = cleanedYemekAdi
+                .replace(/^\d+\.\s*/i, '')           // "2. " gibi
+                .replace(/^\d+\s*adet\s*/i, '')      // "2 adet"
+                .replace(/^\d+\s*dilim\s*/i, '')     // "1 dilim"
+                .replace(/^\d+\s*gram\s*/i, '')      // "100 gram"
+                .replace(/^\d+\s*g\s*/i, '')         // "100g"
+                .replace(/^\d+\s*ml\s*/i, '')        // "200 ml"
+                .replace(/^\d+\s*porsiyon\s*/i, '') // "2 porsiyon"
+                .replace(/^\d+\s*su bardağı\s*/i, '') // "1 su bardağı"
+                .replace(/^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*/i, '') // "1 tatlı kaşığı"
+                .replace(/^\d+\s*kase\s*/i, '');    // "1 kase"
+            
+            cleanedYemekAdi = cleanedYemekAdi.trim();
+            
+            const normalized = normalizeText(cleanedYemekAdi);
+            const bulunanKartlar = [];
+            
+            // 1. ÖNCE MANUEL EŞLEŞTİRMELERE BAK
+            // Hem orijinal hem normalize isimle kontrol et
+            let manuelData = manuelEslestirmeler[yemekAdi];
+            
+            if (!manuelData) {
+                // Normalize isimle de dene
+                const normalizedKey = Object.keys(manuelEslestirmeler).find(key => 
+                    normalizeText(key) === normalized
+                );
+                if (normalizedKey) {
+                    manuelData = manuelEslestirmeler[normalizedKey];
+                }
+            }
+            
+            if (manuelData) {
+                // Manuel data objekt veya string olabilir
+                let manuelTarifAdlari = [];
+                
+                if (typeof manuelData === 'object' && manuelData.kartlar) {
+                    // Yeni format: {orijinalMetin: '...', kartlar: ['tarif1.jpg', ...]}
+                    manuelTarifAdlari = manuelData.kartlar;
+                } else if (typeof manuelData === 'string') {
+                    // Eski format: string
+                    manuelTarifAdlari = [manuelData];
+                } else {
+                    manuelTarifAdlari = [manuelData];
+                }
+                
+                // Her tarif adını dene ve bulduklarını ekle
+                for (const manuelTarifAdi of manuelTarifAdlari) {
+                    const manuelTarif = tarifKartlari.find(tarif => {
+                        // Dosya adından uzantıyı kaldır
+                        const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                        const manuelName = typeof manuelTarifAdi === 'string' 
+                            ? manuelTarifAdi.replace(/\.(jpg|jpeg|png)$/i, '') 
+                            : manuelTarifAdi;
+                        
+                        return normalizeText(tarifName) === normalizeText(manuelName) ||
+                               tarifName === manuelName;
+                    });
+                    
+                    if (manuelTarif && !bulunanKartlar.includes(manuelTarif)) {
+                        console.log('🔗 Manuel eşleştirme bulundu:', yemekAdi, '→', manuelTarifAdi);
+                        bulunanKartlar.push(manuelTarif);
+                    }
+                }
+                
+                if (bulunanKartlar.length > 0) {
+                    return bulunanKartlar; // Manuel eşleştirme varsa sadece onları döndür
+                }
+                
+                console.warn('⚠️ Manuel eşleştirme tanımlı ama tarif bulunamadı:', yemekAdi, '→', manuelTarifAdlari);
+            }
+            
+            // 2. OTOMATİK EŞLEŞTME - YASAK KURALLARI KONTROL ET
+            console.log('🔍 Otomatik eşleşme arıyor:', {
+                orijinal: yemekAdi,
+                temizlenmiş: cleanedYemekAdi,
+                normalize: normalized,
+                tarifSayisi: tarifKartlari.length
+            });
+            
+            // İlk 5 tarifi göster (debug için)
+            if (tarifKartlari.length > 0) {
+                console.log('📋 İlk 5 tarif:', tarifKartlari.slice(0, 5).map(t => t.name));
+            }
+            
+            // Önce tam eşleşme dene
+            let potansiyelTarif = tarifKartlari.find(tarif => {
+                const tarifNameWithoutExt = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifNormalized = normalizeText(tarifNameWithoutExt);
+                
+                // Debug: İlk 3 karşılaştırmayı göster
+                if (tarifKartlari.indexOf(tarif) < 3) {
+                    console.log(`  Karşılaştırma: "${tarifNormalized}" vs "${normalized}"`);
+                }
+                
+                // Tam eşleşme
+                if (tarifNormalized === normalized) {
+                    console.log('✅ Tam eşleşme bulundu:', tarif.name);
+                    return true;
+                }
+                
+                // Alt çizgi ile değiştirilmiş hali (_) 
+                const tarifWithUnderscore = tarifNormalized.replace(/_/g, '');
+                if (tarifWithUnderscore === normalized) {
+                    console.log('✅ Alt çizgi temizli eşleşme bulundu:', tarif.name);
+                    return true;
+                }
+                
+                return false;
+            });
+            
+            // Tam eşleşme bulunamazsa, içeriyor mu diye bak
+            if (!potansiyelTarif) {
+                potansiyelTarif = tarifKartlari.find(tarif => {
+                    const tarifNameWithoutExt = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                    const tarifNormalized = normalizeText(tarifNameWithoutExt);
+                    
+                    return tarifNormalized.includes(normalized) || normalized.includes(tarifNormalized);
+                });
+            }
+            
+            if (potansiyelTarif) {
+                const tarifAdi = potansiyelTarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                
+                // Yasak kurallarını kontrol et
+                const yasakData = eslesmemeKurallari[yemekAdi] || 
+                                 eslesmemeKurallari[normalizeText(yemekAdi)] ||
+                                 eslesmemeKurallari[cleanedYemekAdi] ||
+                                 eslesmemeKurallari[normalizeText(cleanedYemekAdi)];
+                
+                if (yasakData) {
+                    // Yeni format: {yasakliKartlar: [...]} veya eski format: [...]
+                    let yasakListesi = [];
+                    
+                    if (Array.isArray(yasakData)) {
+                        yasakListesi = yasakData;
+                    } else if (yasakData.yasakliKartlar && Array.isArray(yasakData.yasakliKartlar)) {
+                        yasakListesi = yasakData.yasakliKartlar;
+                    }
+                    
+                    for (const yasak of yasakListesi) {
+                        const yasakNormalized = normalizeText(yasak);
+                        const tarifNormalized = normalizeText(tarifAdi);
+                        
+                        if (tarifNormalized.includes(yasakNormalized) || 
+                            yasakNormalized.includes(tarifNormalized) ||
+                            tarifNormalized === yasakNormalized) {
+                            console.log('🚫 Yasak kural devrede:', yemekAdi, '≠', tarifAdi, '(yasak:', yasak + ')');
+                            return []; // Yasaklı eşleşme, gösterme
+                        }
+                    }
+                }
+                
+                return [potansiyelTarif];
+            }
+            
+            return [];
+        }
+
+        // Diyet tipini belirle
+        function getDietType(food) {
+            if (food.keto) return 'keto';
+            if (food.lowcarb) return 'lowcarb';
+            return 'other';
+        }
+
+        // Yemek arama - Akıllı autocomplete
+        const searchInput = document.getElementById('yemekArama');
+        const dropdown = document.getElementById('autocompleteDropdown');
+        let currentFocusIndex = -1;
+        let dropdownMatches = [];
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            currentFocusIndex = -1;
+            
+            if (query.length < 2) {
+                dropdown.classList.remove('show');
+                dropdown.innerHTML = '';
+                dropdownMatches = [];
+                selectedFood = null;
+                document.getElementById('selectedFood').classList.remove('show');
+                // matchSection artık yok, bu satırı kaldır
+                document.getElementById('resultHeader').classList.remove('show');
+                document.getElementById('resultsList').innerHTML = '<div class="no-results">👆 Yukarıdan yemek arayın</div>';
+                return;
+            }
+
+            // Multi-word search: "çor" -> arama, "tav çor" -> tavuk çorbası
+            const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+            
+            const matches = foodDatabase.filter(food => {
+                const name = normalizeText(food.name);
+                return queryWords.every(word => {
+                    const normalizedWord = normalizeText(word);
+                    return name.includes(normalizedWord);
+                });
+            }).slice(0, 10);
+
+            dropdownMatches = matches;
+
+            if (matches.length > 0) {
+                dropdown.innerHTML = matches.map((food, index) => {
+                    return `
+                        <div class="autocomplete-item" data-index="${index}" onclick="selectFoodFromDropdown('${food.name.replace(/'/g, "\\'")}')">
+                            <div class="food-name-text">${food.name}</div>
+                            <div class="food-meta-text" style="display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: #666;">
+                                <span>🔥 ${Math.round(food.calories || 0)} kcal</span>
+                                <span>🍞 ${Math.round(food.carbs || 0)}g</span>
+                                <span>🥩 ${Math.round(food.protein || 0)}g</span>
+                                <span>� ${Math.round(food.fat || 0)}g</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Dropdown pozisyonunu dinamik hesapla (fixed position)
+                const rect = searchInput.getBoundingClientRect();
+                dropdown.style.top = `${rect.bottom}px`;
+                dropdown.style.left = `${rect.left}px`;
+                dropdown.style.width = `${rect.width}px`;
+                
+                dropdown.classList.add('show');
+            } else {
+                dropdown.classList.remove('show');
+                dropdown.innerHTML = '';
+                dropdownMatches = [];
+            }
+        });
+
+        // Klavye navigasyonu
+        searchInput.addEventListener('keydown', (e) => {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocusIndex++;
+                if (currentFocusIndex >= items.length) currentFocusIndex = 0;
+                setActiveItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocusIndex--;
+                if (currentFocusIndex < 0) currentFocusIndex = items.length - 1;
+                setActiveItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentFocusIndex > -1 && items[currentFocusIndex]) {
+                    items[currentFocusIndex].click();
+                }
+            } else if (e.key === 'Escape') {
+                dropdown.classList.remove('show');
+                currentFocusIndex = -1;
+            }
+        });
+
+        function setActiveItem(items) {
+            // Tüm active class'ları kaldır
+            items.forEach(item => item.classList.remove('active'));
+            
+            // Aktif item'a class ekle ve scroll yap
+            if (currentFocusIndex > -1 && items[currentFocusIndex]) {
+                items[currentFocusIndex].classList.add('active');
+                items[currentFocusIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        // Dropdown dışına tıklayınca kapat
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Dropdown'dan seçim
+        function selectFoodFromDropdown(foodName) {
+            const food = foodDatabase.find(f => f.name === foodName);
+            if (food) {
+                selectedFood = food;
+                searchInput.value = food.name;
+                dropdown.classList.remove('show');
+                showSelectedFood(food);
+                findAlternatives(food);
+            }
+        }
+
+        // Seçili yemeği göster - Tam sayıya yuvarla
+        function showSelectedFood(food) {
+            document.getElementById('selectedName').textContent = food.name;
+            
+            document.getElementById('selectedMacros').innerHTML = `
+                <div class="macro-box">
+                    <strong>${Math.round(food.calories || 0)}</strong>
+                    <span>Kalori</span>
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.carbs || 0)}g</strong>
+                    <span>Karb</span>
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.protein || 0)}g</strong>
+                    <span>Protein</span>
+                </div>
+                <div class="macro-box">
+                    <strong>${Math.round(food.fat || 0)}g</strong>
+                    <span>Yağ</span>
+                </div>
+            `;
+
+            const dietType = food.keto ? 'Ketojenik' : food.lowcarb ? 'Düşük Karb' : 'Genel';
+            
+            // Tarif kartları bul (birden fazla olabilir)
+            const tarifKartlari = findTarifKartlari(food.name);
+            const tarifButtons = tarifKartlari.map((tarif, index) => {
+                // Birden fazla tarif varsa "Tarif 1", "Tarif 2", tek varsa sadece "Tarif"
+                const tarifLabel = tarifKartlari.length > 1 ? `Tarif ${index + 1}` : 'Tarif';
+                return `<span class="info-tag" onclick="openModal('${tarif.download_url}')" style="cursor: pointer; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">� ${tarifLabel} 👆</span>`;
+            }).join('');
+            
+            // Etiketleri tıklanabilir checkbox'lar olarak göster
+            const categoryTag = food.category ? 
+                `<span class="info-tag clickable-tag ${matchCriteria.category ? 'active' : ''}" 
+                       onclick="toggleCriterion('category')" 
+                       style="cursor: pointer;">
+                    📂 ${food.category}
+                </span>` : '';
+            
+            const roleTag = food.role ? 
+                `<span class="info-tag clickable-tag ${matchCriteria.role ? 'active' : ''}" 
+                       onclick="toggleCriterion('role')" 
+                       style="cursor: pointer;">
+                    👨‍🍳 ${food.role}
+                </span>` : '';
+            
+            const mealTypeTag = food.mealType ? 
+                `<span class="info-tag clickable-tag ${matchCriteria.mealType ? 'active' : ''}" 
+                       onclick="toggleCriterion('mealType')" 
+                       style="cursor: pointer;">
+                    🍽️ ${food.mealType}
+                </span>` : '';
+            
+            const dietTypeTag = `<span class="info-tag clickable-tag ${matchCriteria.dietType ? 'active' : ''}" 
+                       onclick="toggleCriterion('dietType')" 
+                       style="cursor: pointer;">
+                    🥗 ${dietType}
+                </span>`;
+            
+            document.getElementById('selectedInfo').innerHTML = `
+                ${roleTag}
+                ${mealTypeTag}
+                ${dietTypeTag}
+            `;
+            
+            // Tarif kartlarını ayrı div'e ekle
+            document.getElementById('selectedTarifler').innerHTML = tarifButtons;
+
+            document.getElementById('selectedFood').classList.add('show');
+        }
+        
+        // Kriter toggle fonksiyonu
+        function toggleCriterion(criterion) {
+            matchCriteria[criterion] = !matchCriteria[criterion];
+            
+            // Seçili yemeği yeniden göster (checkbox'ları güncelle)
+            if (originalSelectedFood) {
+                showSelectedFood(originalSelectedFood);
+                // Alternatifleri yeniden hesapla
+                findAlternatives(originalSelectedFood);
+            }
+        }
+
+        // Alternatif bul
+        function findAlternatives(selectedFood) {
+            // ⚠️ ÖNEMLİ: Filtreleme her zaman ilk seçilen yemeğe (MOR ALAN) göre yapılır
+            const referenceFood = selectedFood; // İlk çağrıda MOR alandaki yemek
+            const selectedDietType = getDietType(referenceFood);
+            
+            // İlk seçilen yemeği kaydet
+            originalSelectedFood = selectedFood;
+            currentIndex = 0;
+
+            let alternatives = foodDatabase.filter(food => {
+                if (food.name === referenceFood.name) return false;
+
+                // VE (AND) mantığı: Tüm seçili kriterler sağlanmalı
+                
+                // ✅ Öğün tipi kontrolü - MOR ALAN yemeğine göre
+                if (matchCriteria.mealType && food.mealType !== referenceFood.mealType) {
+                    return false; // Eşleşmiyorsa hemen eleme
+                }
+                
+                // ✅ Role kontrolü - MOR ALAN yemeğine göre
+                if (matchCriteria.role && food.role !== referenceFood.role) {
+                    return false;
+                }
+                
+                // ✅ Kategori kontrolü - MOR ALAN yemeğine göre
+                if (matchCriteria.category && food.category !== referenceFood.category) {
+                    return false;
+                }
+                
+                // ✅ Diyet tipi kontrolü - MOR ALAN yemeğine göre
+                if (matchCriteria.dietType) {
+                    const foodDietType = getDietType(food);
+                    if (selectedDietType === 'keto') {
+                        // Keto seçiliyse sadece keto
+                        if (foodDietType !== 'keto') return false;
+                    } else if (selectedDietType === 'lowcarb') {
+                        // Lowcarb seçiliyse keto veya lowcarb
+                        if (foodDietType !== 'keto' && foodDietType !== 'lowcarb') return false;
+                    }
+                    // Other seçiliyse her şey geçerli
+                }
+
+                // Tüm seçili kriterler sağlanıyor
+                return true;
+            });
+
+            // Benzerlik skoru hesapla - Çoklu makro desteği
+            alternatives = alternatives.map(food => {
+                let similarity = 100;
+
+                if (scoreBy.length === 0) {
+                    // Hiçbir şey seçili değilse tüm makroları kullan
+                    const calDiff = Math.abs((food.calories || 0) - (selectedFood.calories || 0));
+                    const proteinDiff = Math.abs((food.protein || 0) - (selectedFood.protein || 0));
+                    const carbDiff = Math.abs((food.carbs || 0) - (selectedFood.carbs || 0));
+                    const fatDiff = Math.abs((food.fat || 0) - (selectedFood.fat || 0));
+                    similarity = Math.max(0, 100 - (calDiff/5 + proteinDiff*2 + carbDiff*2 + fatDiff*2));
+                } else {
+                    // Seçili makroların ortalamasını al
+                    let totalDiff = 0;
+                    let count = 0;
+
+                    if (scoreBy.includes('calories')) {
+                        const diff = Math.abs((food.calories || 0) - (selectedFood.calories || 0));
+                        totalDiff += diff / 5; // Kalori için 5'e böl (daha az ağırlık)
+                        count++;
+                    }
+                    if (scoreBy.includes('protein')) {
+                        const diff = Math.abs((food.protein || 0) - (selectedFood.protein || 0));
+                        totalDiff += diff * 3; // Protein için 3 ile çarp (daha fazla ağırlık)
+                        count++;
+                    }
+                    if (scoreBy.includes('carbs')) {
+                        const diff = Math.abs((food.carbs || 0) - (selectedFood.carbs || 0));
+                        totalDiff += diff * 3; // Karb için 3 ile çarp
+                        count++;
+                    }
+                    if (scoreBy.includes('fat')) {
+                        const diff = Math.abs((food.fat || 0) - (selectedFood.fat || 0));
+                        totalDiff += diff * 3; // Yağ için 3 ile çarp
+                        count++;
+                    }
+
+                    const avgDiff = count > 0 ? totalDiff / count : 0;
+                    similarity = Math.max(0, 100 - avgDiff);
+                }
+
+                return { ...food, similarity: Math.round(similarity) };
+            });
+
+            alternatives.sort((a, b) => b.similarity - a.similarity);
+            
+            // Alternatifleri kaydet
+            currentAlternatives = alternatives;
+            currentIndex = 0; // İlk alternatiften başla
+            
+            displayResults(alternatives, 'Benzer Alternatifler:');
+            
+            // İlk alternatifi otomatik olarak yeşil alanda göster
+            if (alternatives.length > 0) {
+                setTimeout(() => {
+                    navigateToFood(0); // İlk alternatif (index 0)
+                }, 100);
+            } else {
+                // Alternatif yoksa yeşil alanı gizle
+                setTimeout(() => {
+                    document.getElementById('alternativeFood').classList.remove('show');
+                    highlightTableRow(-1);
+                }, 100);
+            }
+        }
+
+        // Sonuçları tablo olarak göster
+        function displayResults(foods, title) {
+            const resultHeader = document.getElementById('resultHeader');
+            const resultsList = document.getElementById('resultsList');
+            const resultCount = document.getElementById('resultCount');
+
+            if (foods.length === 0) {
+                resultHeader.classList.remove('show');
+                resultHeader.classList.add('collapsed');
+                resultsList.classList.add('collapsed');
+                resultsList.innerHTML = '<div class="no-results">😕 Alternatif bulunamadı</div>';
+                return;
+            }
+
+            // ✨ Dinamik sayı gösterimi - akordiyon başlığını güncelle
+            resultCount.textContent = foods.length;
+            resultHeader.classList.add('show');
+            // İlk açılışta kapalı kalsın (collapsed)
+            if (!resultHeader.classList.contains('collapsed')) {
+                resultHeader.classList.add('collapsed');
+                resultsList.classList.add('collapsed');
+            }
+
+            const tableHTML = `
+                <table class="food-table">
+                    <thead>
+                        <tr>
+                            <th>Yemek Adı</th>
+                            <th style="text-align: center; width: 65px;">Benzerlik</th>
+                            <th style="text-align: center; width: 60px;">Kalori</th>
+                            <th style="text-align: center; width: 55px;">Karb</th>
+                            <th style="text-align: center; width: 60px;">Protein</th>
+                            <th style="text-align: center; width: 50px;">Yağ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${foods.map(food => {
+                            // Farkları hesapla ve TAM SAYIYA YUVARLA
+                            const calDiff = selectedFood ? Math.round((food.calories || 0) - (selectedFood.calories || 0)) : 0;
+                            const proteinDiff = selectedFood ? Math.round((food.protein || 0) - (selectedFood.protein || 0)) : 0;
+                            const carbDiff = selectedFood ? Math.round((food.carbs || 0) - (selectedFood.carbs || 0)) : 0;
+                            const fatDiff = selectedFood ? Math.round((food.fat || 0) - (selectedFood.fat || 0)) : 0;
+
+                            const formatDiff = (val) => {
+                                if (!selectedFood || val === 0) return '';
+                                const sign = val > 0 ? '+' : '';
+                                const className = val > 0 ? 'positive' : 'negative';
+                                return `<span class="macro-diff ${className}">${sign}${val}</span>`;
+                            };
+
+                            const dietType = food.keto ? 'Keto' : food.lowcarb ? 'LowCarb' : '';
+                            
+                            // Tarif kartları kontrolü (birden fazla olabilir)
+                            const tarifKartlari = findTarifKartlari(food.name);
+                            const tarifBadges = tarifKartlari.map((tarif, index) => {
+                                // Birden fazla tarif varsa "Tarif 1", "Tarif 2", tek varsa sadece "Tarif"
+                                const tarifLabel = tarifKartlari.length > 1 ? `Tarif ${index + 1}` : 'Tarif';
+                                return `<span class="meta-tag" onclick="event.stopPropagation(); openModal('${tarif.download_url}');" style="cursor: pointer; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">� ${tarifLabel} 👆</span>`;
+                            }).join('');
+
+                            // 🎨 Benzerlik oranına göre arka plan rengi
+                            const similarity = food.similarity || 0;
+                            let rowStyle = '';
+                            if (similarity < 50) {
+                                rowStyle = 'background-color: #ffcccc;'; // %50 altı: Açık kırmızı
+                            } else if (similarity < 70) {
+                                rowStyle = 'background-color: #ffffcc;'; // %70 altı: Açık sarı
+                            }
+
+                            return `
+                                <tr data-food-name="${food.name}" onclick="selectFood('${food.name.replace(/'/g, "\\'")}');" style="${rowStyle} cursor: pointer;">
+                                    <td>
+                                        <div class="food-name">
+                                            ${food.name}
+                                        </div>
+                                        <div class="food-meta">
+                                            ${food.role ? `<span class="meta-tag">${food.role}</span>` : ''}
+                                            ${food.mealType ? `<span class="meta-tag">${food.mealType}</span>` : ''}
+                                            ${dietType ? `<span class="meta-tag">${dietType}</span>` : ''}
+                                            ${tarifBadges}
+                                        </div>
+                                    </td>
+                                    <td class="macro-value" style="text-align: center;">
+                                        ${food.similarity !== undefined ? `<span class="similarity-badge">${food.similarity}%</span>` : '-'}
+                                    </td>
+                                    <td class="macro-value">
+                                        ${Math.round(food.calories || 0)}
+                                        ${formatDiff(calDiff)}
+                                    </td>
+                                    <td class="macro-value">
+                                        ${Math.round(food.carbs || 0)}g
+                                        ${formatDiff(carbDiff)}
+                                    </td>
+                                    <td class="macro-value">
+                                        ${Math.round(food.protein || 0)}g
+                                        ${formatDiff(proteinDiff)}
+                                    </td>
+                                    <td class="macro-value">
+                                        ${Math.round(food.fat || 0)}g
+                                        ${formatDiff(fatDiff)}
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            resultsList.innerHTML = tableHTML;
+            
+            // Event delegation - tablo satırlarına click eventi ekle
+            const tableBody = resultsList.querySelector('.food-table tbody');
+            if (tableBody) {
+                tableBody.addEventListener('click', function(e) {
+                    // En yakın tr elemanını bul
+                    const tr = e.target.closest('tr');
+                    if (tr && tr.dataset.foodName) {
+                        console.log('Table row clicked:', tr.dataset.foodName);
+                        selectFood(tr.dataset.foodName);
+                    }
+                });
+            }
+        }
+
+        // Yemek seç (tablodan tıklama)
+        window.selectFood = function(foodName) {
+            console.log('selectFood called with:', foodName);
+            const food = currentAlternatives.find(f => f.name === foodName);
+            if (food) {
+                console.log('Food found:', food);
+                const index = currentAlternatives.indexOf(food);
+                currentIndex = index;
+                selectedFood = food;
+                navigateToFood(index);
+            } else {
+                console.log('Food not found in currentAlternatives');
+            }
+        }
+
+        // Skorlama butonları - Çoklu seçim (checkbox mantığı)
+        document.querySelector('[data-score]').parentElement.addEventListener('click', (e) => {
+            if (e.target.dataset.score) {
+                const score = e.target.dataset.score;
+                
+                if (score === 'all') {
+                    // "Tüm Makrolar" tıklandı
+                    if (scoreBy.length === 4) {
+                        // Zaten tümü seçili, hiçbiri olsun
+                        scoreBy = [];
+                        document.querySelectorAll('[data-score]').forEach(btn => btn.classList.remove('active'));
+                    } else {
+                        // Tümünü seç
+                        scoreBy = ['calories', 'protein', 'carbs', 'fat'];
+                        document.querySelectorAll('[data-score]').forEach(btn => btn.classList.add('active'));
+                    }
+                } else {
+                    // Özel makro tıklandı
+                    const index = scoreBy.indexOf(score);
+                    if (index > -1) {
+                        // Zaten seçili, kaldır
+                        scoreBy.splice(index, 1);
+                        e.target.classList.remove('active');
+                    } else {
+                        // Seçili değil, ekle
+                        scoreBy.push(score);
+                        e.target.classList.add('active');
+                    }
+                    
+                    // "Tüm Makrolar" butonunu güncelle
+                    const allBtn = document.querySelector('[data-score="all"]');
+                    if (scoreBy.length === 4) {
+                        allBtn.classList.add('active');
+                    } else {
+                        allBtn.classList.remove('active');
+                    }
+                }
+                
+                // ✅ Filtreler her zaman MOR ALANdaki (ilk seçilen) yemeğe göre uygulanır
+                if (originalSelectedFood) findAlternatives(originalSelectedFood);
+            }
+        });
+
+        // Kriter butonları - artık kullanılmıyor, etiketler tıklanabilir hale geldi
+        // Bu event listener'ı kaldırıyoruz çünkü artık [data-criterion] elementi yok
+        // const criterionElement = document.querySelector('[data-criterion]');
+        // if (criterionElement) {
+        //     criterionElement.parentElement.addEventListener('click', (e) => {
+        //         if (e.target.dataset.criterion) {
+        //             const criterion = e.target.dataset.criterion;
+        //             matchCriteria[criterion] = !matchCriteria[criterion];
+        //             e.target.classList.toggle('active');
+        //             if (originalSelectedFood) findAlternatives(originalSelectedFood);
+        //         }
+        //     });
+        // }
+
+        // Akordiyon toggle fonksiyonu
+        document.getElementById('resultHeader').addEventListener('click', function() {
+            const header = this;
+            const resultsList = document.getElementById('resultsList');
+            
+            header.classList.toggle('collapsed');
+            resultsList.classList.toggle('collapsed');
+            
+            // Açılırken scroll'u en üste al
+            if (!resultsList.classList.contains('collapsed')) {
+                setTimeout(() => {
+                    resultsList.scrollTop = 0;
+                }, 50);
+            }
+        });
+
+        // 📱 Responsive placeholder - ekran boyutuna göre
+        function updatePlaceholder() {
+            const searchInput = document.getElementById('yemekArama');
+            if (window.innerWidth <= 576) {
+                searchInput.placeholder = '🍽️ Yemek ara (ör: Tavuk)';
+            } else if (window.innerWidth <= 768) {
+                searchInput.placeholder = '🍽️ Yemek Alternatif Bulucu - Ara';
+            } else {
+                searchInput.placeholder = '🍽️ Yemek Alternatif Bulucu - Yemek adı yazın (ör: Izgara Tavuk)';
+            }
+        }
+
+        // Sayfa yüklenince ve resize'da çalıştır
+        updatePlaceholder();
+        window.addEventListener('resize', updatePlaceholder);
+
+        loadFoodData();
+    </script>
+</body>
+</html>
