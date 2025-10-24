@@ -1315,17 +1315,21 @@
             }
 
             console.log('👤 Kullanıcı adı:', session.username);
+            console.log('🆔 Patient ID:', session.patientId);
 
+            // patientId'yi kullan (patient_ prefix'i zaten var)
+            const patientId = session.patientId || `patient_${session.username}`;
+            
             // GitHub'dan hasta bilgilerini çek
-            fetchPatientData(session.username);
+            fetchPatientData(patientId);
         }
 
         // GitHub'dan hasta verilerini çek
-        async function fetchPatientData(username) {
+        async function fetchPatientData(patientId) {
             try {
-                // Username'i temizle (patient_ prefix'i varsa kaldır)
-                const cleanUsername = username.replace(/^patient_/i, '');
-                const fileName = `patient_${cleanUsername}.json`;
+                // patientId zaten "patient_" ile başlıyor, temizle
+                const cleanId = patientId.replace(/^patient_/i, '');
+                const fileName = `patient_${cleanId}.json`;
                 
                 console.log('🔍 Hasta verisi çekiliyor:', fileName);
                 
@@ -1349,7 +1353,7 @@
                 document.getElementById('userGender').value = info.gender || '';
                 document.getElementById('userWeight').value = info.weight || '';
                 document.getElementById('userHeight').value = info.height || '';
-                document.getElementById('userUsername').value = cleanUsername;
+                document.getElementById('userUsername').value = cleanId;
                 document.getElementById('userPassword').value = ''; // Şifre alanı boş
                 
                 // BMI hesapla
@@ -1360,7 +1364,7 @@
                 
             } catch (error) {
                 console.error('❌ Hasta verileri yüklenemedi:', error);
-                alert('❌ Hasta bilgileri yüklenemedi!\n\nDosya: hastalar/patient_' + username.replace(/^patient_/i, '') + '.json\n\nHata: ' + error.message + '\n\nLütfen admin ile iletişime geçin.');
+                alert('❌ Hasta bilgileri yüklenemedi!\n\nDosya: hastalar/patient_' + patientId.replace(/^patient_/i, '') + '.json\n\nHata: ' + error.message + '\n\nLütfen admin ile iletişime geçin.');
             }
         }
 
