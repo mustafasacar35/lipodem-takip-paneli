@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { name, surname, age, gender, weight, height, username, password, passwordHash } = req.body;
+        const { name, surname, age, gender, weight, height, username, password, passwordHash, patientId } = req.body;
 
         // Validasyon
         if (!name || !surname || !age || !gender || !weight || !height || !username) {
@@ -42,7 +42,10 @@ export default async function handler(req, res) {
         const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Vercel environment variable
         const REPO_OWNER = 'mustafasacar35';
         const REPO_NAME = 'lipodem-takip-paneli';
-        const FILE_PATH = `hastalar/patient_${username}.json`;
+        // patientId varsa onu kullan, yoksa username'den oluştur
+        const FILE_PATH = patientId 
+            ? `hastalar/${patientId}.json`
+            : `hastalar/patient_${username}.json`;
         
         if (!GITHUB_TOKEN) {
             return res.status(500).json({ 

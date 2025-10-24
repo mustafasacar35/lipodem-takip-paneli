@@ -1422,7 +1422,11 @@
         document.getElementById('userSettingsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Session'dan patientId al
+            const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+            
             const formData = {
+                patientId: session.patientId,
                 name: document.getElementById('userName').value.trim(),
                 surname: document.getElementById('userSurname').value.trim(),
                 age: parseInt(document.getElementById('userAge').value),
