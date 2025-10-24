@@ -1317,11 +1317,16 @@
             console.log('👤 Kullanıcı adı:', session.username);
             console.log('🆔 Patient ID:', session.patientId);
 
+            // Modal'ı aç
+            modal.style.display = 'flex';
+
             // patientId'yi kullan (patient_ prefix'i zaten var)
             const patientId = session.patientId || `patient_${session.username}`;
             
-            // GitHub'dan hasta bilgilerini çek
-            fetchPatientData(patientId);
+            // Modal açıldıktan sonra veriyi çek (DOM elemanları hazır olsun diye setTimeout)
+            setTimeout(() => {
+                fetchPatientData(patientId);
+            }, 100);
         }
 
         // GitHub'dan hasta verilerini çek
