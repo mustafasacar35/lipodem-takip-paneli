@@ -120,6 +120,7 @@ export default async function handler(req, res) {
         // 4. Şifre değiştiyse index.json'u da güncelle
         if (passwordHash) {
             try {
+                console.log('🔐 Şifre güncelleme başlatıldı:', username);
                 const indexPath = 'hastalar/index.json';
                 const indexUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${indexPath}`;
                 
@@ -130,21 +131,29 @@ export default async function handler(req, res) {
                     }
                 });
 
+                console.log('📥 index.json GET status:', indexGetResponse.status);
+
                 if (indexGetResponse.ok) {
                     const indexData = await indexGetResponse.json();
                     const indexContent = JSON.parse(
                         Buffer.from(indexData.content, 'base64').toString('utf-8')
                     );
 
+                    console.log('👥 Toplam hasta sayısı:', indexContent.patients.length);
+
                     // Kullanıcıyı bul ve güncelle
                     const userIndex = indexContent.patients.findIndex(u => u.username === username);
+                    console.log('🔍 Kullanıcı index:', userIndex);
+                    
                     if (userIndex !== -1) {
                         indexContent.patients[userIndex].passwordHash = passwordHash;
                         indexContent.patients[userIndex].name = name;
                         indexContent.patients[userIndex].surname = surname;
 
+                        console.log('💾 index.json PUT gönderiliyor...');
+
                         // index.json'u güncelle
-                        await fetch(indexUrl, {
+                        const putResponse = await fetch(indexUrl, {
                             method: 'PUT',
                             headers: {
                                 'Authorization': `token ${GITHUB_TOKEN}`,
@@ -157,10 +166,23 @@ export default async function handler(req, res) {
                                 sha: indexData.sha
                             })
                         });
+
+                        console.log('📤 index.json PUT status:', putResponse.status);
+                        
+                        if (!putResponse.ok) {
+                            const errorData = await putResponse.json();
+                            console.error('❌ index.json PUT hatası:', errorData);
+                        } else {
+                            console.log('✅ index.json başarıyla güncellendi');
+                        }
+                    } else {
+                        console.log('⚠️ Kullanıcı index.json\'da bulunamadı:', username);
                     }
+                } else {
+                    console.error('❌ index.json GET hatası:', indexGetResponse.status);
                 }
             } catch (indexError) {
-                console.error('index.json güncelleme hatası:', indexError);
+                console.error('❌ index.json güncelleme hatası:', indexError);
                 // index.json hatası kritik değil, devam et
             }
         }
