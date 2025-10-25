@@ -472,62 +472,7 @@
         }
         console.info('[Shim] Final check - window.PatientAuth:', !!window.PatientAuth);
     </script>
-    <!-- Page init BEFORE admin_auth loads, so protectPage is called by page not auto-guard -->
-    <script>
-        // Gate the page behind admin auth
-        window.addEventListener('DOMContentLoaded', async () => {
-            console.info('[Settings] DOMContentLoaded, initializing auth');
-            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
-            
-            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
-                console.info('[Settings] Calling AdminAuth.protectPage');
-                try {
-                    await AdminAuth.protectPage({ forcePrompt: relogin });
-                    console.info('[Settings] Auth successful, session:', AdminAuth.getSession());
-                } catch(err) {
-                    console.error('[Settings] protectPage error:', err);
-                    return;
-                }
-            }
-            
-            // Wait for body and scripts to fully load
-            console.info('[Settings] Waiting for document.readyState=complete');
-            if (document.readyState !== 'complete') {
-                await new Promise(resolve => {
-                    window.addEventListener('load', resolve, { once: true });
-                });
-            }
-            console.info('[Settings] Document fully loaded. readyState:', document.readyState);
-            
-            // Wait for body scripts to define functions (poll with timeout)
-            const waitForFunctions = async () => {
-                const maxWait = 5000; // 5 seconds max
-                const interval = 50;
-                let elapsed = 0;
-                
-                while (elapsed < maxWait) {
-                    if (typeof window.addLogoutButton === 'function' && typeof window.init === 'function') {
-                        console.info('[Settings] Functions are ready!');
-                        return true;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, interval));
-                    elapsed += interval;
-                }
-                console.error('[Settings] Timeout waiting for functions');
-                return false;
-            };
-            
-            const ready = await waitForFunctions();
-            
-            // Now call page functions from window scope
-            console.info('[Settings] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'init:', typeof window.init);
-            if (typeof window.addLogoutButton === 'function') window.addLogoutButton();
-            else console.error('[Settings] addLogoutButton is not a function!');
-            
-            if (typeof window.init === 'function') window.init();
-            else console.error('[Settings] init is not a function!');
-        });
-    </script>
+    <!-- Page init moved to end of body -->
     <!-- Define page functions in head so they're available immediately -->
     <script>
         function addLogoutButton(){
@@ -580,9 +525,7 @@
         console.info('[Head] Functions defined. addLogoutButton:', typeof addLogoutButton, 'init:', typeof init);
     </script>
     <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
-    <script>
-        document.write('<script src="admin_auth.js?v=' + Date.now() + '"><\\/scr' + 'ipt>');
-    </script>
+    <script src="admin_auth.js"></script>
 </head>
 <body>
     <div class="settings-wrapper">
@@ -1689,6 +1632,25 @@
 
         async function saveSettingsToGitHub(payload, token) {
             const endpoint = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SETTINGS_PATH}`;
+            
+            // Fetch latest SHA to avoid conflicts
+            console.info('[Settings] Fetching latest SHA before save...');
+            try {
+                const getResponse = await fetch(endpoint, {
+                    headers: {
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (getResponse.ok) {
+                    const currentFile = await getResponse.json();
+                    settingsSha = currentFile.sha;
+                    console.info('[Settings] Latest SHA fetched:', settingsSha);
+                }
+            } catch (e) {
+                console.warn('[Settings] Could not fetch latest SHA:', e);
+            }
+            
             const prepared = JSON.stringify(payload, null, 4);
             const encodedContent = btoa(unescape(encodeURIComponent(prepared)));
             const requestBody = {
@@ -1892,6 +1854,43 @@
                 event.preventDefault();
             }, { passive: false });
         })();
+    </script>
+    
+    <!-- Page initialization - runs after body is parsed -->
+    <script>
+        // Use setTimeout to ensure DOM is fully parsed
+        setTimeout(async () => {
+            console.info('[Settings] Script running at end of body (after timeout)');
+            console.info('[Settings] .settings-wrapper check:', document.querySelector('.settings-wrapper'));
+            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
+            
+            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
+                console.info('[Settings] Calling AdminAuth.protectPage');
+                try {
+                    await AdminAuth.protectPage({ 
+                        forcePrompt: relogin,
+                        afterLogin: () => {
+                            console.info('[Settings] afterLogin callback fired');
+                        }
+                    });
+                    console.info('[Settings] Auth successful, session:', AdminAuth.getSession());
+                } catch(err) {
+                    console.error('[Settings] protectPage error:', err);
+                    return;
+                }
+            }
+            
+            console.info('[Settings] DOM is ready, .settings-wrapper:', document.querySelector('.settings-wrapper'));
+            
+            // Call page functions
+            if (typeof window.addLogoutButton === 'function') {
+                window.addLogoutButton();
+            }
+            
+            if (typeof window.init === 'function') {
+                window.init();
+            }
+        }, 10);
     </script>
 </body>
 </html>

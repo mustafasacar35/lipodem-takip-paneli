@@ -592,62 +592,7 @@
         }
         console.info('[Shim] Final check - window.PatientAuth:', !!window.PatientAuth);
     </script>
-    <!-- Page init BEFORE admin_auth loads, so protectPage is called by page not auto-guard -->
-    <script>
-        // Load patients on page load after admin auth
-        window.addEventListener('DOMContentLoaded', async () => {
-            console.info('[Patients] DOMContentLoaded, initializing auth');
-            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
-            
-            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
-                console.info('[Patients] Calling AdminAuth.protectPage');
-                try {
-                    await AdminAuth.protectPage({ forcePrompt: relogin });
-                    console.info('[Patients] Auth successful, session:', AdminAuth.getSession());
-                } catch(err) {
-                    console.error('[Patients] protectPage error:', err);
-                    return;
-                }
-            }
-            
-            // Wait for body and scripts to fully load
-            console.info('[Patients] Waiting for document.readyState=complete');
-            if (document.readyState !== 'complete') {
-                await new Promise(resolve => {
-                    window.addEventListener('load', resolve, { once: true });
-                });
-            }
-            console.info('[Patients] Document fully loaded. readyState:', document.readyState);
-            
-            // Wait for body scripts to define functions (poll with timeout)
-            const waitForFunctions = async () => {
-                const maxWait = 5000; // 5 seconds max
-                const interval = 50;
-                let elapsed = 0;
-                
-                while (elapsed < maxWait) {
-                    if (typeof window.addLogoutButton === 'function' && typeof window.loadPatients === 'function') {
-                        console.info('[Patients] Functions are ready!');
-                        return true;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, interval));
-                    elapsed += interval;
-                }
-                console.error('[Patients] Timeout waiting for functions');
-                return false;
-            };
-            
-            const ready = await waitForFunctions();
-            
-            // Now call page functions from window scope
-            console.info('[Patients] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'loadPatients:', typeof window.loadPatients);
-            if (typeof window.addLogoutButton === 'function') window.addLogoutButton();
-            else console.error('[Patients] addLogoutButton is not a function!');
-            
-            if (typeof window.loadPatients === 'function') window.loadPatients();
-            else console.error('[Patients] loadPatients is not a function!');
-        });
-    </script>
+    <!-- Page init moved to end of body -->
     <!-- Define page functions in head so they're available immediately -->
     <script>
         // Global variables
@@ -664,20 +609,31 @@
         };
 
         function addLogoutButton(){
+            console.info('[addLogoutButton] Starting...');
             try {
                 const container = document.querySelector('.header-buttons');
-                if (!container || document.getElementById('adminLogoutBtn')) return;
+                console.info('[addLogoutButton] container:', container);
+                if (!container) {
+                    console.warn('[addLogoutButton] .header-buttons not found!');
+                    return;
+                }
+                if (document.getElementById('adminLogoutBtn')) {
+                    console.info('[addLogoutButton] Logout button already exists');
+                    return;
+                }
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-danger';
                 btn.id = 'adminLogoutBtn';
                 btn.textContent = '🚪 Çıkış';
                 btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
                 container.appendChild(btn);
+                console.info('[addLogoutButton] Logout button added successfully');
             } catch(e) { console.error('addLogoutButton error:', e); }
         }
         window.addLogoutButton = addLogoutButton;
 
         async function loadPatients() {
+            console.info('[loadPatients] Starting...');
             try {
                 const response = await fetch(
                     `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/hastalar/index.json`
@@ -688,14 +644,22 @@
                 const data = await response.json();
                 patients = data.patients || [];
                 
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('patientTable').style.display = 'table';
+                const loadingEl = document.getElementById('loadingState');
+                const tableEl = document.getElementById('patientTable');
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (tableEl) tableEl.style.display = 'table';
                 
-                applyFilters();
+                if (typeof applyFilters === 'function') applyFilters();
             } catch (error) {
                 console.error('Error loading patients:', error);
-                showError('Hasta listesi yüklenirken hata oluştu: ' + error.message);
-                document.getElementById('loadingState').innerHTML = '<p style="color: #dc3545;">❌ Yükleme hatası</p>';
+                const errorMsg = 'Hasta listesi yüklenirken hata oluştu: ' + error.message;
+                if (typeof showError === 'function') {
+                    showError(errorMsg);
+                } else {
+                    alert(errorMsg);
+                }
+                const loadingEl = document.getElementById('loadingState');
+                if (loadingEl) loadingEl.innerHTML = '<p style="color: #dc3545;">❌ Yükleme hatası</p>';
             }
         }
         window.loadPatients = loadPatients;
@@ -703,9 +667,7 @@
         console.info('[Head] Functions defined. addLogoutButton:', typeof addLogoutButton, 'loadPatients:', typeof loadPatients);
     </script>
     <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
-    <script>
-        document.write('<script src="admin_auth.js?v=' + Date.now() + '"><\\/scr' + 'ipt>');
-    </script>
+    <script src="admin_auth.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1486,6 +1448,43 @@
             console.log('✅ Uygulama başarıyla yüklendi!');
             deferredPrompt = null;
         });
+    </script>
+    
+    <!-- Page initialization - runs after body is parsed -->
+    <script>
+        // Use setTimeout to ensure DOM is fully parsed
+        setTimeout(async () => {
+            console.info('[Patients] Script running at end of body (after timeout)');
+            console.info('[Patients] .container check:', document.querySelector('.container'));
+            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
+            
+            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
+                console.info('[Patients] Calling AdminAuth.protectPage');
+                try {
+                    await AdminAuth.protectPage({ 
+                        forcePrompt: relogin,
+                        afterLogin: () => {
+                            console.info('[Patients] afterLogin callback fired');
+                        }
+                    });
+                    console.info('[Patients] Auth successful, session:', AdminAuth.getSession());
+                } catch(err) {
+                    console.error('[Patients] protectPage error:', err);
+                    return;
+                }
+            }
+            
+            console.info('[Patients] DOM is ready, .container:', document.querySelector('.container'));
+            
+            // Call page functions
+            if (typeof window.addLogoutButton === 'function') {
+                window.addLogoutButton();
+            }
+            
+            if (typeof window.loadPatients === 'function') {
+                window.loadPatients();
+            }
+        }, 10);
     </script>
 </body>
 </html>
