@@ -10,7 +10,7 @@ window.GH_ADMINS = {
         },
         {
             username: "admin2",
-            passwordHash: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c",
+            passwordHash: "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9",
             roles: ["admin"]
         },
         {
@@ -20,7 +20,7 @@ window.GH_ADMINS = {
         },
         {
             username: "deneme2",
-            passwordHash: "9c81688a37dbf887fda6228929d6bde0d8147fc80613b70f6e925cb3dbe0c93f",
+            passwordHash: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c",
             roles: ["patientAdmin"]
         }
     ],
