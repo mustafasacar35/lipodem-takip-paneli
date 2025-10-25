@@ -4934,7 +4934,40 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       try {
         const data = localStorage.getItem(ESLESMEME_KURALLARI_KEY);
         if (data) {
-          eslesmemeKurallari = JSON.parse(data);
+          const parsed = JSON.parse(data);
+          
+          // İç içe geçmiş yapıyı düzelt - doğru kuralları bul
+          let kurallar = parsed;
+          
+          // Eğer obje içinde 'eslesmemeKurallari' veya 'kurallar' varsa, onları çıkar
+          while (kurallar && typeof kurallar === 'object') {
+            if (kurallar.eslesmemeKurallari && typeof kurallar.eslesmemeKurallari === 'object') {
+              kurallar = kurallar.eslesmemeKurallari;
+            } else if (kurallar.kurallar && typeof kurallar.kurallar === 'object') {
+              kurallar = kurallar.kurallar;
+            } else {
+              break;
+            }
+          }
+          
+          // Geçerli kuralları filtrele - sadece yasakliKartlar array'i olanları al
+          const temizKurallar = {};
+          if (kurallar && typeof kurallar === 'object') {
+            Object.keys(kurallar).forEach(key => {
+              const kural = kurallar[key];
+              // Metadata alanlarını atla
+              if (key === 'version' || key === 'sonGuncelleme') return;
+              
+              // Geçerli kural yapısı kontrolü
+              if (kural && typeof kural === 'object' && 
+                  Array.isArray(kural.yasakliKartlar)) {
+                temizKurallar[key] = kural;
+              }
+            });
+          }
+          
+          eslesmemeKurallari = temizKurallar;
+          console.log('✅ Eşleşme kuralları yüklendi:', Object.keys(eslesmemeKurallari).length, 'kural');
         }
       } catch(e) {
         console.error('Eşleşme yasakları yükleme hatası:', e);
@@ -4963,10 +4996,17 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       
       anahtarlar.forEach(anahtar => {
         const yasak = eslesmemeKurallari[anahtar];
+        
+        // Güvenlik kontrolleri - yasak objesi veya yasakliKartlar undefined/null ise atla
+        if (!yasak || !yasak.yasakliKartlar || !Array.isArray(yasak.yasakliKartlar)) {
+          console.warn(`Geçersiz yasak kuralı atlandı: ${anahtar}`, yasak);
+          return;
+        }
+        
         const yasakDiv = document.createElement('div');
         yasakDiv.style.cssText = 'border:1px solid #ddd; margin:8px 0; padding:8px; background:#fff; border-radius:4px;';
         yasakDiv.innerHTML = `
-          <div style="font-weight:bold; color:#dc3545;">${yasak.orijinalMetin}</div>
+          <div style="font-weight:bold; color:#dc3545;">${yasak.orijinalMetin || anahtar}</div>
           <div style="margin:5px 0; font-size:0.9em;">🚫 ${yasak.yasakliKartlar.join(', ')}</div>
           <button onclick="eslesmemeKuraliSil('${anahtar}')" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.8em; cursor:pointer;">Sil</button>
         `;
@@ -5086,13 +5126,37 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           const jsonContent = decodeBase64UTF8(data.content);
           const kayitVerisi = JSON.parse(jsonContent);
           
-          // Eski format kontrolü
-          if (kayitVerisi.eslesmemeKurallari) {
-            eslesmemeKurallari = kayitVerisi.eslesmemeKurallari;
-          } else {
-            // Eski format (direkt object)
-            eslesmemeKurallari = kayitVerisi;
+          // İç içe geçmiş yapıyı düzelt - doğru kuralları bul
+          let kurallar = kayitVerisi;
+          
+          // Eğer obje içinde 'eslesmemeKurallari' veya 'kurallar' varsa, onları çıkar
+          while (kurallar && typeof kurallar === 'object') {
+            if (kurallar.eslesmemeKurallari && typeof kurallar.eslesmemeKurallari === 'object') {
+              kurallar = kurallar.eslesmemeKurallari;
+            } else if (kurallar.kurallar && typeof kurallar.kurallar === 'object') {
+              kurallar = kurallar.kurallar;
+            } else {
+              break;
+            }
           }
+          
+          // Geçerli kuralları filtrele - sadece yasakliKartlar array'i olanları al
+          const temizKurallar = {};
+          if (kurallar && typeof kurallar === 'object') {
+            Object.keys(kurallar).forEach(key => {
+              const kural = kurallar[key];
+              // Metadata alanlarını atla
+              if (key === 'version' || key === 'sonGuncelleme') return;
+              
+              // Geçerli kural yapısı kontrolü
+              if (kural && typeof kural === 'object' && 
+                  Array.isArray(kural.yasakliKartlar)) {
+                temizKurallar[key] = kural;
+              }
+            });
+          }
+          
+          eslesmemeKurallari = temizKurallar;
           
           // LocalStorage'a da kaydet
           localStorage.setItem(ESLESMEME_KURALLARI_KEY, JSON.stringify(eslesmemeKurallari));
