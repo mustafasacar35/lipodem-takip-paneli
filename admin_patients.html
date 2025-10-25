@@ -619,8 +619,25 @@
             }
             console.info('[Patients] Document fully loaded. readyState:', document.readyState);
             
-            // Wait a bit more for body scripts to execute
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for body scripts to define functions (poll with timeout)
+            const waitForFunctions = async () => {
+                const maxWait = 5000; // 5 seconds max
+                const interval = 50;
+                let elapsed = 0;
+                
+                while (elapsed < maxWait) {
+                    if (typeof window.addLogoutButton === 'function' && typeof window.loadPatients === 'function') {
+                        console.info('[Patients] Functions are ready!');
+                        return true;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, interval));
+                    elapsed += interval;
+                }
+                console.error('[Patients] Timeout waiting for functions');
+                return false;
+            };
+            
+            const ready = await waitForFunctions();
             
             // Now call page functions from window scope
             console.info('[Patients] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'loadPatients:', typeof window.loadPatients);
@@ -630,6 +647,60 @@
             if (typeof window.loadPatients === 'function') window.loadPatients();
             else console.error('[Patients] loadPatients is not a function!');
         });
+    </script>
+    <!-- Define page functions in head so they're available immediately -->
+    <script>
+        // Global variables
+        let patients = [];
+        let editingPatientId = null;
+        let progressLogCounter = 0;
+
+        // GitHub Configuration
+        const CONFIG = {
+            get token() { return document.getElementById('githubToken')?.value || ''; },
+            get owner() { return document.getElementById('githubOwner')?.value || 'mustafasacar35'; },
+            get repo() { return document.getElementById('githubRepo')?.value || 'lipodem-takip-paneli'; },
+            branch: 'main'
+        };
+
+        function addLogoutButton(){
+            try {
+                const container = document.querySelector('.header-buttons');
+                if (!container || document.getElementById('adminLogoutBtn')) return;
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-danger';
+                btn.id = 'adminLogoutBtn';
+                btn.textContent = '🚪 Çıkış';
+                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
+                container.appendChild(btn);
+            } catch(e) { console.error('addLogoutButton error:', e); }
+        }
+        window.addLogoutButton = addLogoutButton;
+
+        async function loadPatients() {
+            try {
+                const response = await fetch(
+                    `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/hastalar/index.json`
+                );
+                
+                if (!response.ok) throw new Error('Hasta listesi yüklenemedi');
+                
+                const data = await response.json();
+                patients = data.patients || [];
+                
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('patientTable').style.display = 'table';
+                
+                applyFilters();
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                showError('Hasta listesi yüklenirken hata oluştu: ' + error.message);
+                document.getElementById('loadingState').innerHTML = '<p style="color: #dc3545;">❌ Yükleme hatası</p>';
+            }
+        }
+        window.loadPatients = loadPatients;
+        
+        console.info('[Head] Functions defined. addLogoutButton:', typeof addLogoutButton, 'loadPatients:', typeof loadPatients);
     </script>
     <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
     <script>
@@ -835,58 +906,11 @@
     </div>
 
     <script>
-        // Global variables
-        let patients = [];
-        let editingPatientId = null;
-        let progressLogCounter = 0;
-
-        // GitHub Configuration
-        const CONFIG = {
-            get token() { return document.getElementById('githubToken').value; },
-            get owner() { return document.getElementById('githubOwner').value; },
-            get repo() { return document.getElementById('githubRepo').value; },
-            branch: 'main'
-        };
+        // Global variables and CONFIG already defined in <head>
 
         // DOMContentLoaded listener is now in <head> before admin_auth.js loads
 
-        function addLogoutButton(){
-            try {
-                const container = document.querySelector('.header-buttons');
-                if (!container || document.getElementById('adminLogoutBtn')) return;
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-danger';
-                btn.id = 'adminLogoutBtn';
-                btn.textContent = '🚪 Çıkış';
-                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
-                container.appendChild(btn);
-            } catch(e) { /* noop */ }
-        }
-        window.addLogoutButton = addLogoutButton; // Expose to global scope
-
-        // Load patients from GitHub
-        async function loadPatients() {
-            try {
-                const response = await fetch(
-                    `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/hastalar/index.json`
-                );
-                
-                if (!response.ok) throw new Error('Hasta listesi yüklenemedi');
-                
-                const data = await response.json();
-                patients = data.patients || [];
-                
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('patientTable').style.display = 'table';
-                
-                applyFilters();
-            } catch (error) {
-                console.error('Error loading patients:', error);
-                showError('Hasta listesi yüklenirken hata oluştu: ' + error.message);
-                document.getElementById('loadingState').innerHTML = '<p style="color: #dc3545;">❌ Yükleme hatası</p>';
-            }
-        }
-        window.loadPatients = loadPatients; // Expose to global scope
+        // addLogoutButton and loadPatients already defined in <head>
 
         // Apply filters
         function applyFilters() {

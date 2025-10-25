@@ -499,8 +499,25 @@
             }
             console.info('[Settings] Document fully loaded. readyState:', document.readyState);
             
-            // Wait a bit more for body scripts to execute
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for body scripts to define functions (poll with timeout)
+            const waitForFunctions = async () => {
+                const maxWait = 5000; // 5 seconds max
+                const interval = 50;
+                let elapsed = 0;
+                
+                while (elapsed < maxWait) {
+                    if (typeof window.addLogoutButton === 'function' && typeof window.init === 'function') {
+                        console.info('[Settings] Functions are ready!');
+                        return true;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, interval));
+                    elapsed += interval;
+                }
+                console.error('[Settings] Timeout waiting for functions');
+                return false;
+            };
+            
+            const ready = await waitForFunctions();
             
             // Now call page functions from window scope
             console.info('[Settings] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'init:', typeof window.init);
@@ -510,6 +527,57 @@
             if (typeof window.init === 'function') window.init();
             else console.error('[Settings] init is not a function!');
         });
+    </script>
+    <!-- Define page functions in head so they're available immediately -->
+    <script>
+        function addLogoutButton(){
+            try {
+                const header = document.querySelector('.settings-header');
+                if (!header || document.getElementById('adminLogoutBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'adminLogoutBtn';
+                btn.textContent = '🚪 Çıkış';
+                btn.style.cssText = 'margin-left:auto; align-self:flex-end; padding:8px 12px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444 0%, #dc2626 100%); color:#fff; font-weight:700; cursor:pointer;';
+                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
+                header.appendChild(btn);
+            } catch(e) { console.error('addLogoutButton error:', e); }
+        }
+        window.addLogoutButton = addLogoutButton;
+
+        function init() {
+            if (typeof registerInputHandlers === 'function') registerInputHandlers();
+            if (typeof attachActionHandlers === 'function') attachActionHandlers();
+            if (typeof fetchSuggestions === 'function') fetchSuggestions();
+            if (typeof loadSettingsFromGitHub === 'function') loadSettingsFromGitHub();
+            // Admins UI
+            if (typeof loadAdminsRuntime === 'function') loadAdminsRuntime();
+            if (typeof renderAdminsList === 'function') renderAdminsList();
+            if (typeof renderPatientAdmins === 'function') renderPatientAdmins();
+            if (typeof attachAdminsUIHandlers === 'function') attachAdminsUIHandlers();
+            if (typeof fetchAdminsSha === 'function') fetchAdminsSha();
+            if (typeof renderActiveAdmin === 'function') renderActiveAdmin();
+            // If only local fallback is present (e.g., only 'admin'), try to reload remote admins.js to override
+            try {
+                if (typeof window.ghAdmins !== 'undefined' && (!window.ghAdmins || !Array.isArray(window.ghAdmins.admins) || window.ghAdmins.admins.length <= 1)) {
+                    if (typeof reloadRemoteAdminsConfig === 'function') reloadRemoteAdminsConfig();
+                }
+            } catch(_) { /* noop */ }
+            // Additionally, fetch and parse raw admins.js as authoritative source and apply it
+            if (typeof fetchRemoteAdminsObject === 'function') {
+                fetchRemoteAdminsObject().then(obj => {
+                    if (obj && Array.isArray(obj.admins)){
+                        window.ghAdmins = obj;
+                        if (typeof ensureGhAdminsShape === 'function') ensureGhAdminsShape();
+                        if (typeof renderAdminsList === 'function') renderAdminsList();
+                        if (typeof renderPatientAdmins === 'function') renderPatientAdmins();
+                        if (typeof showStatus === 'function') showStatus('Uzaktan admins.js içeriği uygulandı.', 'info');
+                    }
+                }).catch(()=>{});
+            }
+        }
+        window.init = init;
+        
+        console.info('[Head] Functions defined. addLogoutButton:', typeof addLogoutButton, 'init:', typeof init);
     </script>
     <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
     <script>
@@ -1725,52 +1793,7 @@
             });
         }
 
-        function init() {
-            registerInputHandlers();
-            attachActionHandlers();
-            fetchSuggestions();
-            loadSettingsFromGitHub();
-            // Admins UI
-            loadAdminsRuntime();
-            renderAdminsList();
-            renderPatientAdmins();
-            attachAdminsUIHandlers();
-            fetchAdminsSha();
-            renderActiveAdmin();
-            // If only local fallback is present (e.g., only 'admin'), try to reload remote admins.js to override
-            try {
-                if (!ghAdmins || !Array.isArray(ghAdmins.admins) || ghAdmins.admins.length <= 1) {
-                    reloadRemoteAdminsConfig();
-                }
-            } catch(_) { /* noop */ }
-            // Additionally, fetch and parse raw admins.js as authoritative source and apply it
-            fetchRemoteAdminsObject().then(obj => {
-                if (obj && Array.isArray(obj.admins)){
-                    ghAdmins = obj;
-                    ensureGhAdminsShape();
-                    renderAdminsList();
-                    renderPatientAdmins();
-                    showStatus('Uzaktan admins.js içeriği uygulandı.', 'info');
-                }
-            }).catch(()=>{});
-        }
-        window.init = init; // Expose to global scope
-
-        // DOMContentLoaded listener is now in <head> before admin_auth.js loads
-
-        function addLogoutButton(){
-            try {
-                const header = document.querySelector('.settings-header');
-                if (!header || document.getElementById('adminLogoutBtn')) return;
-                const btn = document.createElement('button');
-                btn.id = 'adminLogoutBtn';
-                btn.textContent = '🚪 Çıkış';
-                btn.style.cssText = 'margin-left:auto; align-self:flex-end; padding:8px 12px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444 0%, #dc2626 100%); color:#fff; font-weight:700; cursor:pointer;';
-                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
-                header.appendChild(btn);
-            } catch(e) { /* noop */ }
-        }
-        window.addLogoutButton = addLogoutButton; // Expose to global scope
+        // init and addLogoutButton already defined in <head>
 
         // PWA Service Worker ve Manifest Kaydı
         if ('serviceWorker' in navigator) {
