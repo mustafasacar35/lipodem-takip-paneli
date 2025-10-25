@@ -514,6 +514,124 @@
             }
         }
     </style>
+    <!-- Admins config: local fallback first, then remote authoritative override -->
+    <script src="settings/admins.js"></script>
+    <script>
+        // Remote admins.js with hard cache-busting, loaded synchronously to preserve order
+        document.write('<script src="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/settings/admins.js?t=' + Date.now() + '"><\\/scr' + 'ipt>');
+    </script>
+    <!-- Patient auth (for patientAdmins support when served over http/https) -->
+    <script src="auth.js"></script>
+    <script>
+        // Expose PatientAuth on window for AdminAuth delegation (in case auth.js didn't attach it)
+        console.info('[Shim] Checking PatientAuth. typeof PatientAuth:', typeof PatientAuth, 'window.PatientAuth:', !!window.PatientAuth);
+        try {
+            if (typeof PatientAuth !== 'undefined' && !window.PatientAuth) {
+                window.PatientAuth = PatientAuth;
+                console.info('[Shim] window.PatientAuth was assigned from global lexical binding');
+            } else if (!window.PatientAuth) {
+                console.warn('[Shim] PatientAuth not available in global scope, creating emergency shim');
+                // Emergency shim for patientAdmins login when auth.js doesn't expose PatientAuth to window
+                window.PatientAuth = {
+                    async hashPassword(password) {
+                        if (window.crypto && crypto.subtle) {
+                            const encoder = new TextEncoder();
+                            const data = encoder.encode(password);
+                            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                            const hashArray = Array.from(new Uint8Array(hashBuffer));
+                            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                        }
+                        throw new Error('Web Crypto API not available');
+                    },
+                    async loadPatientIndex() {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/index.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient index not found');
+                    },
+                    async loadPatientDetails(patientId) {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${patientId}.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient details not found');
+                    },
+                    async login(username, password, rememberMe = false) {
+                        try {
+                            const index = await this.loadPatientIndex();
+                            const norm = (v) => (v || '').toString().trim().toLowerCase();
+                            const patient = index.patients.find(p => norm(p.username) === norm(username));
+                            if (!patient) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            if (patient.status === 'archived') return { success: false, error: 'Bu hesap arşivlenmiştir' };
+                            
+                            const inputHash = await this.hashPassword(password);
+                            let effectiveHash = patient.passwordHash || '';
+                            
+                            try {
+                                const details = await this.loadPatientDetails(patient.id);
+                                const detailsHash = details?.passwordHash || details?.personalInfo?.passwordHash;
+                                if (detailsHash && typeof detailsHash === 'string') {
+                                    effectiveHash = detailsHash;
+                                }
+                            } catch (e) {
+                                console.warn('[Shim PatientAuth] Details not loaded, using index hash');
+                            }
+                            
+                            if (inputHash !== effectiveHash) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            
+                            return { success: true, patient: { username: patient.username, patientId: patient.id } };
+                        } catch (error) {
+                            console.error('[Shim PatientAuth] Login error:', error);
+                            return { success: false, error: 'Giriş sırasında bir hata oluştu' };
+                        }
+                    }
+                };
+                console.info('[Shim] Emergency PatientAuth created on window');
+            }
+        } catch(e) { 
+            console.error('[Shim] Error:', e); 
+        }
+        console.info('[Shim] Final check - window.PatientAuth:', !!window.PatientAuth);
+    </script>
+    <!-- Page init BEFORE admin_auth loads, so protectPage is called by page not auto-guard -->
+    <script>
+        // Load patients on page load after admin auth
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.info('[Patients] DOMContentLoaded, initializing auth');
+            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
+            
+            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
+                console.info('[Patients] Calling AdminAuth.protectPage');
+                try {
+                    await AdminAuth.protectPage({ forcePrompt: relogin });
+                    console.info('[Patients] Auth successful, session:', AdminAuth.getSession());
+                } catch(err) {
+                    console.error('[Patients] protectPage error:', err);
+                    return;
+                }
+            }
+            
+            // Wait for body and scripts to fully load
+            console.info('[Patients] Waiting for document.readyState=complete');
+            if (document.readyState !== 'complete') {
+                await new Promise(resolve => {
+                    window.addEventListener('load', resolve, { once: true });
+                });
+            }
+            console.info('[Patients] Document fully loaded. readyState:', document.readyState);
+            
+            // Now call page functions
+            console.info('[Patients] Checking functions. addLogoutButton:', typeof addLogoutButton, 'loadPatients:', typeof loadPatients);
+            if (typeof addLogoutButton === 'function') addLogoutButton();
+            else console.error('[Patients] addLogoutButton is not a function!');
+            
+            if (typeof loadPatients === 'function') loadPatients();
+            else console.error('[Patients] loadPatients is not a function!');
+        });
+    </script>
+    <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
+    <script>
+        document.write('<script src="admin_auth.js?v=' + Date.now() + '"><\\/scr' + 'ipt>');
+    </script>
 </head>
 <body>
     <div class="container">
@@ -727,10 +845,21 @@
             branch: 'main'
         };
 
-        // Load patients on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadPatients();
-        });
+        // DOMContentLoaded listener is now in <head> before admin_auth.js loads
+
+        function addLogoutButton(){
+            try {
+                const container = document.querySelector('.header-buttons');
+                if (!container || document.getElementById('adminLogoutBtn')) return;
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-danger';
+                btn.id = 'adminLogoutBtn';
+                btn.textContent = '🚪 Çıkış';
+                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
+                container.appendChild(btn);
+            } catch(e) { /* noop */ }
+        }
+        window.addLogoutButton = addLogoutButton; // Expose to global scope
 
         // Load patients from GitHub
         async function loadPatients() {
@@ -754,6 +883,7 @@
                 document.getElementById('loadingState').innerHTML = '<p style="color: #dc3545;">❌ Yükleme hatası</p>';
             }
         }
+        window.loadPatients = loadPatients; // Expose to global scope
 
         // Apply filters
         function applyFilters() {
@@ -1203,7 +1333,8 @@
         // PWA Service Worker ve Manifest Kaydı
         if ('serviceWorker' in navigator) {
             const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
-            if (isSecureOrigin) {
+            const isGitHubPages = /\.github\.io$/i.test(window.location.hostname);
+            if (isSecureOrigin && !isGitHubPages) {
                 const CACHE_NAME = 'admin-patients-v1';
                 const manifest = {
                     "short_name": "Hasta Yönetimi",

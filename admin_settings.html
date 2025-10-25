@@ -394,6 +394,124 @@
             }
         }
     </style>
+    <!-- Admins config: local fallback first, then remote authoritative override -->
+    <script src="settings/admins.js"></script>
+    <script>
+        // Remote admins.js with hard cache-busting, loaded synchronously to preserve order
+        document.write('<script src="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/settings/admins.js?t=' + Date.now() + '"><\\/scr' + 'ipt>');
+    </script>
+    <!-- Patient auth (for patientAdmins support when served over http/https) -->
+    <script src="auth.js"></script>
+    <script>
+        // Expose PatientAuth on window for AdminAuth delegation (in case auth.js didn't attach it)
+        console.info('[Shim] Checking PatientAuth. typeof PatientAuth:', typeof PatientAuth, 'window.PatientAuth:', !!window.PatientAuth);
+        try {
+            if (typeof PatientAuth !== 'undefined' && !window.PatientAuth) {
+                window.PatientAuth = PatientAuth;
+                console.info('[Shim] window.PatientAuth was assigned from global lexical binding');
+            } else if (!window.PatientAuth) {
+                console.warn('[Shim] PatientAuth not available in global scope, creating emergency shim');
+                // Emergency shim for patientAdmins login when auth.js doesn't expose PatientAuth to window
+                window.PatientAuth = {
+                    async hashPassword(password) {
+                        if (window.crypto && crypto.subtle) {
+                            const encoder = new TextEncoder();
+                            const data = encoder.encode(password);
+                            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                            const hashArray = Array.from(new Uint8Array(hashBuffer));
+                            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                        }
+                        throw new Error('Web Crypto API not available');
+                    },
+                    async loadPatientIndex() {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/index.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient index not found');
+                    },
+                    async loadPatientDetails(patientId) {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${patientId}.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient details not found');
+                    },
+                    async login(username, password, rememberMe = false) {
+                        try {
+                            const index = await this.loadPatientIndex();
+                            const norm = (v) => (v || '').toString().trim().toLowerCase();
+                            const patient = index.patients.find(p => norm(p.username) === norm(username));
+                            if (!patient) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            if (patient.status === 'archived') return { success: false, error: 'Bu hesap arşivlenmiştir' };
+                            
+                            const inputHash = await this.hashPassword(password);
+                            let effectiveHash = patient.passwordHash || '';
+                            
+                            try {
+                                const details = await this.loadPatientDetails(patient.id);
+                                const detailsHash = details?.passwordHash || details?.personalInfo?.passwordHash;
+                                if (detailsHash && typeof detailsHash === 'string') {
+                                    effectiveHash = detailsHash;
+                                }
+                            } catch (e) {
+                                console.warn('[Shim PatientAuth] Details not loaded, using index hash');
+                            }
+                            
+                            if (inputHash !== effectiveHash) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            
+                            return { success: true, patient: { username: patient.username, patientId: patient.id } };
+                        } catch (error) {
+                            console.error('[Shim PatientAuth] Login error:', error);
+                            return { success: false, error: 'Giriş sırasında bir hata oluştu' };
+                        }
+                    }
+                };
+                console.info('[Shim] Emergency PatientAuth created on window');
+            }
+        } catch(e) { 
+            console.error('[Shim] Error:', e); 
+        }
+        console.info('[Shim] Final check - window.PatientAuth:', !!window.PatientAuth);
+    </script>
+    <!-- Page init BEFORE admin_auth loads, so protectPage is called by page not auto-guard -->
+    <script>
+        // Gate the page behind admin auth
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.info('[Settings] DOMContentLoaded, initializing auth');
+            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
+            
+            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
+                console.info('[Settings] Calling AdminAuth.protectPage');
+                try {
+                    await AdminAuth.protectPage({ forcePrompt: relogin });
+                    console.info('[Settings] Auth successful, session:', AdminAuth.getSession());
+                } catch(err) {
+                    console.error('[Settings] protectPage error:', err);
+                    return;
+                }
+            }
+            
+            // Wait for body and scripts to fully load
+            console.info('[Settings] Waiting for document.readyState=complete');
+            if (document.readyState !== 'complete') {
+                await new Promise(resolve => {
+                    window.addEventListener('load', resolve, { once: true });
+                });
+            }
+            console.info('[Settings] Document fully loaded. readyState:', document.readyState);
+            
+            // Now call page functions
+            console.info('[Settings] Checking functions. addLogoutButton:', typeof addLogoutButton, 'init:', typeof init);
+            if (typeof addLogoutButton === 'function') addLogoutButton();
+            else console.error('[Settings] addLogoutButton is not a function!');
+            
+            if (typeof init === 'function') init();
+            else console.error('[Settings] init is not a function!');
+        });
+    </script>
+    <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
+    <script>
+        document.write('<script src="admin_auth.js?v=' + Date.now() + '"><\\/scr' + 'ipt>');
+    </script>
 </head>
 <body>
     <div class="settings-wrapper">
@@ -408,6 +526,16 @@
         </header>
 
         <main class="settings-body">
+            <section class="settings-section">
+                <h2>Aktif Admin</h2>
+                <div class="settings-row">
+                    <span id="activeAdminBadge" style="display:inline-block;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#4338ca;font-weight:700;font-size:13px;">—</span>
+                    <span class="suggestion-hint">Bu oturumla işlem yapıyorsunuz.</span>
+                </div>
+                <div class="settings-row">
+                    <button type="button" class="btn-secondary" id="forceReloginBtn">Yeniden Giriş İste</button>
+                </div>
+            </section>
             <section class="settings-section">
                 <h2>Genel</h2>
                 <div class="settings-row">
@@ -429,6 +557,47 @@
                     <span class="suggestion-hint">Enter veya odak dışında bırakmak listedeki yeni tag'ı ekler.</span>
                 </div>
                 <div class="settings-chip-list" id="tagExclusionList"></div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Yöneticiler (admins.js)</h2>
+                <div class="settings-row">
+                    <div id="adminsList"></div>
+                </div>
+                <div class="settings-row">
+                    <details>
+                        <summary>Yeni / Düzenle</summary>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px;">
+                            <div>
+                                <label>Kullanıcı Adı</label>
+                                <input type="text" id="adminEditUsername" placeholder="admin"/>
+                            </div>
+                            <div>
+                                <label>Yeni Şifre (opsiyonel)</label>
+                                <input type="password" id="adminEditPassword" placeholder="Yeni şifre (boşsa değişmez)"/>
+                            </div>
+                            <div>
+                                <label>Roller</label>
+                                <input type="text" id="adminEditRoles" placeholder="virgülle: admin,editor"/>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;">
+                            <button type="button" class="btn-primary" id="adminSaveBtn">Kaydet / Güncelle</button>
+                            <button type="button" class="btn-secondary" id="adminClearBtn">Temizle</button>
+                        </div>
+                    </details>
+                </div>
+                <div class="settings-row">
+                    <label>Hasta bazlı admin yetkisi (patientAdmins)</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="patientAdminInput" placeholder="hastaKullaniciAdi" style="max-width:260px;"/>
+                        <button type="button" class="btn-secondary" id="patientAdminAddBtn">Ekle</button>
+                    </div>
+                    <div class="settings-chip-list" id="patientAdminsList"></div>
+                </div>
+                <div class="settings-row">
+                    <button type="button" class="btn-primary" id="saveAdminsFileBtn">Admins Dosyasını Kaydet</button>
+                </div>
             </section>
 
             <section class="settings-section">
@@ -701,6 +870,19 @@
         const roleSuggestions = document.getElementById('roleSuggestions');
         const categorySuggestions = document.getElementById('categorySuggestions');
 
+    // Admins UI refs
+    const adminsListDiv = document.getElementById('adminsList');
+    const adminEditUsername = document.getElementById('adminEditUsername');
+    const adminEditPassword = document.getElementById('adminEditPassword');
+    const adminEditRoles = document.getElementById('adminEditRoles');
+    const adminSaveBtn = document.getElementById('adminSaveBtn');
+    const adminClearBtn = document.getElementById('adminClearBtn');
+    const patientAdminInput = document.getElementById('patientAdminInput');
+    const patientAdminAddBtn = document.getElementById('patientAdminAddBtn');
+    const patientAdminsList = document.getElementById('patientAdminsList');
+    const saveAdminsFileBtn = document.getElementById('saveAdminsFileBtn');
+    const forceReloginBtn = document.getElementById('forceReloginBtn');
+
         // Filtreleme Kriterleri Input Referansları
         const criteriaRoleVisible = document.getElementById('criteriaRoleVisible');
         const criteriaRoleMode = document.getElementById('criteriaRoleMode');
@@ -793,6 +975,292 @@
             };
             statusText.textContent = message;
             statusText.style.color = palette[tone] || palette.info;
+        }
+        // ---------- Admins helpers ----------
+        function getActiveAdminName(){
+            try { return (window.AdminAuth && AdminAuth.getSession && AdminAuth.getSession()) ? (AdminAuth.getSession().username) : ''; }
+            catch(_) { return ''; }
+        }
+        function renderActiveAdmin(){
+            const u = getActiveAdminName();
+            const el = document.getElementById('activeAdminBadge');
+            if (el) el.textContent = u ? `Admin: ${u}` : '—';
+        }
+
+        // ---------- Admins state ----------
+        const ADMINS_PATH = 'settings/admins.js';
+        let ghAdmins = { admins: [], patientAdmins: [] };
+        let adminsSha = null;
+        let editingAdminIndex = -1; // -1 => create, >=0 => edit
+
+        function clone(obj){ return JSON.parse(JSON.stringify(obj || {})); }
+        function toRolesArray(val){
+            if (Array.isArray(val)) return val.map(v=>sanitizeString(v)).filter(Boolean);
+            if (typeof val === 'string') return val.split(',').map(v=>sanitizeString(v)).filter(Boolean);
+            return [];
+        }
+        function usernamesEqual(a,b){ return normalizeText(a) === normalizeText(b); }
+        function findAdminIndexByUsername(username){
+            const n = normalizeText(username);
+            return (ghAdmins.admins||[]).findIndex(a => normalizeText(a.username) === n);
+        }
+        function ensureGhAdminsShape(){
+            if (!ghAdmins || typeof ghAdmins !== 'object') ghAdmins = { admins: [], patientAdmins: [] };
+            if (!Array.isArray(ghAdmins.admins)) ghAdmins.admins = [];
+            if (!Array.isArray(ghAdmins.patientAdmins)) ghAdmins.patientAdmins = [];
+        }
+        function loadAdminsRuntime(){
+            try { ghAdmins = clone(window.GH_ADMINS || { admins: [], patientAdmins: [] }); }
+            catch(_) { ghAdmins = { admins: [], patientAdmins: [] }; }
+            ensureGhAdminsShape();
+        }
+        async function fetchAdminsSha(){
+            try{
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADMINS_PATH}?ref=${SETTINGS_BRANCH}`;
+                const res = await fetch(url);
+                if (res.ok){ const data = await res.json(); adminsSha = data.sha || null; }
+            } catch(_) { adminsSha = null; }
+        }
+        function parseAdminsFromRawText(text){
+            try{
+                const idx = text.indexOf('window.GH_ADMINS');
+                if (idx === -1) return null;
+                const eq = text.indexOf('=', idx);
+                if (eq === -1) return null;
+                const startObj = text.indexOf('{', eq);
+                const endObj = text.lastIndexOf('}');
+                if (startObj === -1 || endObj === -1 || endObj <= startObj) return null;
+                const jsonStr = text.substring(startObj, endObj + 1);
+                const obj = JSON.parse(jsonStr);
+                if (!obj || !Array.isArray(obj.admins)) return null;
+                return obj;
+            }catch(_){ return null; }
+        }
+        async function fetchRemoteAdminsObject(){
+            try{
+                const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return null;
+                const txt = await res.text();
+                return parseAdminsFromRawText(txt);
+            }catch(_){ return null; }
+        }
+        function renderAdminsList(){
+            adminsListDiv.innerHTML = '';
+            ensureGhAdminsShape();
+            const list = ghAdmins.admins;
+            if (!list.length){
+                adminsListDiv.innerHTML = '<span class="empty-hint">Henüz yönetici yok.</span>';
+                return;
+            }
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:6px;">Kullanıcı</th>
+                        <th style="text-align:left;padding:6px;">Roller</th>
+                        <th style="text-align:right;padding:6px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            list.forEach((a, idx)=>{
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;">${a.username}</td>
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;">${(a.roles||[]).join(', ')}</td>
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;text-align:right;">
+                        <button type="button" class="btn-secondary" data-action="edit">Düzenle</button>
+                        <button type="button" class="btn-secondary" data-action="delete">Sil</button>
+                    </td>`;
+                tr.querySelector('[data-action="edit"]').addEventListener('click', ()=>{
+                    editAdminAt(idx);
+                });
+                tr.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+                    if (confirm(`${a.username} silinsin mi?`)){
+                        ghAdmins.admins.splice(idx,1);
+                        renderAdminsList();
+                    }
+                });
+                tbody.appendChild(tr);
+            });
+            adminsListDiv.appendChild(table);
+        }
+        function renderPatientAdmins(){
+            ensureGhAdminsShape();
+            renderChipList(patientAdminsList, ghAdmins.patientAdmins, (value)=>{
+                ghAdmins.patientAdmins = ghAdmins.patientAdmins.filter(v => normalizeText(v) !== normalizeText(value));
+                renderPatientAdmins();
+            });
+        }
+        function clearAdminForm(){
+            editingAdminIndex = -1;
+            adminEditUsername.value = '';
+            adminEditPassword.value = '';
+            adminEditRoles.value = '';
+        }
+        function editAdminAt(index){
+            ensureGhAdminsShape();
+            const a = ghAdmins.admins[index];
+            if (!a) return;
+            editingAdminIndex = index;
+            adminEditUsername.value = a.username || '';
+            adminEditPassword.value = '';
+            adminEditRoles.value = (a.roles||[]).join(', ');
+        }
+        async function computeSha256Hex(val){
+            if (!val) return '';
+            try{
+                if (window.AdminAuth && typeof AdminAuth.sha256Hex === 'function'){
+                    return await AdminAuth.sha256Hex(val);
+                }
+            }catch(_){/* ignore */}
+            if (window.crypto && crypto.subtle && window.TextEncoder){
+                const enc = new TextEncoder();
+                const buf = await crypto.subtle.digest('SHA-256', enc.encode(val));
+                return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+            }
+            throw new Error('Şifre karması için uygun bir yöntem bulunamadı. Lütfen AdminAuth skripti yüklü olsun.');
+        }
+        function upsertAdminFromForm(){
+            ensureGhAdminsShape();
+            const username = sanitizeString(adminEditUsername.value);
+            const roles = toRolesArray(adminEditRoles.value);
+            const newPassword = adminEditPassword.value;
+            if (!username){ showStatus('Kullanıcı adı girin.', 'error'); return; }
+
+            // Duplicate check (case/diacritics insensitive)
+            const existingIdx = findAdminIndexByUsername(username);
+            if (editingAdminIndex === -1 && existingIdx !== -1){
+                showStatus('Bu kullanıcı zaten mevcut.', 'error');
+                return;
+            }
+            if (editingAdminIndex >= 0){
+                const otherIdx = existingIdx;
+                if (otherIdx !== -1 && otherIdx !== editingAdminIndex){
+                    showStatus('Bu kullanıcı adı başka bir kayıtta var.', 'error');
+                    return;
+                }
+            }
+
+            const apply = async ()=>{
+                if (editingAdminIndex === -1){
+                    const admin = { username, roles };
+                    if (newPassword){ admin.passwordHash = await computeSha256Hex(newPassword); }
+                    else { showStatus('Yeni admin için şifre girilmeli.', 'error'); return; }
+                    ghAdmins.admins.push(admin);
+                } else {
+                    const target = ghAdmins.admins[editingAdminIndex];
+                    target.username = username;
+                    target.roles = roles;
+                    if (newPassword){ target.passwordHash = await computeSha256Hex(newPassword); }
+                }
+                clearAdminForm();
+                renderAdminsList();
+                showStatus('Admin kaydı hazırlandı (henüz kaydetmediniz).', 'success');
+            };
+            apply().catch(err=> showStatus(err.message || 'İşlem başarısız.', 'error'));
+        }
+        function addPatientAdmin(){
+            ensureGhAdminsShape();
+            const val = sanitizeString(patientAdminInput.value);
+            if (!val) return;
+            const exists = ghAdmins.patientAdmins.some(v => normalizeText(v) === normalizeText(val));
+            if (!exists){ ghAdmins.patientAdmins.push(val); renderPatientAdmins(); showStatus('Hasta admin eklendi (henüz kaydetmediniz).', 'success'); }
+            patientAdminInput.value = '';
+        }
+        function reloadRemoteAdminsConfig(){
+            try{
+                const s = document.createElement('script');
+                s.src = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`;
+                s.onload = ()=>{ try { loadAdminsRuntime(); renderAdminsList(); renderPatientAdmins(); showStatus('Uzaktan admins.js yeniden yüklendi.', 'info'); } catch(_){} };
+                s.onerror = ()=>{};
+                document.head.appendChild(s);
+            }catch(_){/* noop */}
+        }
+        async function ensureAdminsSha(){
+            if (!adminsSha){ await fetchAdminsSha(); }
+        }
+        async function saveAdminsToGitHub(){
+            const token = githubTokenInput.value.trim();
+            if (!token){ showStatus('Admins dosyasını kaydetmek için GitHub token gerekli.', 'error'); return; }
+            ensureGhAdminsShape();
+            const contentJs = `window.GH_ADMINS = ${JSON.stringify(ghAdmins, null, 2)};\n`;
+            const endpoint = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADMINS_PATH}`;
+            const encoded = btoa(unescape(encodeURIComponent(contentJs)));
+            const body = { message: 'Admin panelinden admins.js güncellemesi', content: encoded, branch: SETTINGS_BRANCH };
+            await ensureAdminsSha();
+            if (adminsSha) body.sha = adminsSha;
+            try{
+                saveAdminsFileBtn.disabled = true;
+                saveAdminsFileBtn.textContent = 'Kaydediliyor...';
+                showStatus('admins.js GitHub üzerinde güncelleniyor...', 'info');
+                let res = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok){
+                    // Olası sha hatasında bir kez daha dene
+                    const firstErr = await res.json().catch(()=>({}));
+                    if (res.status === 409 || String(firstErr?.message||'').toLowerCase().includes('sha')){
+                        await fetchAdminsSha();
+                        const retryBody = { ...body, sha: adminsSha };
+                        res = await fetch(endpoint, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/vnd.github+json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(retryBody)
+                        });
+                    }
+                }
+                if (!res.ok){
+                    const eb = await res.json().catch(()=>({}));
+                    throw new Error(eb.message || `Hata: ${res.status}`);
+                }
+                const data = await res.json();
+                adminsSha = data.content?.sha || adminsSha;
+                showStatus('admins.js kaydedildi. Doğrulanıyor...', 'success');
+                // Doğrula ve gerekirse uzaktan konfigi yeniden yükle
+                try{
+                    const verifyRes = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`);
+                    if (verifyRes.ok){
+                        const txt = await verifyRes.text();
+                        const anyUser = (ghAdmins.admins[ghAdmins.admins.length-1]||{}).username || '';
+                        if (anyUser && txt.includes(anyUser)){
+                            showStatus('Değişiklik doğrulandı ve yansıtıldı.', 'success');
+                        } else {
+                            showStatus('Kaydedildi ancak tarayıcı önbelleği olabilir. Sayfayı yenileyin.', 'info');
+                        }
+                    }
+                }catch(_){/* ignore */}
+                reloadRemoteAdminsConfig();
+            }catch(err){
+                showStatus(err.message || 'admins.js kaydedilemedi.', 'error');
+            } finally {
+                saveAdminsFileBtn.disabled = false;
+                saveAdminsFileBtn.textContent = 'Admins Dosyasını Kaydet';
+            }
+        }
+        function attachAdminsUIHandlers(){
+            if (adminSaveBtn) adminSaveBtn.addEventListener('click', upsertAdminFromForm);
+            if (adminClearBtn) adminClearBtn.addEventListener('click', clearAdminForm);
+            if (patientAdminAddBtn) patientAdminAddBtn.addEventListener('click', addPatientAdmin);
+            if (patientAdminInput) patientAdminInput.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); addPatientAdmin(); } });
+            if (saveAdminsFileBtn) saveAdminsFileBtn.addEventListener('click', saveAdminsToGitHub);
+            if (forceReloginBtn) forceReloginBtn.addEventListener('click', ()=>{
+                const u = new URL(location.href);
+                u.searchParams.set('relogin','1');
+                location.href = u.toString();
+            });
         }
 
         function setLoadingState(active) {
@@ -1254,17 +1722,58 @@
             });
         }
 
-        (function init() {
+        function init() {
             registerInputHandlers();
             attachActionHandlers();
             fetchSuggestions();
             loadSettingsFromGitHub();
-        })();
+            // Admins UI
+            loadAdminsRuntime();
+            renderAdminsList();
+            renderPatientAdmins();
+            attachAdminsUIHandlers();
+            fetchAdminsSha();
+            renderActiveAdmin();
+            // If only local fallback is present (e.g., only 'admin'), try to reload remote admins.js to override
+            try {
+                if (!ghAdmins || !Array.isArray(ghAdmins.admins) || ghAdmins.admins.length <= 1) {
+                    reloadRemoteAdminsConfig();
+                }
+            } catch(_) { /* noop */ }
+            // Additionally, fetch and parse raw admins.js as authoritative source and apply it
+            fetchRemoteAdminsObject().then(obj => {
+                if (obj && Array.isArray(obj.admins)){
+                    ghAdmins = obj;
+                    ensureGhAdminsShape();
+                    renderAdminsList();
+                    renderPatientAdmins();
+                    showStatus('Uzaktan admins.js içeriği uygulandı.', 'info');
+                }
+            }).catch(()=>{});
+        }
+        window.init = init; // Expose to global scope
+
+        // DOMContentLoaded listener is now in <head> before admin_auth.js loads
+
+        function addLogoutButton(){
+            try {
+                const header = document.querySelector('.settings-header');
+                if (!header || document.getElementById('adminLogoutBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'adminLogoutBtn';
+                btn.textContent = '🚪 Çıkış';
+                btn.style.cssText = 'margin-left:auto; align-self:flex-end; padding:8px 12px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444 0%, #dc2626 100%); color:#fff; font-weight:700; cursor:pointer;';
+                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
+                header.appendChild(btn);
+            } catch(e) { /* noop */ }
+        }
+        window.addLogoutButton = addLogoutButton; // Expose to global scope
 
         // PWA Service Worker ve Manifest Kaydı
         if ('serviceWorker' in navigator) {
             const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
-            if (isSecureOrigin) {
+            const isGitHubPages = /\.github\.io$/i.test(window.location.hostname);
+            if (isSecureOrigin && !isGitHubPages) {
                 const CACHE_NAME = 'admin-settings-v1';
                 const manifest = {
                     "short_name": "Yönetici Ayarları",
