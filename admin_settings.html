@@ -499,6 +499,9 @@
             }
             console.info('[Settings] Document fully loaded. readyState:', document.readyState);
             
+            // Wait a bit more for body scripts to execute
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Now call page functions from window scope
             console.info('[Settings] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'init:', typeof window.init);
             if (typeof window.addLogoutButton === 'function') window.addLogoutButton();

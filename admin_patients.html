@@ -619,6 +619,9 @@
             }
             console.info('[Patients] Document fully loaded. readyState:', document.readyState);
             
+            // Wait a bit more for body scripts to execute
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Now call page functions from window scope
             console.info('[Patients] Checking functions. addLogoutButton:', typeof window.addLogoutButton, 'loadPatients:', typeof window.loadPatients);
             if (typeof window.addLogoutButton === 'function') window.addLogoutButton();
