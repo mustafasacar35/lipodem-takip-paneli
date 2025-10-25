@@ -1,16 +1,29 @@
-// Admins configuration (can be overridden by remote GitHub version)
+﻿// Admin users configuration - loaded by admin pages
 window.GH_ADMINS = {
-  version: 1,
-  updatedAt: "2025-10-25T00:00:00.000Z",
-  admins: [
-    {
-      username: "admin",
-      passwordHash: "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
-      roles: ["admin"]
-    }
-  ],
-  // Optional: grant admin rights to patient usernames; validated via PatientAuth when served over http/https
-  patientAdmins: [
-    // "deneme"
-  ]
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    admins: [
+        {
+            username: "admin",
+            password: "admin123",
+            role: "SuperAdmin",
+            name: "Ana Yönetici"
+        },
+        {
+            username: "admin2",
+            password: "2222",
+            role: "Admin",
+            name: "İkinci Yönetici"
+        }
+    ],
+    patientAdmins: [
+        {
+            username: "deneme2",
+            password: "1111",
+            role: "PatientAdmin",
+            name: "Hasta Yöneticisi"
+        }
+    ]
 };
+
+console.info('[GH_ADMINS] Loaded', GH_ADMINS.admins.length, 'admins and', GH_ADMINS.patientAdmins.length, 'patient admins');
