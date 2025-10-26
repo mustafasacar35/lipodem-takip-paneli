@@ -973,7 +973,7 @@
                     </div>
                 </div>
                 <div id="filterStats" style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px; font-size: 13px; color: #666;">
-                    <span id="visibleCount">0</span> menü gösteriliyor
+                    <span id="visibleCount">0</span> / <span id="totalCount">0</span> menü gösteriliyor
                 </div>
             </div>
             
@@ -2637,6 +2637,12 @@
             
             tableContainer.innerHTML = tableHTML;
             
+            // Total count'u güncelle
+            const totalElement = document.getElementById('totalCount');
+            if (totalElement) {
+                totalElement.textContent = templates.length;
+            }
+            
             // Akıllı filtreyi uygula (varsa)
             applySmartFilter();
         }
@@ -2692,8 +2698,12 @@
             
             // İstatistiği güncelle
             const statsElement = document.getElementById('visibleCount');
+            const totalElement = document.getElementById('totalCount');
             if (statsElement) {
                 statsElement.textContent = visibleCount;
+            }
+            if (totalElement) {
+                totalElement.textContent = rows.length;
             }
         }
 
