@@ -1358,6 +1358,9 @@
                 username: session.username || ''
             };
 
+            // Header'ı hemen güncelle (loadPatientData detaylı bilgi yüklenince tekrar güncelleyecek)
+            document.getElementById('headerPatientName').textContent = currentPatient.name;
+
             // Hasta bilgilerini yükle (kilo, aktivite vs) - header'daki ad burada güncellenir
             await loadPatientData();
 
@@ -1428,6 +1431,8 @@
             } catch (error) {
                 console.error('❌ Hasta bilgileri yüklenirken hata:', error);
                 patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
+                // Hata durumunda da header'ı güncelle
+                document.getElementById('headerPatientName').textContent = currentPatient.name || 'Hasta';
             }
         }
 
