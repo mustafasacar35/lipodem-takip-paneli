@@ -1,53 +1,66 @@
+/**
+ * Vercel Serverless Function
+ * Beslenme ayarlarını GitHub'a güncelleyen API endpoint
+ * 
+ * Endpoint: https://lipodem-takip-paneli.vercel.app/api/update-settings
+ * Method: POST
+ */
+
 export default async function handler(req, res) {
     // CORS Headers
+    res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-    
-    // Handle preflight request
+
+    // OPTIONS request için
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
+    // Sadece POST isteği kabul et
     if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
+        return res.status(405).json({ 
+            success: false, 
+            error: 'Method not allowed. Use POST.' 
+        });
     }
 
     try {
         const { patientId, settings } = req.body;
 
+        // Validasyon
         if (!patientId || !settings) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Missing required fields: patientId and settings' 
+                error: 'patientId ve settings alanları zorunludur.' 
             });
         }
 
         if (typeof settings !== 'object') {
             return res.status(400).json({ 
                 success: false, 
-                error: 'settings must be an object' 
+                error: 'settings bir object olmalıdır.' 
             });
         }
 
+        // GitHub API için gerekli bilgiler
         const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
         const REPO_OWNER = 'mustafasacar35';
         const REPO_NAME = 'lipodem-takip-paneli';
-        const BRANCH = 'main';
-        
-        // hastalar/ klasörünü kullan (yeni uygulama)
         const FILE_PATH = `hastalar/${patientId}.json`;
-
+        
         if (!GITHUB_TOKEN) {
             return res.status(500).json({ 
                 success: false, 
-                error: 'GitHub token not configured' 
+                error: 'GitHub token yapılandırılmamış' 
             });
         }
 
-        // 1. Mevcut dosyayı al
-        const getFileUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`;
+        // 1. Mevcut dosyayı çek
+        const getFileUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        
         const getResponse = await fetch(getFileUrl, {
             headers: {
                 'Authorization': `token ${GITHUB_TOKEN}`,
@@ -56,10 +69,9 @@ export default async function handler(req, res) {
         });
 
         if (!getResponse.ok) {
-            const errorText = await getResponse.text();
             return res.status(404).json({ 
                 success: false, 
-                error: `Patient file not found: ${errorText}` 
+                error: 'Hasta dosyası bulunamadı: ' + FILE_PATH 
             });
         }
 
@@ -68,16 +80,16 @@ export default async function handler(req, res) {
             Buffer.from(fileData.content, 'base64').toString('utf-8')
         );
 
-        // 2. settings objesini güncelle
-        currentContent.settings = settings;
-        
-        // personalInfo'yu da güncelle (settings içinde geliyorsa)
-        if (settings.personalInfo) {
-            currentContent.personalInfo = settings.personalInfo;
-        }
+        // 2. Settings bilgisini güncelle
+        const updatedData = {
+            ...currentContent,
+            settings: settings,
+            lastModified: new Date().toISOString()
+        };
 
-        // 3. GitHub'a geri yaz
+        // 3. GitHub'a geri yükle
         const updateFileUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        
         const updateResponse = await fetch(updateFileUrl, {
             method: 'PUT',
             headers: {
@@ -87,33 +99,31 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 message: `Update settings for patient ${patientId}`,
-                content: Buffer.from(JSON.stringify(currentContent, null, 2)).toString('base64'),
-                sha: fileData.sha,
-                branch: BRANCH
+                content: Buffer.from(JSON.stringify(updatedData, null, 2)).toString('base64'),
+                sha: fileData.sha
             })
         });
 
         if (!updateResponse.ok) {
-            const errorText = await updateResponse.text();
+            const errorData = await updateResponse.json();
             return res.status(500).json({ 
                 success: false, 
-                error: `Failed to update file: ${errorText}` 
+                error: 'GitHub güncelleme hatası: ' + JSON.stringify(errorData)
             });
         }
 
-        const updateResult = await updateResponse.json();
-
+        // Başarılı
         return res.status(200).json({ 
             success: true, 
-            message: 'Settings updated successfully',
-            commit: updateResult.commit.sha
+            message: 'Ayarlar başarıyla GitHub\'a kaydedildi',
+            patientId: patientId
         });
 
     } catch (error) {
-        console.error('Update settings error:', error);
+        console.error('API Error:', error);
         return res.status(500).json({ 
             success: false, 
-            error: error.message 
+            error: error.message || 'Bilinmeyen hata oluştu'
         });
     }
 }
