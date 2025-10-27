@@ -1793,10 +1793,46 @@
                 const cachedDataKey = `patient_data_${cleanId}`;
                 localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
                 console.log('💾 Ayarlar localStorage\'a kaydedildi');
+                
+                // GitHub'a kaydet (update-patient API ile)
+                try {
+                    const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            patientId: currentPatient.id,
+                            name: patientData.personalInfo.name,
+                            surname: patientData.personalInfo.surname,
+                            age: patientData.personalInfo.age,
+                            gender: patientData.personalInfo.gender,
+                            weight: patientData.personalInfo.weight,
+                            height: patientData.personalInfo.height,
+                            username: currentPatient.username,
+                            passwordHash: patientData.passwordHash
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        console.log('✅ Ayarlar GitHub\'a kaydedildi');
+                        showToast('✅ Ayarlar kaydedildi!');
+                    } else {
+                        console.warn('⚠️ GitHub kayıt hatası:', result.error);
+                        showToast('✅ Ayarlar kaydedildi! (Senkronizasyon sonra yapılacak)', 'warning');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ GitHub bağlantı hatası:', error);
+                    showToast('✅ Ayarlar kaydedildi! (Senkronizasyon sonra yapılacak)', 'warning');
+                }
+            } else {
+                showToast('✅ Ayarlar kaydedildi!');
             }
 
-            // Başarı mesajı göster (CORS sorunu olduğu için sadece localStorage)
-            showToast('✅ Ayarlar kaydedildi!');
             setTimeout(() => closeModal('settingsModal'), 1000);
         }
 
