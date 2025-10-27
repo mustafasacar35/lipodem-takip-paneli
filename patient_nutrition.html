@@ -1790,13 +1790,18 @@
                 session.surname = patientData.personalInfo.surname;
                 localStorage.setItem('patient_session', JSON.stringify(session));
                 
-                // Parent frame'e (patient_dashboard.html) mesaj gönder
-                if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'updatePatientName',
-                        name: patientData.personalInfo.name,
-                        surname: patientData.personalInfo.surname
-                    }, '*');
+                // Şifre değiştirilmişse hash hesapla
+                let finalPasswordHash = patientData.passwordHash;
+                const newPassword = document.getElementById('patientPassword').value.trim();
+                if (newPassword && newPassword.length > 0) {
+                    // PatientAuth.hashPassword kullan
+                    if (typeof PatientAuth !== 'undefined' && PatientAuth.hashPassword) {
+                        finalPasswordHash = await PatientAuth.hashPassword(newPassword);
+                        patientData.passwordHash = finalPasswordHash;
+                        console.log('🔐 Yeni şifre hash hesaplandı:', finalPasswordHash.substring(0, 10) + '...');
+                    } else {
+                        console.warn('⚠️ PatientAuth bulunamadı, eski hash korunuyor');
+                    }
                 }
                 
                 // GitHub'a kaydet (update-patient API ile)
@@ -1817,7 +1822,7 @@
                             weight: patientData.personalInfo.weight,
                             height: patientData.personalInfo.height,
                             username: currentPatient.username,
-                            passwordHash: patientData.passwordHash
+                            passwordHash: finalPasswordHash
                         })
                     });
 
