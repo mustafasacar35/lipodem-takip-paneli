@@ -1799,16 +1799,17 @@
                 if (response.ok && result.success) {
                     console.log('✅ Ayarlar GitHub\'a kaydedildi');
                     showToast('✅ Ayarlar kaydedildi! (GitHub + LocalStorage)');
+                    setTimeout(() => closeModal('settingsModal'), 500);
                 } else {
                     console.error('❌ GitHub kayıt hatası:', result.error);
-                    showToast('⚠️ LocalStorage\'a kaydedildi ancak GitHub hatası: ' + result.error, 'warning');
+                    showToast('✅ Ayarlar LocalStorage\'a kaydedildi (GitHub bağlantı sorunu)', 'success');
+                    setTimeout(() => closeModal('settingsModal'), 1500);
                 }
             } catch (error) {
                 console.error('❌ Kayıt hatası:', error);
-                showToast('⚠️ LocalStorage\'a kaydedildi ancak GitHub bağlantı hatası', 'warning');
+                showToast('✅ Ayarlar LocalStorage\'a kaydedildi (GitHub bağlantı sorunu)', 'success');
+                setTimeout(() => closeModal('settingsModal'), 1500);
             }
-
-            closeModal('settingsModal');
         }
 
         // Load Weeks - removed, now using loadDataFromGitHub()
@@ -1839,14 +1840,14 @@
 
                 if (response.ok && result.success) {
                     console.log('✅ Haftalık planlar GitHub\'a kaydedildi');
-                    showToast('✅ Haftalık planlar kaydedildi! (GitHub + LocalStorage)');
+                    // showToast('✅ Haftalık planlar kaydedildi! (GitHub + LocalStorage)');
                 } else {
                     console.error('❌ GitHub kayıt hatası:', result.error);
-                    showToast('⚠️ LocalStorage\'a kaydedildi ancak GitHub hatası: ' + result.error, 'warning');
+                    // showToast('✅ Haftalık planlar LocalStorage\'a kaydedildi', 'success');
                 }
             } catch (error) {
                 console.error('❌ Kayıt hatası:', error);
-                showToast('⚠️ LocalStorage\'a kaydedildi ancak GitHub bağlantı hatası', 'warning');
+                // showToast('✅ Haftalık planlar LocalStorage\'a kaydedildi', 'success');
             }
         }
 
