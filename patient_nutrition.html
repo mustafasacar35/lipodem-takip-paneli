@@ -1786,6 +1786,7 @@
                 }
 
                 patientData.settings = newSettings;
+                patientData.updatedAt = new Date().toISOString(); // Güncelleme zamanını kaydet
                 
                 // localStorage'a kaydet (anında senkronizasyon için)
                 const cleanId = currentPatient.id.replace(/^patient_/i, '');
@@ -1794,75 +1795,27 @@
                 console.log('💾 Ayarlar localStorage\'a kaydedildi');
             }
 
-            try {
-                // GitHub'a kaydet (çoklu cihaz erişimi için)
-                const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-settings';
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        patientId: currentPatient.id,
-                        settings: newSettings
-                    })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    console.log('✅ Ayarlar GitHub\'a kaydedildi');
-                    showToast('✅ Ayarlar kaydedildi! (GitHub + LocalStorage)');
-                    setTimeout(() => closeModal('settingsModal'), 500);
-                } else {
-                    console.warn('⚠️ GitHub kayıt hatası (beklenen):', result.error);
-                    showToast('✅ Ayarlar LocalStorage\'a kaydedildi (GitHub bağlantı sorunu)', 'success');
-                    setTimeout(() => closeModal('settingsModal'), 1500);
-                }
-            } catch (error) {
-                console.warn('⚠️ GitHub bağlantı hatası (beklenen - LocalStorage çalışıyor)');
-                showToast('✅ Ayarlar LocalStorage\'a kaydedildi (GitHub bağlantı sorunu)', 'success');
-                setTimeout(() => closeModal('settingsModal'), 1500);
-            }
+            // Başarı mesajı göster (CORS sorunu olduğu için sadece localStorage)
+            showToast('✅ Ayarlar kaydedildi!');
+            setTimeout(() => closeModal('settingsModal'), 1000);
         }
 
         // Load Weeks - removed, now using loadDataFromGitHub()
 
-        // Save Weeks - GitHub'a otomatik kaydet
+        // Save Weeks - LocalStorage'a kaydet
         async function saveWeeks() {
-            try {
-                // 1. LocalStorage'a kaydet (anında senkronizasyon için)
-                const cachedDataKey = `patient_data_${currentPatient.id}`;
-                patientData.weeks = weeks;
-                localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
-
-                // 2. GitHub'a kaydet (çoklu cihaz erişimi için)
-                const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-weeks';
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        patientId: currentPatient.id,
-                        weeks: weeks
-                    })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    console.log('✅ Haftalık planlar GitHub\'a kaydedildi');
-                    // showToast('✅ Haftalık planlar kaydedildi! (GitHub + LocalStorage)');
-                } else {
-                    console.warn('⚠️ GitHub kayıt hatası (beklenen):', result.error);
-                    // showToast('✅ Haftalık planlar LocalStorage\'a kaydedildi', 'success');
-                }
-            } catch (error) {
-                console.warn('⚠️ GitHub bağlantı hatası (beklenen - LocalStorage çalışıyor)');
-                // showToast('✅ Haftalık planlar LocalStorage\'a kaydedildi', 'success');
+            // LocalStorage'a kaydet (anında senkronizasyon için)
+            const cachedDataKey = `patient_data_${currentPatient.id}`;
+            patientData.weeks = weeks;
+            patientData.updatedAt = new Date().toISOString(); // Güncelleme zamanını kaydet
+            localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+            console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
+            
+            // Değişiklik bayrağı ekle (admin panelinden senkronize edilmek üzere)
+            const pendingChanges = JSON.parse(localStorage.getItem('pending_patient_changes') || '[]');
+            if (!pendingChanges.includes(currentPatient.id)) {
+                pendingChanges.push(currentPatient.id);
+                localStorage.setItem('pending_patient_changes', JSON.stringify(pendingChanges));
             }
         }
 
