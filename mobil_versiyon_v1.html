@@ -1096,11 +1096,18 @@
 </head>
 <body>
     <div class="container">
+        <h1 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span>🍽️ Yemek Alternatif Bulucu</span>
+            <a href="patient_nutrition.html" style="font-size: 13px; color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                📋 Beslenme Planım
+            </a>
+        </h1>
+        
         <div class="search-box">
             <input 
                 type="text" 
                 id="yemekArama" 
-                placeholder="🍽️ Yemek Alternatif Bulucu - Yemek adı yazın (ör: Izgara Tavuk)"
+                placeholder="🍽️ Yemek adı yazın (ör: Izgara Tavuk)"
                 autocomplete="off"
             >
             <span class="settings-icon" id="openUserSettings" title="Hesap ayarları">⚙️</span>
@@ -1243,6 +1250,22 @@
                             style="padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; background: #f8f9fa; color: #6c757d; cursor: not-allowed;">
                     </div>
 
+                    <!-- Aktivite Seviyesi -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-weight: 600; color: #495057; font-size: 14px;">Aktivite Seviyesi *</label>
+                        <select id="userActivityLevel" required
+                            style="padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; transition: all 0.3s ease; outline: none; background: white; cursor: pointer;"
+                            onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)'"
+                            onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                            <option value="1">1 - Hareketsiz (Çok az aktivite)</option>
+                            <option value="2">2 - Az Hareketli (Haftada 1-2 gün)</option>
+                            <option value="3" selected>3 - Orta Hareketli (Haftada 3-5 gün)</option>
+                            <option value="4">4 - Hareketli (Haftada 6-7 gün)</option>
+                            <option value="5">5 - Çok Hareketli (Günde 2 kez)</option>
+                        </select>
+                        <small style="color: #6c757d; font-size: 12px;">Günlük fiziksel aktivite seviyeniz (kalori hesaplamasında kullanılır)</small>
+                    </div>
+
                     <!-- Kullanıcı Adı (readonly) -->
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="font-weight: 600; color: #495057; font-size: 14px;">Kullanıcı Adı (değiştirilemez)</label>
@@ -1335,18 +1358,32 @@
                 // patientId zaten "patient_" ile başlıyor, temizle
                 const cleanId = patientId.replace(/^patient_/i, '');
                 const fileName = `patient_${cleanId}.json`;
+                const cachedDataKey = `patient_data_${cleanId}`;
                 
                 console.log('🔍 Hasta verisi çekiliyor:', fileName);
                 
-                const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${fileName}`);
+                let patientData;
                 
-                if (!response.ok) {
-                    console.error('❌ Dosya bulunamadı:', fileName);
-                    throw new Error(`Hasta dosyası bulunamadı: ${fileName}`);
+                // ÖNCELİK 1: GitHub'dan çek (HER ZAMAN ÖNCE GITHUB!)
+                const timestamp = new Date().getTime();
+                const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${fileName}?t=${timestamp}`);
+                
+                if (response.ok) {
+                    // GitHub'dan başarıyla yüklendi
+                    patientData = await response.json();
+                    localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    console.log('✅ Hasta verisi GitHub\'dan yüklendi:', patientData);
+                } else {
+                    // ÖNCELİK 2: GitHub'a erişilemiyorsa localStorage'dan yükle
+                    const cachedData = localStorage.getItem(cachedDataKey);
+                    if (cachedData) {
+                        patientData = JSON.parse(cachedData);
+                        console.log('⚠️ GitHub erişilemiyor, localStorage kullanıldı:', patientData);
+                    } else {
+                        console.error('❌ Dosya bulunamadı:', fileName);
+                        throw new Error(`Hasta dosyası bulunamadı: ${fileName}`);
+                    }
                 }
-
-                const patientData = await response.json();
-                console.log('✅ Hasta verisi yüklendi:', patientData);
                 
                 // Veri yapısını kontrol et (personalInfo içinde mi yoksa direkt mi?)
                 const info = patientData.personalInfo || patientData;
@@ -1358,6 +1395,7 @@
                 document.getElementById('userGender').value = info.gender || '';
                 document.getElementById('userWeight').value = info.weight || '';
                 document.getElementById('userHeight').value = info.height || '';
+                document.getElementById('userActivityLevel').value = info.activityLevel || '3'; // Varsayılan: 3 (Orta Hareketli)
                 document.getElementById('userUsername').value = cleanId;
                 document.getElementById('userPassword').value = ''; // Şifre alanı boş
                 
@@ -1433,6 +1471,7 @@
                 gender: document.getElementById('userGender').value,
                 weight: parseFloat(document.getElementById('userWeight').value),
                 height: parseFloat(document.getElementById('userHeight').value),
+                activityLevel: parseInt(document.getElementById('userActivityLevel').value),
                 username: document.getElementById('userUsername').value,
                 password: document.getElementById('userPassword').value.trim()
             };
@@ -1473,11 +1512,46 @@
                 if (response.ok && result.success) {
                     showUserMessage('✅ Bilgiler başarıyla güncellendi!', 'success');
                     
-                    // LocalStorage'ı güncelle
+                    // LocalStorage session'ı güncelle
                     const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
                     session.name = formData.name;
                     session.surname = formData.surname;
                     localStorage.setItem('patient_session', JSON.stringify(session));
+                    
+                    // Hasta verilerini localStorage'a kaydet
+                    const cleanId = formData.patientId.replace(/^patient_/i, '');
+                    const cachedDataKey = `patient_data_${cleanId}`;
+                    
+                    // Mevcut veriyi al veya yeni oluştur
+                    let patientData = {};
+                    try {
+                        const existingData = localStorage.getItem(cachedDataKey);
+                        if (existingData) {
+                            patientData = JSON.parse(existingData);
+                        }
+                    } catch (e) {
+                        console.warn('Mevcut veri okunamadı, yeni oluşturuluyor');
+                    }
+                    
+                    // personalInfo'yu güncelle
+                    patientData.personalInfo = {
+                        name: formData.name,
+                        surname: formData.surname,
+                        age: formData.age,
+                        gender: formData.gender,
+                        weight: formData.weight,
+                        height: formData.height,
+                        activityLevel: formData.activityLevel
+                    };
+                    
+                    // Şifre hash'i varsa ekle
+                    if (formData.passwordHash) {
+                        patientData.passwordHash = formData.passwordHash;
+                    }
+                    
+                    // localStorage'a kaydet
+                    localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    console.log('💾 Hasta verileri localStorage\'a kaydedildi');
                     
                     setTimeout(() => {
                         closeUserSettings();
