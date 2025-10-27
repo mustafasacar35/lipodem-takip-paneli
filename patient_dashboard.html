@@ -150,10 +150,10 @@
         </div>
         <iframe 
             id="appIframe" 
-            src="mobil_versiyon_v1.html" 
+            src="patient_nutrition.html" 
             class="app-frame"
             style="display: none;"
-            title="Yemek Alternatif Bulucu"
+            title="Beslenme Planım"
         ></iframe>
     </div>
 
@@ -173,6 +173,15 @@
                 // Show iframe, hide loading
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('appIframe').style.display = 'block';
+            }
+        });
+
+        // Listen for patient name updates from iframe
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'updatePatientName') {
+                const fullName = `${event.data.name} ${event.data.surname}`;
+                document.getElementById('patientName').textContent = fullName;
+                console.log('✅ Parent header güncellendi:', fullName);
             }
         });
 

@@ -1801,6 +1801,21 @@
                 document.getElementById('headerPatientName').textContent = fullName;
                 console.log('✅ Header güncellendi:', fullName);
                 
+                // Session'ı da güncelle (parent frame için)
+                const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+                session.name = patientData.personalInfo.name;
+                session.surname = patientData.personalInfo.surname;
+                localStorage.setItem('patient_session', JSON.stringify(session));
+                
+                // Parent frame'e (patient_dashboard.html) mesaj gönder
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'updatePatientName',
+                        name: patientData.personalInfo.name,
+                        surname: patientData.personalInfo.surname
+                    }, '*');
+                }
+                
                 // GitHub'a kaydet (update-patient API ile)
                 try {
                     const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
