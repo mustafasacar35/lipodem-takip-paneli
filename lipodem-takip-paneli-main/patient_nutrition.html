@@ -2621,9 +2621,24 @@
                 // Yemek listesini oluştur (öğünlere göre)
                 let mealsHTML = '';
                 if (template.ogunler && template.ogunler.length > 0) {
-                    const mealsList = template.ogunler.map(ogun => {
+                    const mealsList = template.ogunler.map((ogun, ogunIndex) => {
                         const foodNames = ogun.yemekler ? ogun.yemekler.map(y => y.foodName || y.originalText || '?').join(', ') : '';
-                        return `<strong>${ogun.mealName || 'Öğün'}:</strong> ${foodNames}`;
+                        // Öğün adını Türkçe'ye çevir
+                        let mealDisplayName = ogun.mealName || 'Öğün';
+                        if (mealDisplayName.toLowerCase().includes('meal1') || ogunIndex === 0) {
+                            mealDisplayName = '🌅 Sabah';
+                        } else if (mealDisplayName.toLowerCase().includes('meal2') || ogunIndex === 1) {
+                            mealDisplayName = '🥪 Ara Öğün 1';
+                        } else if (mealDisplayName.toLowerCase().includes('meal3') || ogunIndex === 2) {
+                            mealDisplayName = '🍽️ Öğle';
+                        } else if (mealDisplayName.toLowerCase().includes('meal4') || ogunIndex === 3) {
+                            mealDisplayName = '🍎 Ara Öğün 2';
+                        } else if (mealDisplayName.toLowerCase().includes('meal5') || ogunIndex === 4) {
+                            mealDisplayName = '🌙 Akşam';
+                        } else if (mealDisplayName.toLowerCase().includes('meal6') || ogunIndex === 5) {
+                            mealDisplayName = '🥤 Ara Öğün 3';
+                        }
+                        return `<strong>${mealDisplayName}:</strong> ${foodNames}`;
                     }).join('<br>');
                     mealsHTML = mealsList;
                 }
