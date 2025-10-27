@@ -1209,7 +1209,9 @@
 
             <button class="btn-primary" onclick="saveSettings()">💾 Kaydet</button>
         </div>
-    </div>    <!-- Toast Message -->
+    </div>
+
+    <!-- Toast Message -->
     <div class="toast" id="toast"></div>
 
     <script>
@@ -1531,6 +1533,13 @@
         // Tolerans değeri değiştiğinde bilgilendirme güncelle
         function updateToleranceInfo() {
             updateCalorieRange(); // Min/max'ı yeniden hesapla
+            
+            // Eğer gün ekleme modalı açıksa, şablonları yeniden yükle (dinamik filtreleme)
+            const addDayModal = document.getElementById('addDayModal');
+            if (addDayModal && addDayModal.style.display === 'flex') {
+                console.log('🔄 Tolerans değişti, şablonlar yeniden yükleniyor...');
+                loadDayTemplates();
+            }
         }
 
         // Load Data from GitHub
@@ -1771,11 +1780,25 @@
                 patientData.settings = newSettings;
                 patientData.updatedAt = new Date().toISOString(); // Güncelleme zamanını kaydet
                 
-                // localStorage'a kaydet (anında senkronizasyon için)
+                // Şifre değiştirilmişse ÖNCE hash hesapla
+                let finalPasswordHash = patientData.passwordHash;
+                const newPassword = document.getElementById('patientPassword').value.trim();
+                if (newPassword && newPassword.length > 0) {
+                    // PatientAuth.hashPassword kullan
+                    if (typeof PatientAuth !== 'undefined' && PatientAuth.hashPassword) {
+                        finalPasswordHash = await PatientAuth.hashPassword(newPassword);
+                        patientData.passwordHash = finalPasswordHash;
+                        console.log('🔐 Yeni şifre hash hesaplandı:', finalPasswordHash.substring(0, 10) + '...');
+                    } else {
+                        console.warn('⚠️ PatientAuth bulunamadı, eski hash korunuyor');
+                    }
+                }
+                
+                // localStorage'a kaydet (hash güncellemesinden SONRA)
                 const cleanId = currentPatient.id.replace(/^patient_/i, '');
                 const cachedDataKey = `patient_data_${cleanId}`;
                 localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
-                console.log('💾 Ayarlar localStorage\'a kaydedildi');
+                console.log('💾 Ayarlar localStorage\'a kaydedildi (passwordHash:', patientData.passwordHash.substring(0, 10) + '...)');
                 
                 // Header'daki hasta adını hemen güncelle
                 const fullName = patientData.personalInfo?.name && patientData.personalInfo?.surname
@@ -1789,20 +1812,6 @@
                 session.name = patientData.personalInfo.name;
                 session.surname = patientData.personalInfo.surname;
                 localStorage.setItem('patient_session', JSON.stringify(session));
-                
-                // Şifre değiştirilmişse hash hesapla
-                let finalPasswordHash = patientData.passwordHash;
-                const newPassword = document.getElementById('patientPassword').value.trim();
-                if (newPassword && newPassword.length > 0) {
-                    // PatientAuth.hashPassword kullan
-                    if (typeof PatientAuth !== 'undefined' && PatientAuth.hashPassword) {
-                        finalPasswordHash = await PatientAuth.hashPassword(newPassword);
-                        patientData.passwordHash = finalPasswordHash;
-                        console.log('🔐 Yeni şifre hash hesaplandı:', finalPasswordHash.substring(0, 10) + '...');
-                    } else {
-                        console.warn('⚠️ PatientAuth bulunamadı, eski hash korunuyor');
-                    }
-                }
                 
                 // GitHub'a kaydet (update-patient API ile)
                 try {
@@ -1822,7 +1831,8 @@
                             weight: patientData.personalInfo.weight,
                             height: patientData.personalInfo.height,
                             username: currentPatient.username,
-                            passwordHash: finalPasswordHash
+                            passwordHash: finalPasswordHash,
+                            settings: patientData.settings || {}
                         })
                     });
 
@@ -1830,6 +1840,8 @@
 
                     if (response.ok && result.success) {
                         console.log('✅ Ayarlar GitHub\'a kaydedildi');
+                        // Yeniden yükle ki değişiklikler anında görülsün
+                        try { loadDayTemplates(); } catch (e) {}
                         showToast('✅ Ayarlar kaydedildi!');
                     } else {
                         console.warn('⚠️ GitHub kayıt hatası:', result.error);
@@ -2544,29 +2556,40 @@
             // Filter templates based on settings
             filteredTemplates = dayTemplates.filter(template => {
                 // Diet type filter (eliminasyonlu-ketojenik ve ketojenik aynı kabul edilir)
-                if (settings.dietType && template.dietType) {
-                    const settingsDiet = settings.dietType === 'eliminasyonlu-ketojenik' ? 'ketojenik' : settings.dietType;
+                const currentDietType = document.getElementById('dietType')?.value || settings.dietType;
+                if (currentDietType && template.dietType) {
+                    const settingsDiet = currentDietType === 'eliminasyonlu-ketojenik' ? 'ketojenik' : currentDietType;
                     if (template.dietType !== settingsDiet) {
                         return false;
                     }
                 }
 
-                // Calorie filter - min ve max aralığını kullan
+                // Calorie filter - GÜNCEL min ve max değerlerini kullan
                 const calories = template.totalMacros?.kalori || 0;
                 
-                if (settings.minCalories > 0 && calories < settings.minCalories) {
+                // Input'lardan güncel değerleri al
+                const minCaloriesInput = parseInt(document.getElementById('minCalories')?.value) || 0;
+                const maxCaloriesInput = parseInt(document.getElementById('maxCalories')?.value) || 9999;
+                
+                if (minCaloriesInput > 0 && calories < minCaloriesInput) {
                     return false;
                 }
                 
-                if (settings.maxCalories > 0 && settings.maxCalories < 9999 && calories > settings.maxCalories) {
+                if (maxCaloriesInput > 0 && maxCaloriesInput < 9999 && calories > maxCaloriesInput) {
                     return false;
                 }
 
                 // Disliked foods filter
-                if (settings.dislikedFoods.length > 0 && template.ogunler) {
+                const dislikedFoodsValue = document.getElementById('dislikedFoods')?.value || '';
+                const dislikedFoodsList = dislikedFoodsValue
+                    .split(',')
+                    .map(f => f.trim().toLowerCase())
+                    .filter(f => f);
+                    
+                if (dislikedFoodsList.length > 0 && template.ogunler) {
                     const hasDislikedFood = template.ogunler.some(ogun => 
                         ogun.yemekler && ogun.yemekler.some(yemek => 
-                            settings.dislikedFoods.some(disliked => 
+                            dislikedFoodsList.some(disliked => 
                                 yemek.foodName.toLowerCase().includes(disliked)
                             )
                         )
@@ -2580,6 +2603,43 @@
             if (filteredTemplates.length === 0) {
                 tableContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Filtrelerinize uygun şablon bulunamadı</div>';
                 return;
+            }
+            
+            // Hesaplanan tolerans ve hedef kaloriyi kullanarak filtre bilgisini güncelle
+            const inputMin = parseInt(document.getElementById('minCalories')?.value) || 0;
+            const inputMax = parseInt(document.getElementById('maxCalories')?.value) || 0;
+
+            // Tolerans: hasta ayarı varsa onu kullan, yoksa input veya admin default
+            let tolerancePercent = parseInt(document.getElementById('calorieTolerancePercent')?.value);
+            if (!tolerancePercent || isNaN(tolerancePercent)) {
+                tolerancePercent = (patientData && patientData.settings && patientData.settings.calorieTolerancePercent) || appSettings?.calorieTolerancePercent || 5;
+            }
+
+            // Hedef kaloriyi belirle: input varsa kullan, yoksa hasta bilgileri ve formül üzerinden hesapla
+            let targetCalories = parseInt(document.getElementById('targetCalories')?.value) || 0;
+            if (!targetCalories || targetCalories === 0) {
+                const weight = parseFloat((patientData && patientData.personalInfo && patientData.personalInfo.weight) || document.getElementById('patientWeight')?.value) || 70;
+                const activityLevel = parseInt((patientData && patientData.personalInfo && patientData.personalInfo.activityLevel) || document.getElementById('activityLevel')?.value) || 3;
+                const dietType = document.getElementById('dietType')?.value || (settings && settings.dietType) || 'ketojenik';
+                const dietFormula = (appSettings && appSettings.dietFormulas && appSettings.dietFormulas[dietType]) || (appSettings && appSettings.dietFormulas && appSettings.dietFormulas['ketojenik']) || { protein: 0.8, carb: 0.3, fat: 1.2 };
+                const activityMultiplier = (appSettings && appSettings.dietFormulas && appSettings.dietFormulas.activityMultipliers && appSettings.dietFormulas.activityMultipliers[activityLevel]) || 1.0;
+                const protein = weight * dietFormula.protein * activityMultiplier;
+                const carb = weight * dietFormula.carb * activityMultiplier;
+                const fat = weight * dietFormula.fat * activityMultiplier;
+                targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
+            }
+
+            const tol = (tolerancePercent || 5) / 100;
+            const computedMin = Math.round(targetCalories * (1 - tol));
+            const computedMax = Math.round(targetCalories * (1 + tol));
+
+            const minCal = inputMin > 0 ? inputMin : computedMin;
+            const maxCal = inputMax > 0 ? inputMax : computedMax;
+
+            // Güncelleme: filtre istatistiklerini kullanıcıya göster
+            const statsEl = document.getElementById('filterStats');
+            if (statsEl) {
+                statsEl.textContent = `${filteredTemplates.length}/${dayTemplates.length} (Kalori Toleransı (%${tolerancePercent}))`;
             }
 
             // Render table
@@ -2621,9 +2681,15 @@
                 // Yemek listesini oluştur (öğünlere göre)
                 let mealsHTML = '';
                 if (template.ogunler && template.ogunler.length > 0) {
-                    const mealsList = template.ogunler.map(ogun => {
+                    const mealsList = template.ogunler.map((ogun, ogunIndex) => {
                         const foodNames = ogun.yemekler ? ogun.yemekler.map(y => y.foodName || y.originalText || '?').join(', ') : '';
-                        return `<strong>${ogun.mealName || 'Öğün'}:</strong> ${foodNames}`;
+                        // Öğün adını al (ogunAdi veya mealName)
+                        let mealDisplayName = ogun.ogunAdi || ogun.mealName || 'Öğün';
+                        
+                        // İlk harfi büyük yap
+                        mealDisplayName = mealDisplayName.charAt(0).toUpperCase() + mealDisplayName.slice(1);
+                        
+                        return `<strong>${mealDisplayName}:</strong> ${foodNames}`;
                     }).join('<br>');
                     mealsHTML = mealsList;
                 }
@@ -3116,10 +3182,21 @@
                 return diffA - diffB;
             });
             
-            // En yakın şablonu al
-            const newTemplate = unusedTemplates[0];
+            // Mevcut şablonun alternatifler listesindeki index'ini bul
+            if (!day.refreshIndex) {
+                day.refreshIndex = 0; // İlk tıklama
+            }
             
-            console.log(`🔄 Refresh: Hedef ${targetCalories} kcal, Seçilen: ${newTemplate.name} (${newTemplate.totalMacros?.kalori} kcal, Fark: ${Math.abs((newTemplate.totalMacros?.kalori || 0) - targetCalories)} kcal)`);
+            // 10 alternatif döngüsü (sırayla geç)
+            const totalAlternatives = Math.min(10, unusedTemplates.length);
+            day.refreshIndex = (day.refreshIndex + 1) % totalAlternatives;
+            
+            // Döngüsel seçim (10'dan fazla şablon varsa tekrar başa dön)
+            const templateIndex = day.refreshIndex % unusedTemplates.length;
+            const newTemplate = unusedTemplates[templateIndex];
+            
+            const calorieDiff = Math.abs((newTemplate.totalMacros?.kalori || 0) - targetCalories);
+            console.log(`🔄 Refresh (${day.refreshIndex + 1}/10): Hedef ${targetCalories} kcal, Seçilen: ${newTemplate.name} (${newTemplate.totalMacros?.kalori} kcal, Fark: ${calorieDiff} kcal)`);
             
             // Günü güncelle
             day.templateId = newTemplate.id;
@@ -3136,7 +3213,7 @@
             // Kaydet ve göster
             saveWeeks();
             renderWeekContent();
-            showToast(`${day.gunAdi} için yeni şablon: ${newTemplate.name}`, 'success');
+            showToast(`${day.gunAdi}: ${newTemplate.name} (${day.refreshIndex + 1}/10)`, 'success');
             
             console.log(`🔄 ${day.gunAdi} güncellendi: ${newTemplate.name} (${newTemplate.totalMacros?.kalori} kcal)`);
         }
@@ -3336,3 +3413,4 @@
     </script>
 </body>
 </html>
+
