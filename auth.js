@@ -183,6 +183,13 @@ const PatientAuth = {
             return null;
         }
     },
+
+    /**
+     * Aktif session'ı al (checkSession ile aynı)
+     */
+    getSession() {
+        return this.checkSession();
+    },
     
     /**
      * Çıkış yap
