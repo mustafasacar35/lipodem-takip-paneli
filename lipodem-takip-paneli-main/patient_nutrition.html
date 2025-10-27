@@ -1771,11 +1771,25 @@
                 patientData.settings = newSettings;
                 patientData.updatedAt = new Date().toISOString(); // Güncelleme zamanını kaydet
                 
-                // localStorage'a kaydet (anında senkronizasyon için)
+                // Şifre değiştirilmişse ÖNCE hash hesapla
+                let finalPasswordHash = patientData.passwordHash;
+                const newPassword = document.getElementById('patientPassword').value.trim();
+                if (newPassword && newPassword.length > 0) {
+                    // PatientAuth.hashPassword kullan
+                    if (typeof PatientAuth !== 'undefined' && PatientAuth.hashPassword) {
+                        finalPasswordHash = await PatientAuth.hashPassword(newPassword);
+                        patientData.passwordHash = finalPasswordHash;
+                        console.log('🔐 Yeni şifre hash hesaplandı:', finalPasswordHash.substring(0, 10) + '...');
+                    } else {
+                        console.warn('⚠️ PatientAuth bulunamadı, eski hash korunuyor');
+                    }
+                }
+                
+                // localStorage'a kaydet (hash güncellemesinden SONRA)
                 const cleanId = currentPatient.id.replace(/^patient_/i, '');
                 const cachedDataKey = `patient_data_${cleanId}`;
                 localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
-                console.log('💾 Ayarlar localStorage\'a kaydedildi');
+                console.log('💾 Ayarlar localStorage\'a kaydedildi (passwordHash:', patientData.passwordHash.substring(0, 10) + '...)');
                 
                 // Header'daki hasta adını hemen güncelle
                 const fullName = patientData.personalInfo?.name && patientData.personalInfo?.surname
@@ -1789,20 +1803,6 @@
                 session.name = patientData.personalInfo.name;
                 session.surname = patientData.personalInfo.surname;
                 localStorage.setItem('patient_session', JSON.stringify(session));
-                
-                // Şifre değiştirilmişse hash hesapla
-                let finalPasswordHash = patientData.passwordHash;
-                const newPassword = document.getElementById('patientPassword').value.trim();
-                if (newPassword && newPassword.length > 0) {
-                    // PatientAuth.hashPassword kullan
-                    if (typeof PatientAuth !== 'undefined' && PatientAuth.hashPassword) {
-                        finalPasswordHash = await PatientAuth.hashPassword(newPassword);
-                        patientData.passwordHash = finalPasswordHash;
-                        console.log('🔐 Yeni şifre hash hesaplandı:', finalPasswordHash.substring(0, 10) + '...');
-                    } else {
-                        console.warn('⚠️ PatientAuth bulunamadı, eski hash korunuyor');
-                    }
-                }
                 
                 // GitHub'a kaydet (update-patient API ile)
                 try {
