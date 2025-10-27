@@ -1415,9 +1415,9 @@
                         weeks = patientData.weeks;
                         console.log('✅ Hafta verileri yüklendi:', weeks.length, 'hafta');
                     } else {
-                        // İlk hafta oluştur
-                        weeks = [];
-                        console.log('⚠️ Hafta verisi bulunamadı, yeni hafta oluşturulacak');
+                        // weeks undefined bırak, loadDataFromGitHub() varsayılan oluşturacak
+                        weeks = undefined;
+                        console.log('⚠️ Hafta verisi bulunamadı (GitHub\'da yok)');
                     }
                 } else {
                     // ÖNCELİK 2: GitHub'da yoksa localStorage'dan yükle
@@ -1431,13 +1431,13 @@
                             weeks = patientData.weeks;
                             console.log('✅ Hafta verileri localStorage\'dan yüklendi:', weeks.length, 'hafta');
                         } else {
-                            weeks = [];
+                            weeks = undefined;
                         }
                     } else {
                         // Hiçbir yerde yok - varsayılan değerler
                         console.warn('⚠️ Hasta dosyası bulunamadı, varsayılan değerler kullanılacak');
                         patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
-                        weeks = [];
+                        weeks = undefined;
                     }
                 }
                 
@@ -1450,7 +1450,7 @@
             } catch (error) {
                 console.error('❌ Hasta bilgileri yüklenirken hata:', error);
                 patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
-                weeks = [];
+                weeks = undefined; // undefined bırak, varsayılan hafta loadDataFromGitHub() içinde oluşturulacak
                 // Hata durumunda da header'ı güncelle
                 document.getElementById('headerPatientName').textContent = currentPatient.name || 'Hasta';
             }
@@ -1567,14 +1567,16 @@
             console.log('🔄 GitHub\'dan veriler yükleniyor...');
             
             try {
-                // weeks artık loadPatientData() içinde yükleniyor, burada sadece fallback
-                // Eğer weeks boşsa varsayılan hafta oluştur
-                if (!weeks || weeks.length === 0) {
+                // weeks loadPatientData() içinde yüklendi
+                // SADECE undefined ise (GitHub'da hiç yoksa) varsayılan hafta oluştur
+                if (weeks === undefined) {
                     console.log('⚠️ Hafta verisi bulunamadı, varsayılan hafta oluşturuluyor');
                     const defaultWeeksData = NutritionDataManager.getDefaultWeeks(currentPatient.id);
                     weeks = defaultWeeksData.weeks;
                     // Varsayılan haftayı kaydet
                     await saveWeeks();
+                } else {
+                    console.log('✅ Mevcut hafta verileri kullanılıyor:', weeks.length, 'hafta');
                 }
 
                 // Apply settings to form if modal is open
@@ -1586,8 +1588,8 @@
             } catch (error) {
                 console.error('❌ Veri yüklenirken hata:', error);
                 
-                // Hata durumunda varsayılan hafta oluştur
-                if (!weeks || weeks.length === 0) {
+                // Hata durumunda SADECE undefined ise varsayılan hafta oluştur
+                if (weeks === undefined) {
                     const defaultWeeksData = NutritionDataManager.getDefaultWeeks(currentPatient.id);
                     weeks = defaultWeeksData.weeks;
                 }
