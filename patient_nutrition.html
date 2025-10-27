@@ -1397,29 +1397,44 @@
                 
                 console.log('🔍 Hasta verisi yükleniyor:', patientFileName);
                 
-                // Önce localStorage'dan kontrol et (mobil versiyondan güncel veri olabilir)
+                // Önce localStorage'dan kontrol et
                 const cachedDataKey = `patient_data_${cleanId}`;
                 const cachedData = localStorage.getItem(cachedDataKey);
+                let cachedPatientData = cachedData ? JSON.parse(cachedData) : null;
                 
-                if (cachedData) {
-                    // LocalStorage'dan yükle (GÜNCEL veri)
-                    patientData = JSON.parse(cachedData);
-                    console.log('✅ Hasta bilgileri localStorage\'dan yüklendi:', patientData);
-                } else {
-                    // GitHub/local'den çek (cache bypass için timestamp)
-                    const timestamp = new Date().getTime();
-                    const response = await fetch(`${patientFileName}?t=${timestamp}`);
-
-                    if (response.ok) {
-                        patientData = await response.json();
-                        console.log('✅ Hasta bilgileri dosyadan yüklendi:', patientData);
-                        
-                        // localStorage'a kaydet
+                // GitHub'dan da çek ve karşılaştır (cache bypass için timestamp)
+                const timestamp = new Date().getTime();
+                const response = await fetch(`${patientFileName}?t=${timestamp}`);
+                
+                if (response.ok) {
+                    const githubPatientData = await response.json();
+                    
+                    // updatedAt tarihlerine göre hangisi daha yeni?
+                    const cachedDate = cachedPatientData?.updatedAt ? new Date(cachedPatientData.updatedAt).getTime() : 0;
+                    const githubDate = githubPatientData?.updatedAt ? new Date(githubPatientData.updatedAt).getTime() : 0;
+                    
+                    if (githubDate > cachedDate) {
+                        // GitHub'daki daha yeni
+                        patientData = githubPatientData;
                         localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                        console.log('✅ Hasta bilgileri GitHub\'dan yüklendi (daha güncel):', patientData);
+                    } else if (cachedPatientData) {
+                        // LocalStorage'daki daha yeni veya aynı
+                        patientData = cachedPatientData;
+                        console.log('✅ Hasta bilgileri localStorage\'dan yüklendi (daha güncel):', patientData);
                     } else {
-                        console.warn('⚠️ Hasta dosyası bulunamadı, varsayılan değerler kullanılacak');
-                        patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
+                        // Cache yok, GitHub'dan al
+                        patientData = githubPatientData;
+                        localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                        console.log('✅ Hasta bilgileri GitHub\'dan yüklendi:', patientData);
                     }
+                } else if (cachedPatientData) {
+                    // GitHub'da yok ama localStorage'da var
+                    patientData = cachedPatientData;
+                    console.log('✅ Hasta bilgileri localStorage\'dan yüklendi (GitHub yok):', patientData);
+                } else {
+                    console.warn('⚠️ Hasta dosyası bulunamadı, varsayılan değerler kullanılacak');
+                    patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
                 }
                 
                 // Header'daki hasta adını güncelle
