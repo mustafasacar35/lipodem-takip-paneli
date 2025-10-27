@@ -1409,16 +1409,35 @@
                     patientData = await response.json();
                     localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
                     console.log('✅ Hasta bilgileri GitHub\'dan yüklendi:', patientData);
+                    
+                    // Weeks verisini yükle
+                    if (patientData.weeks && Array.isArray(patientData.weeks)) {
+                        weeks = patientData.weeks;
+                        console.log('✅ Hafta verileri yüklendi:', weeks.length, 'hafta');
+                    } else {
+                        // İlk hafta oluştur
+                        weeks = [];
+                        console.log('⚠️ Hafta verisi bulunamadı, yeni hafta oluşturulacak');
+                    }
                 } else {
                     // ÖNCELİK 2: GitHub'da yoksa localStorage'dan yükle
                     const cachedData = localStorage.getItem(cachedDataKey);
                     if (cachedData) {
                         patientData = JSON.parse(cachedData);
                         console.log('⚠️ GitHub erişilemiyor, localStorage kullanıldı:', patientData);
+                        
+                        // Weeks verisini yükle
+                        if (patientData.weeks && Array.isArray(patientData.weeks)) {
+                            weeks = patientData.weeks;
+                            console.log('✅ Hafta verileri localStorage\'dan yüklendi:', weeks.length, 'hafta');
+                        } else {
+                            weeks = [];
+                        }
                     } else {
                         // Hiçbir yerde yok - varsayılan değerler
                         console.warn('⚠️ Hasta dosyası bulunamadı, varsayılan değerler kullanılacak');
                         patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
+                        weeks = [];
                     }
                 }
                 
@@ -1431,6 +1450,7 @@
             } catch (error) {
                 console.error('❌ Hasta bilgileri yüklenirken hata:', error);
                 patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
+                weeks = [];
                 // Hata durumunda da header'ı güncelle
                 document.getElementById('headerPatientName').textContent = currentPatient.name || 'Hasta';
             }
@@ -1547,40 +1567,14 @@
             console.log('🔄 GitHub\'dan veriler yükleniyor...');
             
             try {
-                // Try to load from GitHub
-                const settingsData = await NutritionDataManager.loadPatientSettings(currentPatient.id);
-                const weeksData = await NutritionDataManager.loadPatientWeeks(currentPatient.id);
-
-                // Update settings
-                if (settingsData && settingsData.settings) {
-                    settings = settingsData.settings;
-                    // Cache to localStorage
-                    NutritionDataManager.saveSettingsToCache(currentPatient.id, settingsData);
-                } else {
-                    // Try cache
-                    const cachedSettings = NutritionDataManager.loadSettingsFromCache(currentPatient.id);
-                    if (cachedSettings && cachedSettings.settings) {
-                        settings = cachedSettings.settings;
-                        console.log('💾 Ayarlar önbellekten yüklendi');
-                    }
-                }
-
-                // Update weeks
-                if (weeksData && weeksData.weeks) {
-                    weeks = weeksData.weeks;
-                    // Cache to localStorage
-                    NutritionDataManager.saveWeeksToCache(currentPatient.id, weeksData);
-                } else {
-                    // Try cache
-                    const cachedWeeks = NutritionDataManager.loadWeeksFromCache(currentPatient.id);
-                    if (cachedWeeks && cachedWeeks.weeks) {
-                        weeks = cachedWeeks.weeks;
-                        console.log('💾 Haftalar önbellekten yüklendi');
-                    } else {
-                        // Create default first week
-                        const defaultWeeksData = NutritionDataManager.getDefaultWeeks(currentPatient.id);
-                        weeks = defaultWeeksData.weeks;
-                    }
+                // weeks artık loadPatientData() içinde yükleniyor, burada sadece fallback
+                // Eğer weeks boşsa varsayılan hafta oluştur
+                if (!weeks || weeks.length === 0) {
+                    console.log('⚠️ Hafta verisi bulunamadı, varsayılan hafta oluşturuluyor');
+                    const defaultWeeksData = NutritionDataManager.getDefaultWeeks(currentPatient.id);
+                    weeks = defaultWeeksData.weeks;
+                    // Varsayılan haftayı kaydet
+                    await saveWeeks();
                 }
 
                 // Apply settings to form if modal is open
@@ -1590,19 +1584,10 @@
                 showToast('Veriler yüklendi');
 
             } catch (error) {
-                console.error('❌ GitHub\'dan veri yüklenirken hata:', error);
+                console.error('❌ Veri yüklenirken hata:', error);
                 
-                // Fallback to cache
-                const cachedSettings = NutritionDataManager.loadSettingsFromCache(currentPatient.id);
-                const cachedWeeks = NutritionDataManager.loadWeeksFromCache(currentPatient.id);
-
-                if (cachedSettings && cachedSettings.settings) {
-                    settings = cachedSettings.settings;
-                }
-
-                if (cachedWeeks && cachedWeeks.weeks) {
-                    weeks = cachedWeeks.weeks;
-                } else {
+                // Hata durumunda varsayılan hafta oluştur
+                if (!weeks || weeks.length === 0) {
                     const defaultWeeksData = NutritionDataManager.getDefaultWeeks(currentPatient.id);
                     weeks = defaultWeeksData.weeks;
                 }
@@ -1863,18 +1848,51 @@
 
         // Save Weeks - LocalStorage'a kaydet
         async function saveWeeks() {
-            // LocalStorage'a kaydet (anında senkronizasyon için)
-            const cachedDataKey = `patient_data_${currentPatient.id}`;
-            patientData.weeks = weeks;
-            patientData.updatedAt = new Date().toISOString(); // Güncelleme zamanını kaydet
-            localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
-            console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
-            
-            // Değişiklik bayrağı ekle (admin panelinden senkronize edilmek üzere)
-            const pendingChanges = JSON.parse(localStorage.getItem('pending_patient_changes') || '[]');
-            if (!pendingChanges.includes(currentPatient.id)) {
-                pendingChanges.push(currentPatient.id);
-                localStorage.setItem('pending_patient_changes', JSON.stringify(pendingChanges));
+            try {
+                // LocalStorage'a kaydet (anında senkronizasyon için)
+                const cachedDataKey = `patient_data_${currentPatient.id}`;
+                patientData.weeks = weeks;
+                patientData.updatedAt = new Date().toISOString();
+                localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
+                
+                // GitHub'a kaydet (API üzerinden)
+                const cleanId = currentPatient.id.replace(/^patient_/i, '');
+                const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        patientId: `patient_${cleanId}`,
+                        weeks: weeks
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('✅ Haftalık planlar GitHub\'a kaydedildi');
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ GitHub\'a kaydetme hatası:', errorData);
+                    
+                    // Değişiklik bayrağı ekle (manuel senkronizasyon için)
+                    const pendingChanges = JSON.parse(localStorage.getItem('pending_patient_changes') || '[]');
+                    if (!pendingChanges.includes(currentPatient.id)) {
+                        pendingChanges.push(currentPatient.id);
+                        localStorage.setItem('pending_patient_changes', JSON.stringify(pendingChanges));
+                    }
+                }
+            } catch (error) {
+                console.error('❌ saveWeeks hatası:', error);
+                
+                // Hata durumunda değişiklik bayrağı ekle
+                const pendingChanges = JSON.parse(localStorage.getItem('pending_patient_changes') || '[]');
+                if (!pendingChanges.includes(currentPatient.id)) {
+                    pendingChanges.push(currentPatient.id);
+                    localStorage.setItem('pending_patient_changes', JSON.stringify(pendingChanges));
+                }
             }
         }
 
