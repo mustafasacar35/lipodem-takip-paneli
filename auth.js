@@ -88,10 +88,25 @@ const PatientAuth = {
                 return { success: false, error: 'Bu hesap arşivlenmiştir. Lütfen yöneticinizle iletişime geçin.' };
             }
 
-            // Şifre kontrolü - önce remote hash, sonra local override hash kontrol et
+            // Şifre kontrolü - önce hastalar/patient_XXX.json'dan güncel hash'i al
             const passwordHash = await this.hashPassword(password);
-            // remote hash (index içindeki) ve local hash (patientDetails içindeki passwordHashLocal)
-            const remoteHash = patient.passwordHash || null;
+            
+            // GitHub'daki hasta dosyasından güncel hash'i çek
+            let githubHash = null;
+            try {
+                const cleanId = patient.id.replace(/^patient_/i, '');
+                const patientFileName = `hastalar/patient_${cleanId}.json`;
+                const response = await fetch(`${patientFileName}?t=${new Date().getTime()}`);
+                if (response.ok) {
+                    const patientData = await response.json();
+                    githubHash = patientData.passwordHash;
+                }
+            } catch (e) {
+                console.warn('GitHub hasta dosyası okunamadı, index.json kullanılacak');
+            }
+            
+            // Sırayla kontrol et: GitHub hash, index.json hash, localStorage hash
+            const remoteHash = githubHash || patient.passwordHash || null;
             let localHash = null;
             try {
                 const localDetailsStr = localStorage.getItem(`patientDetails_${patient.id}`);
