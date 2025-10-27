@@ -1794,6 +1794,13 @@
                 localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
                 console.log('💾 Ayarlar localStorage\'a kaydedildi');
                 
+                // Header'daki hasta adını hemen güncelle
+                const fullName = patientData.personalInfo?.name && patientData.personalInfo?.surname
+                    ? `${patientData.personalInfo.name} ${patientData.personalInfo.surname}`
+                    : patientData.personalInfo?.name || currentPatient.name || 'Hasta';
+                document.getElementById('headerPatientName').textContent = fullName;
+                console.log('✅ Header güncellendi:', fullName);
+                
                 // GitHub'a kaydet (update-patient API ile)
                 try {
                     const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
