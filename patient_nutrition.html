@@ -3112,14 +3112,10 @@
                 return;
             }
             
-            // Hedef kalori hesapla (hasta bilgilerinden)
-            const weightInput = document.getElementById('patientWeight');
-            const activityInput = document.getElementById('activityLevel');
-            const dietTypeInput = document.getElementById('dietType');
-            
-            const weight = parseFloat(weightInput?.value) || 70;
-            const activityLevel = parseInt(activityInput?.value) || 3;
-            const dietType = dietTypeInput?.value || 'ketojenik';
+            // Hasta verilerinden bilgileri çek (patientData.settings'den)
+            const weight = patientData?.personalInfo?.weight || 70;
+            const activityLevel = patientData?.personalInfo?.activity || 3;
+            const dietType = patientData?.settings?.dietType || 'ketojenik';
             
             // Admin ayarlarından formül al
             const dietFormula = appSettings?.dietFormulas?.[dietType] || { protein: 0.8, carb: 0.3, fat: 1.2 };
