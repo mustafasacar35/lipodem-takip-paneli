@@ -1420,7 +1420,58 @@
     </div>
 
     <script>
-        // Global Variables (window nesnesine bağla - console'dan erişilebilir olması için)
+        // ========================================
+        // 🔐 GLOBAL ADMIN FONKSİYONLARI (EN ÜST - ÖNCE YÜKLENSİN)
+        // ========================================
+        
+        /**
+         * 🔍 DEBUG: Admin yetkilendirme durumunu kontrol et
+         * Console'dan çağırılabilir: checkAdminStatus()
+         */
+        window.checkAdminStatus = function() {
+            console.log('=== 🔍 ADMIN YETKİLENDİRME DURUMU ===');
+            console.log('1. AdminAuth:', typeof AdminAuth !== 'undefined' && AdminAuth.getSession ? AdminAuth.getSession() : 'undefined');
+            console.log('2. GH_ADMINS:', window.GH_ADMINS);
+            console.log('3. currentPatient:', window.currentPatient);
+            console.log('4. isUserAdmin():', window.isUserAdmin ? window.isUserAdmin() : 'function not found');
+            console.log('5. Admin buton sayısı:', document.querySelectorAll('.btn-admin-edit').length);
+            console.log('6. Görünür admin butonları:', document.querySelectorAll('.btn-admin-edit:not([style*="display: none"])').length);
+            console.log('=====================================');
+        };
+        
+        /**
+         * Kullanıcının admin yetkisi var mı kontrol et
+         * @returns {boolean} Admin ise true
+         */
+        window.isUserAdmin = function() {
+            // 1. Global admin kontrolü (AdminAuth - eski sistem)
+            if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession && AdminAuth.getSession()) {
+                console.log('🔑 Global admin girişi tespit edildi');
+                return true;
+            }
+            
+            // 2. patientAdmins listesi (admins.js - merkezi yetkilendirme)
+            const patientAdmins = window.GH_ADMINS?.patientAdmins || [];
+            if (window.currentPatient && window.currentPatient.username && patientAdmins.includes(window.currentPatient.username)) {
+                console.log('🔑 Merkezi admin yetkisi tespit edildi:', window.currentPatient.username);
+                return true;
+            }
+            
+            // 3. Hasta dosyasında isAdmin (kişisel yetki)
+            if (window.currentPatient && window.currentPatient.isAdmin === true) {
+                console.log('🔑 Hasta bazlı admin yetkisi tespit edildi:', window.currentPatient.name);
+                return true;
+            }
+            
+            return false;
+        };
+        
+        console.log('✅ Global admin fonksiyonları yüklendi');
+        
+        // ========================================
+        // GLOBAL VARIABLES
+        // ========================================
+        
         window.currentPatient = null;
         let currentPatient = window.currentPatient; // Local alias
         
@@ -1454,33 +1505,6 @@
         // ========================================
         // 🔐 YETKİLENDİRME SİSTEMİ
         // ========================================
-        
-        /**
-         * Kullanıcının admin yetkisi var mı kontrol et
-         * @returns {boolean} Admin ise true
-         */
-        window.isUserAdmin = function() {
-            // 1. Global admin kontrolü (AdminAuth - eski sistem)
-            if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession && AdminAuth.getSession()) {
-                console.log('🔑 Global admin girişi tespit edildi');
-                return true;
-            }
-            
-            // 2. patientAdmins listesi (admins.js - merkezi yetkilendirme)
-            const patientAdmins = window.GH_ADMINS?.patientAdmins || [];
-            if (window.currentPatient && window.currentPatient.username && patientAdmins.includes(window.currentPatient.username)) {
-                console.log('🔑 Merkezi admin yetkisi tespit edildi:', window.currentPatient.username);
-                return true;
-            }
-            
-            // 3. Hasta dosyasında isAdmin (kişisel yetki)
-            if (window.currentPatient && window.currentPatient.isAdmin === true) {
-                console.log('🔑 Hasta bazlı admin yetkisi tespit edildi:', window.currentPatient.name);
-                return true;
-            }
-            
-            return false;
-        }
         
         /**
          * Admin config dosyasını yükle (admins.js)
@@ -1529,20 +1553,6 @@
             console.log(isAdmin ? '✅ Admin özellikleri aktif' : '🔒 Admin özellikleri gizli');
         }
         
-        /**
-         * 🔍 DEBUG: Admin yetkilendirme durumunu kontrol et
-         * Console'dan çağırılabilir: window.checkAdminStatus()
-         */
-        window.checkAdminStatus = function() {
-            console.log('=== 🔍 ADMIN YETKİLENDİRME DURUMU ===');
-            console.log('1. AdminAuth:', typeof AdminAuth !== 'undefined' && AdminAuth.getSession ? AdminAuth.getSession() : 'undefined');
-            console.log('2. GH_ADMINS:', window.GH_ADMINS);
-            console.log('3. currentPatient:', window.currentPatient);
-            console.log('4. isUserAdmin():', window.isUserAdmin());
-            console.log('5. Admin buton sayısı:', document.querySelectorAll('.btn-admin-edit').length);
-            console.log('6. Görünür admin butonları:', document.querySelectorAll('.btn-admin-edit:not([style*="display: none"])').length);
-            console.log('=====================================');
-        };
         
         /**
          * Admin yemek düzenleme modalını aç
