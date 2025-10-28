@@ -1764,6 +1764,14 @@
                 }
                 
                 console.log(`✅ Yemek veritabanı yüklendi: ${foodData.length} yemek`);
+                
+                // DEBUG: İlk 3 yemek ve Mercimek kontrolü
+                if (foodData.length > 0) {
+                    console.log('📋 İlk 3 yemek:', foodData.slice(0, 3).map(f => f.name));
+                    const mercimekler = foodData.filter(f => f.name.toLowerCase().includes('mercimek'));
+                    console.log(`🔍 Mercimek içeren yemekler (${mercimekler.length}):`, mercimekler.map(f => f.name));
+                }
+                
                 return true;
             } catch (error) {
                 console.error('❌ Yemek veritabanı yüklenirken hata:', error);
@@ -1990,10 +1998,26 @@
             }
 
             // 2️⃣ TAM EŞLEŞTİRME (normalizeTr ile)
+            // DEBUG: İlk 3 yemek ve normalize kontrolü
+            if (foodData.length > 0 && searchName.toLowerCase().includes('mercimek')) {
+                console.log(`🔍 DEBUG: "${searchName}" arıyoruz`);
+                console.log(`   normalizedTr: "${normalizedTr}"`);
+                console.log(`   normalized: "${normalized}"`);
+                console.log(`   foodData uzunluk: ${foodData.length}`);
+                const mercimekler = foodData.filter(f => f.name.toLowerCase().includes('mercimek'));
+                console.log(`   Mercimek içeren yemekler (${mercimekler.length}):`, mercimekler.map(f => f.name));
+                if (mercimekler.length > 0) {
+                    console.log(`   İlk mercimek normalize: "${normalizeTr(mercimekler[0].name)}"`);
+                }
+            }
+            
             let match = foodData.find(f => normalizeTr(f.name) === normalizedTr || normalizeText(f.name) === normalized);
             if (match && !isFoodMatchForbidden(searchName, match.name)) {
                 console.log(`✅ Tam eşleşme: "${searchName}" → "${match.name}"`);
                 return match;
+            }
+            if (match && isFoodMatchForbidden(searchName, match.name)) {
+                console.log(`🚫 Yasak kuralı engelledi: "${searchName}" → "${match.name}"`);
             }
 
             // 3️⃣ PARANTEZ TEMİZLE
