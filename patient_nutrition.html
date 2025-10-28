@@ -1553,6 +1553,31 @@
             console.log(isAdmin ? '✅ Admin özellikleri aktif' : '🔒 Admin özellikleri gizli');
         }
         
+        /**
+         * Yemek adını temizle (miktar, parantez, özel karakterleri kaldır)
+         * @param {string} name - Temizlenecek yemek adı
+         * @returns {string} - Temizlenmiş yemek adı
+         */
+        function cleanFoodName(name) {
+            if (!name) return '';
+            
+            let cleaned = name;
+            
+            // 1. Miktarları temizle (100 gr, 1 porsiyon, vb.)
+            cleaned = cleaned.replace(/\d+\s*(gr|gram|porsiyon|adet|su bardağı|çorba kaşığı|tatlı kaşığı|ml)/gi, '');
+            
+            // 2. Parantez içindeki açıklamaları kaldır
+            cleaned = cleaned.replace(/\([^)]*\)/g, '');
+            
+            // 3. Özel karakterleri temizle
+            cleaned = cleaned.replace(/[^\wçğıöşüÇĞİÖŞÜ\s]/gi, '');
+            
+            // 4. Fazla boşlukları temizle
+            cleaned = cleaned.trim().replace(/\s+/g, ' ');
+            
+            return cleaned;
+        }
+        
         
         /**
          * Admin yemek düzenleme modalını aç
