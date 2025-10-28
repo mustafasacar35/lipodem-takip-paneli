@@ -1818,7 +1818,7 @@
             return score;
         }
 
-        // Yemek adını foodData'da bul (Hibrit: Manuel → Tam → Parantez → Fuzzy)
+        // Yemek adını foodData'da bul (Hibrit: Manuel → Tam → Parantez → Miktar Temizle → Fuzzy)
         function findFoodInDatabase(searchName) {
             if (!searchName || !foodData || foodData.length === 0) return null;
 
@@ -1855,17 +1855,61 @@
                 }
             }
 
-            // 4️⃣ AKILLI FUZZY MATCHING (yavaş ama güçlü - threshold: %85)
+            // 4️⃣ MİKTAR TEMİZLE (gram, adet, dilim, ölçek vs.) + TAM EŞLEŞTİRME
+            const quantityCleanName = cleanName
+                .replace(/^\d+\s*(gram|g|adet|dilim|ml|porsiyon|su bardağı|kase|ölçek)\s*/i, '')
+                .replace(/^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*/i, '')
+                .trim();
+            
+            if (quantityCleanName !== cleanName && quantityCleanName) {
+                const quantityNormalized = normalizeText(quantityCleanName);
+                
+                // Tam eşleşme
+                match = foodData.find(f => normalizeText(f.name) === quantityNormalized);
+                if (match && !isFoodMatchForbidden(searchName, match.name)) {
+                    console.log(`✅ Miktar temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
+                    return match;
+                }
+                
+                // Parantez temizlenmiş versiyonda da ara
+                match = foodData.find(f => {
+                    const foodClean = f.name.replace(/\s*\([^)]*\)/g, '').trim();
+                    return normalizeText(foodClean) === quantityNormalized;
+                });
+                if (match && !isFoodMatchForbidden(searchName, match.name)) {
+                    console.log(`✅ Miktar+Parantez temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
+                    return match;
+                }
+                
+                // Kısmi eşleşme (foodData'da miktar varsa)
+                match = foodData.find(f => {
+                    const foodQuantityClean = f.name
+                        .replace(/^\d+\s*(gram|g|adet|dilim|ml|porsiyon|su bardağı|kase|ölçek)\s*/i, '')
+                        .replace(/^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*/i, '')
+                        .replace(/\s*\([^)]*\)/g, '')
+                        .trim();
+                    return normalizeText(foodQuantityClean) === quantityNormalized;
+                });
+                if (match && !isFoodMatchForbidden(searchName, match.name)) {
+                    console.log(`✅ Çift yönlü miktar temizleme: "${searchName}" → "${match.name}"`);
+                    return match;
+                }
+            }
+
+            // 5️⃣ AKILLI FUZZY MATCHING (yavaş ama güçlü - threshold: %85)
             const threshold = 85;
             let bestMatch = null;
             let bestScore = 0;
+
+            // Fuzzy için en temiz versiyonu kullan
+            const searchForFuzzy = quantityCleanName || cleanName;
 
             for (const food of foodData) {
                 // Yasak eşleşme kontrolü
                 if (isFoodMatchForbidden(searchName, food.name)) continue;
 
                 // Akıllı fuzzy matching kullan (kelime bazlı + uzunluk kontrolü)
-                const score = smartFuzzyMatch(cleanName, food.name, threshold);
+                const score = smartFuzzyMatch(searchForFuzzy, food.name, threshold);
                 
                 if (score > bestScore && score >= threshold) {
                     bestScore = score;
@@ -4608,6 +4652,13 @@
             
             // Türkçe tarih formatı
             const startStr = formatDateTurkish(nextMonday);
+            const endStr = for     
+            // Bir sonraki Pazar (6 gün sonra)
+            const nextSunday = new Date(nextMonday);
+            nextSunday.setDate(nextSunday.getDate() + 6);
+            
+            // Türkçe tarih formatı
+            const startStr = formatDateTurkish(nextMonday);
             const endStr = formatDateTurkish(nextSunday);
             
             const message = `${nextWeekNumber}. hafta eklenecek (${startStr} - ${endStr}). Eklemek ister misiniz?`;
@@ -4747,16 +4798,4 @@
 
         // PDF Modal Functions
         function openPdfModal(pdfUrl) {
-            // GitHub raw URLs iframe'de açılamaz (X-Frame-Options: deny)
-            // Bunun yerine yeni sekmede aç
-            window.open(pdfUrl, '_blank');
-        }
-
-        function closePdfModal() {
-            // Artık modal kullanmıyoruz, bu fonksiyon boş kalabilir
-        }
-    </script>
-
-</body>
-</html>
-
+            // GitHub r

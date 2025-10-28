@@ -1063,16 +1063,19 @@
                                placeholder="Örn: tahin ekmeği (1 dilim)"
                                style="width: 100%; padding: 10px; border: 2px solid #2196F3; border-radius: 8px; font-size: 14px;">
                     </div>
-                    <div style="flex: 1;">
+                    <div style="flex: 1; position: relative;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Hedef Yemek (food_list.json):</label>
                         <input type="text" 
                                id="yemekEslestirmeHedef" 
-                               placeholder="Örn: Tahin ekmeği"
-                               list="foodDataList"
+                               placeholder="🔍 Yemek ara ve seç..."
+                               autocomplete="off"
+                               oninput="filterYemekEslestirmeDropdown(this.value)"
+                               onfocus="showYemekEslestirmeDropdown()"
                                style="width: 100%; padding: 10px; border: 2px solid #28a745; border-radius: 8px; font-size: 14px;">
-                        <datalist id="foodDataList">
-                            <!-- food_list.json'dan dolacak -->
-                        </datalist>
+                        <!-- Akıllı dropdown -->
+                        <div id="yemekEslestirmeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: white; border: 2px solid #28a745; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000;">
+                            <!-- JavaScript ile dolacak -->
+                        </div>
                     </div>
                 </div>
 
@@ -1122,21 +1125,28 @@
 
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #333;">Yasaklı Yemekler (food_list.json):</label>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <input type="text" 
-                               id="yemekYasakHedef" 
-                               placeholder="Örn: Zeytinli meze"
-                               list="foodDataListYasak"
-                               style="flex: 1; padding: 10px; border: 2px solid #dc3545; border-radius: 8px; font-size: 14px;">
-                        <datalist id="foodDataListYasak">
-                            <!-- food_list.json'dan dolacak -->
-                        </datalist>
-                        <button class="btn" onclick="addYemekYasakItem()" style="background: #dc3545; color: white;">
-                            ➕ Ekle
-                        </button>
+                    <div style="position: relative;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div style="flex: 1; position: relative;">
+                                <input type="text" 
+                                       id="yemekYasakHedef" 
+                                       placeholder="🔍 Yemek ara ve seç..."
+                                       autocomplete="off"
+                                       oninput="filterYemekYasakDropdown(this.value)"
+                                       onfocus="showYemekYasakDropdown()"
+                                       style="width: 100%; padding: 10px; border: 2px solid #dc3545; border-radius: 8px; font-size: 14px;">
+                                <!-- Akıllı dropdown -->
+                                <div id="yemekYasakDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: white; border: 2px solid #dc3545; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000;">
+                                    <!-- JavaScript ile dolacak -->
+                                </div>
+                            </div>
+                            <button class="btn" onclick="addYemekYasakItemManual()" style="background: #dc3545; color: white;">
+                                ➕ Manuel Ekle
+                            </button>
+                        </div>
                     </div>
                     <div id="yemekYasakItems" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 50px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 2px dashed #dee2e6;">
-                        <span style="color: #999; font-size: 13px;">Yasaklı yemekleri yukarıdan ekleyin...</span>
+                        <span style="color: #999; font-size: 13px;">Yasaklı yemekleri yukarıdan seçin veya arayın...</span>
                     </div>
                 </div>
 
@@ -1341,12 +1351,10 @@
                 document.getElementById('tabYemekEslestirme').classList.add('active');
                 document.getElementById('tabContentYemekEslestirme').style.display = 'block';
                 renderYemekEslestirmeList();
-                populateFoodDataList();
             } else if (tab === 'yemekYasak') {
                 document.getElementById('tabYemekYasak').classList.add('active');
                 document.getElementById('tabContentYemekYasak').style.display = 'block';
                 renderYemekYasakList();
-                populateFoodDataList();
             }
         }
 
@@ -3792,29 +3800,10 @@
         });
 
         // ========================================
-        // YENİ: Yemek Veritabanı Eşleştirme Fonksiyonları
+        // YENİ: Akıllı Dropdown Fonksiyonları
         // ========================================
 
-        // Autocomplete için food_list.json'u doldur
-        function populateFoodDataList() {
-            const dataList1 = document.getElementById('foodDataList');
-            const dataList2 = document.getElementById('foodDataListYasak');
-            
-            if (dataList1) dataList1.innerHTML = '';
-            if (dataList2) dataList2.innerHTML = '';
-            
-            foodDatabase.forEach(food => {
-                const option1 = document.createElement('option');
-                option1.value = food.name;
-                if (dataList1) dataList1.appendChild(option1);
-                
-                const option2 = document.createElement('option');
-                option2.value = food.name;
-                if (dataList2) dataList2.appendChild(option2);
-            });
-        }
-
-        // Yemek eşleştirme listesini render et
+        // Yemek Eşleştirme Dropdown
         function renderYemekEslestirmeList() {
             const container = document.getElementById('yemekEslestirmeList');
             if (!container) return;
@@ -3841,9 +3830,14 @@
                             </div>
                             ${notlar ? `<div style="font-size: 12px; color: #666;">📝 ${notlar}</div>` : ''}
                         </div>
-                        <button class="btn" onclick="deleteYemekEslestirme('${key}')" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
-                            🗑️ Sil
-                        </button>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn" onclick="editYemekEslestirme('${key}')" style="background: #ffc107; color: #000; padding: 6px 12px; font-size: 12px;">
+                                ✏️ Düzenle
+                            </button>
+                            <button class="btn" onclick="deleteYemekEslestirme('${key}')" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
+                                🗑️ Sil
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -3876,9 +3870,14 @@
                                 <strong style="color: #856404;">${orijinal}</strong>
                                 ${neden ? `<div style="font-size: 12px; color: #666; margin-top: 4px;">💬 ${neden}</div>` : ''}
                             </div>
-                            <button class="btn" onclick="deleteYemekYasak('${key}')" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
-                                🗑️ Sil
-                            </button>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn" onclick="editYemekYasak('${key}')" style="background: #ffc107; color: #000; padding: 6px 12px; font-size: 12px;">
+                                    ✏️ Düzenle
+                                </button>
+                                <button class="btn" onclick="deleteYemekYasak('${key}')" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
+                                    🗑️ Sil
+                                </button>
+                            </div>
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
                             ${yasaklar.map(y => `<span style="background: #dc3545; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">🚫 ${y}</span>`).join('')}
@@ -3983,22 +3982,182 @@
             }
         }
 
-        // Yasak listesine item ekle
-        function addYemekYasakItem() {
+        // ========================================
+        // YENİ: Akıllı Dropdown Fonksiyonları
+        // ========================================
+
+        // Yemek Eşleştirme Dropdown
+        function showYemekEslestirmeDropdown() {
+            const dropdown = document.getElementById('yemekEslestirmeDropdown');
+            if (!dropdown) return;
+            filterYemekEslestirmeDropdown('');
+            dropdown.style.display = 'block';
+        }
+
+        function hideYemekEslestirmeDropdown() {
+            const dropdown = document.getElementById('yemekEslestirmeDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        function filterYemekEslestirmeDropdown(searchText) {
+            const dropdown = document.getElementById('yemekEslestirmeDropdown');
+            if (!dropdown || !foodDatabase || foodDatabase.length === 0) return;
+
+            const search = searchText.toLowerCase().trim();
+            
+            let filtered = foodDatabase;
+            if (search) {
+                filtered = foodDatabase.filter(food => 
+                    food.name.toLowerCase().includes(search)
+                );
+            }
+
+            filtered = filtered.slice(0, 50);
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">Sonuç bulunamadı</div>';
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            let html = filtered.map(food => `
+                <div onclick="selectYemekEslestirmeHedef('${food.name.replace(/'/g, "\\'")}')" 
+                     style="padding: 10px; cursor: pointer; background: white; color: #333; border-bottom: 1px solid #eee; transition: background 0.2s;"
+                     onmouseover="this.style.background='#e6f7e6'"
+                     onmouseout="this.style.background='white'">
+                    <strong>${food.name}</strong>
+                    <span style="font-size: 11px; color: #999; margin-left: 8px;">
+                        (${food.calories} kcal, P: ${food.protein}g, C: ${food.carbs}g, F: ${food.fat}g)
+                    </span>
+                </div>
+            `).join('');
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        function selectYemekEslestirmeHedef(yemekAdi) {
+            document.getElementById('yemekEslestirmeHedef').value = yemekAdi;
+            hideYemekEslestirmeDropdown();
+        }
+
+        // Sayfa dışına tıklanınca dropdown kapat
+        document.addEventListener('click', (e) => {
+            const inputEslestirme = document.getElementById('yemekEslestirmeHedef');
+            const dropdownEslestirme = document.getElementById('yemekEslestirmeDropdown');
+            
+            if (dropdownEslestirme && inputEslestirme && !dropdownEslestirme.contains(e.target) && e.target !== inputEslestirme) {
+                hideYemekEslestirmeDropdown();
+            }
+        });
+
+        // ========================================
+        // Yemek Yasak Dropdown (MEVCUT)
+        // ========================================
+
+        // Yasak listesine item ekle (manuel veya dropdown)
+        function addYemekYasakItemManual() {
             const hedefTxt = document.getElementById('yemekYasakHedef').value.trim();
             if (!hedefTxt) {
                 alert('⚠️ Lütfen yasaklı yemek adını girin!');
                 return;
             }
 
-            if (currentYemekYasakItems.includes(hedefTxt)) {
-                alert('⚠️ Bu yemek zaten eklendi!');
+            addYemekYasakItemFromText(hedefTxt);
+        }
+
+        function addYemekYasakItemFromText(yemekAdi) {
+            if (!yemekAdi) return;
+
+            if (currentYemekYasakItems.includes(yemekAdi)) {
+                showNotification(`⚠️ "${yemekAdi}" zaten eklendi!`, 'warning');
                 return;
             }
 
-            currentYemekYasakItems.push(hedefTxt);
+            currentYemekYasakItems.push(yemekAdi);
             renderYemekYasakItems();
             document.getElementById('yemekYasakHedef').value = '';
+            hideYemekYasakDropdown();
+            showNotification(`✅ "${yemekAdi}" eklendi`, 'success');
+        }
+
+        // Dropdown göster/gizle
+        function showYemekYasakDropdown() {
+            const dropdown = document.getElementById('yemekYasakDropdown');
+            if (!dropdown) return;
+
+            // İlk açılışta tüm yemekleri göster
+            filterYemekYasakDropdown('');
+            dropdown.style.display = 'block';
+        }
+
+        function hideYemekYasakDropdown() {
+            const dropdown = document.getElementById('yemekYasakDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        // Dropdown filtrele
+        function filterYemekYasakDropdown(searchText) {
+            const dropdown = document.getElementById('yemekYasakDropdown');
+            if (!dropdown || !foodDatabase || foodDatabase.length === 0) return;
+
+            const search = searchText.toLowerCase().trim();
+            
+            // Filtreleme
+            let filtered = foodDatabase;
+            if (search) {
+                filtered = foodDatabase.filter(food => 
+                    food.name.toLowerCase().includes(search)
+                );
+            }
+
+            // Maksimum 50 sonuç göster (performans için)
+            filtered = filtered.slice(0, 50);
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">Sonuç bulunamadı</div>';
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            // Dropdown HTML oluştur
+            let html = filtered.map(food => {
+                const isAdded = currentYemekYasakItems.includes(food.name);
+                const bgColor = isAdded ? '#f0f0f0' : 'white';
+                const textColor = isAdded ? '#999' : '#333';
+                const cursor = isAdded ? 'not-allowed' : 'pointer';
+                const checkmark = isAdded ? '✓ ' : '';
+
+                return `
+                    <div onclick="${isAdded ? '' : `addYemekYasakItemFromText('${food.name.replace(/'/g, "\\'")}')`}" 
+                         style="padding: 10px; cursor: ${cursor}; background: ${bgColor}; color: ${textColor}; border-bottom: 1px solid #eee; transition: background 0.2s;"
+                         onmouseover="if(!${isAdded}) this.style.background='#ffe6e6'"
+                         onmouseout="this.style.background='${bgColor}'">
+                        ${checkmark}<strong>${food.name}</strong>
+                        <span style="font-size: 11px; color: #999; margin-left: 8px;">
+                            (${food.calories} kcal, P: ${food.protein}g, C: ${food.carbs}g, F: ${food.fat}g)
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        // Sayfa dışına tıklanınca dropdown kapat
+        document.addEventListener('click', (e) => {
+            const input = document.getElementById('yemekYasakHedef');
+            const dropdown = document.getElementById('yemekYasakDropdown');
+            
+            if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+                hideYemekYasakDropdown();
+            }
+        });
+
+        // Yasak listesine item ekle (ESKİ FONKSİYON - YENİ İSİM)
+        function addYemekYasakItem() {
+            addYemekYasakItemManual();
         }
 
         // Yasak item'ları render et
@@ -4023,6 +4182,44 @@
         function removeYemekYasakItem(index) {
             currentYemekYasakItems.splice(index, 1);
             renderYemekYasakItems();
+        }
+
+        // Eşleştirmeyi düzenle
+        function editYemekEslestirme(key) {
+            const item = yemekVeritabaniEslestirme[key];
+            if (!item) return;
+
+            // Tab'a geç (zaten açık olmalı)
+            switchTab('yemekEslestirme');
+
+            // Formu doldur
+            document.getElementById('yemekEslestirmeArama').value = item.orijinalMetin || key;
+            document.getElementById('yemekEslestirmeHedef').value = item.hedefYemek || item;
+
+            // Scroll to form
+            document.getElementById('yemekEslestirmeArama').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('yemekEslestirmeArama').focus();
+        }
+
+        // Yasağı düzenle
+        function editYemekYasak(key) {
+            const item = yemekVeritabaniYasaklar[key];
+            if (!item) return;
+
+            // Tab'a geç
+            switchTab('yemekYasak');
+
+            // Formu doldur
+            document.getElementById('yemekYasakArama').value = item.orijinalMetin || key;
+            document.getElementById('yemekYasakNeden').value = item.neden || '';
+            
+            // Yasak itemları doldur
+            currentYemekYasakItems = [...(item.yasakliYemekler || [])];
+            renderYemekYasakItems();
+
+            // Scroll to form
+            document.getElementById('yemekYasakArama').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('yemekYasakArama').focus();
         }
 
         // Eşleştirmeyi sil
