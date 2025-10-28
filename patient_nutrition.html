@@ -416,6 +416,77 @@
             background: #f8f9fa;
         }
 
+        /* Tarif Badge Styles */
+        .tarif-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+        }
+
+        .tarif-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(40, 167, 69, 0.4);
+            background: linear-gradient(135deg, #218838 0%, #1ea87a 100%);
+        }
+
+        .tarif-badge:active {
+            transform: translateY(0);
+        }
+
+        /* Refresh Food Button */
+        .btn-refresh-food {
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-refresh-food:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0, 123, 255, 0.4);
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+        }
+
+        .btn-refresh-food:active {
+            transform: translateY(0);
+        }
+
+        /* Diyet Tipi Rozetleri (Keto/Lowcarb) */
+        .diet-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .diet-badge-keto {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            box-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+        }
+
+        .diet-badge-lowcarb {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            box-shadow: 0 1px 3px rgba(255, 193, 7, 0.3);
+        }
+
         .meal-foods {
             font-size: 11px;
             color: #666;
@@ -1237,6 +1308,24 @@
             }
         };
         let appSettings = null; // Admin ayarlarından gelecek diyet formülleri
+        
+        // Food Alternative System Variables
+        let manuelEslestirmeler = {}; // Manuel eşleştirmeler (data/manuel_eslestirmeler.json)
+        let eslesmemeKurallari = {}; // Yasak eşleştirme kuralları (data/eslesmeme_kurallari.json)
+        let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
+        let foodData = []; // Yemek veritabanı (food_list.json)
+        
+        // Eşleştirme kriterleri - VARSAYILAN DEĞERLER (mobil versiyonla aynı)
+        let matchCriteria = {
+            role: true,          // Role filtresi AÇIK (ana yemek → ana yemek)
+            dietType: true,      // DietType filtresi AÇIK (keto → keto/lowcarb)
+            category: false,     // Category filtresi KAPALI
+            season: false,       // Season filtresi KAPALI
+            mealType: false      // MealType filtresi KAPALI
+        };
+        
+        // Similarity scoring kriterleri - VARSAYILAN (mobil versiyonla aynı: protein + yağ)
+        let scoreBy = ['protein', 'fat'];
 
         // Makro Hesaplama Fonksiyonu
         function calculateMacros(weight, dietType, activityLevel) {
@@ -1292,19 +1381,93 @@
             };
         }
 
-        // Admin ayarlarını GitHub'dan yükle
+        // Admin ayarlarını GitHub'dan yükle (mobil_versiyon_v1.html ile AYNI KAYNAK)
         async function loadAdminSettings() {
             try {
-                const response = await fetch('settings/config.json', {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
+                // GitHub API ile çek (mobil versiyon mantığı)
+                const REPO_OWNER = 'mustafasacar35';
+                const REPO_NAME = 'lipodem-takip-paneli';
+                const SETTINGS_PATH = 'settings/config.json';
+                const SETTINGS_BRANCH = 'main';
+                
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SETTINGS_PATH}?ref=${SETTINGS_BRANCH}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Ayarlar yüklenemedi: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const decoded = atob((data.content || '').replace(/\n/g, ''));
+                const parsed = JSON.parse(decoded);
+                appSettings = parsed;
 
                 if (response.ok) {
                     const data = await response.json();
                     appSettings = data;
+                    
+                    // matchCriteria'yı filterCriteria'dan doldur (mobil versiyon mantığı)
+                    if (appSettings.filterCriteria) {
+                        const filterCrit = appSettings.filterCriteria;
+                        
+                        // Role filtresi
+                        if (filterCrit.role?.visible) {
+                            if (filterCrit.role.mode === 'required') {
+                                matchCriteria.role = true; // Zorunlu - her zaman aktif
+                            } else {
+                                // Opsiyonel - defaultState'den başlangıç değeri
+                                matchCriteria.role = filterCrit.role.defaultState === 'active';
+                            }
+                        } else {
+                            matchCriteria.role = false; // Visible değilse pasif
+                        }
+                        
+                        // DietType filtresi
+                        if (filterCrit.dietType?.visible) {
+                            if (filterCrit.dietType.mode === 'required') {
+                                matchCriteria.dietType = true;
+                            } else {
+                                matchCriteria.dietType = filterCrit.dietType.defaultState === 'active';
+                            }
+                        } else {
+                            matchCriteria.dietType = false;
+                        }
+                        
+                        // Category filtresi
+                        if (filterCrit.category?.visible) {
+                            if (filterCrit.category.mode === 'required') {
+                                matchCriteria.category = true;
+                            } else {
+                                matchCriteria.category = filterCrit.category.defaultState === 'active';
+                            }
+                        } else {
+                            matchCriteria.category = false;
+                        }
+                        
+                        // Season filtresi
+                        if (filterCrit.season?.visible) {
+                            if (filterCrit.season.mode === 'required') {
+                                matchCriteria.season = true;
+                            } else {
+                                matchCriteria.season = filterCrit.season.defaultState === 'active';
+                            }
+                        } else {
+                            matchCriteria.season = false;
+                        }
+                        
+                        // MealType filtresi
+                        if (filterCrit.mealType?.visible) {
+                            if (filterCrit.mealType.mode === 'required') {
+                                matchCriteria.mealType = true;
+                            } else {
+                                matchCriteria.mealType = filterCrit.mealType.defaultState === 'active';
+                            }
+                        } else {
+                            matchCriteria.mealType = false;
+                        }
+                    }
+                    
                     console.log('✅ Admin ayarları yüklendi:', appSettings);
+                    console.log('✅ Match kriterleri:', matchCriteria);
                 } else {
                     console.warn('⚠️ Admin ayarları yüklenemedi, varsayılan değerler kullanılacak');
                     appSettings = {
@@ -1329,12 +1492,677 @@
             }
         }
 
+        // Manuel eşleştirmeler ve yasak kurallarını GitHub'dan yükle
+        async function loadManuelEslestirmeler() {
+            try {
+                // Manuel eşleştirmeleri yükle
+                const manuelResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json?t=' + Date.now());
+                if (manuelResp.ok) {
+                    const manuelData = await manuelResp.json();
+                    manuelEslestirmeler = manuelData.eslestirmeler || manuelData;
+                    console.log('✅ Manuel eşleştirmeler yüklendi:', Object.keys(manuelEslestirmeler).length);
+                } else {
+                    console.warn('⚠️ Manuel eşleştirmeler yüklenemedi');
+                }
+
+                // Yasak kurallarını yükle
+                const yasakResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/eslesmeme_kurallari.json?t=' + Date.now());
+                if (yasakResp.ok) {
+                    const yasakData = await yasakResp.json();
+                    
+                    // JSON yapısına göre doğru path'i bul
+                    if (yasakData.kurallar && yasakData.kurallar.eslesmemeKurallari) {
+                        // İç içe yapı: { kurallar: { eslesmemeKurallari: {...} } }
+                        eslesmemeKurallari = yasakData.kurallar.eslesmemeKurallari;
+                        
+                        // Dış seviyedeki ekstra kuralları da ekle
+                        Object.keys(yasakData.kurallar).forEach(key => {
+                            if (key !== 'version' && key !== 'sonGuncelleme' && key !== 'eslesmemeKurallari' && typeof yasakData.kurallar[key] === 'object') {
+                                eslesmemeKurallari[key] = yasakData.kurallar[key];
+                            }
+                        });
+                    } else if (yasakData.eslesmemeKurallari) {
+                        eslesmemeKurallari = yasakData.eslesmemeKurallari;
+                    } else if (yasakData.kurallar) {
+                        eslesmemeKurallari = yasakData.kurallar;
+                    } else if (Array.isArray(yasakData)) {
+                        // Array ise object'e çevir
+                        eslesmemeKurallari = {};
+                        yasakData.forEach(kural => {
+                            if (kural.yemek && kural.yasaklar) {
+                                eslesmemeKurallari[kural.yemek] = kural.yasaklar;
+                            }
+                        });
+                    } else {
+                        // Direkt object olarak kullan
+                        eslesmemeKurallari = yasakData;
+                    }
+                    
+                    console.log('✅ Yasak kuralları yüklendi:', Object.keys(eslesmemeKurallari).length);
+                } else {
+                    console.warn('⚠️ Yasak kuralları yüklenemedi');
+                }
+            } catch (error) {
+                console.error('❌ Manuel eşleştirmeler/yasak kuralları yüklenirken hata:', error);
+            }
+        }
+
+        // Tarif kartlarını GitHub'dan yükle
+        async function loadTarifKartlari() {
+            try {
+                // Önce list.json'dan yüklemeyi dene
+                let response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/list.json?t=' + Date.now());
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        tarifKartlari = data
+                            .map(item => (typeof item === 'string' ? item : item.name || item.filename || item.file || null))
+                            .filter(name => name && name.match(/\.(jpg|jpeg|png)$/i))
+                            .map(name => ({ 
+                                name: name, 
+                                type: 'file', 
+                                download_url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}` 
+                            }));
+                        console.log('✅ Tarif kartları list.json ile yüklendi:', tarifKartlari.length);
+                        return;
+                    }
+                }
+                throw new Error('list.json yüklenemedi');
+            } catch (error) {
+                console.error('❌ Tarif kartları yüklenemedi, fallback deneniyor:', error.message);
+                
+                // Fallback: Manuel eşleştirmelerden tarif kartlarını çıkar
+                const uniqueTarifler = new Set();
+                Object.values(manuelEslestirmeler).forEach(eslestirme => {
+                    const kartlar = (typeof eslestirme === 'object' && eslestirme.kartlar) 
+                        ? eslestirme.kartlar 
+                        : (typeof eslestirme === 'string' ? [eslestirme] : []);
+                    kartlar.forEach(kart => uniqueTarifler.add(kart));
+                });
+                
+                tarifKartlari = [...uniqueTarifler].map(name => ({ 
+                    name: name, 
+                    type: 'file', 
+                    download_url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}` 
+                }));
+                console.log('✅ Fallback tarif kartları yüklendi:', tarifKartlari.length);
+            }
+        }
+
+        // Yemek veritabanını yükle (food_list.json)
+        async function loadFoodData() {
+            // Zaten yüklenmişse tekrar yükleme (performance optimization)
+            if (foodData.length > 0) {
+                console.log('ℹ️ Yemek veritabanı zaten yüklenmiş:', foodData.length, 'yemek');
+                return true;
+            }
+            
+            try {
+                console.log('📥 Yemek veritabanı yükleniyor...');
+                const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/food_list.json?t=' + Date.now());
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                foodData = [];
+                
+                // food_list.json formatı: { categories: [ { items: [...] } ] }
+                if (data.categories && Array.isArray(data.categories)) {
+                    data.categories.forEach(category => {
+                        if (category.items && Array.isArray(category.items)) {
+                            category.items.forEach(item => {
+                                // Yemek objesini foodData'ya ekle
+                                if (item.name) {
+                                    foodData.push(item);
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                console.log(`✅ Yemek veritabanı yüklendi: ${foodData.length} yemek`);
+                return true;
+            } catch (error) {
+                console.error('❌ Yemek veritabanı yüklenirken hata:', error);
+                return false;
+            }
+        }
+
+        // Türkçe karakter normalizasyonu (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u)
+        function normalizeText(str) {
+            if (!str) return '';
+            
+            // Manuel character mapping - her karakteri tek tek kontrol et
+            const trMap = {
+                'Ç': 'c', 'ç': 'c',
+                'Ğ': 'g', 'ğ': 'g',
+                'I': 'i', 'ı': 'i',
+                'İ': 'i', 'i': 'i', 'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',  // Tüm i varyantları
+                'Ö': 'o', 'ö': 'o',
+                'Ş': 's', 'ş': 's',
+                'Ü': 'u', 'ü': 'u'
+            };
+            
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                if (trMap[char]) {
+                    result += trMap[char];
+                } else if (/[a-zA-Z0-9]/.test(char)) {
+                    result += char.toLowerCase();
+                }
+                // Diğer karakterleri atla (boşluk, noktalama vs.)
+            }
+            
+            return result;
+        }
+
+        // Yemek adından tarif kartlarını bul (manuel eşleştirme öncelikli, yasak kuralları uygula)
+        function findTarifKartlari(yemekAdi) {
+            if (!tarifKartlari.length) return [];
+            
+            // Yemek adını temizle (parantez içi, miktar vs.)
+            let cleanedYemekAdi = yemekAdi
+                .replace(/\([^)]*\)/g,'')
+                .replace(/^\d+\.\s*|^\d+\s*adet\s*|^\d+\s*dilim\s*|^\d+\s*gram\s*|^\d+\s*g\s*|^\d+\s*ml\s*|^\d+\s*porsiyon\s*|^\d+\s*su bardağı\s*|^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*|^\d+\s*kase\s*/i, '')
+                .trim();
+            const normalizedCleaned = normalizeText(cleanedYemekAdi);
+            
+            // 1. Manuel eşleştirmelere bak
+            let manuelData = manuelEslestirmeler[yemekAdi] || Object.keys(manuelEslestirmeler).find(key => normalizeText(key) === normalizedCleaned);
+            if (manuelData && manuelEslestirmeler[manuelData]) {
+                manuelData = manuelEslestirmeler[manuelData];
+            }
+
+            if (manuelData) {
+                const manuelTarifAdlari = (typeof manuelData === 'object' && manuelData.kartlar) 
+                    ? manuelData.kartlar 
+                    : (typeof manuelData === 'string' ? [manuelData] : []);
+                
+                const bulunanKartlar = manuelTarifAdlari.map(manuelTarifAdi => {
+                    return tarifKartlari.find(tarif => {
+                        const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                        const manuelName = (typeof manuelTarifAdi === 'string' ? manuelTarifAdi : '').replace(/\.(jpg|jpeg|png)$/i, '');
+                        return normalizeText(tarifName) === normalizeText(manuelName) || tarifName === manuelName;
+                    });
+                }).filter(Boolean);
+                
+                if (bulunanKartlar.length > 0) return bulunanKartlar;
+            }
+
+            // 2. Otomatik eşleştirme (fuzzy matching)
+            const potansiyelTarif = tarifKartlari.find(tarif => {
+                const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifNormalized = normalizeText(tarifName);
+                return tarifNormalized === normalizedCleaned || tarifNormalized.replace(/_/g, '') === normalizedCleaned;
+            }) || tarifKartlari.find(tarif => {
+                const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifNormalized = normalizeText(tarifName);
+                return tarifNormalized.includes(normalizedCleaned) || normalizedCleaned.includes(tarifNormalized);
+            });
+            
+            // 3. Yasak kurallarını kontrol et
+            if (potansiyelTarif) {
+                const tarifAdi = potansiyelTarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const yasakData = eslesmemeKurallari[yemekAdi] 
+                    || eslesmemeKurallari[normalizeText(yemekAdi)] 
+                    || eslesmemeKurallari[cleanedYemekAdi] 
+                    || eslesmemeKurallari[normalizeText(cleanedYemekAdi)];
+                
+                if (yasakData) {
+                    const yasakListesi = Array.isArray(yasakData) ? yasakData : (yasakData.yasakliKartlar || []);
+                    const isYasakli = yasakListesi.some(yasak => normalizeText(tarifAdi).includes(normalizeText(yasak)));
+                    if (isYasakli) {
+                        console.log('⛔ Yasak kural nedeniyle kart gösterilmedi:', yemekAdi, '->', tarifAdi);
+                        return [];
+                    }
+                }
+                return [potansiyelTarif];
+            }
+            
+            return [];
+        }
+
+        // ===== YARDIMCI FONKSIYONLAR (Food Alternative System) =====
+
+        // Diet type helper
+        function getDietType(food) {
+            return food.keto ? 'keto' : (food.lowcarb ? 'lowcarb' : 'other');
+        }
+
+        // Meal type helper functions
+        function parseMealTypes(mealType) {
+            if (!mealType) return [];
+            if (typeof mealType === 'string') {
+                return mealType.split(',').map(m => m.trim().toLowerCase()).filter(Boolean);
+            }
+            if (Array.isArray(mealType)) {
+                return mealType.map(m => String(m).trim().toLowerCase()).filter(Boolean);
+            }
+            return [];
+        }
+
+        function hasMealTypeOverlap(refMealTypes, foodMealTypes) {
+            // VEYA mantığı: En az bir öğün ortak olmalı
+            if (!refMealTypes.length || !foodMealTypes.length) return false;
+            return refMealTypes.some(refType => foodMealTypes.includes(refType));
+        }
+
+        // Role display helper
+        function getRoleDisplayName(role) {
+            if (!role || typeof role !== 'string') return role;
+            const ROLE_DISPLAY_MAP = {
+                'ana yemek': 'Ana Yemek',
+                'salata': 'Salata',
+                'çorba': 'Çorba',
+                'tatlı': 'Tatlı',
+                'içecek': 'İçecek',
+                'ara öğün': 'Ara Öğün'
+            };
+            const normalized = role.toLowerCase();
+            return ROLE_DISPLAY_MAP[normalized] || role;
+        }
+
+        // Tag extraction for filtering
+        function extractTagKeywords(food) {
+            const keywords = new Set();
+            if (!food) return keywords;
+            
+            // Admin ayarlarından tag exclusions al (filtrelenmeyecek tag'ler)
+            const tagExclusions = appSettings?.tagExclusions || ['ekmek', 'ekmeği', 'çorba', 'çorbası', 'keto', 'lowcarb', 'salata', 'tatlı'];
+            
+            const sources = [];
+            if (Array.isArray(food.tags)) sources.push(...food.tags);
+            else if (typeof food.tags === 'string') sources.push(food.tags);
+
+            sources.forEach(text => {
+                if (!text) return;
+                let value = '';
+                if (typeof text === 'string') {
+                    value = text;
+                } else if (typeof text === 'number') {
+                    value = String(text);
+                } else if (text && typeof text === 'object') {
+                    if (typeof text.name === 'string') value = text.name;
+                    else if (typeof text.label === 'string') value = text.label;
+                    else return;
+                } else {
+                    return;
+                }
+
+                const normalized = normalizeText(value);
+                normalized.split(/[^a-z0-9]+/).forEach(token => {
+                    if (token && token.length > 2) {
+                        // Tag exclusions kontrolü - eğer exclude listesinde varsa ekleme
+                        const isExcluded = tagExclusions.some(excluded => 
+                            normalizeText(excluded) === token || token.includes(normalizeText(excluded))
+                        );
+                        if (!isExcluded) {
+                            keywords.add(token);
+                        }
+                    }
+                });
+            });
+
+            return keywords;
+        }
+
+        // Tag filter checker
+        function shouldSkipTagFilter(food, refFood) {
+            // Tag filtering'i devre dışı bırakılmışsa skip et
+            if (!appSettings || !appSettings.enableTagFilter) return true;
+            
+            // Admin ayarlarından exempt role'leri al (varsayılan: soup, salad, bread)
+            const tagExemptRoles = appSettings?.tagExemptions?.roles || ['soup', 'salad', 'bread'];
+            const roleNormalized = normalizeText(food.role || '');
+            if (roleNormalized && tagExemptRoles.some(exempt => roleNormalized.includes(normalizeText(exempt)))) {
+                return true;
+            }
+            
+            // Admin ayarlarından exempt category'leri al (varsayılan: TOSTLAR)
+            const tagExemptCategories = appSettings?.tagExemptions?.categories || ['TOSTLAR'];
+            const categoryNormalized = normalizeText(food.category || '');
+            if (categoryNormalized && tagExemptCategories.some(exempt => categoryNormalized.includes(normalizeText(exempt)))) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Rotation indices generator
+        function getRotatedAlternativeIndices(refFood, totalAlternatives) {
+            if (!totalAlternatives || totalAlternatives <= 0) return [];
+            
+            // 🔥 ÖNCELİK SIRASI: Hasta özel ayarı > Admin default > 10
+            let alternativeCount = 10; // Fallback
+            
+            // 1. Hasta bazlı alternatif sayısını kontrol et (mobil versiyon mantığı)
+            try {
+                if (patientData && patientData.alternativeCount != null && patientData.alternativeCount > 0) {
+                    alternativeCount = patientData.alternativeCount;
+                    console.log(`✅ HASTA ÖZEL AYARI KULLANILIYOR: ${alternativeCount}`);
+                } else if (appSettings?.defaultAlternativeCount > 0) {
+                    alternativeCount = appSettings.defaultAlternativeCount;
+                    console.log(`📋 Admin default kullanılıyor: ${alternativeCount}`);
+                } else {
+                    console.log(`⚠️ Varsayılan kullanılıyor: ${alternativeCount}`);
+                }
+            } catch (error) {
+                console.warn('⚠️ Alternatif sayısı alınamadı, varsayılan kullanılacak:', error);
+            }
+            
+            // Rotation sistemi şimdilik basit - sıralı indices döndür
+            // İleride localStorage ile rotation state takibi eklenebilir
+            const indices = [];
+            for (let i = 0; i < Math.min(alternativeCount, totalAlternatives); i++) {
+                indices.push(i);
+            }
+            return indices;
+        }
+
+        // --- FOOD ALTERNATIVE SYSTEM: findAlternatives() Core Algorithm ---
+        
+        /**
+         * findAlternatives - Referans yemeğe benzer alternatifler bulur
+         * @param {Object} refFood - Referans yemek objesi
+         * @param {Number} alternativeCount - Kaç alternatif döndürüleceği (default: 10)
+         * @returns {Array} - Benzerlik skorlarıyla sıralanmış alternatif yemekler
+         * 
+         * Filtreleme kriterleri:
+         * - role (exact match - required)
+         * - category (exact match)
+         * - seasonRange (exact match)
+         * - mealType (OR logic - en az bir öğün ortak)
+         * - dietType (keto/lowcarb hiyerarşisi)
+         * - tag filtering (shouldSkipTagFilter ile exemptions)
+         * 
+         * Benzerlik skoru: 100 - ((|cal|/5 + |prot|*3 + |carb|*3 + |fat|*3) / 4)
+         */
+        function findAlternatives(refFood, alternativeCount = 10) {
+            if (!refFood || !refFood.name) {
+                console.warn('⚠️ findAlternatives: refFood geçersiz', refFood);
+                return [];
+            }
+
+            // foodData yüklenmiş mi kontrol et
+            if (!foodData || foodData.length === 0) {
+                console.warn('⚠️ findAlternatives: foodData yüklenmemiş');
+                return [];
+            }
+
+            const selectedDietType = getDietType(refFood);
+            const selectedTagKeywords = extractTagKeywords(refFood);
+            const refMealTypes = parseMealTypes(refFood.mealType);
+            
+            // 🔍 DEBUG: Filtreleme kriterleri
+            console.log('🔍 findAlternatives DEBUG:', {
+                refFoodName: refFood.name,
+                refFoodRole: refFood.role,
+                matchCriteria: matchCriteria,
+                scoreBy: scoreBy,
+                selectedDietType: selectedDietType
+            });
+
+            // 1️⃣ 5 KRİTER İLE FİLTRELEME (Admin ayarlarından gelen matchCriteria)
+            let alternatives = foodData.filter(food => {
+                // Kendisini hariç tut
+                if (food.name === refFood.name) return false;
+
+                // Role kontrolü (matchCriteria.role true ise aktif)
+                if (matchCriteria.role && food.role !== refFood.role) return false;
+
+                // Category kontrolü (matchCriteria.category true ise aktif)
+                if (matchCriteria.category && refFood.category && food.category !== refFood.category) return false;
+
+                // Season kontrolü (matchCriteria.season true ise aktif)
+                if (matchCriteria.season) {
+                    // İkisi de mevsimlik ise aynı mevsim olmalı
+                    if (refFood.seasonRange && food.seasonRange) {
+                        if (refFood.seasonRange !== food.seasonRange) {
+                            return false;
+                        }
+                    }
+                }
+
+                // MealType kontrolü (matchCriteria.mealType true ise aktif)
+                if (matchCriteria.mealType && refFood.mealType) {
+                    const foodMealTypes = parseMealTypes(food.mealType);
+                    // En az bir öğün ortak olmalı (OR LOGIC)
+                    if (!hasMealTypeOverlap(refMealTypes, foodMealTypes)) {
+                        return false;
+                    }
+                }
+
+                // DietType kontrolü (matchCriteria.dietType true ise aktif)
+                if (matchCriteria.dietType) {
+                    const foodDietType = getDietType(food);
+                    if (selectedDietType === 'keto' && foodDietType !== 'keto') return false;
+                    if (selectedDietType === 'lowcarb' && !['keto', 'lowcarb'].includes(foodDietType)) return false;
+                }
+
+                return true;
+            });
+            
+            console.log(`🔍 Filtre sonrası: ${alternatives.length} alternatif (foodData: ${foodData.length})`);
+
+            // 2️⃣ TAG FİLTRELEME (mobil versiyon mantığı - enableTagFilter kontrolü)
+            if (appSettings?.enableTagFilter && selectedTagKeywords.size > 0 && !shouldSkipTagFilter(refFood)) {
+                const filteredByTags = alternatives.filter(food => {
+                    // Salata/çorba gibi roller tag filter'dan muaf
+                    if (shouldSkipTagFilter(food)) return true;
+
+                    const alternativeKeywords = extractTagKeywords(food);
+                    // Eğer alternatifin tag'lerinden biri ref food'un tag'leriyle eşleşiyorsa RED
+                    for (const keyword of alternativeKeywords) {
+                        if (selectedTagKeywords.has(keyword)) return false;
+                    }
+                    return true;
+                });
+
+                // Eğer tag filtrelemesi sonucu alternatif kaldıysa kullan
+                if (filteredByTags.length > 0) {
+                    console.log(`🏷️ Tag filtreleme: ${alternatives.length} → ${filteredByTags.length} alternatif`);
+                    alternatives = filteredByTags;
+                } else {
+                    console.log(`⚠️ Tag filtreleme sonuç bulamadı, tüm ${alternatives.length} alternatif korunuyor`);
+                }
+            } else {
+                console.log(`ℹ️ Tag filtreleme atlandı (enableTagFilter: ${appSettings?.enableTagFilter}, keywords: ${selectedTagKeywords.size})`);
+            }
+
+            // 3️⃣ BENZERLİK SKORU HESAPLAMA (scoreBy array'ine göre dinamik)
+            alternatives = alternatives.map(food => {
+                let totalDiff = 0;
+                let count = 0;
+                
+                // scoreBy array'i boşsa varsayılan olarak tüm makrolar kullanılır
+                const criteria = scoreBy.length > 0 ? scoreBy : ['calories', 'protein', 'carbs', 'fat'];
+                
+                // Sadece scoreBy'da olan kriterler hesaplanır
+                if (criteria.includes('calories')) {
+                    totalDiff += Math.abs((food.calories || 0) - (refFood.calories || 0)) / 5;
+                    count++;
+                }
+                
+                if (criteria.includes('protein')) {
+                    totalDiff += Math.abs((food.protein || 0) - (refFood.protein || 0)) * 3;
+                    count++;
+                }
+                
+                if (criteria.includes('carbs')) {
+                    totalDiff += Math.abs((food.carbs || 0) - (refFood.carbs || 0)) * 3;
+                    count++;
+                }
+                
+                if (criteria.includes('fat')) {
+                    totalDiff += Math.abs((food.fat || 0) - (refFood.fat || 0)) * 3;
+                    count++;
+                }
+
+                // Benzerlik skoru: 100 - (toplam fark / kriter sayısı)
+                const similarity = Math.round(Math.max(0, 100 - (count > 0 ? totalDiff / count : 0)));
+
+                return { ...food, similarity };
+            });
+
+            // 4️⃣ BENZERLİĞE GÖRE SIRALA (en yüksek benzerlik önce)
+            alternatives.sort((a, b) => b.similarity - a.similarity);
+
+            // 5️⃣ ROTASYON İLE LİMİTLEME
+            const totalAlternatives = alternatives.length;
+            const rotationIndices = getRotatedAlternativeIndices(refFood, totalAlternatives);
+
+            // rotationIndices kullanarak istenen sayıda alternatif seç
+            const selectedAlternatives = rotationIndices
+                .slice(0, alternativeCount)
+                .map(index => alternatives[index])
+                .filter(Boolean); // undefined olanları temizle
+
+            console.log(`✅ findAlternatives: "${refFood.name}" için ${selectedAlternatives.length}/${totalAlternatives} alternatif bulundu`);
+            return selectedAlternatives;
+        }
+
+        // 🔄 Tek bir yemek için alternatif bulma ve değiştirme
+        async function refreshFoodInMeal(weekIndex, dayIndex, ogunIndex, yemekIndex) {
+            try {
+                console.log(`🔄 Yemek yenileniyor: Week ${weekIndex}, Day ${dayIndex}, Öğün ${ogunIndex}, Yemek ${yemekIndex}`);
+                
+                // 1️⃣ Mevcut yemeği al (weeks yapısı kontrol et)
+                const week = weeks[weekIndex];
+                if (!week || !week.days || !week.days[dayIndex]) {
+                    console.error('❌ Hafta veya gün bulunamadı!');
+                    return;
+                }
+                
+                const day = week.days[dayIndex];
+                const ogunler = day.meals || day.ogunler || [];
+                
+                if (!ogunler[ogunIndex] || !ogunler[ogunIndex].yemekler || !ogunler[ogunIndex].yemekler[yemekIndex]) {
+                    console.error('❌ Yemek bulunamadı!');
+                    return;
+                }
+                
+                const currentFood = ogunler[ogunIndex].yemekler[yemekIndex];
+                if (!currentFood) {
+                    console.error('❌ Yemek bulunamadı!');
+                    return;
+                }
+                
+                console.log(`📌 Mevcut yemek: ${currentFood.foodName}`);
+                
+                // Admin ayarlarından alternatif sayısını al (varsayılan 10)
+                const alternativeCount = appSettings?.defaultAlternativeCount || 10;
+                
+                // 2️⃣ Alternatif bul
+                const alternatives = findAlternatives({
+                    name: currentFood.foodName,
+                    calories: currentFood.kalori,
+                    protein: currentFood.protein,
+                    carbs: currentFood.karb,
+                    fat: currentFood.yag,
+                    role: currentFood.role || 'mainDish',
+                    category: currentFood.category || '',
+                    seasonRange: currentFood.seasonRange || '',
+                    mealType: currentFood.mealType || '',
+                    dietType: currentFood.dietType || '',
+                    tags: currentFood.tags || ''
+                }, alternativeCount);
+                
+                if (!alternatives || alternatives.length === 0) {
+                    alert('❌ Bu yemek için alternatif bulunamadı!');
+                    console.log('❌ Alternatif bulunamadı');
+                    return;
+                }
+                
+                console.log(`✅ ${alternatives.length} alternatif bulundu`);
+                
+                // 3️⃣ Rotasyon tracking (localStorage ile - mobil versiyon mantığı)
+                const foodNameNormalized = normalizeText(currentFood.foodName);
+                const rotationKey = `foodRotation_${foodNameNormalized}`;
+                
+                // LocalStorage'dan rotasyon state'i al
+                let rotationState = {};
+                try {
+                    const stored = localStorage.getItem(rotationKey);
+                    if (stored) {
+                        rotationState = JSON.parse(stored);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Rotasyon state okunamadı:', error);
+                }
+                
+                // Rotasyon index'i artır
+                let currentIndex = rotationState.index || 0;
+                currentIndex = (currentIndex + 1) % alternatives.length;
+                
+                // Yeni state'i kaydet
+                rotationState.index = currentIndex;
+                rotationState.lastUpdated = new Date().toISOString();
+                try {
+                    localStorage.setItem(rotationKey, JSON.stringify(rotationState));
+                } catch (error) {
+                    console.warn('⚠️ Rotasyon state kaydedilemedi:', error);
+                }
+                
+                // Seçilen alternatif
+                const selectedAlternative = alternatives[currentIndex];
+                
+                console.log(`🔄 Seçilen alternatif (${currentIndex + 1}/${alternatives.length}): ${selectedAlternative.name} (Benzerlik: ${selectedAlternative.similarity}%)`);
+                
+                // 4️⃣ Yemeği güncelle (yeni alternatifle değiştir)
+                ogunler[ogunIndex].yemekler[yemekIndex] = {
+                    foodName: selectedAlternative.name,
+                    kalori: selectedAlternative.calories,
+                    protein: selectedAlternative.protein,
+                    karb: selectedAlternative.carbs,
+                    yag: selectedAlternative.fat,
+                    role: selectedAlternative.role,
+                    category: selectedAlternative.category,
+                    seasonRange: selectedAlternative.seasonRange,
+                    mealType: selectedAlternative.mealType,
+                    dietType: selectedAlternative.dietType,
+                    tags: selectedAlternative.tags
+                    // refreshIndex KALDIRILDI - localStorage kullanıyoruz
+                };
+                
+                // meals veya ogunler olarak kaydet (her iki formatta da çalışsın)
+                if (day.meals) {
+                    day.meals = ogunler;
+                } else {
+                    day.ogunler = ogunler;
+                }
+                
+                // 5️⃣ Weeks array'i kaydet (localStorage + GitHub)
+                await saveWeeks();
+                
+                // 6️⃣ UI'ı güncelle
+                renderWeekContent();
+                
+                console.log(`✅ Yemek başarıyla değiştirildi: ${selectedAlternative.name}`);
+                
+            } catch (error) {
+                console.error('❌ refreshFoodInMeal hatası:', error);
+                alert('❌ Yemek değiştirilemedi! Hata: ' + error.message);
+            }
+        }
+
         // Initialize
         async function init() {
             console.log('🚀 Başlatılıyor...');
             
             // Admin ayarlarını yükle
             await loadAdminSettings();
+            
+            // Manuel eşleştirmeleri ve yasak kurallarını yükle
+            await loadManuelEslestirmeler();
+            
+            // Tarif kartlarını yükle
+            await loadTarifKartlari();
+            
+            // Yemek veritabanını yükle
+            await loadFoodData();
             
             // Check if PatientAuth is available
             if (typeof PatientAuth === 'undefined') {
@@ -2061,7 +2889,7 @@
             
             let mealsHtml = '';
             if (ogunler && ogunler.length > 0) {
-                ogunler.forEach(meal => {
+                ogunler.forEach((meal, ogunIndex) => {
                     // Öğün makrolarını hesapla
                     let ogunKalori = 0;
                     let ogunProtein = 0;
@@ -2110,16 +2938,48 @@
                     
                     // Yemek satırları
                     if (meal.yemekler && meal.yemekler.length > 0) {
-                        meal.yemekler.forEach(food => {
+                        meal.yemekler.forEach((food, yemekIndex) => {
                             // JSON'dan gelen alanlar: calories, protein, carbs, fat
                             const kalori = food.calories || food.kalori || 0;
                             const protein = food.protein || 0;
                             const karb = food.carbs || food.karb || 0;
                             const yag = food.fat || food.yag || 0;
                             
+                            // Tarif kartlarını bul
+                            const tarifKartlari = findTarifKartlari(food.foodName || food.name || '');
+                            let tarifBadgesHtml = '';
+                            if (tarifKartlari.length > 0) {
+                                tarifKartlari.forEach((tarif, index) => {
+                                    const tarifLabel = tarifKartlari.length > 1 ? `Tarif ${index + 1}` : 'Tarif';
+                                    tarifBadgesHtml += `<span class="tarif-badge" onclick="openPdfModal('${tarif.download_url}')" title="Tarif kartını görüntüle">📖 ${tarifLabel}</span> `;
+                                });
+                            }
+                            
+                            // Diyet tipi rozetini belirle (mobil versiyon mantığı)
+                            const foodDietType = getDietType(food);
+                            let dietBadgeHtml = '';
+                            if (foodDietType === 'keto') {
+                                dietBadgeHtml = '<span class="diet-badge diet-badge-keto" title="Ketojenik">🥑 KETO</span>';
+                            } else if (foodDietType === 'lowcarb') {
+                                dietBadgeHtml = '<span class="diet-badge diet-badge-lowcarb" title="Düşük Karbonhidrat">🌾 LOWCARB</span>';
+                            }
+                            
                             mealsHtml += `
                                 <tr>
-                                    <td>${food.foodName || 'İsimsiz Yemek'}</td>
+                                    <td>
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span>${food.foodName || 'İsimsiz Yemek'}</span>
+                                                ${dietBadgeHtml}
+                                            </div>
+                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                                ${tarifBadgesHtml}
+                                                <button class="btn-refresh-food" onclick="refreshFoodInMeal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Alternatif yemek bul">
+                                                    🔄 Yenile
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td>${Math.round(kalori)}</td>
                                     <td>${Math.round(karb)}g</td>
                                     <td>${Math.round(protein)}g</td>
@@ -3427,7 +4287,19 @@
                 </div>
             `;
         }
+
+        // PDF Modal Functions
+        function openPdfModal(pdfUrl) {
+            // GitHub raw URLs iframe'de açılamaz (X-Frame-Options: deny)
+            // Bunun yerine yeni sekmede aç
+            window.open(pdfUrl, '_blank');
+        }
+
+        function closePdfModal() {
+            // Artık modal kullanmıyoruz, bu fonksiyon boş kalabilir
+        }
     </script>
+
 </body>
 </html>
 
