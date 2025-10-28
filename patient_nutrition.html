@@ -1420,8 +1420,10 @@
     </div>
 
     <script>
-        // Global Variables
-        let currentPatient = null;
+        // Global Variables (window nesnesine bağla - console'dan erişilebilir olması için)
+        window.currentPatient = null;
+        let currentPatient = window.currentPatient; // Local alias
+        
         let patientData = null; // Hasta bilgileri (kilo, aktivite vs)
         let weeks = [];
         let currentWeekIndex = 0;
@@ -1457,7 +1459,7 @@
          * Kullanıcının admin yetkisi var mı kontrol et
          * @returns {boolean} Admin ise true
          */
-        function isUserAdmin() {
+        window.isUserAdmin = function() {
             // 1. Global admin kontrolü (AdminAuth - eski sistem)
             if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession && AdminAuth.getSession()) {
                 console.log('🔑 Global admin girişi tespit edildi');
@@ -1466,14 +1468,14 @@
             
             // 2. patientAdmins listesi (admins.js - merkezi yetkilendirme)
             const patientAdmins = window.GH_ADMINS?.patientAdmins || [];
-            if (currentPatient && currentPatient.username && patientAdmins.includes(currentPatient.username)) {
-                console.log('🔑 Merkezi admin yetkisi tespit edildi:', currentPatient.username);
+            if (window.currentPatient && window.currentPatient.username && patientAdmins.includes(window.currentPatient.username)) {
+                console.log('🔑 Merkezi admin yetkisi tespit edildi:', window.currentPatient.username);
                 return true;
             }
             
-            // 3. Hasta dosyasında isAdmin (kişisel yetki - ileride kullanılacak)
-            if (currentPatient && currentPatient.isAdmin === true) {
-                console.log('🔑 Hasta bazlı admin yetkisi tespit edildi:', currentPatient.name);
+            // 3. Hasta dosyasında isAdmin (kişisel yetki)
+            if (window.currentPatient && window.currentPatient.isAdmin === true) {
+                console.log('🔑 Hasta bazlı admin yetkisi tespit edildi:', window.currentPatient.name);
                 return true;
             }
             
@@ -1516,7 +1518,7 @@
          * Admin özelliklerini göster/gizle
          */
         function toggleAdminFeatures() {
-            const isAdmin = isUserAdmin();
+            const isAdmin = window.isUserAdmin();
             
             // Admin butonlarını göster/gizle
             const adminButtons = document.querySelectorAll('.admin-only');
@@ -1535,8 +1537,8 @@
             console.log('=== 🔍 ADMIN YETKİLENDİRME DURUMU ===');
             console.log('1. AdminAuth:', typeof AdminAuth !== 'undefined' && AdminAuth.getSession ? AdminAuth.getSession() : 'undefined');
             console.log('2. GH_ADMINS:', window.GH_ADMINS);
-            console.log('3. currentPatient:', currentPatient);
-            console.log('4. isUserAdmin():', typeof isUserAdmin !== 'undefined' ? isUserAdmin() : 'function not defined');
+            console.log('3. currentPatient:', window.currentPatient);
+            console.log('4. isUserAdmin():', window.isUserAdmin());
             console.log('5. Admin buton sayısı:', document.querySelectorAll('.btn-admin-edit').length);
             console.log('6. Görünür admin butonları:', document.querySelectorAll('.btn-admin-edit:not([style*="display: none"])').length);
             console.log('=====================================');
@@ -1549,7 +1551,7 @@
          * @param {number} mealIndex - Öğün indexi
          * @param {number} foodIndex - Yemek indexi
          */
-        function openAdminFoodEditModal(weekIndex, dayIndex, mealIndex, foodIndex) {
+        window.openAdminFoodEditModal = function(weekIndex, dayIndex, mealIndex, foodIndex) {
             const week = weeks[weekIndex];
             if (!week) return;
             
@@ -1587,7 +1589,7 @@
                 // Modal henüz yüklenmemişse geçici alert
                 alert(`🔧 Admin Düzenleme\n\nYemek: ${foodName}\n\n⚠️ Admin modal henüz yüklenmedi. Sayfa yenilendiğinde kullanılabilir olacak.`);
             }
-        }
+        };
         
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
         let foodData = []; // Yemek veritabanı (food_list.json)
@@ -2949,8 +2951,8 @@
 
             console.log('✅ Session bulundu:', session);
 
-            // Set current patient info
-            currentPatient = {
+            // Set current patient info (window.currentPatient'a da ata)
+            currentPatient = window.currentPatient = {
                 id: session.patientId || session.id,
                 name: session.name || 'Hasta',
                 username: session.username || ''
@@ -3009,9 +3011,10 @@
                     localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
                     console.log('✅ Hasta bilgileri GitHub\'dan yüklendi:', patientData);
                     
-                    // 🔐 isAdmin alanını currentPatient'a ekle
+                    // 🔐 isAdmin alanını currentPatient'a ekle (window'a da senkronize et)
                     if (patientData.isAdmin === true) {
                         currentPatient.isAdmin = true;
+                        window.currentPatient.isAdmin = true;
                         console.log('🔑 Hasta dosyasında admin yetkisi bulundu');
                     }
                     
