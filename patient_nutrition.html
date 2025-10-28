@@ -1002,6 +1002,39 @@
                 opacity: 1;
             }
         }
+
+        /* Admin Modal Tab Styles */
+        .admin-tab-btn {
+            flex: 1;
+            min-width: 180px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .admin-tab-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .admin-tab-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #adminTabContent {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            min-height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -1014,6 +1047,10 @@
             </div>
         </div>
         <div class="header-right">
+            <!-- Admin Buton (sadece admin görebilir) -->
+            <button class="btn-header" id="adminMatchingBtn" onclick="openAdminMatchingModal()" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                ⚙️ Eşleştirme Yönetimi
+            </button>
             <button class="btn-header" onclick="downloadAllData()">
                 💾 Verileri İndir
             </button>
@@ -1347,6 +1384,40 @@
 
     <!-- Toast Message -->
     <div class="toast" id="toast"></div>
+
+    <!-- Admin Matching Modal (4 Tab) -->
+    <div class="modal" id="adminMatchingModal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>⚙️ Eşleştirme Yönetimi</h2>
+                <button class="close-btn" onclick="closeAdminMatchingModal()">×</button>
+            </div>
+
+            <!-- Tab Butonları -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="admin-tab-btn active" onclick="switchAdminTab('tarifManuel')" id="tabBtnTarifManuel">
+                    📝 Tarif Kartları Eşleştirme
+                </button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tarifYasak')" id="tabBtnTarifYasak">
+                    🚫 Tarif Kartları Yasakları
+                </button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('yemekEslestirme')" id="tabBtnYemekEslestirme">
+                    ✅ Yemek Veritabanı Eşleştirme
+                </button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('yemekYasak')" id="tabBtnYemekYasak">
+                    🚫 Yemek Veritabanı Yasakları
+                </button>
+            </div>
+
+            <!-- Tab İçerikleri -->
+            <div id="adminTabContent">
+                <!-- Yükleniyor... -->
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    Yükleniyor...
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Global Variables
@@ -2662,6 +2733,9 @@
 
             // Load data from GitHub (with localStorage cache fallback)
             await loadDataFromGitHub();
+
+            // Admin UI'yi başlat
+            initAdminUI();
 
             // Render UI
             renderTabs();
@@ -4652,13 +4726,6 @@
             
             // Türkçe tarih formatı
             const startStr = formatDateTurkish(nextMonday);
-            const endStr = for     
-            // Bir sonraki Pazar (6 gün sonra)
-            const nextSunday = new Date(nextMonday);
-            nextSunday.setDate(nextSunday.getDate() + 6);
-            
-            // Türkçe tarih formatı
-            const startStr = formatDateTurkish(nextMonday);
             const endStr = formatDateTurkish(nextSunday);
             
             const message = `${nextWeekNumber}. hafta eklenecek (${startStr} - ${endStr}). Eklemek ister misiniz?`;
@@ -4777,8 +4844,186 @@
             }, 3000);
         }
 
+        // ========================================
+        // ADMIN MATCHING MODAL FONKSİYONLARI
+        // ========================================
+
+        // Admin kontrolü
+        function checkAdminPermission() {
+            // AdminAuth varsa session kontrolü yap
+            if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession) {
+                const session = AdminAuth.getSession();
+                if (session && session.username) {
+                    console.log('✅ Admin kullanıcı:', session.username);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // ========================================
+        // ADMIN FONKSİYONLARI
+        // ========================================
+
+        // Admin yetkisi kontrolü
+        function checkAdminPermission() {
+            // AdminAuth yüklü mü?
+            if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession) {
+                const session = AdminAuth.getSession();
+                if (session && session.username) {
+                    console.log('👑 Admin oturum bulundu:', session.username);
+                    return true;
+                }
+            }
+            
+            // Fallback: localStorage'dan kontrol (eski sistem)
+            try {
+                const userRole = localStorage.getItem('userRole');
+                if (userRole === 'admin') {
+                    console.log('👑 Admin (localStorage)');
+                    return true;
+                }
+            } catch (e) {
+                console.warn('localStorage kontrolü başarısız:', e);
+            }
+            
+            return false;
+        }
+
+        // Admin butonunu göster/gizle
+        function initAdminUI() {
+            const isAdmin = checkAdminPermission();
+            const adminBtn = document.getElementById('adminMatchingBtn');
+            
+            if (isAdmin && adminBtn) {
+                adminBtn.style.display = 'inline-block';
+                console.log('👑 Admin UI aktif');
+            } else {
+                console.log('👤 Normal kullanıcı - Admin özellikleri gizli');
+            }
+        }
+
+        // Admin modal aç
+        function openAdminMatchingModal() {
+            if (!checkAdminPermission()) {
+                showToast('❌ Bu özellik sadece admin kullanıcılar içindir!', 'error');
+                return;
+            }
+
+            const modal = document.getElementById('adminMatchingModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                // İlk tab'ı yükle
+                switchAdminTab('tarifManuel');
+            }
+        }
+
+        // Admin modal kapat
+        function closeAdminMatchingModal() {
+            const modal = document.getElementById('adminMatchingModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Tab değiştir
+        function switchAdminTab(tabName) {
+            console.log('🔄 Tab değiştir:', tabName);
+            
+            // Buton aktif durumunu güncelle
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeBtn = document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+
+            // İçerik yükle
+            const content = document.getElementById('adminTabContent');
+            if (!content) return;
+
+            content.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Yükleniyor...</p></div>';
+
+            // Tab'a göre içerik render et
+            setTimeout(() => {
+                if (tabName === 'tarifManuel') {
+                    renderTarifManuelTab();
+                } else if (tabName === 'tarifYasak') {
+                    renderTarifYasakTab();
+                } else if (tabName === 'yemekEslestirme') {
+                    renderYemekEslestirmeTab();
+                } else if (tabName === 'yemekYasak') {
+                    renderYemekYasakTab();
+                }
+            }, 100);
+        }
+
+        // Placeholder render fonksiyonları (sonra doldurulacak)
+        function renderTarifManuelTab() {
+            const content = document.getElementById('adminTabContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>📝 Tarif Kartları Manuel Eşleştirme</h3>
+                    <p>Şablon yemeklerini tarif kartlarıyla eşleştirin</p>
+                    <small style="color: #999; display: block; margin-top: 20px;">
+                        Bu özellik yakında eklenecek...
+                    </small>
+                </div>
+            `;
+        }
+
+        function renderTarifYasakTab() {
+            const content = document.getElementById('adminTabContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>🚫 Tarif Kartları Yasak Eşleştirmeler</h3>
+                    <p>Yanlış eşleşmeleri önlemek için yasaklar tanımlayın</p>
+                    <small style="color: #999; display: block; margin-top: 20px;">
+                        Bu özellik yakında eklenecek...
+                    </small>
+                </div>
+            `;
+        }
+
+        function renderYemekEslestirmeTab() {
+            const content = document.getElementById('adminTabContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>✅ Yemek Veritabanı Eşleştirme</h3>
+                    <p>Şablon yemeklerini food_list.json ile eşleştirin</p>
+                    <small style="color: #999; display: block; margin-top: 20px;">
+                        Bu özellik yakında eklenecek...
+                    </small>
+                </div>
+            `;
+        }
+
+        function renderYemekYasakTab() {
+            const content = document.getElementById('adminTabContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>🚫 Yemek Veritabanı Yasakları</h3>
+                    <p>food_list.json'da yanlış eşleşmeleri önleyin</p>
+                    <small style="color: #999; display: block; margin-top: 20px;">
+                        Bu özellik yakında eklenecek...
+                    </small>
+                </div>
+            `;
+        }
+
+        // ========================================
+        // ADMIN FONKSİYONLARI SONU
+        // ========================================
+
         // Initialize on load
         window.addEventListener('DOMContentLoaded', init);
+        
+        // Admin UI'yi başlat (biraz gecikmeyle - AdminAuth yüklensin diye)
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initAdminUI, 500);
+        });
     </script>
     <script src="auth.js"></script>
     <script>
@@ -4798,4 +5043,16 @@
 
         // PDF Modal Functions
         function openPdfModal(pdfUrl) {
-            // GitHub r
+            // GitHub raw URLs iframe'de açılamaz (X-Frame-Options: deny)
+            // Bunun yerine yeni sekmede aç
+            window.open(pdfUrl, '_blank');
+        }
+
+        function closePdfModal() {
+            // Artık modal kullanmıyoruz, bu fonksiyon boş kalabilir
+        }
+    </script>
+
+</body>
+</html>
+
