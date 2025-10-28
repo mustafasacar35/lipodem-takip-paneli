@@ -4117,28 +4117,20 @@
             }
             
             // GÜNCEL hedef kaloriye göre MUTLAK FARK ARTACAK ŞEKİLDE sırala
-            // Önce tüm şablonları farka göre sırala ve alt/üst ayır
-            const sortedByDiff = unusedTemplates.map(t => ({
-                template: t,
-                diff: Math.abs((t.totalMacros?.kalori || 0) - targetCalories),
-                isAbove: (t.totalMacros?.kalori || 0) >= targetCalories
-            })).sort((a, b) => a.diff - b.diff);
-            
-            // Zigzag sıralama: alt, üst, alt, üst... (970, 1040, 940, 1100, 890...)
-            const below = sortedByDiff.filter(t => !t.isAbove);
-            const above = sortedByDiff.filter(t => t.isAbove);
-            
-            unusedTemplates = [];
-            const maxLength = Math.max(below.length, above.length);
-            for (let i = 0; i < maxLength; i++) {
-                if (i < below.length) unusedTemplates.push(below[i].template);
-                if (i < above.length) unusedTemplates.push(above[i].template);
-            }
+            // Yön önemli değil (+ veya -), sadece mutlak farkın büyüklüğü önemli
+            // Örnek: 980 (fark:20), 970 (fark:30), 1040 (fark:40), 950 (fark:50)...
+            unusedTemplates.sort((a, b) => {
+                const diffA = Math.abs((a.totalMacros?.kalori || 0) - targetCalories);
+                const diffB = Math.abs((b.totalMacros?.kalori || 0) - targetCalories);
+                return diffA - diffB; // En yakından en uzağa (mutlak fark)
+            });
             
             console.log(`📊 Kalori mutlak fark sıralaması (Hedef: ${targetCalories} kcal):`,
-                unusedTemplates.slice(0, 10).map((t, i) => 
-                    `${i + 1}. ${t.name}: ${t.totalMacros?.kalori} kcal (Fark: ${Math.abs((t.totalMacros?.kalori || 0) - targetCalories)} kcal)`
-                )
+                unusedTemplates.slice(0, 10).map((t, i) => {
+                    const diff = (t.totalMacros?.kalori || 0) - targetCalories;
+                    const absDiff = Math.abs(diff);
+                    return `${i + 1}. ${t.name}: ${t.totalMacros?.kalori} kcal (${diff >= 0 ? '+' : ''}${diff} kcal, mutlak: ${absDiff})`;
+                })
             );
             
             // Mevcut şablonun alternatifler listesindeki index'ini bul
