@@ -1623,39 +1623,122 @@
                 document.getElementById('admin_db_yasak_yemek_adi').value = foodName;
                 document.getElementById('admin_db_ekle_yemek_adi').value = foodName;
                 
-                // 5. TAB: Eğer yemek veritabanında YOKSA, menü kartındaki makrolarla doldur
+                // 5. TAB: food_list.json'da ara ve DOLDUR
                 const dbYemek = foodData.find(f => 
                     cleanFoodName(f.name).toLowerCase() === cleanFoodName(foodName).toLowerCase()
                 );
                 
-                if (!dbYemek) {
-                    // Veritabanında YOK - Menü kartındaki makroları doldur
+                if (dbYemek) {
+                    // ✅ VERİTABANINDA VAR - TÜM PARAMETRELERİ DOLDUR
+                    console.log('✅ Yemek veritabanında bulundu, tüm parametreler dolduruluyor:', dbYemek.name);
+                    
+                    // Temel bilgiler
+                    document.getElementById('admin_db_ekle_kalori').value = dbYemek.calories || 0;
+                    document.getElementById('admin_db_ekle_protein').value = dbYemek.protein || 0;
+                    document.getElementById('admin_db_ekle_karb').value = dbYemek.carbs || 0;
+                    document.getElementById('admin_db_ekle_yag').value = dbYemek.fat || 0;
+                    document.getElementById('admin_db_ekle_kategori').value = dbYemek.category || '';
+                    document.getElementById('admin_db_ekle_rol').value = dbYemek.role || '';
+                    
+                    // Öğün tipleri
+                    document.getElementById('admin_mealType_breakfast').checked = 
+                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('breakfast');
+                    document.getElementById('admin_mealType_lunch').checked = 
+                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('lunch');
+                    document.getElementById('admin_mealType_dinner').checked = 
+                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('dinner');
+                    
+                    // Porsiyon
+                    document.getElementById('admin_db_ekle_portion').value = dbYemek.portionMultiplier || dbYemek.multiplier || 1;
+                    document.getElementById('admin_db_ekle_portion2').value = dbYemek.portionMultiplier || dbYemek.multiplier || 1;
+                    
+                    // Diyet tipleri
+                    const dietTypes = dbYemek.dietTypes || [];
+                    document.getElementById('admin_dietType_ketojenik').checked = dietTypes.includes('ketojenik');
+                    document.getElementById('admin_dietType_akdeniz').checked = dietTypes.includes('akdeniz');
+                    document.getElementById('admin_dietType_vegan').checked = dietTypes.includes('vegan');
+                    document.getElementById('admin_dietType_glutensiz').checked = dietTypes.includes('glutensiz');
+                    
+                    // Min/Max/Step
+                    document.getElementById('admin_db_ekle_min').value = dbYemek.minQuantity || '';
+                    document.getElementById('admin_db_ekle_max').value = dbYemek.maxQuantity || '';
+                    document.getElementById('admin_db_ekle_step').value = dbYemek.step || '';
+                    
+                    // Sezon
+                    if (dbYemek.seasonRange) {
+                        try {
+                            const season = JSON.parse(dbYemek.seasonRange);
+                            document.getElementById('admin_db_ekle_season_min').value = season[0] || '';
+                            document.getElementById('admin_db_ekle_season_max').value = season[1] || '';
+                        } catch (e) {
+                            document.getElementById('admin_db_ekle_season_min').value = '';
+                            document.getElementById('admin_db_ekle_season_max').value = '';
+                        }
+                    } else {
+                        document.getElementById('admin_db_ekle_season_min').value = '';
+                        document.getElementById('admin_db_ekle_season_max').value = '';
+                    }
+                    
+                    // Özel özellikler
+                    document.getElementById('admin_keto').checked = dbYemek.keto || false;
+                    document.getElementById('admin_lowcarb').checked = dbYemek.lowcarb || false;
+                    document.getElementById('admin_portionFixed').checked = dbYemek.portionFixed || false;
+                    document.getElementById('admin_fillerLunch').checked = dbYemek.fillerLunch || false;
+                    document.getElementById('admin_fillerDinner').checked = dbYemek.fillerDinner || false;
+                    document.getElementById('admin_reversedSeason').checked = dbYemek.isReversedSeason || false;
+                    
+                    // Etiketler
+                    document.getElementById('admin_db_ekle_tags').value = 
+                        (dbYemek.tags || []).join(', ');
+                    document.getElementById('admin_db_ekle_compat').value = 
+                        (dbYemek.compatibilityTags || []).join(', ');
+                    document.getElementById('admin_db_ekle_incompat').value = 
+                        (dbYemek.incompatibilityTags || []).join(', ');
+                    
+                    // Notlar
+                    document.getElementById('admin_db_ekle_notes').value = dbYemek.notes || '';
+                    
+                } else {
+                    // ⚠️ VERİTABANINDA YOK - Menü kartındaki makroları doldur, geri kalan boş
                     console.log('⚠️ Yemek veritabanında bulunamadı, menü kartı makroları kullanılıyor:', foodName);
                     
-                    document.getElementById('admin_db_ekle_kalori').value = food.calories || food.kalori || '';
-                    document.getElementById('admin_db_ekle_karb').value = food.carbs || food.karbonhidrat || '';
-                    document.getElementById('admin_db_ekle_protein').value = food.protein || '';
-                    document.getElementById('admin_db_ekle_yag').value = food.fat || food.yag || '';
+                    // Temel makrolar (menü kartından - sadece varsa)
+                    document.getElementById('admin_db_ekle_protein').value = food.protein || 0;
+                    document.getElementById('admin_db_ekle_karb').value = food.carbs || food.karbonhidrat || 0;
+                    document.getElementById('admin_db_ekle_yag').value = food.fat || food.yag || 0;
                     
-                    // Kategoriyi role'dan tahmin et
-                    const roleToCategory = {
-                        'Ana Yemek': 'Ana Yemek',
-                        'Corba': 'Çorba',
-                        'Salata': 'Salata',
-                        'Pilav': 'Pilav',
-                        'Tatli': 'Tatlı',
-                        'Icecek': 'İçecek'
-                    };
-                    document.getElementById('admin_db_ekle_kategori').value = 
-                        roleToCategory[food.role] || 'Diğer';
-                } else {
-                    // Veritabanında VAR - Temizle
-                    console.log('✅ Yemek veritabanında bulundu:', dbYemek.name);
-                    document.getElementById('admin_db_ekle_kalori').value = '';
-                    document.getElementById('admin_db_ekle_karb').value = '';
-                    document.getElementById('admin_db_ekle_protein').value = '';
-                    document.getElementById('admin_db_ekle_yag').value = '';
-                    document.getElementById('admin_db_ekle_kategori').value = '';
+                    // Kalori otomatik hesapla
+                    calculateKaloriForAddFood();
+                    
+                    // Kategori ve Rol: Sadece menü kartında VARSA ekle, YOKSA BOŞ BIRAK
+                    document.getElementById('admin_db_ekle_kategori').value = food.category || '';
+                    document.getElementById('admin_db_ekle_rol').value = food.role || '';
+                    
+                    // Geri kalan tüm alanları temizle
+                    document.getElementById('admin_mealType_breakfast').checked = false;
+                    document.getElementById('admin_mealType_lunch').checked = false;
+                    document.getElementById('admin_mealType_dinner').checked = false;
+                    document.getElementById('admin_db_ekle_portion').value = 1;
+                    document.getElementById('admin_db_ekle_portion2').value = 1;
+                    document.getElementById('admin_dietType_ketojenik').checked = false;
+                    document.getElementById('admin_dietType_akdeniz').checked = false;
+                    document.getElementById('admin_dietType_vegan').checked = false;
+                    document.getElementById('admin_dietType_glutensiz').checked = false;
+                    document.getElementById('admin_db_ekle_min').value = '';
+                    document.getElementById('admin_db_ekle_max').value = '';
+                    document.getElementById('admin_db_ekle_step').value = '';
+                    document.getElementById('admin_db_ekle_season_min').value = '';
+                    document.getElementById('admin_db_ekle_season_max').value = '';
+                    document.getElementById('admin_keto').checked = false;
+                    document.getElementById('admin_lowcarb').checked = false;
+                    document.getElementById('admin_portionFixed').checked = false;
+                    document.getElementById('admin_fillerLunch').checked = false;
+                    document.getElementById('admin_fillerDinner').checked = false;
+                    document.getElementById('admin_reversedSeason').checked = false;
+                    document.getElementById('admin_db_ekle_tags').value = '';
+                    document.getElementById('admin_db_ekle_compat').value = '';
+                    document.getElementById('admin_db_ekle_incompat').value = '';
+                    document.getElementById('admin_db_ekle_notes').value = '';
                 }
                 
                 // Manuel Eşleştirme tab'ını aç
@@ -5522,7 +5605,7 @@
                     
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 600;">Yemek Adı *</label>
-                        <input type="text" id="admin_db_ekle_yemek_adi" readonly required style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: #f8f9fa;">
+                        <input type="text" id="admin_db_ekle_yemek_adi" required style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px; background: #fff;">
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -5901,36 +5984,49 @@
                 .map(t => t.trim())
                 .filter(t => t);
             
-            // Yeni yemek objesi oluştur
+            // Sezon range
+            const seasonMin = parseInt(document.getElementById('admin_db_ekle_season_min').value);
+            const seasonMax = parseInt(document.getElementById('admin_db_ekle_season_max').value);
+            const seasonRange = (seasonMin && seasonMax) ? `[${seasonMin},${seasonMax}]` : undefined;
+            
+            // Yeni yemek objesi oluştur (food_list.json formatında)
             const yeniYemek = {
                 name: yemekAdi,
+                category: kategori,
                 calories: kalori,
                 protein: protein,
                 carbs: karb,
                 fat: yag,
-                category: kategori,
-                role: rol,
-                mealTypes: mealTypes,
-                portionMultiplier: parseFloat(document.getElementById('admin_db_ekle_portion').value) || 1,
-                dietTypes: dietTypes,
                 minQuantity: parseFloat(document.getElementById('admin_db_ekle_min').value) || undefined,
                 maxQuantity: parseFloat(document.getElementById('admin_db_ekle_max').value) || undefined,
                 step: parseFloat(document.getElementById('admin_db_ekle_step').value) || undefined,
-                seasonMin: parseInt(document.getElementById('admin_db_ekle_season_min').value) || undefined,
-                seasonMax: parseInt(document.getElementById('admin_db_ekle_season_max').value) || undefined,
-                ...ozelOzellikler,
-                tags: tags.length > 0 ? tags : undefined,
-                compatibilityTags: compatibilityTags.length > 0 ? compatibilityTags : undefined,
-                incompatibilityTags: incompatibilityTags.length > 0 ? incompatibilityTags : undefined,
-                notes: document.getElementById('admin_db_ekle_notes').value || undefined
+                multiplier: parseFloat(document.getElementById('admin_db_ekle_portion').value) || 1,
+                role: rol,
+                mealType: mealTypes, // Array olarak
+                dietTypes: dietTypes,
+                keto: ozelOzellikler.keto || false,
+                lowcarb: ozelOzellikler.lowcarb || false,
+                portionFixed: ozelOzellikler.portionFixed || false,
+                fillerLunch: ozelOzellikler.fillerLunch || false,
+                fillerDinner: ozelOzellikler.fillerDinner || false,
+                tags: tags,
+                compatibilityTags: compatibilityTags,
+                incompatibilityTags: incompatibilityTags,
+                seasonRange: seasonRange,
+                isReversedSeason: ozelOzellikler.isReversedSeason || false,
+                notes: document.getElementById('admin_db_ekle_notes').value || ''
             };
             
-            // Undefined alanları temizle
-            Object.keys(yeniYemek).forEach(key => 
-                (yeniYemek[key] === undefined || yeniYemek[key] === false) && delete yeniYemek[key]
-            );
+            // Undefined/boş alanları temizle
+            Object.keys(yeniYemek).forEach(key => {
+                if (yeniYemek[key] === undefined || 
+                    yeniYemek[key] === '' || 
+                    (Array.isArray(yeniYemek[key]) && yeniYemek[key].length === 0)) {
+                    delete yeniYemek[key];
+                }
+            });
             
-            console.log('➕ Yeni Yemek:', yeniYemek);
+            console.log('➕ Yeni Yemek (food_list.json formatı):', yeniYemek);
             alert('✅ Yeni yemek veritabanına eklenecek!\n\n' +
                   JSON.stringify(yeniYemek, null, 2) + '\n\n' +
                   '(GitHub API entegrasyonu eklenecek)');
