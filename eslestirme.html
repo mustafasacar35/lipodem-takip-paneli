@@ -2022,6 +2022,12 @@
 
                 // 2. Dosyayı güncelle veya oluştur
                 const putUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`;
+                
+                // 🔥 Modern UTF-8 Base64 encoding (double-encoding problemi çözümü)
+                const encoder = new TextEncoder();
+                const uint8Array = encoder.encode(content);
+                const base64Content = btoa(String.fromCharCode(...uint8Array));
+                
                 const putResponse = await fetch(putUrl, {
                     method: 'PUT',
                     headers: {
@@ -2031,7 +2037,7 @@
                     },
                     body: JSON.stringify({
                         message: commitMessage,
-                        content: btoa(unescape(encodeURIComponent(content))), // UTF-8 base64 encode
+                        content: base64Content,
                         sha: sha,
                         branch: GITHUB_BRANCH
                     })
@@ -2758,6 +2764,12 @@
 
                 // 2. Dosyayı güncelle veya oluştur
                 const putUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`;
+                
+                // 🔥 Modern UTF-8 Base64 encoding (double-encoding problemi çözümü)
+                const encoder = new TextEncoder();
+                const uint8Array = encoder.encode(content);
+                const base64Content = btoa(String.fromCharCode(...uint8Array));
+                
                 const putResponse = await fetch(putUrl, {
                     method: 'PUT',
                     headers: {
@@ -2767,7 +2779,7 @@
                     },
                     body: JSON.stringify({
                         message: commitMessage,
-                        content: btoa(unescape(encodeURIComponent(content))), // UTF-8 base64 encode
+                        content: base64Content,
                         sha: sha,
                         branch: GITHUB_BRANCH
                     })
@@ -3442,7 +3454,7 @@
             document.getElementById('edit_minQuantity').value = food.minQuantity || '';
             document.getElementById('edit_maxQuantity').value = food.maxQuantity || '';
             document.getElementById('edit_step').value = food.step || '';
-            document.getElementById('edit_portionMultiplier').value = food.multiplier || food.portionMultiplier || 1;
+            document.getElementById('edit_yemek_portionMultiplier').value = food.multiplier || food.portionMultiplier || 1;
             
             // Sezon alanları - seasonRange parse et
             let seasonMin = '';
@@ -3532,7 +3544,7 @@
             document.getElementById('edit_minQuantity').value = '';
             document.getElementById('edit_maxQuantity').value = '';
             document.getElementById('edit_step').value = '';
-            document.getElementById('edit_portionMultiplier').value = 1;
+            document.getElementById('edit_yemek_portionMultiplier').value = 1;
             document.getElementById('edit_seasonMin').value = '';
             document.getElementById('edit_seasonMax').value = '';
             
@@ -3604,7 +3616,7 @@
                 minQuantity: parseFloat(document.getElementById('edit_minQuantity').value) || undefined,
                 maxQuantity: parseFloat(document.getElementById('edit_maxQuantity').value) || undefined,
                 step: parseFloat(document.getElementById('edit_step').value) || undefined,
-                multiplier: parseFloat(document.getElementById('edit_portionMultiplier').value) || 1,
+                multiplier: parseFloat(document.getElementById('edit_yemek_portionMultiplier').value) || 1,
                 seasonRange: (() => {
                     const min = parseInt(document.getElementById('edit_seasonMin').value);
                     const max = parseInt(document.getElementById('edit_seasonMax').value);
@@ -3911,6 +3923,10 @@
                 notlar: `"${aramaTxt}" → "${hedefTxt}" eşleştirildi`
             };
 
+            // 🔥 ÖNCE EKRANI GÜNCELLE (anlık görünüm)
+            clearYemekEslestirmeForm();
+            renderYemekEslestirmeList();
+
             // GitHub'a kaydet
             const jsonData = {
                 version: "1.0",
@@ -3927,12 +3943,9 @@
                 );
 
                 showNotification(`✅ Eşleştirme kaydedildi: ${aramaTxt} → ${hedefTxt}`, 'success');
-                clearYemekEslestirmeForm();
-                await loadYemekVeritabaniEslestirme();
-                renderYemekEslestirmeList();
             } catch (error) {
-                console.error('Kayıt hatası:', error);
-                showNotification('❌ Kayıt başarısız!', 'error');
+                console.error('GitHub kayıt hatası:', error);
+                showNotification('⚠️ Ekranda görünüyor ama GitHub\'a kaydedilemedi!', 'warning');
             }
         }
 
@@ -3957,6 +3970,10 @@
                 neden: nedenTxt || `"${aramaTxt}" bu yemeklerle eşleşmemeli`
             };
 
+            // 🔥 ÖNCE EKRANI GÜNCELLE (anlık görünüm)
+            clearYemekYasakForm();
+            renderYemekYasakList();
+
             // GitHub'a kaydet
             const jsonData = {
                 version: "1.0",
@@ -3973,12 +3990,9 @@
                 );
 
                 showNotification(`🚫 Yasak kaydedildi: ${aramaTxt}`, 'success');
-                clearYemekYasakForm();
-                await loadYemekVeritabaniYasaklar();
-                renderYemekYasakList();
             } catch (error) {
-                console.error('Kayıt hatası:', error);
-                showNotification('❌ Kayıt başarısız!', 'error');
+                console.error('GitHub kayıt hatası:', error);
+                showNotification('⚠️ Ekranda görünüyor ama GitHub\'a kaydedilemedi!', 'warning');
             }
         }
 
@@ -4230,6 +4244,9 @@
 
             delete yemekVeritabaniEslestirme[key];
 
+            // 🔥 ÖNCE EKRANI GÜNCELLE (anlık görünüm)
+            renderYemekEslestirmeList();
+
             const jsonData = {
                 version: "1.0",
                 aciklama: "Şablonlardaki yemek adlarını food_list.json'daki yemeklerle manuel eşleştir",
@@ -4244,12 +4261,13 @@
                     `Yemek eşleştirme silindi: ${key}`
                 );
 
-                showNotification('✅ Eşleştirme silindi', 'success');
+                showNotification('✅ Eşleştirme silindi ve GitHub\'a kaydedildi', 'success');
+            } catch (error) {
+                console.error('GitHub kayıt hatası:', error);
+                showNotification('⚠️ Ekrandan silindi ama GitHub\'a kaydedilemedi!', 'warning');
+                // Hata durumunda geri yükle
                 await loadYemekVeritabaniEslestirme();
                 renderYemekEslestirmeList();
-            } catch (error) {
-                console.error('Silme hatası:', error);
-                showNotification('❌ Silme başarısız!', 'error');
             }
         }
 
@@ -4260,6 +4278,9 @@
             }
 
             delete yemekVeritabaniYasaklar[key];
+
+            // 🔥 ÖNCE EKRANI GÜNCELLE (anlık görünüm)
+            renderYemekYasakList();
 
             const jsonData = {
                 version: "1.0",
@@ -4275,12 +4296,13 @@
                     `Yemek yasağı silindi: ${key}`
                 );
 
-                showNotification('✅ Yasak silindi', 'success');
+                showNotification('✅ Yasak silindi ve GitHub\'a kaydedildi', 'success');
+            } catch (error) {
+                console.error('GitHub kayıt hatası:', error);
+                showNotification('⚠️ Ekrandan silindi ama GitHub\'a kaydedilemedi!', 'warning');
+                // Hata durumunda geri yükle
                 await loadYemekVeritabaniYasaklar();
                 renderYemekYasakList();
-            } catch (error) {
-                console.error('Silme hatası:', error);
-                showNotification('❌ Silme başarısız!', 'error');
             }
         }
 
@@ -4427,7 +4449,7 @@
                         </div>
                         <div class="form-group">
                             <label>Porsiyon Çarpanı</label>
-                            <input type="number" id="edit_portionMultiplier" step="0.1" value="1">
+                            <input type="number" id="edit_yemek_portionMultiplier" step="0.1" value="1">
                         </div>
                     </div>
 
