@@ -1965,8 +1965,12 @@
                 // DietType kontrolü (matchCriteria.dietType true ise aktif)
                 if (matchCriteria.dietType) {
                     const foodDietType = getDietType(food);
-                    if (selectedDietType === 'keto' && foodDietType !== 'keto') return false;
-                    if (selectedDietType === 'lowcarb' && !['keto', 'lowcarb'].includes(foodDietType)) return false;
+                    const refDietType = getDietType(refFood);
+                    
+                    // AYNI DİYET TİPİ OLMALI (keto → keto, lowcarb → lowcarb, normal → normal)
+                    if (foodDietType !== refDietType) {
+                        return false;
+                    }
                 }
 
                 return true;
@@ -1983,6 +1987,19 @@
                 console.log(`✅ Role filtresi AKTIF - Sadece "${refFood.role}" alternatifleri:`, roleTypes);
             } else {
                 console.log(`⚠️ Role filtresi PASİF - Tüm roller karışık`);
+            }
+            
+            // DietType filtresi kontrolü
+            if (matchCriteria.dietType) {
+                const refDietType = getDietType(refFood);
+                const dietTypes = alternatives.reduce((acc, food) => {
+                    const dt = getDietType(food);
+                    acc[dt] = (acc[dt] || 0) + 1;
+                    return acc;
+                }, {});
+                console.log(`✅ DietType filtresi AKTIF - Sadece "${refDietType}" alternatifleri:`, dietTypes);
+            } else {
+                console.log(`⚠️ DietType filtresi PASİF - Tüm diyet tipleri karışık`);
             }
 
             // 2️⃣ TAG FİLTRELEME (mobil versiyon mantığı - enableTagFilter kontrolü)
