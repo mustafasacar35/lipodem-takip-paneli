@@ -6027,11 +6027,142 @@
             });
             
             console.log('➕ Yeni Yemek (food_list.json formatı):', yeniYemek);
-            alert('✅ Yeni yemek veritabanına eklenecek!\n\n' +
-                  JSON.stringify(yeniYemek, null, 2) + '\n\n' +
-                  '(GitHub API entegrasyonu eklenecek)');
             
-            // TODO: GitHub API ile food_list.json'a ekle
+            // GitHub API ile kaydet
+            saveFoodToGitHub(yeniYemek);
+        }
+        
+        // GitHub'a yemek kaydetme fonksiyonu
+        async function saveFoodToGitHub(yemekObj) {
+            try {
+                const GITHUB_TOKEN = localStorage.getItem('github_token');
+                if (!GITHUB_TOKEN) {
+                    alert('⚠️ GitHub token bulunamadı!\n\nLütfen önce GitHub token\'ınızı ayarlayın.');
+                    return;
+                }
+                
+                const OWNER = 'mustafasacar35';
+                const REPO = 'lipodem-takip-paneli';
+                const BRANCH = 'main';
+                const FILE_PATH = 'food_list.json';
+                
+                // 1. Mevcut dosyayı çek
+                console.log('📥 food_list.json çekiliyor...');
+                const getResponse = await fetch(
+                    `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?ref=${BRANCH}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!getResponse.ok) {
+                    throw new Error(`Dosya çekilemedi: ${getResponse.status} ${getResponse.statusText}`);
+                }
+                
+                const fileData = await getResponse.json();
+                const currentContent = atob(fileData.content.replace(/\n/g, ''));
+                const currentJson = JSON.parse(currentContent);
+                
+                // 2. Yemeği kategoriye ekle veya güncelle
+                console.log('🔍 Kategori bulunuyor:', yemekObj.category);
+                
+                let categoryFound = false;
+                let foodUpdated = false;
+                
+                // Kategorilerde ara
+                for (let cat of currentJson.categories) {
+                    if (cat.name === yemekObj.category) {
+                        categoryFound = true;
+                        
+                        // Aynı isimde yemek var mı kontrol et
+                        const existingIndex = cat.items.findIndex(item => item.name === yemekObj.name);
+                        
+                        if (existingIndex !== -1) {
+                            // GÜNCELLEME
+                            cat.items[existingIndex] = yemekObj;
+                            foodUpdated = true;
+                            console.log('✏️ Mevcut yemek güncellendi:', yemekObj.name);
+                        } else {
+                            // YENİ EKLEME
+                            cat.items.push(yemekObj);
+                            console.log('➕ Yeni yemek kategoriye eklendi:', yemekObj.name);
+                        }
+                        break;
+                    }
+                }
+                
+                // Kategori yoksa yeni kategori oluştur
+                if (!categoryFound) {
+                    console.log('🆕 Yeni kategori oluşturuluyor:', yemekObj.category);
+                    currentJson.categories.push({
+                        name: yemekObj.category,
+                        items: [yemekObj]
+                    });
+                }
+                
+                // 3. Metadata güncelle
+                currentJson.lastUpdated = new Date().toISOString();
+                
+                // 4. JSON'u string'e çevir
+                const updatedContent = JSON.stringify(currentJson, null, 2);
+                const encodedContent = btoa(unescape(encodeURIComponent(updatedContent)));
+                
+                // 5. GitHub'a commit et
+                console.log('💾 GitHub\'a kaydediliyor...');
+                const commitMessage = foodUpdated 
+                    ? `Yemek güncellendi: ${yemekObj.name}`
+                    : `Yeni yemek eklendi: ${yemekObj.name}`;
+                
+                const putResponse = await fetch(
+                    `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: commitMessage,
+                            content: encodedContent,
+                            sha: fileData.sha,
+                            branch: BRANCH
+                        })
+                    }
+                );
+                
+                if (!putResponse.ok) {
+                    const errorData = await putResponse.json();
+                    throw new Error(`GitHub commit başarısız: ${putResponse.status} - ${errorData.message}`);
+                }
+                
+                const commitData = await putResponse.json();
+                console.log('✅ GitHub\'a kaydedildi:', commitData.commit.sha);
+                
+                // Başarı mesajı
+                alert(`✅ ${foodUpdated ? 'Yemek güncellendi' : 'Yeni yemek eklendi'}!\n\n` +
+                      `Yemek: ${yemekObj.name}\n` +
+                      `Kategori: ${yemekObj.category}\n` +
+                      `Commit: ${commitData.commit.sha.substring(0, 7)}\n\n` +
+                      'food_list.json başarıyla güncellendi.');
+                
+                // Modal'ı kapat ve verileri yenile
+                closeAdminFoodModal();
+                
+                // foodData'yı yeniden yükle
+                foodData = [];
+                await loadFoodData();
+                
+                // Sayfayı yenile
+                await loadWeeks();
+                
+            } catch (error) {
+                console.error('❌ GitHub kaydetme hatası:', error);
+                alert(`❌ Kaydetme başarısız!\n\n${error.message}\n\nLütfen GitHub token\'ınızı kontrol edin.`);
+            }
         }
     </script>
 
