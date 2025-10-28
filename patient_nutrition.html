@@ -5398,8 +5398,8 @@
             
             <!-- Modal Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #FF6B6B; padding-bottom: 15px;">
-                <h2 style="margin: 0; color: #FF6B6B; font-size: 24px;">
-                    🔧 Yemek Eşleştirme Yönetimi: <span id="modal_food_name" style="color: #333; font-weight: 700;"></span>
+                <h2 style="margin: 0; color: #333; font-size: 24px; font-weight: 700;">
+                    <span id="modal_food_name"></span>
                 </h2>
                 <button onclick="closeAdminFoodModal()" style="background: #f44336; color: white; border: none; padding: 10px 20px; font-size: 18px; cursor: pointer; border-radius: 6px;">✖ Kapat</button>
             </div>
@@ -5518,49 +5518,197 @@
 
             <!-- Tab 5: Veritabanına Ekle -->
             <div id="admin-tab-db-ekle" class="admin-tab-content" style="display: none;">
-                <h3 style="color: #2196f3; margin-bottom: 15px;">➕ Yeni Yemek Ekle (food_list.json)</h3>
-                <p style="color: #666; margin-bottom: 20px;">Menü kartındaki yemeği food_list.json veritabanına yeni bir yemek olarak ekleyin. Eğer yemek veritabanında yoksa, menü kartındaki makrolar otomatik doldurulur.</p>
-                
-                <div style="background: #e3f2fd; padding: 20px; border-radius: 8px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 600;">Yemek Adı:</label>
-                    <input type="text" id="admin_db_ekle_yemek_adi" readonly style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; background: #fff; margin-bottom: 20px;">
+                <form id="addFoodForm" onsubmit="event.preventDefault(); saveYeniYemek();" style="max-height: 70vh; overflow-y: auto; padding-right: 15px;">
                     
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Yemek Adı *</label>
+                        <input type="text" id="admin_db_ekle_yemek_adi" readonly required style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: #f8f9fa;">
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kalori (kcal):</label>
-                            <input type="number" id="admin_db_ekle_kalori" placeholder="200" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kalori (kcal) *</label>
+                            <input type="number" id="admin_db_ekle_kalori" step="0.1" readonly required style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px; background: #f0f0f0; cursor: not-allowed;" title="Otomatik hesaplanır: (Karb×4) + (Protein×4) + (Yağ×9)">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Karbonhidrat (g):</label>
-                            <input type="number" id="admin_db_ekle_karb" placeholder="30" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Protein (g) *</label>
+                            <input type="number" id="admin_db_ekle_protein" step="0.1" required oninput="calculateKaloriForAddFood()" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Protein (g):</label>
-                            <input type="number" id="admin_db_ekle_protein" placeholder="10" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Karbonhidrat (g) *</label>
+                            <input type="number" id="admin_db_ekle_karb" step="0.1" required oninput="calculateKaloriForAddFood()" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Yağ (g):</label>
-                            <input type="number" id="admin_db_ekle_yag" placeholder="5" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Yağ (g) *</label>
+                            <input type="number" id="admin_db_ekle_yag" step="0.1" required oninput="calculateKaloriForAddFood()" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
                         </div>
                     </div>
-                    
-                    <label style="display: block; margin-bottom: 10px; font-weight: 600;">Kategori:</label>
-                    <select id="admin_db_ekle_kategori" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px; margin-bottom: 20px;">
-                        <option value="">Kategori Seçin</option>
-                        <option value="Ana Yemek">Ana Yemek</option>
-                        <option value="Çorba">Çorba</option>
-                        <option value="Salata">Salata</option>
-                        <option value="Pilav">Pilav</option>
-                        <option value="Tatlı">Tatlı</option>
-                        <option value="İçecek">İçecek</option>
-                        <option value="Atıştırmalık">Atıştırmalık</option>
-                        <option value="Diğer">Diğer</option>
-                    </select>
-                    
-                    <button onclick="saveYeniYemek()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 15px 30px; font-size: 16px; cursor: pointer; border-radius: 6px; width: 100%; font-weight: 600;">
-                        ➕ Veritabanına Ekle
-                    </button>
-                </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kategori *</label>
+                            <select id="admin_db_ekle_kategori" required style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                                <option value="">-- Kategori Seçin --</option>
+                                <option value="Ana Yemek">Ana Yemek</option>
+                                <option value="Çorba">Çorba</option>
+                                <option value="Salata">Salata</option>
+                                <option value="Pilav">Pilav</option>
+                                <option value="Tatlı">Tatlı</option>
+                                <option value="İçecek">İçecek</option>
+                                <option value="Atıştırmalık">Atıştırmalık</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Rol *</label>
+                            <select id="admin_db_ekle_rol" required style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                                <option value="">-- Rol Seçin --</option>
+                                <option value="mainDish">Ana Yemek</option>
+                                <option value="sideDish">Yan Yemek</option>
+                                <option value="drink">İçecek</option>
+                                <option value="supplement">Takviye</option>
+                                <option value="snack">Atıştırmalık</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600;">Öğün Tipi (Birden fazla seçilebilir)</label>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_mealType_breakfast" value="breakfast">
+                                🌅 Kahvaltı
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_mealType_lunch" value="lunch">
+                                ☀️ Öğle
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_mealType_dinner" value="dinner">
+                                🌙 Akşam
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Porsiyon Çarpanı</label>
+                        <input type="number" id="admin_db_ekle_portion" step="0.1" value="1" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600;">Diyet Tipleri (Birden fazla seçilebilir)</label>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_dietType_ketojenik" value="ketojenik">
+                                🥗 Ketojenik
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_dietType_akdeniz" value="akdeniz">
+                                🌊 Akdeniz
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_dietType_vegan" value="vegan">
+                                🌱 Vegan
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_dietType_glutensiz" value="glutensiz">
+                                🌾 Glutensiz
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Min Miktar</label>
+                            <input type="number" id="admin_db_ekle_min" step="0.1" placeholder="Minimum porsiyon" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Max Miktar</label>
+                            <input type="number" id="admin_db_ekle_max" step="0.1" placeholder="Maksimum porsiyon" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Adım (Step)</label>
+                            <input type="number" id="admin_db_ekle_step" step="0.1" placeholder="Artış miktarı" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Porsiyon Çarpanı</label>
+                            <input type="number" id="admin_db_ekle_portion2" step="0.1" value="1" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Sezon Başlangıç (Ay)</label>
+                            <input type="number" id="admin_db_ekle_season_min" min="1" max="12" placeholder="1-12" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Sezon Bitiş (Ay)</label>
+                            <input type="number" id="admin_db_ekle_season_max" min="1" max="12" placeholder="1-12" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600;">🏷️ Özel Özellikler</label>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_keto">
+                                🥗 Keto
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_lowcarb">
+                                📉 Düşük Karb
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_portionFixed">
+                                🔒 Porsiyon Sabit
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_fillerLunch">
+                                🍽️ Öğle Dolgu
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_fillerDinner">
+                                🌙 Akşam Dolgu
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="admin_reversedSeason">
+                                🔄 Ters Sezon
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">🏷️ Etiketler (Tags) - virgülle ayırın</label>
+                        <input type="text" id="admin_db_ekle_tags" placeholder="ör: domates, meyve, salata" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">✅ Uyumluluk Etiketleri (compatibilityTags) - virgülle ayırın</label>
+                        <input type="text" id="admin_db_ekle_compat" placeholder="ör: tavuk, zeytinyağı" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">❌ Uyumsuzluk Etiketleri (incompatibilityTags) - virgülle ayırın</label>
+                        <input type="text" id="admin_db_ekle_incompat" placeholder="ör: süt, peynir" style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px;">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">📝 Notlar</label>
+                        <textarea id="admin_db_ekle_notes" placeholder="Ek bilgiler, özel notlar..." style="width: 100%; padding: 12px; border: 2px solid #2196f3; border-radius: 6px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" onclick="closeAdminFoodModal()" style="flex: 1; background: #6c757d; color: white; border: none; padding: 15px; font-size: 16px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                            İptal
+                        </button>
+                        <button type="submit" style="flex: 2; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 15px; font-size: 16px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                            💾 Kaydet
+                        </button>
+                    </div>
+                </form>
             </div>
 
         </div>
@@ -5688,27 +5836,99 @@
             // TODO: GitHub API ile data/yemek_veritabani_yasaklar.json'a kaydet
         }
         
-        function saveYeniYemek() {
-            const yemekAdi = document.getElementById('admin_db_ekle_yemek_adi').value;
-            const kalori = document.getElementById('admin_db_ekle_kalori').value;
-            const karb = document.getElementById('admin_db_ekle_karb').value;
-            const protein = document.getElementById('admin_db_ekle_protein').value;
-            const yag = document.getElementById('admin_db_ekle_yag').value;
-            const kategori = document.getElementById('admin_db_ekle_kategori').value;
+        // Kalori otomatik hesaplama (Tab 5 için)
+        function calculateKaloriForAddFood() {
+            const protein = parseFloat(document.getElementById('admin_db_ekle_protein').value) || 0;
+            const karb = parseFloat(document.getElementById('admin_db_ekle_karb').value) || 0;
+            const yag = parseFloat(document.getElementById('admin_db_ekle_yag').value) || 0;
             
-            if (!kalori || !karb || !protein || !yag || !kategori) {
-                alert('⚠️ Lütfen tüm alanları doldurun!');
+            // Kalori = (Protein × 4) + (Karb × 4) + (Yağ × 9)
+            const kalori = (protein * 4) + (karb * 4) + (yag * 9);
+            
+            document.getElementById('admin_db_ekle_kalori').value = kalori.toFixed(1);
+        }
+        
+        function saveYeniYemek() {
+            // Tüm form verilerini topla
+            const yemekAdi = document.getElementById('admin_db_ekle_yemek_adi').value;
+            const kalori = parseFloat(document.getElementById('admin_db_ekle_kalori').value);
+            const protein = parseFloat(document.getElementById('admin_db_ekle_protein').value);
+            const karb = parseFloat(document.getElementById('admin_db_ekle_karb').value);
+            const yag = parseFloat(document.getElementById('admin_db_ekle_yag').value);
+            const kategori = document.getElementById('admin_db_ekle_kategori').value;
+            const rol = document.getElementById('admin_db_ekle_rol').value;
+            
+            // Zorunlu alanları kontrol et
+            if (!yemekAdi || !kalori || !protein || !karb || !yag || !kategori || !rol) {
+                alert('⚠️ Lütfen zorunlu alanları doldurun (Yemek Adı, Makrolar, Kategori, Rol)!');
                 return;
             }
             
+            // Öğün tipleri
+            const mealTypes = [];
+            if (document.getElementById('admin_mealType_breakfast').checked) mealTypes.push('breakfast');
+            if (document.getElementById('admin_mealType_lunch').checked) mealTypes.push('lunch');
+            if (document.getElementById('admin_mealType_dinner').checked) mealTypes.push('dinner');
+            
+            // Diyet tipleri
+            const dietTypes = [];
+            if (document.getElementById('admin_dietType_ketojenik').checked) dietTypes.push('ketojenik');
+            if (document.getElementById('admin_dietType_akdeniz').checked) dietTypes.push('akdeniz');
+            if (document.getElementById('admin_dietType_vegan').checked) dietTypes.push('vegan');
+            if (document.getElementById('admin_dietType_glutensiz').checked) dietTypes.push('glutensiz');
+            
+            // Özel özellikler
+            const ozelOzellikler = {
+                keto: document.getElementById('admin_keto').checked,
+                lowcarb: document.getElementById('admin_lowcarb').checked,
+                portionFixed: document.getElementById('admin_portionFixed').checked,
+                fillerLunch: document.getElementById('admin_fillerLunch').checked,
+                fillerDinner: document.getElementById('admin_fillerDinner').checked,
+                isReversedSeason: document.getElementById('admin_reversedSeason').checked
+            };
+            
+            // Etiketler
+            const tags = document.getElementById('admin_db_ekle_tags').value
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            const compatibilityTags = document.getElementById('admin_db_ekle_compat').value
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            const incompatibilityTags = document.getElementById('admin_db_ekle_incompat').value
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            
+            // Yeni yemek objesi oluştur
             const yeniYemek = {
                 name: yemekAdi,
-                calories: parseFloat(kalori),
-                carbs: parseFloat(karb),
-                protein: parseFloat(protein),
-                fat: parseFloat(yag),
-                category: kategori
+                calories: kalori,
+                protein: protein,
+                carbs: karb,
+                fat: yag,
+                category: kategori,
+                role: rol,
+                mealTypes: mealTypes,
+                portionMultiplier: parseFloat(document.getElementById('admin_db_ekle_portion').value) || 1,
+                dietTypes: dietTypes,
+                minQuantity: parseFloat(document.getElementById('admin_db_ekle_min').value) || undefined,
+                maxQuantity: parseFloat(document.getElementById('admin_db_ekle_max').value) || undefined,
+                step: parseFloat(document.getElementById('admin_db_ekle_step').value) || undefined,
+                seasonMin: parseInt(document.getElementById('admin_db_ekle_season_min').value) || undefined,
+                seasonMax: parseInt(document.getElementById('admin_db_ekle_season_max').value) || undefined,
+                ...ozelOzellikler,
+                tags: tags.length > 0 ? tags : undefined,
+                compatibilityTags: compatibilityTags.length > 0 ? compatibilityTags : undefined,
+                incompatibilityTags: incompatibilityTags.length > 0 ? incompatibilityTags : undefined,
+                notes: document.getElementById('admin_db_ekle_notes').value || undefined
             };
+            
+            // Undefined alanları temizle
+            Object.keys(yeniYemek).forEach(key => 
+                (yeniYemek[key] === undefined || yeniYemek[key] === false) && delete yeniYemek[key]
+            );
             
             console.log('➕ Yeni Yemek:', yeniYemek);
             alert('✅ Yeni yemek veritabanına eklenecek!\n\n' +
