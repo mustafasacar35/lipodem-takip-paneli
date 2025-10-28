@@ -1373,8 +1373,10 @@
         let appSettings = null; // Admin ayarlarından gelecek diyet formülleri
         
         // Food Alternative System Variables
-        let manuelEslestirmeler = {}; // Manuel eşleştirmeler (data/manuel_eslestirmeler.json)
-        let eslesmemeKurallari = {}; // Yasak eşleştirme kuralları (data/eslesmeme_kurallari.json)
+        let manuelEslestirmeler = {}; // Manuel eşleştirmeler - tarif kartları için (data/manuel_eslestirmeler.json)
+        let eslesmemeKurallari = {}; // Yasak eşleştirme kuralları - tarif kartları için (data/eslesmeme_kurallari.json)
+        let yemekVeritabaniEslestirme = {}; // Yemek veritabanı manuel eşleştirme (data/yemek_veritabani_eslestirme.json)
+        let yemekVeritabaniYasaklar = {}; // Yemek veritabanı yasak eşleştirme (data/yemek_veritabani_yasaklar.json)
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
         let foodData = []; // Yemek veritabanı (food_list.json)
         
@@ -1464,13 +1466,9 @@
                 const parsed = JSON.parse(decoded);
                 appSettings = parsed;
 
-                if (response.ok) {
-                    const data = await response.json();
-                    appSettings = data;
-                    
-                    // matchCriteria'yı filterCriteria'dan doldur (mobil versiyon mantığı)
-                    if (appSettings.filterCriteria) {
-                        const filterCrit = appSettings.filterCriteria;
+                // matchCriteria'yı filterCriteria'dan doldur (mobil versiyon mantığı)
+                if (appSettings.filterCriteria) {
+                    const filterCrit = appSettings.filterCriteria;
                         
                         // Role filtresi
                         if (filterCrit.role?.visible) {
@@ -1531,17 +1529,6 @@
                     
                     console.log('✅ Admin ayarları yüklendi:', appSettings);
                     console.log('✅ Match kriterleri:', matchCriteria);
-                } else {
-                    console.warn('⚠️ Admin ayarları yüklenemedi, varsayılan değerler kullanılacak');
-                    appSettings = {
-                        calorieTolerancePercent: 5,
-                        dietFormulas: {
-                            ketojenik: { carb: 0.3, protein: 0.8, fat: 1.2 },
-                            lowcarb: { carb: 0.6, protein: 0.8, fat: 1.0 },
-                            activityMultipliers: { 1: 0.8, 2: 0.9, 3: 1.0, 4: 1.1, 5: 1.2 }
-                        }
-                    };
-                }
             } catch (error) {
                 console.warn('⚠️ Admin ayarları yüklenirken hata:', error);
                 appSettings = {
@@ -1558,17 +1545,17 @@
         // Manuel eşleştirmeler ve yasak kurallarını GitHub'dan yükle
         async function loadManuelEslestirmeler() {
             try {
-                // Manuel eşleştirmeleri yükle
+                // 1️⃣ Manuel eşleştirmeleri yükle (tarif kartları için)
                 const manuelResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json?t=' + Date.now());
                 if (manuelResp.ok) {
                     const manuelData = await manuelResp.json();
                     manuelEslestirmeler = manuelData.eslestirmeler || manuelData;
-                    console.log('✅ Manuel eşleştirmeler yüklendi:', Object.keys(manuelEslestirmeler).length);
+                    console.log('✅ Manuel eşleştirmeler yüklendi (tarif kartları):', Object.keys(manuelEslestirmeler).length);
                 } else {
                     console.warn('⚠️ Manuel eşleştirmeler yüklenemedi');
                 }
 
-                // Yasak kurallarını yükle
+                // 2️⃣ Yasak kurallarını yükle (tarif kartları için)
                 const yasakResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/eslesmeme_kurallari.json?t=' + Date.now());
                 if (yasakResp.ok) {
                     const yasakData = await yasakResp.json();
@@ -1601,9 +1588,29 @@
                         eslesmemeKurallari = yasakData;
                     }
                     
-                    console.log('✅ Yasak kuralları yüklendi:', Object.keys(eslesmemeKurallari).length);
+                    console.log('✅ Yasak kuralları yüklendi (tarif kartları):', Object.keys(eslesmemeKurallari).length);
                 } else {
                     console.warn('⚠️ Yasak kuralları yüklenemedi');
+                }
+
+                // 3️⃣ Yemek veritabanı manuel eşleştirmeleri yükle
+                const yemekEslestirmeResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/yemek_veritabani_eslestirme.json?t=' + Date.now());
+                if (yemekEslestirmeResp.ok) {
+                    const yemekEslestirmeData = await yemekEslestirmeResp.json();
+                    yemekVeritabaniEslestirme = yemekEslestirmeData.eslestirmeler || yemekEslestirmeData;
+                    console.log('✅ Yemek veritabanı eşleştirmeleri yüklendi:', Object.keys(yemekVeritabaniEslestirme).length);
+                } else {
+                    console.warn('⚠️ Yemek veritabanı eşleştirmeleri yüklenemedi');
+                }
+
+                // 4️⃣ Yemek veritabanı yasaklarını yükle
+                const yemekYasaklarResp = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/yemek_veritabani_yasaklar.json?t=' + Date.now());
+                if (yemekYasaklarResp.ok) {
+                    const yemekYasaklarData = await yemekYasaklarResp.json();
+                    yemekVeritabaniYasaklar = yemekYasaklarData.yasaklar || yemekYasaklarData;
+                    console.log('✅ Yemek veritabanı yasakları yüklendi:', Object.keys(yemekVeritabaniYasaklar).length);
+                } else {
+                    console.warn('⚠️ Yemek veritabanı yasakları yüklenemedi');
                 }
             } catch (error) {
                 console.error('❌ Manuel eşleştirmeler/yasak kuralları yüklenirken hata:', error);
@@ -1722,6 +1729,190 @@
             return result;
         }
 
+        // Levenshtein Distance (karakter değişim mesafesi)
+        function levenshteinDistance(s1, s2) {
+            const len1 = s1.length;
+            const len2 = s2.length;
+            const matrix = [];
+
+            // Boş string kontrolü
+            if (len1 === 0) return len2;
+            if (len2 === 0) return len1;
+
+            // Matris oluştur
+            for (let i = 0; i <= len1; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= len2; j++) {
+                matrix[0][j] = j;
+            }
+
+            // Mesafeyi hesapla
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,      // Silme
+                        matrix[i][j - 1] + 1,      // Ekleme
+                        matrix[i - 1][j - 1] + cost // Değiştirme
+                    );
+                }
+            }
+
+            return matrix[len1][len2];
+        }
+
+        // Benzerlik skoru hesapla (0-100%)
+        function similarityScore(s1, s2) {
+            const longer = s1.length > s2.length ? s1 : s2;
+            const shorter = s1.length > s2.length ? s2 : s1;
+            
+            if (longer.length === 0) return 100;
+            
+            const distance = levenshteinDistance(longer, shorter);
+            return ((longer.length - distance) / longer.length) * 100;
+        }
+
+        // 🔍 Akıllı fuzzy matching (eslestirme.html mantığı)
+        function smartFuzzyMatch(searchName, targetName, threshold = 85) {
+            const searchNorm = normalizeText(searchName);
+            const targetNorm = normalizeText(targetName);
+
+            // 1️⃣ Tam eşleşme
+            if (searchNorm === targetNorm) return 100;
+
+            // 2️⃣ İçeriyor mu? (substring)
+            if (targetNorm.includes(searchNorm)) {
+                // Ama çok kısa kelimeler için dikkatli ol
+                // "zeytin" → "zeytinlimeze" ❌ (3 harf fark varsa ret)
+                const lengthDiff = targetNorm.length - searchNorm.length;
+                if (lengthDiff > 3) return 0; // Çok farklı uzunluk
+                return 95;
+            }
+
+            // 3️⃣ Kelime kelime başlangıç eşleşmesi (eslestirme.html mantığı)
+            const searchWords = searchName.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+            const targetWords = targetName.split(/[_\s]+/).filter(w => w.length > 0);
+
+            if (searchWords.length > 1) {
+                const allWordsFound = searchWords.every(searchWord => {
+                    const normalizedSearchWord = normalizeText(searchWord);
+                    return targetWords.some(targetWord => 
+                        normalizeText(targetWord).startsWith(normalizedSearchWord)
+                    );
+                });
+
+                if (allWordsFound) {
+                    // Kelime sayısı eşitse daha yüksek skor
+                    if (searchWords.length === targetWords.length) return 95;
+                    return 88; // Fazla kelime var ama eşleşiyor
+                }
+            }
+
+            // 4️⃣ Levenshtein distance (son çare)
+            const score = similarityScore(searchNorm, targetNorm);
+            
+            // Ama çok kısa kelimeler için katı ol
+            if (searchNorm.length < 5 && score < 95) return 0; // "zeytin" gibi
+            
+            return score;
+        }
+
+        // Yemek adını foodData'da bul (Hibrit: Manuel → Tam → Parantez → Fuzzy)
+        function findFoodInDatabase(searchName) {
+            if (!searchName || !foodData || foodData.length === 0) return null;
+
+            const normalized = normalizeText(searchName);
+
+            // 1️⃣ MANUEL EŞLEŞTİRME (yemek_veritabani_eslestirme.json - en hızlı ve güvenilir)
+            if (yemekVeritabaniEslestirme && Object.keys(yemekVeritabaniEslestirme).length > 0) {
+                const eslestirme = yemekVeritabaniEslestirme[normalized];
+                if (eslestirme) {
+                    const hedefYemek = eslestirme.hedefYemek || eslestirme;
+                    const mapped = foodData.find(f => normalizeText(f.name) === normalizeText(hedefYemek));
+                    if (mapped && !isFoodMatchForbidden(searchName, mapped.name)) {
+                        console.log(`✅ Manuel eşleştirme (veritabanı): "${searchName}" → "${mapped.name}"`);
+                        return mapped;
+                    }
+                }
+            }
+
+            // 2️⃣ TAM EŞLEŞTİRME (hızlı)
+            let match = foodData.find(f => normalizeText(f.name) === normalized);
+            if (match && !isFoodMatchForbidden(searchName, match.name)) {
+                console.log(`✅ Tam eşleşme: "${searchName}" → "${match.name}"`);
+                return match;
+            }
+
+            // 3️⃣ PARANTEZ TEMİZLE + TAM EŞLEŞTİRME
+            const cleanName = searchName.replace(/\s*\([^)]*\)/g, '').trim();
+            if (cleanName !== searchName) {
+                const cleanNormalized = normalizeText(cleanName);
+                match = foodData.find(f => normalizeText(f.name) === cleanNormalized);
+                if (match && !isFoodMatchForbidden(searchName, match.name)) {
+                    console.log(`✅ Parantez temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
+                    return match;
+                }
+            }
+
+            // 4️⃣ AKILLI FUZZY MATCHING (yavaş ama güçlü - threshold: %85)
+            const threshold = 85;
+            let bestMatch = null;
+            let bestScore = 0;
+
+            for (const food of foodData) {
+                // Yasak eşleşme kontrolü
+                if (isFoodMatchForbidden(searchName, food.name)) continue;
+
+                // Akıllı fuzzy matching kullan (kelime bazlı + uzunluk kontrolü)
+                const score = smartFuzzyMatch(cleanName, food.name, threshold);
+                
+                if (score > bestScore && score >= threshold) {
+                    bestScore = score;
+                    bestMatch = food;
+                }
+            }
+
+            if (bestMatch) {
+                console.log(`✅ Fuzzy match (${bestScore.toFixed(1)}%): "${searchName}" → "${bestMatch.name}"`);
+                return bestMatch;
+            }
+
+            console.warn(`⚠️ Eşleşme bulunamadı: "${searchName}"`);
+            return null;
+        }
+
+        // Yasak yemek eşleşmelerini kontrol et (yemek_veritabani_yasaklar.json)
+        function isFoodMatchForbidden(searchName, targetFoodName) {
+            if (!yemekVeritabaniYasaklar || Object.keys(yemekVeritabaniYasaklar).length === 0) {
+                return false;
+            }
+
+            const searchNorm = normalizeText(searchName);
+            
+            // Yasak listesini kontrol et
+            for (const [key, yasakObj] of Object.entries(yemekVeritabaniYasaklar)) {
+                const yasakNorm = normalizeText(key);
+                
+                // Arama terimi yasak listesindeyse
+                if (searchNorm === yasakNorm || searchNorm.includes(yasakNorm)) {
+                    const yasakliYemekler = yasakObj.yasakliYemekler || [];
+                    
+                    // Hedef yemek yasaklı mı?
+                    const isForbidden = yasakliYemekler.some(forbidden => 
+                        normalizeText(forbidden) === normalizeText(targetFoodName)
+                    );
+
+                    if (isForbidden) {
+                        console.log(`🚫 Yasak eşleşme: "${searchName}" → "${targetFoodName}" (${yasakObj.neden || 'manuel olarak yasaklanmış'})`);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         // Yemek adından tarif kartlarını bul (manuel eşleştirme öncelikli, yasak kuralları uygula)
         function findTarifKartlari(yemekAdi) {
             if (!tarifKartlari.length) return [];
@@ -1822,7 +2013,9 @@
                 'çorba': 'Çorba',
                 'tatlı': 'Tatlı',
                 'içecek': 'İçecek',
-                'ara öğün': 'Ara Öğün'
+                'ara öğün': 'Ara Öğün',
+                'bread': 'Ekmek',
+                'ekmek': 'Ekmek'
             };
             const normalized = role.toLowerCase();
             return ROLE_DISPLAY_MAP[normalized] || role;
@@ -1842,19 +2035,36 @@
                 tags: false
             };
 
+            // 🔍 foodData'dan zenginleştirilmiş bilgileri al (Hibrit eşleştirme)
+            let enrichedFood = food;
+            const foodName = food.foodName || food.name;
+            
+            if (foodName) {
+                const matchedFood = findFoodInDatabase(foodName);
+                
+                if (matchedFood) {
+                    // foodData'dan eksik bilgileri ekle
+                    enrichedFood = { ...food, ...matchedFood };
+                } else {
+                    // Veritabanında bulunamadı - uyarı rozeti ekle
+                    badgesHtml += '<span class="food-badge" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);" title="Bu yemek veritabanında bulunamadı. Manuel eşleştirme ekleyebilirsiniz.">⚠️ Veritabanında Yok</span> ';
+                }
+            }
+
             // 1. Role Badge
-            if (badgeSettings.role && food.role) {
-                const roleIcon = food.role.toLowerCase().includes('ana') ? '🍖' :
-                                food.role.toLowerCase().includes('salata') ? '🥗' :
-                                food.role.toLowerCase().includes('çorba') ? '🍲' :
-                                food.role.toLowerCase().includes('tatlı') ? '🍰' :
-                                food.role.toLowerCase().includes('içecek') ? '🥤' : '🍽️';
-                badgesHtml += `<span class="food-badge badge-role" title="Rol: ${food.role}">${roleIcon} ${getRoleDisplayName(food.role)}</span> `;
+            if (badgeSettings.role && enrichedFood.role) {
+                const roleIcon = enrichedFood.role.toLowerCase().includes('ana') ? '🍖' :
+                                enrichedFood.role.toLowerCase().includes('salata') ? '🥗' :
+                                enrichedFood.role.toLowerCase().includes('çorba') ? '🍲' :
+                                enrichedFood.role.toLowerCase().includes('tatlı') ? '🍰' :
+                                enrichedFood.role.toLowerCase().includes('içecek') ? '🥤' :
+                                enrichedFood.role.toLowerCase().includes('bread') ? '🍞' : '🍽️';
+                badgesHtml += `<span class="food-badge badge-role" title="Rol: ${enrichedFood.role}">${roleIcon} ${getRoleDisplayName(enrichedFood.role)}</span> `;
             }
 
             // 2. DietType Badge
             if (badgeSettings.dietType) {
-                const foodDietType = getDietType(food);
+                const foodDietType = getDietType(enrichedFood);
                 if (foodDietType === 'keto') {
                     badgesHtml += '<span class="diet-badge diet-badge-keto" title="Ketojenik">🥑 KETO</span> ';
                 } else if (foodDietType === 'lowcarb') {
@@ -1863,26 +2073,26 @@
             }
 
             // 3. Category Badge
-            if (badgeSettings.category && food.category) {
-                const categoryIcon = food.category.toLowerCase().includes('et') ? '🥩' :
-                                    food.category.toLowerCase().includes('sebze') ? '🥬' :
-                                    food.category.toLowerCase().includes('meyve') ? '🍎' :
-                                    food.category.toLowerCase().includes('tahıl') ? '🌾' : '📂';
-                badgesHtml += `<span class="food-badge badge-category" title="Kategori: ${food.category}">${categoryIcon} ${food.category}</span> `;
+            if (badgeSettings.category && enrichedFood.category) {
+                const categoryIcon = enrichedFood.category.toLowerCase().includes('et') ? '🥩' :
+                                    enrichedFood.category.toLowerCase().includes('sebze') ? '🥬' :
+                                    enrichedFood.category.toLowerCase().includes('meyve') ? '🍎' :
+                                    enrichedFood.category.toLowerCase().includes('tahıl') ? '🌾' : '📂';
+                badgesHtml += `<span class="food-badge badge-category" title="Kategori: ${enrichedFood.category}">${categoryIcon} ${enrichedFood.category}</span> `;
             }
 
             // 4. Season Badge
-            if (badgeSettings.season && food.season) {
-                const seasonIcon = food.season.toLowerCase().includes('yaz') ? '☀️' :
-                                  food.season.toLowerCase().includes('kış') ? '❄️' :
-                                  food.season.toLowerCase().includes('ilkbahar') ? '🌸' :
-                                  food.season.toLowerCase().includes('sonbahar') ? '🍂' : '📅';
-                badgesHtml += `<span class="food-badge badge-season" title="Mevsim: ${food.season}">${seasonIcon} ${food.season}</span> `;
+            if (badgeSettings.season && enrichedFood.season) {
+                const seasonIcon = enrichedFood.season.toLowerCase().includes('yaz') ? '☀️' :
+                                  enrichedFood.season.toLowerCase().includes('kış') ? '❄️' :
+                                  enrichedFood.season.toLowerCase().includes('ilkbahar') ? '🌸' :
+                                  enrichedFood.season.toLowerCase().includes('sonbahar') ? '🍂' : '📅';
+                badgesHtml += `<span class="food-badge badge-season" title="Mevsim: ${enrichedFood.season}">${seasonIcon} ${enrichedFood.season}</span> `;
             }
 
             // 5. MealType Badge
-            if (badgeSettings.mealType && food.mealType) {
-                const mealTypes = parseMealTypes(food.mealType);
+            if (badgeSettings.mealType && enrichedFood.mealType) {
+                const mealTypes = parseMealTypes(enrichedFood.mealType);
                 if (mealTypes.length > 0) {
                     const mealTypeStr = mealTypes.map(mt => {
                         const upper = mt.charAt(0).toUpperCase() + mt.slice(1);
@@ -1896,9 +2106,9 @@
             }
 
             // 6. Tags Badge
-            if (badgeSettings.tags && food.tags && food.tags.length > 0) {
-                const tagsStr = food.tags.slice(0, 3).join(', ') + (food.tags.length > 3 ? '...' : '');
-                badgesHtml += `<span class="food-badge badge-tags" title="${food.tags.join(', ')}">🏷️ ${tagsStr}</span> `;
+            if (badgeSettings.tags && enrichedFood.tags && enrichedFood.tags.length > 0) {
+                const tagsStr = enrichedFood.tags.slice(0, 3).join(', ') + (enrichedFood.tags.length > 3 ? '...' : '');
+                badgesHtml += `<span class="food-badge badge-tags" title="${enrichedFood.tags.join(', ')}">🏷️ ${tagsStr}</span> `;
             }
 
             return badgesHtml;
@@ -2227,9 +2437,8 @@
                 
                 console.log(`📌 Mevcut yemek: ${currentFood.foodName}`);
                 
-                // 🔍 foodData'dan role bilgisini al (şablonda olmayabilir)
-                const currentFoodNormalized = normalizeText(currentFood.foodName);
-                const matchedFood = foodData.find(f => normalizeText(f.name) === currentFoodNormalized);
+                // 🔍 Hibrit eşleştirme ile foodData'dan role bilgisini al
+                const matchedFood = findFoodInDatabase(currentFood.foodName);
                 
                 if (matchedFood) {
                     console.log(`✅ foodData'da bulundu - Role: ${matchedFood.role}`);
@@ -2237,7 +2446,7 @@
                     console.warn(`⚠️ foodData'da bulunamadı: ${currentFood.foodName}`);
                     // Role filtresi aktifken foodData'da olmayan yemekler için alternatif bulunamaz
                     if (matchCriteria.role) {
-                        alert('❌ Bu yemek veritabanında bulunamadı. Alternatif için lütfen yemek adını kontrol edin.');
+                        alert('❌ Bu yemek veritabanında bulunamadı.\n\nÇözüm:\n1. Yemek adını kontrol edin\n2. Admin panelden manuel eşleştirme ekleyin\n3. Role filtresini geçici kapatın');
                         return;
                     }
                 }
