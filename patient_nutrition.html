@@ -1448,6 +1448,79 @@
         let eslesmemeKurallari = {}; // Yasak eşleştirme kuralları - tarif kartları için (data/eslesmeme_kurallari.json)
         let yemekVeritabaniEslestirme = {}; // Yemek veritabanı manuel eşleştirme (data/yemek_veritabani_eslestirme.json)
         let yemekVeritabaniYasaklar = {}; // Yemek veritabanı yasak eşleştirme (data/yemek_veritabani_yasaklar.json)
+
+        // ========================================
+        // 🔐 YETKİLENDİRME SİSTEMİ
+        // ========================================
+        
+        /**
+         * Kullanıcının admin yetkisi var mı kontrol et
+         * @returns {boolean} Admin ise true
+         */
+        function isUserAdmin() {
+            // 1. Global admin kontrolü (AdminAuth - eski sistem)
+            if (typeof AdminAuth !== 'undefined' && AdminAuth.getSession && AdminAuth.getSession()) {
+                console.log('🔑 Global admin girişi tespit edildi');
+                return true;
+            }
+            
+            // 2. Hasta bazlı admin kontrolü (yeni sistem)
+            if (currentPatient && currentPatient.isAdmin === true) {
+                console.log('🔑 Hasta admin yetkisi tespit edildi:', currentPatient.name);
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /**
+         * Admin özelliklerini göster/gizle
+         */
+        function toggleAdminFeatures() {
+            const isAdmin = isUserAdmin();
+            
+            // Admin butonlarını göster/gizle
+            const adminButtons = document.querySelectorAll('.admin-only');
+            adminButtons.forEach(btn => {
+                btn.style.display = isAdmin ? 'inline-block' : 'none';
+            });
+            
+            console.log(isAdmin ? '✅ Admin özellikleri aktif' : '🔒 Admin özellikleri gizli');
+        }
+        
+        /**
+         * Admin yemek düzenleme modalını aç
+         * @param {number} weekIndex - Hafta indexi
+         * @param {number} dayIndex - Gün indexi
+         * @param {number} mealIndex - Öğün indexi
+         * @param {number} foodIndex - Yemek indexi
+         */
+        function openAdminFoodEditModal(weekIndex, dayIndex, mealIndex, foodIndex) {
+            const week = weeks[weekIndex];
+            if (!week) return;
+            
+            const day = week.days[dayIndex];
+            if (!day) return;
+            
+            const meal = (day.meals || day.ogunler || [])[mealIndex];
+            if (!meal) return;
+            
+            const food = (meal.yemekler || [])[foodIndex];
+            if (!food) return;
+            
+            const foodName = food.foodName || food.name || 'İsimsiz Yemek';
+            
+            // TODO: Gelişmiş modal açılacak (4 tab sistemi)
+            // Şimdilik basit alert
+            alert(`🔧 Admin Düzenleme\n\nYemek: ${foodName}\n\nBu özellik geliştirme aşamasında...`);
+            
+            console.log('📝 Admin düzenleme:', {
+                weekIndex, dayIndex, mealIndex, foodIndex,
+                foodName,
+                food
+            });
+        }
+        
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
         let foodData = []; // Yemek veritabanı (food_list.json)
         
@@ -3505,6 +3578,9 @@
             html += `<button class="btn-add-day" onclick="openAddDayModal()">➕ Gün Ekle</button>`;
 
             contentArea.innerHTML = html;
+            
+            // 🔐 Admin özelliklerini güncelle (render sonrası)
+            toggleAdminFeatures();
         }
 
         // Render Day Card
@@ -3585,6 +3661,13 @@
                             // Rozetleri oluştur (admin settings'den gelen görünürlük ayarlarına göre)
                             const foodBadgesHtml = generateFoodBadges(food);
                             
+                            // 🔐 Admin ikonu (sadece admin kullanıcılar görebilir)
+                            const adminIconHtml = isUserAdmin() 
+                                ? `<button class="btn-admin-edit admin-only" onclick="openAdminFoodEditModal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Yemek eşleştirmelerini düzenle" style="background: linear-gradient(135deg, #FF6B6B 0%, #C92A2A 100%); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                    ⚙️ Admin
+                                  </button>` 
+                                : '';
+                            
                             mealsHtml += `
                                 <tr>
                                     <td>
@@ -3595,6 +3678,7 @@
                                             <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                                                 ${foodBadgesHtml}
                                                 ${tarifBadgesHtml}
+                                                ${adminIconHtml}
                                                 <button class="btn-refresh-food" onclick="refreshFoodInMeal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Alternatif yemek bul">
                                                     🔄 Yenile
                                                 </button>
@@ -4991,6 +5075,9 @@
             } else {
                 console.log('👤 Normal kullanıcı - Admin özellikleri gizli');
             }
+            
+            // 🔐 Admin özelliklerini göster/gizle (yemek satırlarındaki ⚙️ ikonları)
+            toggleAdminFeatures();
         }
 
         // Admin modal aç
