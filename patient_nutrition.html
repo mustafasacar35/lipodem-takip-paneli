@@ -2052,22 +2052,32 @@
                 
                 console.log(`📌 Mevcut yemek: ${currentFood.foodName}`);
                 
+                // 🔍 foodData'dan role bilgisini al (şablonda olmayabilir)
+                const currentFoodNormalized = normalizeText(currentFood.foodName);
+                const matchedFood = foodData.find(f => normalizeText(f.name) === currentFoodNormalized);
+                
+                if (matchedFood) {
+                    console.log(`✅ foodData'da bulundu - Role: ${matchedFood.role}`);
+                } else {
+                    console.warn(`⚠️ foodData'da bulunamadı: ${currentFood.foodName}`);
+                }
+                
                 // Admin ayarlarından alternatif sayısını al (varsayılan 10)
                 const alternativeCount = appSettings?.defaultAlternativeCount || 10;
                 
-                // 2️⃣ Alternatif bul
+                // 2️⃣ Alternatif bul - role bilgisini foodData'dan kullan
                 const alternatives = findAlternatives({
                     name: currentFood.foodName,
                     calories: currentFood.kalori,
                     protein: currentFood.protein,
                     carbs: currentFood.karb,
                     fat: currentFood.yag,
-                    role: currentFood.role || 'mainDish',
-                    category: currentFood.category || '',
-                    seasonRange: currentFood.seasonRange || '',
-                    mealType: currentFood.mealType || '',
-                    dietType: currentFood.dietType || '',
-                    tags: currentFood.tags || ''
+                    role: matchedFood?.role || currentFood.role || 'mainDish',
+                    category: matchedFood?.category || currentFood.category || '',
+                    seasonRange: matchedFood?.seasonRange || currentFood.seasonRange || '',
+                    mealType: matchedFood?.mealType || currentFood.mealType || '',
+                    dietType: matchedFood?.dietType || currentFood.dietType || '',
+                    tags: matchedFood?.tags || currentFood.tags || ''
                 }, alternativeCount);
                 
                 if (!alternatives || alternatives.length === 0) {
