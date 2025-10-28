@@ -2147,8 +2147,28 @@
                 }, alternativeCount);
                 
                 if (!alternatives || alternatives.length === 0) {
-                    alert('❌ Bu yemek için alternatif bulunamadı!');
-                    console.log('❌ Alternatif bulunamadı');
+                    // Detaylı hata mesajı hazırla
+                    const refDietType = getDietType(matchedFood || currentFood);
+                    const errorDetails = [
+                        `Yemek: ${currentFood.foodName}`,
+                        `Role: ${matchedFood?.role || currentFood.role || 'Belirsiz'}`,
+                        `DietType: ${refDietType}`,
+                        `Aktif Filtreler:`,
+                        `  - Role: ${matchCriteria.role ? 'AÇIK' : 'KAPALI'}`,
+                        `  - DietType: ${matchCriteria.dietType ? 'AÇIK' : 'KAPALI'}`,
+                        `  - Category: ${matchCriteria.category ? 'AÇIK' : 'KAPALI'}`,
+                        `  - Season: ${matchCriteria.season ? 'AÇIK' : 'KAPALI'}`,
+                        `  - MealType: ${matchCriteria.mealType ? 'AÇIK' : 'KAPALI'}`,
+                        ``,
+                        `Olası nedenler:`,
+                        `1. Aynı role'de başka yemek yok (foodData'da ${foodData.filter(f => f.role === (matchedFood?.role || currentFood.role)).length} adet)`,
+                        `2. DietType uyuşmuyor (${refDietType} arıyor)`,
+                        `3. Tag filtreleme çok kısıtlayıcı`,
+                        `4. Yemek veritabanında yok`
+                    ];
+                    
+                    console.error('❌ ALTERNATİF BULUNAMADI - DETAYLAR:\n' + errorDetails.join('\n'));
+                    alert('❌ Bu yemek için alternatif bulunamadı!\n\nDetaylar için Console (F12) kontrol edin.');
                     return;
                 }
                 
