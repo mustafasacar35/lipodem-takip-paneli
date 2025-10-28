@@ -326,6 +326,31 @@
             transform: rotate(180deg) scale(0.95);
         }
 
+        .btn-delete-day {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-delete-day:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .btn-delete-day:active {
+            transform: scale(0.95);
+        }
+
         .day-macros {
             display: flex;
             gap: 10px;
@@ -3043,9 +3068,14 @@
                     <div class="day-header">
                         <div class="day-name">${day.gunAdi || 'Gün'}</div>
                         <div class="day-date">${formatDate(day.date)}</div>
-                        <button class="btn-refresh-day" onclick="refreshDayTemplate(${dayIndex})" title="Farklı şablon ile değiştir">
-                            🔄
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-refresh-day" onclick="refreshDayTemplate(${dayIndex})" title="Farklı şablon ile değiştir">
+                                🔄
+                            </button>
+                            <button class="btn-delete-day" onclick="deleteDay(${dayIndex})" title="Bu günü sil">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                     <div class="day-macros">
                         <div class="macro">
@@ -4086,12 +4116,30 @@
                 }
             }
             
-            // GÜNCEL hedef kaloriye göre en yakından en uzağa sırala
-            unusedTemplates.sort((a, b) => {
-                const diffA = Math.abs((a.totalMacros?.kalori || 0) - targetCalories);
-                const diffB = Math.abs((b.totalMacros?.kalori || 0) - targetCalories);
-                return diffA - diffB;
-            });
+            // GÜNCEL hedef kaloriye göre MUTLAK FARK ARTACAK ŞEKİLDE sırala
+            // Önce tüm şablonları farka göre sırala ve alt/üst ayır
+            const sortedByDiff = unusedTemplates.map(t => ({
+                template: t,
+                diff: Math.abs((t.totalMacros?.kalori || 0) - targetCalories),
+                isAbove: (t.totalMacros?.kalori || 0) >= targetCalories
+            })).sort((a, b) => a.diff - b.diff);
+            
+            // Zigzag sıralama: alt, üst, alt, üst... (970, 1040, 940, 1100, 890...)
+            const below = sortedByDiff.filter(t => !t.isAbove);
+            const above = sortedByDiff.filter(t => t.isAbove);
+            
+            unusedTemplates = [];
+            const maxLength = Math.max(below.length, above.length);
+            for (let i = 0; i < maxLength; i++) {
+                if (i < below.length) unusedTemplates.push(below[i].template);
+                if (i < above.length) unusedTemplates.push(above[i].template);
+            }
+            
+            console.log(`📊 Kalori mutlak fark sıralaması (Hedef: ${targetCalories} kcal):`,
+                unusedTemplates.slice(0, 10).map((t, i) => 
+                    `${i + 1}. ${t.name}: ${t.totalMacros?.kalori} kcal (Fark: ${Math.abs((t.totalMacros?.kalori || 0) - targetCalories)} kcal)`
+                )
+            );
             
             // Mevcut şablonun alternatifler listesindeki index'ini bul
             if (!day.refreshIndex) {
@@ -4127,6 +4175,35 @@
             showToast(`${day.gunAdi}: ${newTemplate.name} (${day.refreshIndex + 1}/10)`, 'success');
             
             console.log(`🔄 ${day.gunAdi} güncellendi: ${newTemplate.name} (${newTemplate.totalMacros?.kalori} kcal)`);
+        }
+
+        // Delete Day - Günü sil
+        async function deleteDay(dayIndex) {
+            const currentWeek = weeks[currentWeekIndex];
+            const day = currentWeek.days[dayIndex];
+            
+            if (!day) {
+                showToast('Gün bulunamadı', 'error');
+                return;
+            }
+            
+            // Onay iste
+            const confirmDelete = confirm(`"${day.gunAdi}" gününü silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`);
+            
+            if (!confirmDelete) {
+                console.log('❌ Silme işlemi iptal edildi');
+                return;
+            }
+            
+            // Günü sil
+            currentWeek.days.splice(dayIndex, 1);
+            
+            console.log(`🗑️ ${day.gunAdi} silindi`);
+            
+            // Kaydet ve göster
+            await saveWeeks();
+            renderWeekContent();
+            showToast(`${day.gunAdi} günü silindi`, 'success');
         }
 
         // Check Should Create New Week
