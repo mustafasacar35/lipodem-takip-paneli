@@ -1911,7 +1911,9 @@
                 if (food.name === refFood.name) return false;
 
                 // Role kontrolü (matchCriteria.role true ise aktif)
-                if (matchCriteria.role && food.role !== refFood.role) return false;
+                if (matchCriteria.role && food.role !== refFood.role) {
+                    return false;
+                }
 
                 // Category kontrolü (matchCriteria.category true ise aktif)
                 if (matchCriteria.category && refFood.category && food.category !== refFood.category) return false;
@@ -1946,6 +1948,17 @@
             });
             
             console.log(`🔍 Filtre sonrası: ${alternatives.length} alternatif (foodData: ${foodData.length})`);
+            
+            // Role filtresi kontrolü
+            if (matchCriteria.role) {
+                const roleTypes = alternatives.reduce((acc, food) => {
+                    acc[food.role] = (acc[food.role] || 0) + 1;
+                    return acc;
+                }, {});
+                console.log(`✅ Role filtresi AKTIF - Sadece "${refFood.role}" alternatifleri:`, roleTypes);
+            } else {
+                console.log(`⚠️ Role filtresi PASİF - Tüm roller karışık`);
+            }
 
             // 2️⃣ TAG FİLTRELEME (mobil versiyon mantığı - enableTagFilter kontrolü)
             if (appSettings?.enableTagFilter && selectedTagKeywords.size > 0 && !shouldSkipTagFilter(refFood)) {
@@ -2009,6 +2022,12 @@
 
             // 4️⃣ BENZERLİĞE GÖRE SIRALA (en yüksek benzerlik önce)
             alternatives.sort((a, b) => b.similarity - a.similarity);
+            
+            // 🔍 DEBUG: İlk 5 alternatifi göster
+            console.log(`📊 Benzerlik skorları (criteria: ${scoreBy.join(', ')}):`);
+            alternatives.slice(0, 5).forEach((alt, idx) => {
+                console.log(`  ${idx + 1}. ${alt.name} - Skor: ${alt.similarity}% (P:${alt.protein}g, Y:${alt.fat}g, K:${alt.carbs}g, Cal:${alt.calories})`);
+            });
 
             // 5️⃣ ROTASYON İLE LİMİTLEME
             const totalAlternatives = alternatives.length;
@@ -2060,6 +2079,11 @@
                     console.log(`✅ foodData'da bulundu - Role: ${matchedFood.role}`);
                 } else {
                     console.warn(`⚠️ foodData'da bulunamadı: ${currentFood.foodName}`);
+                    // Role filtresi aktifken foodData'da olmayan yemekler için alternatif bulunamaz
+                    if (matchCriteria.role) {
+                        alert('❌ Bu yemek veritabanında bulunamadı. Alternatif için lütfen yemek adını kontrol edin.');
+                        return;
+                    }
                 }
                 
                 // Admin ayarlarından alternatif sayısını al (varsayılan 10)
