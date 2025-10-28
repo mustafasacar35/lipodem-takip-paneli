@@ -1998,26 +1998,10 @@
             }
 
             // 2️⃣ TAM EŞLEŞTİRME (normalizeTr ile)
-            // DEBUG: İlk 3 yemek ve normalize kontrolü
-            if (foodData.length > 0 && searchName.toLowerCase().includes('mercimek')) {
-                console.log(`🔍 DEBUG: "${searchName}" arıyoruz`);
-                console.log(`   normalizedTr: "${normalizedTr}"`);
-                console.log(`   normalized: "${normalized}"`);
-                console.log(`   foodData uzunluk: ${foodData.length}`);
-                const mercimekler = foodData.filter(f => f.name.toLowerCase().includes('mercimek'));
-                console.log(`   Mercimek içeren yemekler (${mercimekler.length}):`, mercimekler.map(f => f.name));
-                if (mercimekler.length > 0) {
-                    console.log(`   İlk mercimek normalize: "${normalizeTr(mercimekler[0].name)}"`);
-                }
-            }
-            
             let match = foodData.find(f => normalizeTr(f.name) === normalizedTr || normalizeText(f.name) === normalized);
             if (match && !isFoodMatchForbidden(searchName, match.name)) {
                 console.log(`✅ Tam eşleşme: "${searchName}" → "${match.name}"`);
                 return match;
-            }
-            if (match && isFoodMatchForbidden(searchName, match.name)) {
-                console.log(`🚫 Yasak kuralı engelledi: "${searchName}" → "${match.name}"`);
             }
 
             // 3️⃣ PARANTEZ TEMİZLE
@@ -2100,18 +2084,28 @@
             }
 
             const searchNorm = normalizeText(searchName);
+            const searchNormTr = normalizeTr(searchName);
+            const targetNorm = normalizeText(targetFoodName);
+            const targetNormTr = normalizeTr(targetFoodName);
+            
+            // 🔥 ÖNEMLİ: TAM EŞLEŞMELERİ HİÇBİR ZAMAN YASAKLAMA!
+            // "Mercimek Çorbası" → "Mercimek Çorbası" = TAM EŞLEŞME → İZİN VER ✅
+            if (searchNorm === targetNorm || searchNormTr === targetNormTr) {
+                return false; // Tam eşleşme her zaman güvenli
+            }
             
             // Yasak listesini kontrol et
             for (const [key, yasakObj] of Object.entries(yemekVeritabaniYasaklar)) {
                 const yasakNorm = normalizeText(key);
                 
-                // Arama terimi yasak listesindeyse
+                // Arama terimi yasak listesindeyse (EVET ama kısmi eşleşme)
+                // Örnek: "çorba" (genel) → yasaklı, ama "Mercimek Çorbası" (özel) → izinli
                 if (searchNorm === yasakNorm || searchNorm.includes(yasakNorm)) {
                     const yasakliYemekler = yasakObj.yasakliYemekler || [];
                     
                     // Hedef yemek yasaklı mı?
                     const isForbidden = yasakliYemekler.some(forbidden => 
-                        normalizeText(forbidden) === normalizeText(targetFoodName)
+                        normalizeText(forbidden) === targetNorm
                     );
 
                     if (isForbidden) {
