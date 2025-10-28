@@ -1487,36 +1487,24 @@
             try {
                 console.log('📥 Admin config yükleniyor...');
                 
-                // Vercel API veya direkt GitHub raw URL kullan
-                const apiUrl = '/api/get-file?path=settings/admins.js';
-                const rawUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/settings/admins.js';
-                
-                let response = await fetch(apiUrl);
-                
-                // API yoksa direkt GitHub'dan çek
-                if (!response.ok) {
-                    console.log('⚠️ Vercel API başarısız, GitHub raw URL deneniyor...');
-                    response = await fetch(rawUrl);
-                }
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    
-                    // "window.GH_ADMINS = {...}" şeklinde gelir
-                    // eval() yerine regex ile parse et (güvenlik)
-                    const match = text.match(/window\.GH_ADMINS\s*=\s*(\{[\s\S]*\});?/);
-                    if (match && match[1]) {
-                        window.GH_ADMINS = JSON.parse(match[1]);
-                        console.log('✅ Admin config yüklendi:', {
-                            adminCount: window.GH_ADMINS.admins?.length || 0,
-                            patientAdminCount: window.GH_ADMINS.patientAdmins?.length || 0
-                        });
-                    } else {
-                        throw new Error('GH_ADMINS parse edilemedi');
-                    }
-                } else {
-                    throw new Error('admins.js dosyası bulunamadı');
-                }
+                // Method 1: Script tag ile direkt yükle (en güvenilir)
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'settings/admins.js?t=' + Date.now();
+                    script.onload = () => {
+                        if (window.GH_ADMINS) {
+                            console.log('✅ Admin config yüklendi:', {
+                                adminCount: window.GH_ADMINS.admins?.length || 0,
+                                patientAdminCount: window.GH_ADMINS.patientAdmins?.length || 0
+                            });
+                            resolve();
+                        } else {
+                            reject(new Error('GH_ADMINS tanımlı değil'));
+                        }
+                    };
+                    script.onerror = () => reject(new Error('admins.js yüklenemedi'));
+                    document.head.appendChild(script);
+                });
             } catch (error) {
                 console.warn('⚠️ admins.js yüklenemedi:', error);
                 // Varsayılan değer
@@ -1540,6 +1528,21 @@
         }
         
         /**
+         * 🔍 DEBUG: Admin yetkilendirme durumunu kontrol et
+         * Console'dan çağırılabilir: window.checkAdminStatus()
+         */
+        window.checkAdminStatus = function() {
+            console.log('=== 🔍 ADMIN YETKİLENDİRME DURUMU ===');
+            console.log('1. AdminAuth:', typeof AdminAuth !== 'undefined' && AdminAuth.getSession ? AdminAuth.getSession() : 'undefined');
+            console.log('2. GH_ADMINS:', window.GH_ADMINS);
+            console.log('3. currentPatient:', currentPatient);
+            console.log('4. isUserAdmin():', typeof isUserAdmin !== 'undefined' ? isUserAdmin() : 'function not defined');
+            console.log('5. Admin buton sayısı:', document.querySelectorAll('.btn-admin-edit').length);
+            console.log('6. Görünür admin butonları:', document.querySelectorAll('.btn-admin-edit:not([style*="display: none"])').length);
+            console.log('=====================================');
+        };
+        
+        /**
          * Admin yemek düzenleme modalını aç
          * @param {number} weekIndex - Hafta indexi
          * @param {number} dayIndex - Gün indexi
@@ -1561,15 +1564,29 @@
             
             const foodName = food.foodName || food.name || 'İsimsiz Yemek';
             
-            // TODO: Gelişmiş modal açılacak (4 tab sistemi)
-            // Şimdilik basit alert
-            alert(`🔧 Admin Düzenleme\n\nYemek: ${foodName}\n\nBu özellik geliştirme aşamasında...`);
-            
-            console.log('📝 Admin düzenleme:', {
-                weekIndex, dayIndex, mealIndex, foodIndex,
-                foodName,
-                food
-            });
+            // Admin modalını aç ve seçili yemeği göster
+            const adminModal = document.getElementById('adminFoodModal');
+            if (adminModal) {
+                // Seçili yemek bilgisini modal'a aktar
+                window.selectedFoodForAdmin = {
+                    weekIndex, dayIndex, mealIndex, foodIndex,
+                    foodName, food
+                };
+                
+                // Manuel Eşleştirme tab'ını aç ve input'a yemek adını yaz
+                document.querySelector('[data-tab="manuel-eslestirme"]')?.click();
+                const manuelInput = document.getElementById('admin_manuel_yemek_adi');
+                if (manuelInput) {
+                    manuelInput.value = foodName;
+                    manuelInput.focus();
+                }
+                
+                adminModal.style.display = 'block';
+                console.log('📝 Admin modal açıldı:', { weekIndex, dayIndex, mealIndex, foodIndex, foodName });
+            } else {
+                // Modal henüz yüklenmemişse geçici alert
+                alert(`🔧 Admin Düzenleme\n\nYemek: ${foodName}\n\n⚠️ Admin modal henüz yüklenmedi. Sayfa yenilendiğinde kullanılabilir olacak.`);
+            }
         }
         
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
@@ -3034,6 +3051,9 @@
                     ? `${patientData.personalInfo.name} ${patientData.personalInfo.surname}`
                     : patientData.personalInfo?.name || currentPatient.name || 'Hasta';
                 document.getElementById('headerPatientName').textContent = fullName;
+                
+                // 🔐 Admin özelliklerini güncelle (hasta verisi yüklendikten sonra)
+                toggleAdminFeatures();
                     
             } catch (error) {
                 console.error('❌ Hasta bilgileri yüklenirken hata:', error);
