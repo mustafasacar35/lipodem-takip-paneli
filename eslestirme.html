@@ -2005,19 +2005,27 @@
             }
 
             try {
-                // 1. Dosyanın mevcut SHA'sını al
-                const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`;
+                // 1. Dosyanın mevcut SHA'sını al (🔥 CACHE-BUSTING ile güncel versiyonu al)
+                const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}&t=${Date.now()}`;
                 const getResponse = await fetch(getUrl, {
                     headers: {
                         'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json'
-                    }
+                    },
+                    cache: 'no-cache' // 🔥 Cache'i devre dışı bırak
                 });
 
                 let sha = null;
                 if (getResponse.ok) {
                     const data = await getResponse.json();
                     sha = data.sha;
+                    console.log(`🔍 Güncel SHA alındı: ${filePath} → ${sha.substring(0, 8)}...`);
+                } else if (getResponse.status === 401) {
+                    throw new Error('❌ GitHub Token Hatası! Token geçersiz veya yetkisiz.');
+                } else if (getResponse.status !== 404) {
+                    // 404 = dosya yok (yeni oluşturulacak), diğer hatalar sorun
+                    const error = await getResponse.json();
+                    console.warn('⚠️ SHA alma hatası:', error);
                 }
 
                 // 2. Dosyayı güncelle veya oluştur
@@ -2038,17 +2046,22 @@
                     body: JSON.stringify({
                         message: commitMessage,
                         content: base64Content,
-                        sha: sha,
+                        sha: sha, // null ise yeni dosya oluştur
                         branch: GITHUB_BRANCH
                     })
                 });
 
                 if (!putResponse.ok) {
                     const error = await putResponse.json();
+                    if (putResponse.status === 401) {
+                        throw new Error('❌ GitHub Token Hatası! Token geçersiz veya yetkisiz.');
+                    }
                     throw new Error(error.message || 'GitHub API hatası');
                 }
 
-                return await putResponse.json();
+                const result = await putResponse.json();
+                console.log(`✅ GitHub'a kaydedildi: ${filePath}`);
+                return result;
             } catch (error) {
                 console.error('GitHub API Hatası:', error);
                 throw error;
@@ -2745,21 +2758,27 @@
             }
 
             try {
-                // 1. Dosyanın mevcut SHA'sını al
-                const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`;
+                // 1. Dosyanın mevcut SHA'sını al (🔥 CACHE-BUSTING ile güncel versiyonu al)
+                const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}&t=${Date.now()}`;
                 const getResponse = await fetch(getUrl, {
                     headers: {
                         'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json'
-                    }
+                    },
+                    cache: 'no-cache' // 🔥 Cache'i devre dışı bırak
                 });
 
                 let sha = null;
                 if (getResponse.ok) {
                     const data = await getResponse.json();
                     sha = data.sha;
+                    console.log(`🔍 Güncel SHA alındı: ${filePath} → ${sha.substring(0, 8)}...`);
                 } else if (getResponse.status === 401) {
                     throw new Error('❌ GitHub Token Hatası!\n\nToken geçersiz veya yetkisiz.\n\nLütfen yeni token oluşturun:\n1. github.com → Settings → Developer settings\n2. Personal access tokens → Tokens (classic)\n3. Generate new token (classic)\n4. "repo" iznini seçin (tam erişim)\n5. Token\'ı kopyalayıp bu sayfadaki 🔑 butonundan girin');
+                } else if (getResponse.status !== 404) {
+                    // 404 = dosya yok (yeni oluşturulacak), diğer hatalar sorun
+                    const error = await getResponse.json();
+                    console.warn('⚠️ SHA alma hatası:', error);
                 }
 
                 // 2. Dosyayı güncelle veya oluştur
@@ -2780,7 +2799,7 @@
                     body: JSON.stringify({
                         message: commitMessage,
                         content: base64Content,
-                        sha: sha,
+                        sha: sha, // null ise yeni dosya oluştur
                         branch: GITHUB_BRANCH
                     })
                 });
@@ -2793,7 +2812,9 @@
                     throw new Error(error.message || 'GitHub API hatası');
                 }
 
-                return await putResponse.json();
+                const result = await putResponse.json();
+                console.log(`✅ GitHub'a kaydedildi: ${filePath}`);
+                return result;
             } catch (error) {
                 console.error('GitHub API Hatası:', error);
                 throw error;
