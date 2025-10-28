@@ -807,6 +807,19 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Fiziksel Aktivite Seviyesi <span class="required">*</span></label>
+                        <select id="patientActivity" required>
+                            <option value="">Seçiniz</option>
+                            <option value="1">1 - Hareketsiz (Günlük aktivite çok az)</option>
+                            <option value="2">2 - Az Aktif (Haftada 1-2 gün hafif egzersiz)</option>
+                            <option value="3">3 - Orta Aktif (Haftada 3-5 gün orta egzersiz)</option>
+                            <option value="4">4 - Çok Aktif (Haftada 6-7 gün yoğun egzersiz)</option>
+                            <option value="5">5 - Süper Aktif (Günde 2 kez egzersiz/fiziksel iş)</option>
+                        </select>
+                        <span class="hint">Kalori hesaplamasında kullanılır</span>
+                    </div>
+
+                    <div class="form-group">
                         <label>Kullanıcı Adı <span class="required">*</span></label>
                         <input type="text" id="patientUsername" required>
                         <span class="hint">Hasta giriş yaparken kullanacak</span>
@@ -836,6 +849,16 @@
                             <option value="active">Aktif</option>
                             <option value="archived">Arşiv</option>
                         </select>
+                    </div>
+
+                    <div class="form-group" style="border: 2px solid #ff9800; border-radius: 8px; padding: 12px; background: #fff3e0;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #e65100;">
+                            <input type="checkbox" id="patientIsAdmin" style="width: 18px; height: 18px; cursor: pointer;">
+                            🔑 Admin Yetkisi Ver
+                        </label>
+                        <span class="hint" style="color: #ef6c00; font-weight: 500;">
+                            Bu kullanıcı patient_nutrition.html'de yemek eşleştirmelerini düzenleyebilir
+                        </span>
                     </div>
 
                     <div class="form-group form-group-full">
@@ -980,11 +1003,13 @@
                 document.getElementById('patientGender').value = patient.personalInfo.gender;
                 document.getElementById('patientWeight').value = patient.personalInfo.weight;
                 document.getElementById('patientHeight').value = patient.personalInfo.height;
+                document.getElementById('patientActivity').value = patient.personalInfo.activity || '3';
                 document.getElementById('patientUsername').value = patient.username;
                 document.getElementById('patientPassword').value = '';
                 document.getElementById('patientSessionDays').value = patient.sessionDays;
                 document.getElementById('patientAlternativeCount').value = patient.alternativeCount || '';
                 document.getElementById('patientStatus').value = patient.status;
+                document.getElementById('patientIsAdmin').checked = patient.isAdmin || false;
                 document.getElementById('patientNotes').value = patient.notes || '';
                 
                 calculateBMI();
@@ -1137,6 +1162,7 @@
             const gender = document.getElementById('patientGender').value;
             const weight = parseFloat(document.getElementById('patientWeight').value);
             const height = parseFloat(document.getElementById('patientHeight').value);
+            const activity = parseInt(document.getElementById('patientActivity').value);
             const username = document.getElementById('patientUsername').value.trim();
             const password = document.getElementById('patientPassword').value;
             const sessionDays = parseInt(document.getElementById('patientSessionDays').value);
@@ -1206,6 +1232,7 @@
                     sessionDays: sessionDays,
                     alternativeCount: alternativeCount,
                     status: status,
+                    isAdmin: document.getElementById('patientIsAdmin').checked,
                     personalInfo: {
                         name: name,
                         surname: surname,
@@ -1213,6 +1240,7 @@
                         gender: gender,
                         weight: weight,
                         height: height,
+                        activity: activity,
                         bmi: parseFloat(bmi.toFixed(2))
                     },
                     notes: notes,
