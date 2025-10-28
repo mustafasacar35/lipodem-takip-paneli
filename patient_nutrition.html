@@ -1889,15 +1889,96 @@
             return score;
         }
 
-        // Yemek adını foodData'da bul (Hibrit: Manuel → Tam → Parantez → Miktar Temizle → Fuzzy)
+        // 🚀 İYİLEŞTİRİLMİŞ EŞLEŞTİRME SİSTEMİ (örnek_dosya.html mantığı)
+        // Türkçe karakter normalize (örnek_dosya.html ile aynı)
+        function normalizeTr(str) {
+            return (str || '')
+                .toString()
+                .toLowerCase()
+                .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ş/g, 's')
+                .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ı/g, 'i').replace(/i̇/g, 'i')
+                .replace(/[_*\/()]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/[^a-z0-9\s]/g, '')
+                .trim();
+        }
+
+        // Token tabanlı fuzzy matching (örnek_dosya.html mantığı)
+        const unitStop = new Set([
+            'adet','gr','gram','kg','yemek','kasigi','yk','tatli','cay','tk','ck',
+            'yaprak','dal','orta','boy','kucuk','buyuk','olcek','fincan','bardak',
+            'dilim','avuc','paket','tatli_kasigi','yemek_kasigi','cay_kasigi','yuzde',
+            'yarim','ceyrek','lt','ml','cc','mg','mcg','litre'
+        ]);
+        const stopFillers = new Set(['ve','veya','ile','artı','arti','plus','ya','vs','vb']);
+        
+        function tokenize(text) {
+            return normalizeTr(text)
+                .replace(/\d+/g, ' ') // sayıları kaldır
+                .replace(/\b(ml|lt|cc|mg|mcg)\b/g, ' ')
+                .split(/\s+/)
+                .filter(t => t && t.length > 2 && !unitStop.has(t) && !stopFillers.has(t));
+        }
+
+        function bestFoodFuzzyMatch(rawText, allFoodItems) {
+            if (!rawText || !allFoodItems || allFoodItems.length === 0) return null;
+            
+            // Parçaları üret ("+", ",", "/", "(", ")", "-", "ile", "ve", "veya" ile böl)
+            const parts = String(rawText)
+                .split(/\+|\,|\/|\(|\)|\-|\bile\b|\bve\b|\bveya\b/gi)
+                .map(p => p.trim())
+                .filter(Boolean);
+            
+            let best = null;
+            let bestScore = 0;
+            
+            const consider = (segment) => {
+                const segTokens = tokenize(segment);
+                if (!segTokens.length) return;
+                
+                for (const f of allFoodItems) {
+                    const fTokens = tokenize(f.name);
+                    if (!fTokens.length) continue;
+                    
+                    // Kesişim skoru
+                    const setB = new Set(fTokens);
+                    let overlap = 0;
+                    let longHit = false;
+                    
+                    for (const t of segTokens) {
+                        if (setB.has(t)) {
+                            overlap++;
+                            if (t.length >= 4) longHit = true;
+                        }
+                    }
+                    
+                    // Kabul kriteri: en az 2 kelime eşleşmesi veya tek ama uzun kelime eşleşmesi
+                    const score = overlap + (longHit ? 0.5 : 0);
+                    if (overlap >= 2 || (overlap >= 1 && longHit)) {
+                        if (score > bestScore) { 
+                            best = f; 
+                            bestScore = score; 
+                        }
+                    }
+                }
+            };
+            
+            if (!parts.length) parts.push(rawText);
+            parts.forEach(consider);
+            
+            return best;
+        }
+
+        // Yemek adını foodData'da bul (İYİLEŞTİRİLMİŞ: örnek_dosya.html mantığı)
         function findFoodInDatabase(searchName) {
             if (!searchName || !foodData || foodData.length === 0) return null;
 
             const normalized = normalizeText(searchName);
+            const normalizedTr = normalizeTr(searchName);
 
             // 1️⃣ MANUEL EŞLEŞTİRME (yemek_veritabani_eslestirme.json - en hızlı ve güvenilir)
             if (yemekVeritabaniEslestirme && Object.keys(yemekVeritabaniEslestirme).length > 0) {
-                const eslestirme = yemekVeritabaniEslestirme[normalized];
+                const eslestirme = yemekVeritabaniEslestirme[normalized] || yemekVeritabaniEslestirme[normalizedTr];
                 if (eslestirme) {
                     const hedefYemek = eslestirme.hedefYemek || eslestirme;
                     const mapped = foodData.find(f => normalizeText(f.name) === normalizeText(hedefYemek));
@@ -1908,92 +1989,83 @@
                 }
             }
 
-            // 2️⃣ TAM EŞLEŞTİRME (hızlı)
-            let match = foodData.find(f => normalizeText(f.name) === normalized);
+            // 2️⃣ TAM EŞLEŞTİRME (normalizeTr ile)
+            let match = foodData.find(f => normalizeTr(f.name) === normalizedTr || normalizeText(f.name) === normalized);
             if (match && !isFoodMatchForbidden(searchName, match.name)) {
                 console.log(`✅ Tam eşleşme: "${searchName}" → "${match.name}"`);
                 return match;
             }
 
-            // 3️⃣ PARANTEZ TEMİZLE + TAM EŞLEŞTİRME
+            // 3️⃣ PARANTEZ TEMİZLE
             const cleanName = searchName.replace(/\s*\([^)]*\)/g, '').trim();
             if (cleanName !== searchName) {
-                const cleanNormalized = normalizeText(cleanName);
-                match = foodData.find(f => normalizeText(f.name) === cleanNormalized);
+                const cleanNormalized = normalizeTr(cleanName);
+                match = foodData.find(f => normalizeTr(f.name) === cleanNormalized);
                 if (match && !isFoodMatchForbidden(searchName, match.name)) {
-                    console.log(`✅ Parantez temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
+                    console.log(`✅ Parantez temizleme: "${searchName}" → "${match.name}"`);
                     return match;
                 }
             }
 
-            // 4️⃣ MİKTAR TEMİZLE (gram, adet, dilim, ölçek vs.) + TAM EŞLEŞTİRME
+            // 4️⃣ MİKTAR TEMİZLE (sayılar + birimler)
             const quantityCleanName = cleanName
-                .replace(/^\d+\s*(gram|g|adet|dilim|ml|porsiyon|su bardağı|kase|ölçek)\s*/i, '')
+                .replace(/^\d+\s*(gram|g|adet|dilim|ml|lt|porsiyon|su bardağı|kase|ölçek|cc|mg|litre)\s*/i, '')
                 .replace(/^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*/i, '')
+                .replace(/\b\d+\s*(?:gr|g|ml|lt|cc|mg|adet|dilim|porsiyon|kase|ölçek)\b/gi, '')
                 .trim();
             
-            if (quantityCleanName !== cleanName && quantityCleanName) {
-                const quantityNormalized = normalizeText(quantityCleanName);
+            if (quantityCleanName && quantityCleanName !== cleanName) {
+                const quantityNormalized = normalizeTr(quantityCleanName);
                 
                 // Tam eşleşme
-                match = foodData.find(f => normalizeText(f.name) === quantityNormalized);
+                match = foodData.find(f => normalizeTr(f.name) === quantityNormalized);
                 if (match && !isFoodMatchForbidden(searchName, match.name)) {
-                    console.log(`✅ Miktar temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
+                    console.log(`✅ Miktar temizleme: "${searchName}" → "${match.name}"`);
                     return match;
                 }
                 
-                // Parantez temizlenmiş versiyonda da ara
+                // Food_list'teki parantezleri de temizle
                 match = foodData.find(f => {
                     const foodClean = f.name.replace(/\s*\([^)]*\)/g, '').trim();
-                    return normalizeText(foodClean) === quantityNormalized;
-                });
-                if (match && !isFoodMatchForbidden(searchName, match.name)) {
-                    console.log(`✅ Miktar+Parantez temizleme eşleşmesi: "${searchName}" → "${match.name}"`);
-                    return match;
-                }
-                
-                // Kısmi eşleşme (foodData'da miktar varsa)
-                match = foodData.find(f => {
-                    const foodQuantityClean = f.name
-                        .replace(/^\d+\s*(gram|g|adet|dilim|ml|porsiyon|su bardağı|kase|ölçek)\s*/i, '')
+                    const foodQuantityClean = foodClean
+                        .replace(/^\d+\s*(gram|g|adet|dilim|ml|lt|porsiyon|su bardağı|kase|ölçek|cc|mg|litre)\s*/i, '')
                         .replace(/^\d+\s*(tatlı|çorba|yemek)\s*kaşığı\s*/i, '')
-                        .replace(/\s*\([^)]*\)/g, '')
+                        .replace(/\b\d+\s*(?:gr|g|ml|lt|cc|mg|adet|dilim|porsiyon|kase|ölçek)\b/gi, '')
                         .trim();
-                    return normalizeText(foodQuantityClean) === quantityNormalized;
+                    return normalizeTr(foodQuantityClean) === quantityNormalized;
                 });
                 if (match && !isFoodMatchForbidden(searchName, match.name)) {
-                    console.log(`✅ Çift yönlü miktar temizleme: "${searchName}" → "${match.name}"`);
+                    console.log(`✅ Miktar + parantez temizleme (çift yönlü): "${searchName}" → "${match.name}"`);
                     return match;
                 }
             }
 
-            // 5️⃣ AKILLI FUZZY MATCHING (yavaş ama güçlü - threshold: %85)
-            const threshold = 85;
-            let bestMatch = null;
-            let bestScore = 0;
-
-            // Fuzzy için en temiz versiyonu kullan
-            const searchForFuzzy = quantityCleanName || cleanName;
-
-            for (const food of foodData) {
-                // Yasak eşleşme kontrolü
-                if (isFoodMatchForbidden(searchName, food.name)) continue;
-
-                // Akıllı fuzzy matching kullan (kelime bazlı + uzunluk kontrolü)
-                const score = smartFuzzyMatch(searchForFuzzy, food.name, threshold);
-                
-                if (score > bestScore && score >= threshold) {
-                    bestScore = score;
-                    bestMatch = food;
+            // 5️⃣ İÇERİYOR MU? (substring) - örnek_dosya.html mantığı
+            const searchForInclude = quantityCleanName || cleanName;
+            const searchNormInclude = normalizeTr(searchForInclude);
+            
+            if (searchNormInclude) {
+                match = foodData.find(f => {
+                    if (isFoodMatchForbidden(searchName, f.name)) return false;
+                    const fn = normalizeTr(f.name);
+                    return fn.includes(searchNormInclude) || searchNormInclude.includes(fn);
+                });
+                if (match) {
+                    console.log(`✅ İçeriyor eşleşmesi: "${searchName}" → "${match.name}"`);
+                    return match;
                 }
             }
 
-            if (bestMatch) {
-                console.log(`✅ Fuzzy match (${bestScore.toFixed(1)}%): "${searchName}" → "${bestMatch.name}"`);
-                return bestMatch;
+            // 6️⃣ TOKEN TABANLI FUZZY MATCHING (örnek_dosya.html mantığı)
+            const searchForFuzzy = quantityCleanName || cleanName;
+            const fuzzyMatch = bestFoodFuzzyMatch(searchForFuzzy, foodData);
+            
+            if (fuzzyMatch && !isFoodMatchForbidden(searchName, fuzzyMatch.name)) {
+                console.log(`✅ Token tabanlı fuzzy eşleşme: "${searchName}" → "${fuzzyMatch.name}"`);
+                return fuzzyMatch;
             }
 
-            console.warn(`⚠️ Eşleşme bulunamadı: "${searchName}"`);
+            console.log(`❌ Eşleşme bulunamadı: "${searchName}"`);
             return null;
         }
 
