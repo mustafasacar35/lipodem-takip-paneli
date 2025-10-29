@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
     <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#667eea">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    <link rel="manifest" href="manifest.json">
 
     <title>Beslenme Planım - Lipodem Takip</title>
     
@@ -28,6 +29,7 @@
         html, body {
             height: 100%;
             overflow: hidden;
+            overscroll-behavior: none; /* Mobil cihazlarda pull-to-refresh'i engelle */
         }
 
         body {
@@ -35,63 +37,121 @@
             display: flex;
             flex-direction: column;
             background: #f5f7fa;
+            touch-action: manipulation; /* Hızlı dokunma tepkisi - iOS'ta 300ms gecikmesini kaldır */
+            -webkit-user-select: none; /* iOS'ta metin seçimini engelle */
+            -webkit-touch-callout: none; /* iOS'ta uzun basma menüsünü engelle */
+            user-select: none; /* Genel metin seçimini engelle */
         }
 
-        /* Header */
+        /* Header - Mobil Optimize */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 12px 20px;
+            padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             flex-shrink: 0;
+            min-height: 44px;
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
+            flex: 1;
+            min-width: 0; /* Overflow için */
         }
 
         .patient-info h2 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .patient-info p {
-            font-size: 12px;
-            opacity: 0.9;
-            margin-top: 2px;
+            display: none; /* Mobilde "Beslenme Programı" yazısını gizle */
         }
 
         .header-right {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             align-items: center;
         }
 
+        /* Header butonları - İkonik yuvarlak */
         .btn-header {
             background: rgba(255,255,255,0.2);
             border: 2px solid rgba(255,255,255,0.5);
             color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         .btn-header:hover {
             background: rgba(255,255,255,0.3);
             border-color: rgba(255,255,255,0.8);
-            transform: translateY(-1px);
+            transform: scale(1.05);
+        }
+
+        /* Geri Butonu - Mobil versiyondan dönüş */
+        .btn-back {
+            background: rgba(255,255,255,0.3);
+            border: 2px solid rgba(255,255,255,0.8);
+            color: white;
+            padding: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: none; /* Varsayılan gizli */
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn-back:hover {
+            background: rgba(255,255,255,0.5);
+            transform: scale(1.1);
+        }
+
+        /* Mobil Versiyon iFrame Container */
+        .mobile-iframe-container {
+            display: none;
+            position: fixed;
+            top: 52px; /* Header yüksekliği + biraz margin */
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            z-index: 999;
+        }
+
+        .mobile-iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .btn-header span {
+            display: none; /* Mobilde metin gizle, sadece ikon */
         }
 
         /* Main Container */
@@ -100,27 +160,29 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 10px 12px;
         }
 
-        /* Tabs Container */
+        /* Tabs Container - Mobil Optimize */
         .tabs-wrapper {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 10px;
             align-items: center;
+            flex-wrap: wrap; /* Responsive - ikinci satıra geçebilir */
         }
 
         .tabs-container {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             overflow-x: auto;
-            padding: 5px;
+            padding: 2px;
             flex: 1;
+            min-width: 0;
         }
 
         .tabs-container::-webkit-scrollbar {
-            height: 6px;
+            height: 4px;
         }
 
         .tabs-container::-webkit-scrollbar-thumb {
@@ -131,42 +193,44 @@
         .tab {
             background: white;
             border: 2px solid #e0e0e0;
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 8px 14px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
             white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 8px;
-            min-width: 140px;
+            gap: 6px;
+            min-width: auto;
+            font-size: 13px;
         }
 
         .tab:hover {
             border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(102,126,234,0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(102,126,234,0.2);
         }
 
         .tab.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-color: transparent;
+            font-weight: 600;
         }
 
         .tab-close {
-            margin-left: auto;
+            margin-left: 6px;
             background: rgba(255,255,255,0.3);
             border: none;
             color: white;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 12px;
             opacity: 0.8;
         }
 
@@ -175,25 +239,28 @@
             background: rgba(255,255,255,0.5);
         }
 
+        /* Yeni Hafta Ekle Butonu - Sadece Artı İkon */
         .btn-add-week {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
             cursor: pointer;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 18px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            white-space: nowrap;
+            justify-content: center;
             transition: all 0.3s;
+            flex-shrink: 0;
         }
 
         .btn-add-week:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(76,175,80,0.4);
         }
 
         /* Content Area */
@@ -201,9 +268,9 @@
             flex: 1;
             overflow-y: auto;
             background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .week-content {
@@ -214,20 +281,40 @@
             display: block;
         }
 
-        /* Week Header */
+        /* Week Header - Mobil Optimize (Aktif Hafta Başlığı Kaldırıldı) */
         .week-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e0e0e0;
+            display: none; /* Aktif hafta için ayrı başlık yok - tab zaten belirgin */
         }
 
-        .week-info h3 {
+        /* Week Macros - İnce Bant */
+        .week-macros {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .week-macros .macro-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .week-macros .label {
+            font-size: 10px;
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        .week-macros .value {
+            font-size: 14px;
+            font-weight: 700;
             color: #667eea;
-            font-size: 22px;
-            margin-bottom: 5px;
         }
 
         .week-info p {
@@ -351,6 +438,56 @@
             transform: scale(0.95);
         }
 
+        .btn-template-edit {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-template-edit:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .btn-template-edit:active {
+            transform: scale(0.95);
+        }
+
+        .btn-food-admin {
+            background: linear-gradient(135deg, #FF6B6B 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-food-admin:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .btn-food-admin:active {
+            transform: scale(0.95);
+        }
+
         .day-macros {
             display: flex;
             gap: 10px;
@@ -465,28 +602,49 @@
             transform: translateY(0);
         }
 
-        /* Refresh Food Button */
+        /* Refresh Food Button - Yuvarlak İkon (Dönen Ok Animasyonu) */
         .btn-refresh-food {
-            padding: 3px 8px;
-            font-size: 10px;
-            font-weight: 600;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            font-size: 12px;
             background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 50%;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .btn-refresh-food::before {
+            content: "↻";
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
         }
 
         .btn-refresh-food:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(0, 123, 255, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(0, 123, 255, 0.5);
             background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
         }
 
+        .btn-refresh-food:hover::before {
+            animation: spin 0.6s ease-in-out;
+        }
+
         .btn-refresh-food:active {
-            transform: translateY(0);
+            transform: scale(1.0);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         /* Diyet Tipi Rozetleri (Keto/Lowcarb) */
@@ -1290,38 +1448,44 @@
     <!-- Header -->
     <div class="header">
         <div class="header-left">
+            <!-- Geri Butonu - Mobil versiyondan dönüş için -->
+            <button class="btn-back" id="btnBack" onclick="closeMobileVersion()" title="Geri Dön">
+                ◀
+            </button>
             <div class="patient-info">
                 <h2 id="headerPatientName">Yükleniyor...</h2>
                 <p id="patientStats">Beslenme Programı</p>
             </div>
         </div>
         <div class="header-right">
-            <!-- Admin Buton (sadece admin görebilir) -->
-            <button class="btn-header" id="adminMatchingBtn" onclick="openAdminMatchingModal()" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                ⚙️ Eşleştirme Yönetimi
+            <!-- Mobil Versiyon Butonu (Alternatif Arama) -->
+            <button class="btn-header" onclick="openMobileVersion()" title="Alternatif Yemek Arama">
+                �
             </button>
-            <button class="btn-header" onclick="downloadAllData()">
-                💾 Verileri İndir
+            <!-- Ayarlar Butonu - Sadece İkon -->
+            <button class="btn-header" onclick="openSettings()" title="Ayarlar">
+                ⚙️
             </button>
-            <button class="btn-header" onclick="openSettings()">
-                ⚙️ Ayarlar
-            </button>
-            <button class="btn-header" onclick="logout()">
-                🚪 Çıkış
+            <!-- Çıkış Butonu - Sadece İkon -->
+            <button class="btn-header" onclick="logout()" title="Çıkış">
+                🚪
             </button>
         </div>
     </div>
 
+    <!-- Mobil Versiyon iFrame Container -->
+    <div class="mobile-iframe-container" id="mobileIframeContainer">
+        <iframe id="mobileIframe" src=""></iframe>
+    </div>
+
     <!-- Main Container -->
-    <div class="main-container">
+    <div class="main-container" id="mainContainer">
         <!-- Tabs -->
         <div class="tabs-wrapper">
             <div class="tabs-container" id="tabsContainer">
                 <!-- Tabs will be generated here -->
+                <!-- Yeni Hafta Ekle butonu renderTabs() içinde dinamik oluşturulacak -->
             </div>
-            <button class="btn-add-week" onclick="addNewWeek()">
-                ➕ Yeni Hafta Ekle
-            </button>
         </div>
 
         <!-- Content Area -->
@@ -3378,6 +3542,59 @@
             return selectedAlternatives;
         }
 
+        // 🔄 Gün toplamlarını yeniden hesapla (öğün ve gün makroları)
+        function recalculateDayMacros(day) {
+            const ogunler = day.meals || day.ogunler || [];
+            
+            // Gün toplamlarını sıfırla
+            let totalKalori = 0;
+            let totalProtein = 0;
+            let totalKarb = 0;
+            let totalYag = 0;
+            
+            // Her öğünü dolaş ve toplamları hesapla
+            ogunler.forEach(meal => {
+                // Öğün toplamlarını sıfırla
+                let ogunKalori = 0;
+                let ogunProtein = 0;
+                let ogunKarb = 0;
+                let ogunYag = 0;
+                
+                // Öğündeki yemekleri topla
+                if (meal.yemekler && meal.yemekler.length > 0) {
+                    meal.yemekler.forEach(food => {
+                        ogunKalori += food.calories || food.kalori || 0;
+                        ogunProtein += food.protein || 0;
+                        ogunKarb += food.carbs || food.karb || 0;
+                        ogunYag += food.fat || food.yag || 0;
+                    });
+                }
+                
+                // Öğün toplamlarını kaydet (meal object'inde)
+                meal.totalCalories = Math.round(ogunKalori);
+                meal.totalProtein = Math.round(ogunProtein);
+                meal.totalCarbs = Math.round(ogunKarb);
+                meal.totalFat = Math.round(ogunYag);
+                
+                // Günlük toplama ekle
+                totalKalori += ogunKalori;
+                totalProtein += ogunProtein;
+                totalKarb += ogunKarb;
+                totalYag += ogunYag;
+            });
+            
+            // Gün toplamlarını güncelle
+            day.totalMacros = {
+                kalori: Math.round(totalKalori),
+                protein: Math.round(totalProtein),
+                karb: Math.round(totalKarb),
+                yag: Math.round(totalYag)
+            };
+            day.totalCalories = Math.round(totalKalori);
+            
+            console.log(`✅ Gün makroları yeniden hesaplandı: ${totalKalori} kcal (P: ${totalProtein}g, K: ${totalKarb}g, Y: ${totalYag}g)`);
+        }
+
         // 🔄 Tek bir yemek için alternatif bulma ve değiştirme
         async function refreshFoodInMeal(weekIndex, dayIndex, ogunIndex, yemekIndex) {
             try {
@@ -3557,6 +3774,9 @@
                 } else {
                     day.ogunler = ogunler;
                 }
+                
+                // 🔥 ÖNEMLİ: Öğün ve gün toplamlarını yeniden hesapla
+                recalculateDayMacros(day);
                 
                 // 5️⃣ Weeks array'i kaydet (localStorage + GitHub)
                 await saveWeeks();
@@ -4250,6 +4470,7 @@
             const container = document.getElementById('tabsContainer');
             container.innerHTML = '';
 
+            // Hafta tablarını ekle
             weeks.forEach((week, index) => {
                 const tab = document.createElement('div');
                 tab.className = `tab ${index === activeWeekIndex ? 'active' : ''}`;
@@ -4259,6 +4480,14 @@
                 `;
                 container.appendChild(tab);
             });
+            
+            // Yeni Hafta Ekle butonu - Son hafta tabından sonra
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn-add-week';
+            addBtn.onclick = addNewWeek; // ✅ Doğru fonksiyon adı
+            addBtn.title = 'Yeni Hafta Ekle';
+            addBtn.innerHTML = '➕';
+            container.appendChild(addBtn);
         }
 
         // Switch Week
@@ -4282,25 +4511,35 @@
                 return;
             }
 
-            // Calculate totals
-            const totalCalories = week.days.reduce((sum, day) => sum + (day.totalCalories || 0), 0);
+            // Calculate totals - güncel makro değerlerini kullan
+            const totalCalories = week.days.reduce((sum, day) => {
+                // totalMacros.kalori veya totalCalories'den al
+                return sum + (day.totalMacros?.kalori || day.totalCalories || 0);
+            }, 0);
             const avgCalories = week.days.length > 0 ? Math.round(totalCalories / week.days.length) : 0;
+            
+            // Hafta makroları için ortalama hesapla
+            const avgProtein = week.days.length > 0 ? Math.round(week.days.reduce((sum, d) => sum + (d.totalMacros?.protein || 0), 0) / week.days.length) : 0;
+            const avgCarbs = week.days.length > 0 ? Math.round(week.days.reduce((sum, d) => sum + (d.totalMacros?.karb || 0), 0) / week.days.length) : 0;
+            const avgFat = week.days.length > 0 ? Math.round(week.days.reduce((sum, d) => sum + (d.totalMacros?.yag || 0), 0) / week.days.length) : 0;
 
             let html = `
-                <div class="week-header">
-                    <div class="week-info">
-                        <h3>${week.name}</h3>
-                        <p>Başlangıç: ${formatDate(week.startDate)}</p>
+                <div class="week-macros">
+                    <div class="macro-item">
+                        <div class="label">Ort. Kalori</div>
+                        <div class="value">${avgCalories}</div>
                     </div>
-                    <div class="week-stats">
-                        <div class="stat-box">
-                            <div class="label">Toplam Gün</div>
-                            <div class="value">${week.days.length}</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="label">Ort. Kalori</div>
-                            <div class="value">${avgCalories}</div>
-                        </div>
+                    <div class="macro-item">
+                        <div class="label">Ort. Protein</div>
+                        <div class="value">${avgProtein}g</div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="label">Ort. Karb</div>
+                        <div class="value">${avgCarbs}g</div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="label">Ort. Yağ</div>
+                        <div class="value">${avgFat}g</div>
                     </div>
                 </div>
             `;
@@ -4406,9 +4645,9 @@
                             // Rozetleri oluştur (admin settings'den gelen görünürlük ayarlarına göre)
                             const foodBadgesHtml = generateFoodBadges(food);
                             
-                            // 🔐 Admin ikonu (sadece admin kullanıcılar görebilir - sadece ikon)
+                            // 🔐 Admin ikonu (sadece admin kullanıcılar görebilir - yuvarlak ikonik buton)
                             const adminIconHtml = window.isUserAdmin() 
-                                ? `<button class="btn-admin-edit admin-only" onclick="openAdminFoodEditModal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Admin: Yemek eşleştirmelerini düzenle" style="background: linear-gradient(135deg, #FF6B6B 0%, #C92A2A 100%); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; transition: all 0.2s;">
+                                ? `<button class="btn-food-admin admin-only" onclick="openAdminFoodEditModal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Admin: Yemek eşleştirmelerini düzenle">
                                     ⚙️
                                   </button>` 
                                 : '';
@@ -4425,7 +4664,6 @@
                                                 ${tarifBadgesHtml}
                                                 ${adminIconHtml}
                                                 <button class="btn-refresh-food" onclick="refreshFoodInMeal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Alternatif yemek bul">
-                                                    🔄 Yenile
                                                 </button>
                                             </div>
                                         </div>
@@ -4454,10 +4692,10 @@
                 });
             }
 
-            // 🔐 Şablon düzenleme butonu (sadece admin + templateId varsa)
+            // 🔐 Şablon düzenleme butonu (sadece admin + templateId varsa) - İKONİK VERSİYON
             const templateEditBtn = (window.isUserAdmin() && day.templateId) 
-                ? `<button class="btn-admin-edit admin-only" onclick="openTemplateEditModal('${day.templateId}')" title="Admin: Bu şablonu düzenle" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s;">
-                    ✏️ Şablonu Düzenle
+                ? `<button class="btn-template-edit admin-only" onclick="openTemplateEditModal('${day.templateId}')" title="Admin: Bu şablonu düzenle">
+                    ✏️
                   </button>` 
                 : '';
             
@@ -7557,6 +7795,125 @@
         }
 
         // ========================================
+        // 🔍 ROL & KATEGORİ UYUMSUZLUK KONTROL ARACI
+        // ========================================
+        
+        /**
+         * Tüm haftalardaki yemeklerin rol/kategori değerlerini food_list.json ile karşılaştır
+         * Console'dan çağırılabilir: checkRoleCategoryMismatches()
+         */
+        window.checkRoleCategoryMismatches = async function() {
+            console.log('=== 🔍 ROL & KATEGORİ UYUMSUZLUK KONTROLÜ ===');
+            
+            // food_list.json yüklenmemişse yükle
+            if (!foodData || foodData.length === 0) {
+                console.log('📥 food_list.json yükleniyor...');
+                await loadFoodData();
+            }
+            
+            const mismatches = [];
+            const missing = [];
+            const correct = [];
+            
+            // Tüm haftaları tara
+            weeks.forEach((week, wIdx) => {
+                week.days.forEach((day, dIdx) => {
+                    const meals = day.meals || day.ogunler || [];
+                    meals.forEach((meal, mIdx) => {
+                        const foods = meal.yemekler || [];
+                        foods.forEach((food, fIdx) => {
+                            const foodName = food.foodName || food.name;
+                            if (!foodName) return;
+                            
+                            // food_list.json'da bul
+                            const dbFood = findFoodInDatabase(foodName);
+                            
+                            if (!dbFood) {
+                                // Veritabanında yok
+                                missing.push({
+                                    location: `Hafta ${wIdx + 1} > ${day.name} > ${meal.ogunAdi || meal.name}`,
+                                    foodName: foodName,
+                                    menuRole: food.role || '(boş)',
+                                    menuCategory: food.category || '(boş)'
+                                });
+                            } else {
+                                // Veritabanında var - karşılaştır
+                                const roleMatch = (food.role || '') === (dbFood.role || '');
+                                const categoryMatch = (food.category || '') === (dbFood.category || '');
+                                
+                                if (!roleMatch || !categoryMatch) {
+                                    // Uyumsuzluk var
+                                    mismatches.push({
+                                        location: `Hafta ${wIdx + 1} > ${day.name} > ${meal.ogunAdi || meal.name}`,
+                                        foodName: foodName,
+                                        menuRole: food.role || '(boş)',
+                                        dbRole: dbFood.role || '(boş)',
+                                        roleMatch: roleMatch ? '✅' : '❌',
+                                        menuCategory: food.category || '(boş)',
+                                        dbCategory: dbFood.category || '(boş)',
+                                        categoryMatch: categoryMatch ? '✅' : '❌',
+                                        weekIdx: wIdx,
+                                        dayIdx: dIdx,
+                                        mealIdx: mIdx,
+                                        foodIdx: fIdx
+                                    });
+                                } else {
+                                    // Her şey uyumlu
+                                    correct.push({ foodName, location: `Hafta ${wIdx + 1} > ${day.name}` });
+                                }
+                            }
+                        });
+                    });
+                });
+            });
+            
+            console.log('\n📊 SONUÇLAR:');
+            console.log(`✅ Uyumlu yemekler: ${correct.length}`);
+            console.log(`❌ Uyumsuz yemekler: ${mismatches.length}`);
+            console.log(`⚠️ Veritabanında bulunamayan: ${missing.length}`);
+            
+            if (mismatches.length > 0) {
+                console.log('\n❌ UYUMSUZLUKLAR:');
+                console.table(mismatches);
+            }
+            
+            if (missing.length > 0) {
+                console.log('\n⚠️ VERİTABANINDA BULUNAMAYAN:');
+                console.table(missing);
+            }
+            
+            // Otomatik düzeltme fonksiyonu
+            window.fixAllRoleCategoryMismatches = function() {
+                console.log('🔧 Tüm uyumsuzluklar düzeltiliyor...');
+                
+                let fixedCount = 0;
+                mismatches.forEach(mismatch => {
+                    const week = weeks[mismatch.weekIdx];
+                    const day = week.days[mismatch.dayIdx];
+                    const meal = (day.meals || day.ogunler)[mismatch.mealIdx];
+                    const food = meal.yemekler[mismatch.foodIdx];
+                    
+                    const dbFood = findFoodInDatabase(mismatch.foodName);
+                    if (dbFood) {
+                        food.role = dbFood.role || '';
+                        food.category = dbFood.category || '';
+                        fixedCount++;
+                    }
+                });
+                
+                console.log(`✅ ${fixedCount} uyumsuzluk düzeltildi!`);
+                renderWeekContent();
+                
+                // Hafta verilerini kaydet
+                saveWeeks(); // ✅ Doğru fonksiyon adı
+            };
+            
+            if (mismatches.length > 0) {
+                console.log('\n💡 Tüm uyumsuzlukları otomatik düzeltmek için: fixAllRoleCategoryMismatches()');
+            }
+        };
+
+        // ========================================
         // ADMIN FONKSİYONLARI SONU
         // ========================================
 
@@ -7586,13 +7943,97 @@
 
         // PDF Modal Functions
         function openPdfModal(pdfUrl) {
-            // GitHub raw URLs iframe'de açılamaz (X-Frame-Options: deny)
-            // Bunun yerine yeni sekmede aç
-            window.open(pdfUrl, '_blank');
+            const modal = document.getElementById('pdfModal');
+            const imgViewer = document.getElementById('pdfImageViewer');
+            const iframeViewer = document.getElementById('pdfIframeViewer');
+            const errorMessage = document.getElementById('pdfErrorMessage');
+            const directLink = document.getElementById('pdfDirectLink');
+            
+            // Reset viewers
+            imgViewer.style.display = 'none';
+            iframeViewer.style.display = 'none';
+            errorMessage.style.display = 'none';
+            
+            // Dosya uzantısını kontrol et
+            const fileExt = pdfUrl.toLowerCase().split('.').pop().split('?')[0];
+            
+            if (fileExt === 'jpg' || fileExt === 'jpeg' || fileExt === 'png' || fileExt === 'gif' || fileExt === 'webp') {
+                // Resim dosyası - direkt göster
+                imgViewer.src = pdfUrl;
+                imgViewer.style.display = 'block';
+            } else if (fileExt === 'pdf') {
+                // PDF dosyası - iframe ile deneme (GitHub raw PDF'ler genelde çalışmaz)
+                // Önce iframe dene, yüklenemezse hata mesajı göster
+                iframeViewer.src = pdfUrl;
+                iframeViewer.style.display = 'block';
+                
+                // 2 saniye sonra yükleme kontrolü
+                setTimeout(() => {
+                    // Eğer iframe yüklenmediyse hata mesajı göster
+                    try {
+                        // iframe contentDocument erişilebilir mi kontrol et
+                        const iframeDoc = iframeViewer.contentDocument || iframeViewer.contentWindow.document;
+                        if (!iframeDoc) throw new Error('Cannot access iframe');
+                    } catch (error) {
+                        // GitHub X-Frame-Options engeli - hata mesajı göster
+                        iframeViewer.style.display = 'none';
+                        errorMessage.style.display = 'block';
+                        directLink.href = pdfUrl;
+                    }
+                }, 2000);
+            } else {
+                // Bilinmeyen format - direkt link göster
+                errorMessage.style.display = 'block';
+                directLink.href = pdfUrl;
+            }
+            
+            // Modal'ı göster
+            modal.style.display = 'block';
         }
 
         function closePdfModal() {
-            // Artık modal kullanmıyoruz, bu fonksiyon boş kalabilir
+            const modal = document.getElementById('pdfModal');
+            const imgViewer = document.getElementById('pdfImageViewer');
+            const iframeViewer = document.getElementById('pdfIframeViewer');
+            
+            modal.style.display = 'none';
+            imgViewer.src = '';
+            iframeViewer.src = '';
+        }
+
+        // Mobil Versiyon Toggle Functions
+        function openMobileVersion() {
+            const mobileContainer = document.getElementById('mobileIframeContainer');
+            const mainContainer = document.getElementById('mainContainer');
+            const mobileIframe = document.getElementById('mobileIframe');
+            const btnBack = document.getElementById('btnBack');
+            
+            // iframe URL'ini set et
+            mobileIframe.src = 'https://mustafasacar35.github.io/lipodem-takip-paneli/mobil_versiyon_v1.html';
+            
+            // Ana içeriği gizle, mobil versiyonu göster
+            mainContainer.style.display = 'none';
+            mobileContainer.style.display = 'block';
+            btnBack.style.display = 'flex';
+            
+            console.log('� Alternatif yemek arama sayfası açıldı');
+        }
+
+        function closeMobileVersion() {
+            const mobileContainer = document.getElementById('mobileIframeContainer');
+            const mainContainer = document.getElementById('mainContainer');
+            const mobileIframe = document.getElementById('mobileIframe');
+            const btnBack = document.getElementById('btnBack');
+            
+            // iframe'i temizle
+            mobileIframe.src = '';
+            
+            // Mobil versiyonu gizle, ana içeriği göster
+            mobileContainer.style.display = 'none';
+            mainContainer.style.display = 'flex';
+            btnBack.style.display = 'none';
+            
+            console.log('◀ Ana sayfaya dönüldü');
         }
     </script>
 
@@ -10320,6 +10761,31 @@
                 <button onclick="saveTemplate()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 6px; font-weight: 600;">
                     💾 Kaydet
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF/Tarif Kartı Modal -->
+    <div id="pdfModal" class="modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 2% auto; padding: 0; border: none; width: 90%; max-width: 900px; border-radius: 12px; max-height: 95vh; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+                <h3 style="margin: 0; color: white; font-size: 18px; font-weight: 700;">📖 Tarif Kartı</h3>
+                <button onclick="closePdfModal()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.2s;">
+                    ✖ Kapat
+                </button>
+            </div>
+            
+            <!-- PDF Viewer -->
+            <div style="height: calc(95vh - 80px); background: #f0f0f0;">
+                <img id="pdfImageViewer" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                <iframe id="pdfIframeViewer" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
+                <div id="pdfErrorMessage" style="display: none; padding: 40px; text-align: center; color: #666;">
+                    <p style="font-size: 16px; margin-bottom: 15px;">⚠️ Tarif kartı bu pencerede görüntülenemiyor.</p>
+                    <a id="pdfDirectLink" href="" target="_blank" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        🔗 Yeni Sekmede Aç
+                    </a>
+                </div>
             </div>
         </div>
     </div>
