@@ -5508,35 +5508,65 @@
             }
         }
 
-        // Tab değiştir
+        // Tab değiştir (5 TAB MODAL için)
         function switchAdminTab(tabName) {
             console.log('🔄 Tab değiştir:', tabName);
             
-            // Buton aktif durumunu güncelle
-            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
-                btn.classList.remove('active');
+            // Tüm tab içeriklerini gizle
+            document.querySelectorAll('.admin-tab-content').forEach(content => {
+                content.style.display = 'none';
             });
             
-            const activeBtn = document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+            // Tüm tab butonlarını pasif yap
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '#ccc';
+                btn.style.color = '#666';
+            });
+            
+            // Seçili tab'ı göster
+            const tabId = `admin-tab-${tabName}`;
+            const tabContent = document.getElementById(tabId);
+            if (tabContent) {
+                console.log(`✅ Tab içeriği gösteriliyor: ${tabId}`);
+                tabContent.style.display = 'block';
+            } else {
+                console.error(`❌ Tab içeriği bulunamadı: ${tabId}`);
+            }
+            
+            // Seçili butonun stilini güncelle
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
             if (activeBtn) {
                 activeBtn.classList.add('active');
+                if (tabName === 'manuel') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                } else if (tabName === 'yasak') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #f44336 0%, #c62828 100%)';
+                } else if (tabName === 'db-eslestirme') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)';
+                } else if (tabName === 'db-yasak') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+                } else if (tabName === 'db-ekle') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)';
+                } else if (tabName === 'github-settings') {
+                    activeBtn.style.background = 'linear-gradient(135deg, #9c27b0 0%, #673ab7 100%)';
+                }
+                activeBtn.style.color = 'white';
             }
-
-            // İçerik yükle
-            const content = document.getElementById('adminTabContent');
-            if (!content) return;
-
-            content.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Yükleniyor...</p></div>';
-
-            // Tab'a göre içerik render et
+            
+            // Tab'a özel render fonksiyonlarını çağır
             setTimeout(() => {
-                if (tabName === 'tarifManuel' || tabName === 'manuel') {
+                if (tabName === 'manuel') {
+                    console.log('📝 Manuel eşleştirme tab\'ı render ediliyor...');
                     renderTarifManuelTab();
-                } else if (tabName === 'tarifYasak' || tabName === 'yasak') {
+                } else if (tabName === 'yasak') {
+                    console.log('🚫 Yasak kuralları tab\'ı render ediliyor...');
                     renderTarifYasakTab();
-                } else if (tabName === 'yemekEslestirme' || tabName === 'db') {
+                } else if (tabName === 'db-eslestirme') {
+                    console.log('🍽️ Veritabanı eşleştirme tab\'ı render ediliyor...');
                     renderYemekEslestirmeTab();
-                } else if (tabName === 'yemekYasak' || tabName === 'dbYasak') {
+                } else if (tabName === 'db-yasak') {
+                    console.log('⛔ Veritabanı yasakları tab\'ı render ediliyor...');
                     renderYemekYasakTab();
                 }
             }, 100);
@@ -5544,11 +5574,19 @@
 
         // Placeholder render fonksiyonları (sonra doldurulacak)
         function renderTarifManuelTab() {
-            const content = document.getElementById('adminTabContent');
-            if (!content) return;
+            console.log('🎬 renderTarifManuelTab çağrıldı');
+            
+            // ✅ DOĞRU DIV: admin-tab-manuel (statik HTML modal içinde)
+            const content = document.getElementById('admin-tab-manuel');
+            if (!content) {
+                console.error('❌ admin-tab-manuel div bulunamadı!');
+                return;
+            }
+            
+            console.log('✅ admin-tab-manuel div bulundu, içerik render ediliyor...');
             
             // Seçili yemek adını al
-            const foodName = window.selectedFoodForAdmin?.foodName || '';
+            const foodName = window.selectedFoodForAdmin?.foodName || currentFoodName || '';
             
             // HTML render
             content.innerHTML = `
@@ -5589,6 +5627,8 @@
                 </div>
             `;
             
+            console.log('✅ HTML render edildi, şimdi tarif kartları yüklenecek...');
+            
             // Tarif kartlarını yükle ve render et
             loadAndRenderTarifCards();
         }
@@ -5628,8 +5668,8 @@
             console.log('📥 loadAndRenderTarifCards başladı');
             
             try {
-                // tarifler/list.json dosyasını yükle
-                const response = await fetch('tarifler/list.json');
+                // ✅ GitHub Raw URL kullan (CORS hatası önlemek için)
+                const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/list.json?t=' + Date.now());
                 console.log('📡 Fetch response:', response.status, response.ok);
                 
                 if (!response.ok) throw new Error('Tarif listesi yüklenemedi');
@@ -5645,7 +5685,7 @@
                         file: item.file,
                         name: name,
                         tags: item.tags || [],
-                        imagePath: `tarifler/${item.file}`
+                        imagePath: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${item.file}` // ✅ GitHub Raw URL
                     };
                 });
                 
