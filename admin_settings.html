@@ -877,6 +877,58 @@
             </section>
 
             <section class="settings-section">
+                <h2>📊 Benzerlik Skoru Kriterleri</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Alternatif yemek benzerliği hesaplanırken hangi makroların dikkate alınacağını belirleyin. 
+                    Seçili kriterler kullanılarak benzerlik skoru hesaplanır.
+                </p>
+                
+                <div class="criteria-grid">
+                    <!-- Kalori -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaCalories">
+                            <span class="criteria-label">🔥 Kalori</span>
+                        </label>
+                    </div>
+
+                    <!-- Protein -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaProtein" checked>
+                            <span class="criteria-label">🥩 Protein</span>
+                        </label>
+                    </div>
+
+                    <!-- Karbonhidrat -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaCarbs">
+                            <span class="criteria-label">🍞 Karbonhidrat</span>
+                        </label>
+                    </div>
+
+                    <!-- Yağ -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaFat" checked>
+                            <span class="criteria-label">🧈 Yağ</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong> 
+                    Varsayılan olarak <strong>Protein</strong> ve <strong>Yağ</strong> aktiftir. 
+                    Benzerlik skoru şu şekilde hesaplanır:<br>
+                    <code style="background: white; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block;">
+                        Skor = 100 - ((|Kalori|/5 + |Protein|×3 + |Karb|×3 + |Yağ|×3) / Aktif Kriter Sayısı)
+                    </code><br>
+                    <small style="margin-top: 4px; display: block;">Sadece seçili kriterlerdeki farklar hesaba katılır.</small>
+                </div>
+            </section>
+
+            <section class="settings-section">
                 <h2>🏷️ Rozet Gösterimi</h2>
                 <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
                     Hasta panelindeki yemek satırlarında hangi bilgi rozetlerinin gösterileceğini seçin.
@@ -1017,6 +1069,9 @@
                 mealType: false,
                 tags: false
             },
+            scoreCriteria: {
+                activeByDefault: ['protein', 'fat']
+            },
             dietFormulas: {
                 ketojenik: {
                     carb: 0.3,
@@ -1111,6 +1166,12 @@
         const criteriaMealTypeVisible = document.getElementById('criteriaMealTypeVisible');
         const criteriaMealTypeMode = document.getElementById('criteriaMealTypeMode');
         const criteriaMealTypeDefault = document.getElementById('criteriaMealTypeDefault');
+
+        // Benzerlik Skoru Kriterleri Input Referansları
+        const scoreCriteriaCalories = document.getElementById('scoreCriteriaCalories');
+        const scoreCriteriaProtein = document.getElementById('scoreCriteriaProtein');
+        const scoreCriteriaCarbs = document.getElementById('scoreCriteriaCarbs');
+        const scoreCriteriaFat = document.getElementById('scoreCriteriaFat');
 
         function fixTurkishChars(text) {
             if (!text || typeof text !== 'string') return text;
@@ -1592,6 +1653,9 @@
                     mealType: document.getElementById('badgeMealTypeVisible')?.checked !== undefined ? !!document.getElementById('badgeMealTypeVisible').checked : false,
                     tags: document.getElementById('badgeTagsVisible')?.checked !== undefined ? !!document.getElementById('badgeTagsVisible').checked : false
                 },
+                scoreCriteria: {
+                    activeByDefault: appSettings.scoreCriteria?.activeByDefault ?? ['protein', 'fat']
+                },
                 dietFormulas: {
                     ketojenik: {
                         carb: appSettings.dietFormulas?.ketojenik?.carb ?? 0.3,
@@ -1674,6 +1738,21 @@
                 document.getElementById('badgeTagsVisible').checked = settingsDraft.badgeVisibility.tags ?? false;
             }
 
+            // Benzerlik Skoru Kriterleri Ayarlarını Doldur
+            if (settingsDraft.scoreCriteria && Array.isArray(settingsDraft.scoreCriteria.activeByDefault)) {
+                const activeScoreCriteria = settingsDraft.scoreCriteria.activeByDefault;
+                scoreCriteriaCalories.checked = activeScoreCriteria.includes('calories');
+                scoreCriteriaProtein.checked = activeScoreCriteria.includes('protein');
+                scoreCriteriaCarbs.checked = activeScoreCriteria.includes('carbs');
+                scoreCriteriaFat.checked = activeScoreCriteria.includes('fat');
+            } else {
+                // Varsayılan: protein ve fat aktif
+                scoreCriteriaCalories.checked = false;
+                scoreCriteriaProtein.checked = true;
+                scoreCriteriaCarbs.checked = false;
+                scoreCriteriaFat.checked = true;
+            }
+
             renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
             renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
             renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
@@ -1737,6 +1816,16 @@
             settingsDraft.filterCriteria.mealType.mode = criteriaMealTypeMode.value;
             settingsDraft.filterCriteria.mealType.defaultState = criteriaMealTypeDefault.value;
 
+            // Benzerlik Skoru Kriterleri Güncelle
+            const activeScoreCriteria = [];
+            if (scoreCriteriaCalories.checked) activeScoreCriteria.push('calories');
+            if (scoreCriteriaProtein.checked) activeScoreCriteria.push('protein');
+            if (scoreCriteriaCarbs.checked) activeScoreCriteria.push('carbs');
+            if (scoreCriteriaFat.checked) activeScoreCriteria.push('fat');
+            settingsDraft.scoreCriteria = {
+                activeByDefault: activeScoreCriteria
+            };
+
             // Diyet Formülleri Güncelle
             settingsDraft.dietFormulas.ketojenik.carb = parseFloat(ketoCarb.value) || 0.3;
             settingsDraft.dietFormulas.ketojenik.protein = parseFloat(ketoProtein.value) || 0.8;
@@ -1771,6 +1860,7 @@
                 },
                 rotation: rotationPayload,
                 filterCriteria: settingsDraft.filterCriteria,
+                scoreCriteria: settingsDraft.scoreCriteria,
                 dietFormulas: settingsDraft.dietFormulas,
                 updatedAt: new Date().toISOString()
             };

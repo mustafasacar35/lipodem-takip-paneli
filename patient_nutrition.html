@@ -1670,7 +1670,84 @@
 
     <script>
         // ========================================
-        // 🔐 GLOBAL ADMIN FONKSİYONLARI (EN ÜST - ÖNCE YÜKLENSİN)
+        // � UTF-8 ENCODING HELPER (TÜRKÇE KARAKTER KORUMA)
+        // ========================================
+        
+        /**
+         * UTF-8 string'i Base64'e çevir (GitHub API için)
+         * TÜRKÇE KARAKTER KORUMA: Doğru encoding yöntemi
+         * @param {string} str - Base64'e çevrilecek string
+         * @returns {string} - Base64 encoded string
+         */
+        function encodeBase64UTF8(str) {
+            // 🔥 DOĞRU YÖNTEM: UTF-8 → percent-encoding → binary → base64
+            // Bu GitHub API'nin de kullandığı standart yöntemdir
+            
+            try {
+                // 1. UTF-8 stringi percent-encode'la (%C3%BC gibi)
+                const percentEncoded = encodeURIComponent(str);
+                
+                // 2. Percent-encoded stringi binary'ye çevir
+                // %XX formatındaki byte'ları gerçek karakterlere çevir
+                const binaryString = percentEncoded.replace(/%([0-9A-F]{2})/g, (match, hex) => {
+                    return String.fromCharCode(parseInt(hex, 16));
+                });
+                
+                // 3. Binary stringi Base64'e çevir
+                return btoa(binaryString);
+                
+            } catch (error) {
+                console.error('❌ Base64 encoding hatası:', error);
+                // Fallback: Direkt btoa (sadece ASCII için)
+                try {
+                    return btoa(str);
+                } catch (e) {
+                    console.error('❌ Fallback encoding da başarısız:', e);
+                    return '';
+                }
+            }
+        }
+
+        /**
+         * Base64'ü UTF-8 string'e çevir (GitHub API'den okurken)
+         * TÜRKÇE KARAKTER KORUMA: Doğru decoding yöntemi
+         * @param {string} base64Str - Base64 encoded string
+         * @returns {string} - UTF-8 decoded string
+         */
+        function decodeBase64UTF8(base64Str) {
+            // 🔥 DOĞRU YÖNTEM: base64 → binary → percent-encoding → UTF-8
+            // encodeBase64UTF8'in tam tersi işlem
+            
+            try {
+                // 1. Base64'ü binary stringe çevir
+                const binaryString = atob(base64Str);
+                
+                // 2. Binary string'deki her byte'ı %XX formatına çevir
+                let percentEncoded = '';
+                for (let i = 0; i < binaryString.length; i++) {
+                    const byte = binaryString.charCodeAt(i);
+                    percentEncoded += '%' + ('0' + byte.toString(16).toUpperCase()).slice(-2);
+                }
+                
+                // 3. Percent-encoded stringi UTF-8'e decode et
+                return decodeURIComponent(percentEncoded);
+                
+            } catch (error) {
+                console.error('❌ Base64 decoding hatası:', error);
+                // Fallback: Direkt atob (sadece ASCII için)
+                try {
+                    return atob(base64Str);
+                } catch (e) {
+                    console.error('❌ Fallback decoding da başarısız:', e);
+                    return '';
+                }
+            }
+        }
+        
+        console.log('✅ UTF-8 encoding helper yüklendi');
+        
+        // ========================================
+        // �🔐 GLOBAL ADMIN FONKSİYONLARI (EN ÜST - ÖNCE YÜKLENSİN)
         // ========================================
         
         /**
@@ -2041,7 +2118,10 @@
             mealType: false      // MealType filtresi KAPALI
         };
         
-        // Similarity scoring kriterleri - VARSAYILAN (mobil versiyonla aynı: protein + yağ)
+        // Similarity scoring kriterleri - VARSAYILAN (admin ayarlarından yüklenir)
+        // Admin settings'den appSettings.scoreCriteria.activeByDefault gelecek
+        // Mobil versiyondaki gibi butonlarla değiştirilebilir (calories, protein, carbs, fat)
+        // Varsayılan: ['protein', 'fat'] - sadece protein ve yağ aktif
         let scoreBy = ['protein', 'fat'];
 
         // Makro Hesaplama Fonksiyonu
@@ -2114,7 +2194,7 @@
                 }
                 
                 const data = await response.json();
-                const decoded = atob((data.content || '').replace(/\n/g, ''));
+                const decoded = decodeBase64UTF8((data.content || '').replace(/\n/g, ''));
                 const parsed = JSON.parse(decoded);
                 appSettings = parsed;
 
@@ -2179,8 +2259,17 @@
                         }
                     }
                     
+                    // 🔥 scoreBy parametresini admin ayarlarından yükle (mobil versiyon mantığı)
+                    if (appSettings.scoreCriteria && Array.isArray(appSettings.scoreCriteria.activeByDefault)) {
+                        scoreBy = [...appSettings.scoreCriteria.activeByDefault]; // Kopyala (referans değil)
+                        console.log('✅ scoreBy admin ayarlarından yüklendi:', scoreBy);
+                    } else {
+                        console.warn('⚠️ appSettings.scoreCriteria bulunamadı, varsayılan kullanılıyor:', scoreBy);
+                    }
+                    
                     console.log('✅ Admin ayarları yüklendi:', appSettings);
                     console.log('✅ Match kriterleri:', matchCriteria);
+                    console.log('✅ Benzerlik skoru kriterleri (scoreBy):', scoreBy);
             } catch (error) {
                 console.warn('⚠️ Admin ayarları yüklenirken hata:', error);
                 appSettings = {
@@ -3086,9 +3175,13 @@
             console.log('🔍 findAlternatives DEBUG:', {
                 refFoodName: refFood.name,
                 refFoodRole: refFood.role,
+                refFoodCategory: refFood.category,
+                refFoodKeto: refFood.keto,
+                refFoodLowcarb: refFood.lowcarb,
                 matchCriteria: matchCriteria,
-                scoreBy: scoreBy,
-                selectedDietType: selectedDietType
+                scoreBy: scoreBy, // Hangi makrolar hesaba katılacak
+                selectedDietType: selectedDietType,
+                foodDataTotal: foodData.length
             });
 
             // 1️⃣ 5 KRİTER İLE FİLTRELEME (Admin ayarlarından gelen matchCriteria)
@@ -3096,13 +3189,26 @@
                 // Kendisini hariç tut
                 if (food.name === refFood.name) return false;
 
+                // 🍞 ÖZEL DURUM: Ekmek için daha esnek filtreleme
+                const isBread = normalizeText(refFood.role || '').includes('bread') || 
+                                normalizeText(refFood.role || '').includes('ekmek');
+                
                 // Role kontrolü (matchCriteria.role true ise aktif)
-                if (matchCriteria.role && food.role !== refFood.role) {
+                if (matchCriteria.role && !isBread && food.role !== refFood.role) {
                     return false;
+                }
+                
+                // Ekmek için: Role yerine category kontrolü (EKMEK kategorisindeki her şey)
+                if (isBread && matchCriteria.role) {
+                    const foodIsBread = normalizeText(food.role || '').includes('bread') || 
+                                       normalizeText(food.role || '').includes('ekmek') ||
+                                       normalizeText(food.category || '').includes('ekmek') ||
+                                       normalizeText(food.name || '').includes('ekmek');
+                    if (!foodIsBread) return false;
                 }
 
                 // Category kontrolü (matchCriteria.category true ise aktif)
-                if (matchCriteria.category && refFood.category && food.category !== refFood.category) return false;
+                if (matchCriteria.category && !isBread && refFood.category && food.category !== refFood.category) return false;
 
                 // Season kontrolü (matchCriteria.season true ise aktif)
                 if (matchCriteria.season) {
@@ -3127,6 +3233,19 @@
                 if (matchCriteria.dietType) {
                     const foodDietType = getDietType(food);
                     const refDietType = getDietType(refFood);
+                    
+                    // 🔍 DEBUG: İlk 3 yemek için diet type kontrolü göster
+                    if (foodData.indexOf(food) < 3) {
+                        console.log(`🔍 DietType Check (${food.name}):`, {
+                            foodKeto: food.keto,
+                            foodLowcarb: food.lowcarb,
+                            foodDietType: foodDietType,
+                            refKeto: refFood.keto,
+                            refLowcarb: refFood.lowcarb,
+                            refDietType: refDietType,
+                            match: foodDietType === refDietType
+                        });
+                    }
                     
                     // AYNI DİYET TİPİ OLMALI (keto → keto, lowcarb → lowcarb, normal → normal)
                     if (foodDietType !== refDietType) {
@@ -3226,8 +3345,21 @@
             // 4️⃣ BENZERLİĞE GÖRE SIRALA (en yüksek benzerlik önce)
             alternatives.sort((a, b) => b.similarity - a.similarity);
             
-            // 🔍 DEBUG: İlk 5 alternatifi göster
-            console.log(`📊 Benzerlik skorları (criteria: ${scoreBy.join(', ')}):`);
+            // 🔍 DEBUG: Benzerlik skoru hesaplama detayları
+            const criteria = scoreBy.length > 0 ? scoreBy : ['calories', 'protein', 'carbs', 'fat'];
+            console.log(`📊 Benzerlik skorları (aktif kriterler: ${criteria.join(', ')}):`, {
+                toplam_alternatif: alternatives.length,
+                scoreBy_array: scoreBy,
+                kullanilan_kriterler: criteria,
+                referans_makrolar: {
+                    protein: refFood.protein,
+                    fat: refFood.fat,
+                    carbs: refFood.carbs,
+                    calories: refFood.calories
+                }
+            });
+            
+            // İlk 5 alternatifi göster
             alternatives.slice(0, 5).forEach((alt, idx) => {
                 console.log(`  ${idx + 1}. ${alt.name} - Skor: ${alt.similarity}% (P:${alt.protein}g, Y:${alt.fat}g, K:${alt.carbs}g, Cal:${alt.calories})`);
             });
@@ -3292,6 +3424,12 @@
                 const alternativeCount = appSettings?.defaultAlternativeCount || 10;
                 
                 // 2️⃣ Alternatif bul - role bilgisini foodData'dan kullan
+                // 🔥 ÖNEMLİ: keto ve lowcarb boolean'larını da ekle (getDietType için gerekli!)
+                // 🔥 BUGFIX: foodData'da yoksa settings'den diyet tipini al (hastanın diyet ayarı)
+                const patientDietType = settings?.dietType || 'ketojenik';
+                const inferredKeto = matchedFood?.keto ?? currentFood.keto ?? (patientDietType === 'ketojenik');
+                const inferredLowcarb = matchedFood?.lowcarb ?? currentFood.lowcarb ?? (patientDietType === 'lowcarb');
+                
                 const alternatives = findAlternatives({
                     name: currentFood.foodName,
                     calories: currentFood.kalori,
@@ -3303,16 +3441,40 @@
                     seasonRange: matchedFood?.seasonRange || currentFood.seasonRange || '',
                     mealType: matchedFood?.mealType || currentFood.mealType || '',
                     dietType: matchedFood?.dietType || currentFood.dietType || '',
-                    tags: matchedFood?.tags || currentFood.tags || ''
+                    tags: matchedFood?.tags || currentFood.tags || '',
+                    // 🔥 BUGFIX: getDietType() boolean kontrol yapar + settings'den çıkarsama yap!
+                    keto: inferredKeto,
+                    lowcarb: inferredLowcarb
                 }, alternativeCount);
                 
                 if (!alternatives || alternatives.length === 0) {
                     // Detaylı hata mesajı hazırla
-                    const refDietType = getDietType(matchedFood || currentFood);
+                    const refDietType = getDietType({
+                        keto: inferredKeto,
+                        lowcarb: inferredLowcarb
+                    });
+                    
+                    // foodData'daki role ve dietType dağılımını göster
+                    const roleStats = foodData.reduce((acc, f) => {
+                        acc[f.role] = (acc[f.role] || 0) + 1;
+                        return acc;
+                    }, {});
+                    
+                    const targetRole = matchedFood?.role || currentFood.role || 'mainDish';
+                    const sameRoleFoods = foodData.filter(f => f.role === targetRole);
+                    const sameRoleDietStats = sameRoleFoods.reduce((acc, f) => {
+                        const dt = getDietType(f);
+                        acc[dt] = (acc[dt] || 0) + 1;
+                        return acc;
+                    }, {});
+                    
                     const errorDetails = [
                         `Yemek: ${currentFood.foodName}`,
-                        `Role: ${matchedFood?.role || currentFood.role || 'Belirsiz'}`,
-                        `DietType: ${refDietType}`,
+                        `Role: ${targetRole}`,
+                        `DietType: ${refDietType} (keto:${inferredKeto}, lowcarb:${inferredLowcarb}) [foodData: keto=${matchedFood?.keto}, lowcarb=${matchedFood?.lowcarb}]`,
+                        `Category: ${matchedFood?.category || currentFood.category || 'Belirsiz'}`,
+                        `Hasta diyet tipi: ${settings?.dietType || 'Belirsiz'}`,
+                        ``,
                         `Aktif Filtreler:`,
                         `  - Role: ${matchCriteria.role ? 'AÇIK' : 'KAPALI'}`,
                         `  - DietType: ${matchCriteria.dietType ? 'AÇIK' : 'KAPALI'}`,
@@ -3320,9 +3482,15 @@
                         `  - Season: ${matchCriteria.season ? 'AÇIK' : 'KAPALI'}`,
                         `  - MealType: ${matchCriteria.mealType ? 'AÇIK' : 'KAPALI'}`,
                         ``,
+                        `foodData İstatistikleri:`,
+                        `  - Toplam yemek: ${foodData.length}`,
+                        `  - "${targetRole}" role: ${sameRoleFoods.length} adet`,
+                        `  - "${targetRole}" + DietType dağılımı:`,
+                        `    ${JSON.stringify(sameRoleDietStats)}`,
+                        ``,
                         `Olası nedenler:`,
-                        `1. Aynı role'de başka yemek yok (foodData'da ${foodData.filter(f => f.role === (matchedFood?.role || currentFood.role)).length} adet)`,
-                        `2. DietType uyuşmuyor (${refDietType} arıyor)`,
+                        `1. DietType boolean'ları eksik (keto/lowcarb property yok)`,
+                        `2. Role eşleşmiyor ("${targetRole}" için ${sameRoleFoods.length} adet var)`,
                         `3. Tag filtreleme çok kısıtlayıcı`,
                         `4. Yemek veritabanında yok`
                     ];
@@ -3704,9 +3872,14 @@
                 console.log('📥 Şablonlar GitHub\'dan yükleniyor...');
 
                 // Load day templates from GitHub
-                const dayResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json');
+                const dayResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json?t=' + Date.now());
                 const dayData = await dayResponse.json();
                 dayTemplates = dayData.templates || [];
+                
+                // 🔍 DEBUG: Şablon yükleme detayları
+                console.log('📊 GitHub\'dan yüklenen şablon sayısı:', dayData.totalCount || dayTemplates.length);
+                console.log('📋 Gerçek array uzunluğu:', dayTemplates.length);
+                console.log('🆔 Şablon ID\'leri:', dayTemplates.map(t => `${t.id}: ${t.name}`));
 
                 // Load meal templates from GitHub
                 const mealResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/ogun-sablonlari-2025-09-25-2025-10-25%20(1).json');
@@ -4281,12 +4454,20 @@
                 });
             }
 
+            // 🔐 Şablon düzenleme butonu (sadece admin + templateId varsa)
+            const templateEditBtn = (window.isUserAdmin() && day.templateId) 
+                ? `<button class="btn-admin-edit admin-only" onclick="openTemplateEditModal('${day.templateId}')" title="Admin: Bu şablonu düzenle" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s;">
+                    ✏️ Şablonu Düzenle
+                  </button>` 
+                : '';
+            
             return `
                 <div class="day-card">
                     <div class="day-header">
                         <div class="day-name">${day.gunAdi || 'Gün'}</div>
                         <div class="day-date">${formatDate(day.date)}</div>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            ${templateEditBtn}
                             <button class="btn-refresh-day" onclick="refreshDayTemplate(${dayIndex})" title="Farklı şablon ile değiştir">
                                 🔄
                             </button>
@@ -4812,6 +4993,7 @@
         // Render template table
         function renderTemplateTable(templates, usedTemplateIds) {
             const tableContainer = document.getElementById('dayTemplateTable');
+            const isAdmin = window.isUserAdmin();
             
             // Sıralama ok işaretlerini belirle
             const getSortIcon = (field) => {
@@ -4831,6 +5013,7 @@
                             <th style="width: 10%;" class="${getSortIcon('karb')}" onclick="toggleSort('karb')">Karb (g)</th>
                             <th style="width: 10%;" class="${getSortIcon('protein')}" onclick="toggleSort('protein')">Protein (g)</th>
                             <th style="width: 10%;" class="${getSortIcon('yag')}" onclick="toggleSort('yag')">Yağ (g)</th>
+                            ${isAdmin ? '<th style="width: 8%;">İşlem</th>' : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -4862,6 +5045,15 @@
                 if (isSelected) rowClass += ' selected';
                 if (isUsed) rowClass += ' used-template';
                 
+                // Admin düzenle butonu
+                const adminActionBtn = isAdmin ? `
+                    <td style="text-align: center;">
+                        <button class="btn-admin-edit" onclick="event.stopPropagation(); openTemplateEditModal('${template.id}')" title="Şablonu Düzenle">
+                            ✏️
+                        </button>
+                    </td>
+                ` : '';
+                
                 tableHTML += `
                     <tr class="${rowClass}" data-template-id="${template.id}" onclick="selectTemplate('${template.id}')" style="cursor: pointer;">
                         <td>${template.name || `Şablon ${index + 1}`}</td>
@@ -4870,6 +5062,7 @@
                         <td style="text-align: center;">${Math.round(macros.karb || 0)}</td>
                         <td style="text-align: center;">${Math.round(macros.protein || 0)}</td>
                         <td style="text-align: center;">${Math.round(macros.yag || 0)}</td>
+                        ${adminActionBtn}
                     </tr>
                 `;
             });
@@ -5588,6 +5781,73 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
+        }
+        
+        /**
+         * 🔔 Şablon düzenleme modalı için özel bildirim
+         * Modal içinde kısa süreliğine görünür, fade-out animasyonuyla kaybolur
+         * @param {string} message - Bildirim mesajı
+         * @param {string} type - success, error, warning, info
+         */
+        function showTemplateEditNotification(message, type = 'success') {
+            // Bildirim container'ı oluştur (yoksa)
+            let notifContainer = document.getElementById('templateEditNotifContainer');
+            if (!notifContainer) {
+                notifContainer = document.createElement('div');
+                notifContainer.id = 'templateEditNotifContainer';
+                notifContainer.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    z-index: 10002;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(notifContainer);
+            }
+            
+            // Renk seçimi
+            const colors = {
+                success: '#4CAF50',
+                error: '#f44336',
+                warning: '#ff9800',
+                info: '#2196F3'
+            };
+            
+            // Bildirim elementi
+            const notif = document.createElement('div');
+            notif.style.cssText = `
+                background: ${colors[type] || colors.success};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                font-size: 14px;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                opacity: 0;
+                transform: translateX(100px);
+                transition: all 0.3s ease;
+                pointer-events: auto;
+            `;
+            notif.textContent = message;
+            
+            notifContainer.appendChild(notif);
+            
+            // Fade-in animasyonu
+            setTimeout(() => {
+                notif.style.opacity = '1';
+                notif.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // 2 saniye sonra fade-out ve kaldır
+            setTimeout(() => {
+                notif.style.opacity = '0';
+                notif.style.transform = 'translateX(100px)';
+                
+                setTimeout(() => {
+                    notif.remove();
+                }, 300);
+            }, 2000);
         }
 
         // ========================================
@@ -6393,8 +6653,8 @@
                     console.log(`✅ Dosya SHA alındı: ${sha.slice(0, 7)}`);
                 }
                 
-                // 2. İçeriği Base64'e çevir
-                const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+                // 2. İçeriği Base64'e çevir (✅ TÜRKÇE KARAKTER KORUYAN)
+                const contentBase64 = encodeBase64UTF8(content);
                 
                 // 3. Dosyayı GitHub'a kaydet (PUT)
                 const putUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`;
@@ -8088,7 +8348,7 @@
                 }
                 
                 const fileData = await getResponse.json();
-                const currentContent = atob(fileData.content.replace(/\n/g, ''));
+                const currentContent = decodeBase64UTF8(fileData.content.replace(/\n/g, ''));
                 const currentJson = JSON.parse(currentContent);
                 
                 // 2. Yemeği kategoriye ekle veya güncelle
@@ -8131,9 +8391,9 @@
                 // 3. Metadata güncelle
                 currentJson.lastUpdated = new Date().toISOString();
                 
-                // 4. JSON'u string'e çevir
+                // 4. JSON'u string'e çevir (✅ TÜRKÇE KARAKTER KORUYAN)
                 const updatedContent = JSON.stringify(currentJson, null, 2);
-                const encodedContent = btoa(unescape(encodeURIComponent(updatedContent)));
+                const encodedContent = encodeBase64UTF8(updatedContent);
                 
                 // 5. GitHub'a commit et
                 console.log('💾 GitHub\'a kaydediliyor...');
@@ -8167,29 +8427,1902 @@
                 const commitData = await putResponse.json();
                 console.log('✅ GitHub\'a kaydedildi:', commitData.commit.sha);
                 
-                // Başarı mesajı
-                alert(`✅ ${foodUpdated ? 'Yemek güncellendi' : 'Yeni yemek eklendi'}!\n\n` +
-                      `Yemek: ${yemekObj.name}\n` +
-                      `Kategori: ${yemekObj.category}\n` +
-                      `Commit: ${commitData.commit.sha.substring(0, 7)}\n\n` +
-                      'food_list.json başarıyla güncellendi.');
+                // ✅ Başarı mesajı (toast - daha az invasive)
+                showToast(`✅ ${foodUpdated ? 'Yemek güncellendi' : 'Yeni yemek eklendi'}: ${yemekObj.name}`, 'success');
                 
-                // Modal'ı kapat
-                closeAdminFoodModal();
+                // 🔄 foodData'yı ANINDA yenile (GitHub'dan değil, local'de güncelle - daha hızlı)
+                await updateLocalFoodData(yemekObj);
                 
-                // foodData'yı yeniden yükle (güncel veritabanı için)
-                foodData = [];
-                await loadFoodData();
-                
-                // Sayfayı yenile (yeni yemek renderda görünsün)
+                // 🎨 Render'ı ANINDA güncelle (kullanıcı değişikliği görsün)
                 renderWeekContent();
+                
+                // 📋 selectedFoodForAdmin varsa (menü kartından açıldıysa) o kartı da güncelle
+                if (window.selectedFoodForAdmin) {
+                    const { weekIndex, dayIndex, mealIndex, foodIndex } = window.selectedFoodForAdmin;
+                    updateFoodInMenu(weekIndex, dayIndex, mealIndex, foodIndex, yemekObj);
+                }
+                
+                // 🚪 Modal'ı kapat
+                closeAdminFoodModal();
                 
             } catch (error) {
                 console.error('❌ GitHub kaydetme hatası:', error);
                 alert(`❌ Kaydetme başarısız!\n\n${error.message}\n\nLütfen GitHub token\'ınızı kontrol edin.`);
             }
         }
+        
+        /**
+         * 🔄 Local foodData'yı güncelle (GitHub'dan yeniden yüklemeden)
+         * Performance optimization - ANINDA güncelleme için
+         */
+        async function updateLocalFoodData(yemekObj) {
+            try {
+                // foodData'da ara
+                const existingIndex = foodData.findIndex(f => 
+                    normalizeTr(f.name) === normalizeTr(yemekObj.name)
+                );
+                
+                if (existingIndex !== -1) {
+                    // GÜNCELLEME - mevcut yemeği değiştir
+                    foodData[existingIndex] = { ...foodData[existingIndex], ...yemekObj };
+                    console.log('🔄 Local foodData güncellendi:', yemekObj.name);
+                } else {
+                    // YENİ EKLEME - array'e ekle
+                    foodData.push(yemekObj);
+                    console.log('➕ Local foodData\'ya eklendi:', yemekObj.name);
+                }
+                
+                console.log(`✅ Local foodData güncel (${foodData.length} yemek)`);
+            } catch (error) {
+                console.warn('⚠️ Local foodData güncellenemedi, GitHub\'dan yüklenecek:', error);
+                // Fallback: GitHub'dan yeniden yükle
+                foodData = [];
+                await loadFoodData();
+            }
+        }
+        
+        /**
+         * 🎨 Menü kartında yemeği ANINDA güncelle (render beklemeden)
+         * Kullanıcı değişikliği hemen görsün
+         */
+        function updateFoodInMenu(weekIndex, dayIndex, mealIndex, foodIndex, yemekObj) {
+            try {
+                const week = weeks[weekIndex];
+                if (!week) return;
+                
+                const day = week.days[dayIndex];
+                if (!day) return;
+                
+                const meal = (day.meals || day.ogunler || [])[mealIndex];
+                if (!meal) return;
+                
+                const food = (meal.yemekler || [])[foodIndex];
+                if (!food) return;
+                
+                // Yemek bilgilerini güncelle (SADECE makroları - isim değişmez)
+                food.calories = yemekObj.calories || food.calories || 0;
+                food.kalori = yemekObj.calories || food.kalori || 0;
+                food.protein = yemekObj.protein || food.protein || 0;
+                food.carbs = yemekObj.carbs || food.carbs || 0;
+                food.karbonhidrat = yemekObj.carbs || food.karbonhidrat || 0;
+                food.fat = yemekObj.fat || food.fat || 0;
+                food.yag = yemekObj.fat || food.yag || 0;
+                food.category = yemekObj.category || food.category;
+                food.role = yemekObj.role || food.role;
+                
+                // eslesenYemek objesi varsa (foodData'dan geliyorsa) güncelle
+                if (food.eslesenYemek) {
+                    food.eslesenYemek = { ...food.eslesenYemek, ...yemekObj };
+                }
+                
+                console.log('🎨 Menü kartı güncellendi:', {
+                    weekIndex, dayIndex, mealIndex, foodIndex,
+                    yemek: food.foodName || food.name,
+                    yeniMakrolar: {
+                        kalori: food.calories,
+                        protein: food.protein,
+                        karb: food.carbs,
+                        yag: food.fat
+                    }
+                });
+                
+                // Render'ı tetikle (değişiklikler görünsün)
+                renderWeekContent();
+                
+            } catch (error) {
+                console.error('❌ Menü kartı güncellenemedi:', error);
+                // Fallback: Full render yap
+                renderWeekContent();
+            }
+        }
+        
+        // ========================================
+        // 📝 TEMPLATE EDIT MODAL FUNCTIONS
+        // ========================================
+        
+        let currentEditingTemplate = null; // Düzenlenmekte olan şablon
+        
+        /**
+         * Şablon düzenleme modalını aç
+         * @param {string} templateId - Düzenlenecek şablon ID
+         */
+        window.openTemplateEditModal = function(templateId) {
+            const template = dayTemplates.find(t => t.id === templateId);
+            if (!template) {
+                alert('❌ Şablon bulunamadı!');
+                return;
+            }
+            
+            currentEditingTemplate = JSON.parse(JSON.stringify(template)); // Deep copy
+            
+            // Modal'ı göster
+            const modal = document.getElementById('templateEditModal');
+            if (modal) {
+                // Şablon adını göster
+                document.getElementById('templateEditName').textContent = template.name || 'İsimsiz Şablon';
+                
+                // Öğünleri render et
+                renderTemplateEditContent();
+                
+                // 🔑 Token'ı otomatik yükle (varsa)
+                const savedToken = localStorage.getItem('github_token');
+                const tokenInput = document.getElementById('templateGithubToken');
+                if (savedToken && tokenInput) {
+                    tokenInput.value = savedToken;
+                    console.log('✅ GitHub token otomatik yüklendi');
+                }
+                
+                modal.style.display = 'block';
+                console.log('📝 Template edit modal açıldı:', templateId);
+            } else {
+                alert('⚠️ Template edit modal yüklenemedi!');
+            }
+        };
+        
+        /**
+         * Şablon düzenleme modalını kapat
+         */
+        window.closeTemplateEditModal = function() {
+            const modal = document.getElementById('templateEditModal');
+            if (modal) {
+                modal.style.display = 'none';
+                currentEditingTemplate = null;
+            }
+        };
+        
+        /**
+         * 🔑 GitHub Token yönetimi - Şablon modalı için
+         */
+        window.toggleTemplateTokenVisibility = function() {
+            const tokenInput = document.getElementById('templateGithubToken');
+            if (!tokenInput) return;
+            
+            if (tokenInput.type === 'password') {
+                tokenInput.type = 'text';
+            } else {
+                tokenInput.type = 'password';
+            }
+        };
+        
+        window.loadTemplateTokenFromStorage = function() {
+            const token = localStorage.getItem('github_token');
+            const tokenInput = document.getElementById('templateGithubToken');
+            
+            if (token) {
+                tokenInput.value = token;
+                alert('✅ Token localStorage\'dan yüklendi!');
+            } else {
+                alert('⚠️ localStorage\'da github_token bulunamadı!\n\nLütfen token girin ve tarayıcınızda kaydedin.');
+            }
+        };
+        
+        /**
+         * Şablon içeriğini render et (öğünler + yemekler)
+         */
+        function renderTemplateEditContent() {
+            if (!currentEditingTemplate) return;
+            
+            const container = document.getElementById('templateEditContent');
+            if (!container) return;
+            
+            let html = '';
+            
+            // Öğünleri döngüyle işle
+            (currentEditingTemplate.ogunler || []).forEach((ogun, ogunIndex) => {
+                const ogunAdi = ogun.ogunAdi || ogun.mealName || `Öğün ${ogunIndex + 1}`;
+                const yemekler = ogun.yemekler || [];
+                
+                // Öğün toplamlarını hesapla
+                const ogunTotals = yemekler.reduce((acc, y) => {
+                    acc.kalori += y.calories || 0;
+                    acc.protein += y.protein || 0;
+                    acc.karb += y.carbs || 0;
+                    acc.yag += y.fat || 0;
+                    return acc;
+                }, { kalori: 0, protein: 0, karb: 0, yag: 0 });
+                
+                html += `
+                    <div class="template-edit-ogun" style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+                        <h4 style="margin: 0 0 10px 0; color: #2196F3; font-size: 16px;">
+                            🍽️ ${ogunAdi.charAt(0).toUpperCase() + ogunAdi.slice(1)}
+                            <span style="float: right; font-size: 13px; font-weight: normal; color: #666;">
+                                ${Math.round(ogunTotals.kalori)} kcal | 
+                                P: ${Math.round(ogunTotals.protein)}g | 
+                                K: ${Math.round(ogunTotals.karb)}g | 
+                                Y: ${Math.round(ogunTotals.yag)}g
+                            </span>
+                        </h4>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #e3f2fd;">
+                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Yemek Adı</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 80px;">Kalori</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 70px;">Protein</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 70px;">Karb</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 70px;">Yağ</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 180px;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                yemekler.forEach((yemek, yemekIndex) => {
+                    const isFirst = yemekIndex === 0;
+                    const isLast = yemekIndex === yemekler.length - 1;
+                    
+                    html += `
+                        <tr style="background: white;">
+                            <td style="padding: 8px; border: 1px solid #ddd;">${yemek.foodName || 'İsimsiz Yemek'}</td>
+                            <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">${Math.round(yemek.calories || 0)}</td>
+                            <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">${Math.round(yemek.protein || 0)}</td>
+                            <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">${Math.round(yemek.carbs || 0)}</td>
+                            <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">${Math.round(yemek.fat || 0)}</td>
+                            <td style="padding: 6px; text-align: center; border: 1px solid #ddd;">
+                                <button onclick="editTemplateFood(${ogunIndex}, ${yemekIndex})" style="background: #2196F3; color: white; border: none; padding: 4px 8px; margin: 2px; cursor: pointer; border-radius: 4px; font-size: 12px;" title="Düzenle">
+                                    ✏️
+                                </button>
+                                <button onclick="deleteTemplateFood(${ogunIndex}, ${yemekIndex})" style="background: #f44336; color: white; border: none; padding: 4px 8px; margin: 2px; cursor: pointer; border-radius: 4px; font-size: 12px;" title="Sil">
+                                    🗑️
+                                </button>
+                                <button onclick="moveTemplateFoodUp(${ogunIndex}, ${yemekIndex})" ${isFirst ? 'disabled' : ''} style="background: ${isFirst ? '#ccc' : '#ff9800'}; color: white; border: none; padding: 4px 8px; margin: 2px; cursor: ${isFirst ? 'not-allowed' : 'pointer'}; border-radius: 4px; font-size: 12px;" title="Yukarı Taşı">
+                                    ⬆️
+                                </button>
+                                <button onclick="moveTemplateFoodDown(${ogunIndex}, ${yemekIndex})" ${isLast ? 'disabled' : ''} style="background: ${isLast ? '#ccc' : '#ff9800'}; color: white; border: none; padding: 4px 8px; margin: 2px; cursor: ${isLast ? 'not-allowed' : 'pointer'}; border-radius: 4px; font-size: 12px;" title="Aşağı Taşı">
+                                    ⬇️
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // Araya satır ekleme butonu (son satır hariç)
+                    if (!isLast) {
+                        html += `
+                            <tr style="background: #f0f0f0;">
+                                <td colspan="6" style="padding: 4px; text-align: center; border: 1px solid #ddd;">
+                                    <button onclick="insertTemplateFoodBetween(${ogunIndex}, ${yemekIndex})" style="background: #4CAF50; color: white; border: none; padding: 4px 12px; cursor: pointer; border-radius: 4px; font-size: 11px;" title="Araya Yemek Ekle">
+                                        ➕ Araya Ekle
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+            
+            // Gün toplamları
+            const gunTotals = (currentEditingTemplate.ogunler || []).reduce((acc, ogun) => {
+                (ogun.yemekler || []).forEach(y => {
+                    acc.kalori += y.calories || 0;
+                    acc.protein += y.protein || 0;
+                    acc.karb += y.carbs || 0;
+                    acc.yag += y.fat || 0;
+                });
+                return acc;
+            }, { kalori: 0, protein: 0, karb: 0, yag: 0 });
+            
+            // Makro kaloriler (protein: 4 kcal/g, karb: 4 kcal/g, yağ: 9 kcal/g)
+            const proteinKcal = gunTotals.protein * 4;
+            const karbKcal = gunTotals.karb * 4;
+            const yagKcal = gunTotals.yag * 9;
+            const totalMacroKcal = proteinKcal + karbKcal + yagKcal;
+            
+            // Yüzde oranları
+            const proteinPercent = totalMacroKcal > 0 ? ((proteinKcal / totalMacroKcal) * 100).toFixed(1) : 0;
+            const karbPercent = totalMacroKcal > 0 ? ((karbKcal / totalMacroKcal) * 100).toFixed(1) : 0;
+            const yagPercent = totalMacroKcal > 0 ? ((yagKcal / totalMacroKcal) * 100).toFixed(1) : 0;
+            
+            html += `
+                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #856404;">📊 Günlük Toplam</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 14px;">
+                        <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #ff9800;">
+                            <div style="color: #666; font-size: 12px; margin-bottom: 4px;">KALORI</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #333;">${Math.round(gunTotals.kalori)} <span style="font-size: 14px; font-weight: normal;">kcal</span></div>
+                        </div>
+                        <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #f44336;">
+                            <div style="color: #666; font-size: 12px; margin-bottom: 4px;">PROTEIN</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #333;">${Math.round(gunTotals.protein)} <span style="font-size: 14px; font-weight: normal;">g</span></div>
+                            <div style="font-size: 11px; color: #999;">${proteinPercent}% • ${Math.round(proteinKcal)} kcal</div>
+                        </div>
+                        <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #2196F3;">
+                            <div style="color: #666; font-size: 12px; margin-bottom: 4px;">KARBONHIDRAT</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #333;">${Math.round(gunTotals.karb)} <span style="font-size: 14px; font-weight: normal;">g</span></div>
+                            <div style="font-size: 11px; color: #999;">${karbPercent}% • ${Math.round(karbKcal)} kcal</div>
+                        </div>
+                        <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #4CAF50;">
+                            <div style="color: #666; font-size: 12px; margin-bottom: 4px;">YAĞ</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #333;">${Math.round(gunTotals.yag)} <span style="font-size: 14px; font-weight: normal;">g</span></div>
+                            <div style="font-size: 11px; color: #999;">${yagPercent}% • ${Math.round(yagKcal)} kcal</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        /**
+         * Yemek satırını sil
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         */
+        window.deleteTemplateFood = function(ogunIndex, yemekIndex) {
+            if (!currentEditingTemplate) return;
+            
+            const ogun = currentEditingTemplate.ogunler[ogunIndex];
+            if (!ogun || !ogun.yemekler) return;
+            
+            const yemekAdi = ogun.yemekler[yemekIndex]?.foodName || 'Bu yemek';
+            
+            if (confirm(`🗑️ "${yemekAdi}" silinecek. Emin misiniz?`)) {
+                // 1️⃣ Veriyi sil
+                ogun.yemekler.splice(yemekIndex, 1);
+                
+                // 2️⃣ Modal'ı ANINDA güncelle
+                renderTemplateEditContent();
+                
+                // 3️⃣ Bildirim göster
+                showTemplateEditNotification('🗑️ Silindi: ' + yemekAdi, 'success');
+                
+                console.log('🗑️ Yemek silindi:', yemekAdi);
+            }
+        };
+        
+        /**
+         * Yemeği yukarı taşı
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         */
+        window.moveTemplateFoodUp = function(ogunIndex, yemekIndex) {
+            if (!currentEditingTemplate || yemekIndex === 0) return;
+            
+            const ogun = currentEditingTemplate.ogunler[ogunIndex];
+            if (!ogun || !ogun.yemekler) return;
+            
+            // 1️⃣ Array'de yer değiştir
+            const temp = ogun.yemekler[yemekIndex];
+            ogun.yemekler[yemekIndex] = ogun.yemekler[yemekIndex - 1];
+            ogun.yemekler[yemekIndex - 1] = temp;
+            
+            // 2️⃣ Modal'ı ANINDA güncelle
+            renderTemplateEditContent();
+            
+            // 3️⃣ Bildirim göster
+            showTemplateEditNotification('⬆️ Yemek yukarı taşındı', 'success');
+            
+            console.log('⬆️ Yemek yukarı taşındı');
+        };
+        
+        /**
+         * Yemeği aşağı taşı
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         */
+        window.moveTemplateFoodDown = function(ogunIndex, yemekIndex) {
+            if (!currentEditingTemplate) return;
+            
+            const ogun = currentEditingTemplate.ogunler[ogunIndex];
+            if (!ogun || !ogun.yemekler || yemekIndex === ogun.yemekler.length - 1) return;
+            
+            // 1️⃣ Array'de yer değiştir
+            const temp = ogun.yemekler[yemekIndex];
+            ogun.yemekler[yemekIndex] = ogun.yemekler[yemekIndex + 1];
+            ogun.yemekler[yemekIndex + 1] = temp;
+            
+            // 2️⃣ Modal'ı ANINDA güncelle
+            renderTemplateEditContent();
+            
+            // 3️⃣ Bildirim göster
+            showTemplateEditNotification('⬇️ Yemek aşağı taşındı', 'success');
+            
+            console.log('⬇️ Yemek aşağı taşındı');
+        };
+        
+        /**
+         * İki yemek arasına yeni yemek ekle
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} afterIndex - Hangi yemekten sonra eklenecek
+         */
+        window.insertTemplateFoodBetween = function(ogunIndex, afterIndex) {
+            if (!currentEditingTemplate) return;
+            
+            // Yemek ekleme popup'ını aç
+            openFoodSearchPopup(ogunIndex, afterIndex + 1, 'insert');
+        };
+        
+        /**
+         * Yemeği düzenle
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         */
+        // Global state for food editing
+        let currentEditingFoodState = {
+            ogunIndex: null,
+            yemekIndex: null,
+            originalFoodName: null,
+            originalFood: null
+        };
+        
+        /**
+         * Yemek düzenleme modalını aç
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         */
+        window.editTemplateFood = function(ogunIndex, yemekIndex) {
+            if (!currentEditingTemplate) return;
+            
+            const ogun = currentEditingTemplate.ogunler[ogunIndex];
+            if (!ogun) return;
+            
+            const food = ogun.yemekler[yemekIndex];
+            if (!food) return;
+            
+            const foodName = food.foodName || food.name || 'İsimsiz Yemek';
+            
+            // Global state'i kaydet
+            currentEditingFoodState = {
+                ogunIndex,
+                yemekIndex,
+                originalFoodName: foodName,
+                originalFood: JSON.parse(JSON.stringify(food)) // Deep copy
+            };
+            
+            // food_list.json'da bu yemeği bul (zenginleştirilmiş veriler için)
+            const dbFood = findFoodInDatabase(foodName);
+            
+            // Modal başlığını güncelle
+            document.getElementById('editFoodModalTitle').textContent = foodName;
+            
+            // Formları doldur
+            document.getElementById('editFoodName').value = foodName;
+            
+            if (dbFood) {
+                // ✅ VERİTABANINDA VAR - TÜM PARAMETRELERİ DOLDUR
+                console.log('✅ Yemek veritabanında bulundu:', dbFood.name);
+                document.getElementById('editFoodCalories').value = dbFood.calories || 0;
+                document.getElementById('editFoodProtein').value = dbFood.protein || 0;
+                document.getElementById('editFoodCarbs').value = dbFood.carbs || 0;
+                document.getElementById('editFoodFat').value = dbFood.fat || 0;
+                document.getElementById('editFoodCategory').value = dbFood.category || '';
+                document.getElementById('editFoodRole').value = dbFood.role || '';
+                
+                // Öğün tipleri
+                const mealTypes = dbFood.mealType || dbFood.mealTypes || [];
+                document.getElementById('editMealType_breakfast').checked = mealTypes.includes('breakfast');
+                document.getElementById('editMealType_lunch').checked = mealTypes.includes('lunch');
+                document.getElementById('editMealType_dinner').checked = mealTypes.includes('dinner');
+                
+                // Porsiyon
+                document.getElementById('editFoodPortion').value = dbFood.portionMultiplier || dbFood.multiplier || 1;
+                
+                // Diyet tipleri
+                const dietTypes = dbFood.dietTypes || [];
+                document.getElementById('editDietType_ketojenik').checked = dietTypes.includes('ketojenik');
+                document.getElementById('editDietType_akdeniz').checked = dietTypes.includes('akdeniz');
+                document.getElementById('editDietType_vegan').checked = dietTypes.includes('vegan');
+                document.getElementById('editDietType_glutensiz').checked = dietTypes.includes('glutensiz');
+                
+                // Min/Max/Step
+                document.getElementById('editFoodMin').value = dbFood.minQuantity || '';
+                document.getElementById('editFoodMax').value = dbFood.maxQuantity || '';
+                document.getElementById('editFoodStep').value = dbFood.step || '';
+                
+                // Sezon
+                if (dbFood.seasonRange) {
+                    try {
+                        const season = JSON.parse(dbFood.seasonRange);
+                        document.getElementById('editFoodSeasonMin').value = season[0] || '';
+                        document.getElementById('editFoodSeasonMax').value = season[1] || '';
+                    } catch (e) {
+                        document.getElementById('editFoodSeasonMin').value = '';
+                        document.getElementById('editFoodSeasonMax').value = '';
+                    }
+                } else {
+                    document.getElementById('editFoodSeasonMin').value = '';
+                    document.getElementById('editFoodSeasonMax').value = '';
+                }
+                
+                // Özel özellikler
+                document.getElementById('editFoodKeto').checked = dbFood.keto || false;
+                document.getElementById('editFoodLowCarb').checked = dbFood.lowcarb || false;
+                document.getElementById('editFoodPortionFixed').checked = dbFood.portionFixed || false;
+                document.getElementById('editFoodFillerLunch').checked = dbFood.fillerLunch || false;
+                document.getElementById('editFoodFillerDinner').checked = dbFood.fillerDinner || false;
+                document.getElementById('editFoodReversedSeason').checked = dbFood.isReversedSeason || false;
+                
+                // Etiketler
+                document.getElementById('editFoodTags').value = (dbFood.tags || []).join(', ');
+                document.getElementById('editFoodCompat').value = (dbFood.compatibilityTags || []).join(', ');
+                document.getElementById('editFoodIncompat').value = (dbFood.incompatibilityTags || []).join(', ');
+                
+                // Notlar
+                document.getElementById('editFoodNotes').value = dbFood.notes || '';
+            } else {
+                // ⚠️ VERİTABANINDA YOK - Şablondaki değerleri doldur
+                console.log('⚠️ Yemek veritabanında bulunamadı, şablon değerleri kullanılıyor');
+                document.getElementById('editFoodCalories').value = food.calories || food.kalori || 0;
+                document.getElementById('editFoodProtein').value = food.protein || 0;
+                document.getElementById('editFoodCarbs').value = food.carbs || food.karbonhidrat || 0;
+                document.getElementById('editFoodFat').value = food.fat || food.yag || 0;
+                document.getElementById('editFoodCategory').value = food.category || '';
+                document.getElementById('editFoodRole').value = food.role || '';
+                
+                // Diğer tüm alanları sıfırla
+                document.getElementById('editMealType_breakfast').checked = false;
+                document.getElementById('editMealType_lunch').checked = false;
+                document.getElementById('editMealType_dinner').checked = false;
+                document.getElementById('editFoodPortion').value = 1;
+                document.getElementById('editDietType_ketojenik').checked = false;
+                document.getElementById('editDietType_akdeniz').checked = false;
+                document.getElementById('editDietType_vegan').checked = false;
+                document.getElementById('editDietType_glutensiz').checked = false;
+                document.getElementById('editFoodMin').value = '';
+                document.getElementById('editFoodMax').value = '';
+                document.getElementById('editFoodStep').value = '';
+                document.getElementById('editFoodSeasonMin').value = '';
+                document.getElementById('editFoodSeasonMax').value = '';
+                document.getElementById('editFoodKeto').checked = false;
+                document.getElementById('editFoodLowCarb').checked = false;
+                document.getElementById('editFoodPortionFixed').checked = false;
+                document.getElementById('editFoodFillerLunch').checked = false;
+                document.getElementById('editFoodFillerDinner').checked = false;
+                document.getElementById('editFoodReversedSeason').checked = false;
+                document.getElementById('editFoodTags').value = '';
+                document.getElementById('editFoodCompat').value = '';
+                document.getElementById('editFoodIncompat').value = '';
+                document.getElementById('editFoodNotes').value = '';
+            }
+            
+            // food_list.json kaydetme checkbox'ı varsayılan kapalı
+            document.getElementById('saveFoodToDatabase').checked = false;
+            
+            // Modalı göster
+            document.getElementById('templateFoodEditModal').style.display = 'block';
+        };
+        
+        /**
+         * Yemek düzenleme modalını kapat
+         */
+        window.closeTemplateFoodEditModal = function() {
+            document.getElementById('templateFoodEditModal').style.display = 'none';
+            currentEditingFoodState = { ogunIndex: null, yemekIndex: null, originalFoodName: null, originalFood: null };
+            
+            // Arama dropdown'unu kapat
+            document.getElementById('editFoodSearchResults').style.display = 'none';
+        };
+        
+        /**
+         * Yemek arama (akıllı search - dropdown)
+         * @param {string} query - Arama terimi
+         */
+        window.searchFoodForEdit = function(query) {
+            const resultsContainer = document.getElementById('editFoodSearchResults');
+            if (!resultsContainer) return;
+            
+            // Boş arama - dropdown'u gizle
+            if (!query || query.trim().length < 2) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+            
+            // Fuzzy search (normalizeTr kullanarak)
+            const normalizedQuery = normalizeTr(query);
+            const tokens = tokenize(query);
+            
+            let matches = foodData.filter(food => {
+                const normalizedName = normalizeTr(food.name);
+                
+                // 1. Tam eşleşme
+                if (normalizedName === normalizedQuery) return true;
+                
+                // 2. İçeriyor mu?
+                if (normalizedName.includes(normalizedQuery)) return true;
+                
+                // 3. Token bazlı eşleşme
+                const foodTokens = tokenize(food.name);
+                return tokens.some(t => foodTokens.some(ft => ft.includes(t) || t.includes(ft)));
+            });
+            
+            // İlk 10 sonucu göster
+            matches = matches.slice(0, 10);
+            
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = '<div style="padding: 12px; text-align: center; color: #999;">Sonuç bulunamadı</div>';
+                resultsContainer.style.display = 'block';
+                return;
+            }
+            
+            // Sonuçları render et
+            let html = '';
+            matches.forEach(food => {
+                html += `
+                    <div onclick="selectFoodForEdit('${food.name.replace(/'/g, "\\'")}')" style="padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${food.name}</div>
+                        <div style="font-size: 12px; color: #666;">
+                            ${Math.round(food.calories || 0)} kcal | 
+                            P: ${Math.round(food.protein || 0)}g | 
+                            K: ${Math.round(food.carbs || 0)}g | 
+                            Y: ${Math.round(food.fat || 0)}g
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+            resultsContainer.style.display = 'block';
+        };
+        
+        /**
+         * Arama sonucundan yemek seç
+         * @param {string} foodName - Seçilen yemek adı
+         */
+        window.selectFoodForEdit = function(foodName) {
+            // Formu yeni yemeğin bilgileriyle doldur
+            const dbFood = findFoodInDatabase(foodName);
+            
+            if (dbFood) {
+                document.getElementById('editFoodName').value = dbFood.name;
+                document.getElementById('editFoodCalories').value = dbFood.calories || 0;
+                document.getElementById('editFoodProtein').value = dbFood.protein || 0;
+                document.getElementById('editFoodCarbs').value = dbFood.carbs || 0;
+                document.getElementById('editFoodFat').value = dbFood.fat || 0;
+                document.getElementById('editFoodCategory').value = dbFood.category || '';
+                document.getElementById('editFoodRole').value = dbFood.role || '';
+                
+                // Öğün tipleri
+                const mealTypes = dbFood.mealType || dbFood.mealTypes || [];
+                document.getElementById('editMealType_breakfast').checked = mealTypes.includes('breakfast');
+                document.getElementById('editMealType_lunch').checked = mealTypes.includes('lunch');
+                document.getElementById('editMealType_dinner').checked = mealTypes.includes('dinner');
+                
+                // Porsiyon
+                document.getElementById('editFoodPortion').value = dbFood.portionMultiplier || dbFood.multiplier || 1;
+                
+                // Diyet tipleri
+                const dietTypes = dbFood.dietTypes || [];
+                document.getElementById('editDietType_ketojenik').checked = dietTypes.includes('ketojenik');
+                document.getElementById('editDietType_akdeniz').checked = dietTypes.includes('akdeniz');
+                document.getElementById('editDietType_vegan').checked = dietTypes.includes('vegan');
+                document.getElementById('editDietType_glutensiz').checked = dietTypes.includes('glutensiz');
+                
+                // Min/Max/Step
+                document.getElementById('editFoodMin').value = dbFood.minQuantity || '';
+                document.getElementById('editFoodMax').value = dbFood.maxQuantity || '';
+                document.getElementById('editFoodStep').value = dbFood.step || '';
+                
+                // Sezon
+                if (dbFood.seasonRange) {
+                    try {
+                        const season = JSON.parse(dbFood.seasonRange);
+                        document.getElementById('editFoodSeasonMin').value = season[0] || '';
+                        document.getElementById('editFoodSeasonMax').value = season[1] || '';
+                    } catch (e) {
+                        document.getElementById('editFoodSeasonMin').value = '';
+                        document.getElementById('editFoodSeasonMax').value = '';
+                    }
+                } else {
+                    document.getElementById('editFoodSeasonMin').value = '';
+                    document.getElementById('editFoodSeasonMax').value = '';
+                }
+                
+                // Özel özellikler
+                document.getElementById('editFoodKeto').checked = dbFood.keto || false;
+                document.getElementById('editFoodLowCarb').checked = dbFood.lowcarb || false;
+                document.getElementById('editFoodPortionFixed').checked = dbFood.portionFixed || false;
+                document.getElementById('editFoodFillerLunch').checked = dbFood.fillerLunch || false;
+                document.getElementById('editFoodFillerDinner').checked = dbFood.fillerDinner || false;
+                document.getElementById('editFoodReversedSeason').checked = dbFood.isReversedSeason || false;
+                
+                // Etiketler
+                document.getElementById('editFoodTags').value = (dbFood.tags || []).join(', ');
+                document.getElementById('editFoodCompat').value = (dbFood.compatibilityTags || []).join(', ');
+                document.getElementById('editFoodIncompat').value = (dbFood.incompatibilityTags || []).join(', ');
+                
+                // Notlar
+                document.getElementById('editFoodNotes').value = dbFood.notes || '';
+            }
+            
+            // Dropdown'u kapat
+            document.getElementById('editFoodSearchResults').style.display = 'none';
+        };
+        
+        /**
+         * Düzenlenen yemeği kaydet
+         * 3 SENARYO:
+         * A) Aynı yemek + parametre değişikliği → food_list.json + şablon güncelle
+         * B) Farklı yemek seçimi → Sadece şablonu değiştir
+         * C) Farklı yemek + parametre değişikliği → food_list.json + şablon güncelle
+         */
+        window.saveEditedTemplateFood = async function() {
+            const { ogunIndex, yemekIndex, originalFoodName, originalFood } = currentEditingFoodState;
+            
+            if (ogunIndex === null || yemekIndex === null) return;
+            
+            // Formdan TÜM değerleri al
+            const newFoodName = document.getElementById('editFoodName').value.trim();
+            const newCalories = parseFloat(document.getElementById('editFoodCalories').value) || 0;
+            const newProtein = parseFloat(document.getElementById('editFoodProtein').value) || 0;
+            const newCarbs = parseFloat(document.getElementById('editFoodCarbs').value) || 0;
+            const newFat = parseFloat(document.getElementById('editFoodFat').value) || 0;
+            const newCategory = document.getElementById('editFoodCategory').value.trim();
+            const newRole = document.getElementById('editFoodRole').value.trim();
+            
+            // Öğün tipleri
+            const newMealTypes = [];
+            if (document.getElementById('editMealType_breakfast').checked) newMealTypes.push('breakfast');
+            if (document.getElementById('editMealType_lunch').checked) newMealTypes.push('lunch');
+            if (document.getElementById('editMealType_dinner').checked) newMealTypes.push('dinner');
+            
+            // Porsiyon
+            const newPortion = parseFloat(document.getElementById('editFoodPortion').value) || 1;
+            
+            // Diyet tipleri
+            const newDietTypes = [];
+            if (document.getElementById('editDietType_ketojenik').checked) newDietTypes.push('ketojenik');
+            if (document.getElementById('editDietType_akdeniz').checked) newDietTypes.push('akdeniz');
+            if (document.getElementById('editDietType_vegan').checked) newDietTypes.push('vegan');
+            if (document.getElementById('editDietType_glutensiz').checked) newDietTypes.push('glutensiz');
+            
+            // Min/Max/Step
+            const newMin = document.getElementById('editFoodMin').value.trim();
+            const newMax = document.getElementById('editFoodMax').value.trim();
+            const newStep = document.getElementById('editFoodStep').value.trim();
+            
+            // Sezon
+            const newSeasonMin = document.getElementById('editFoodSeasonMin').value.trim();
+            const newSeasonMax = document.getElementById('editFoodSeasonMax').value.trim();
+            const newSeasonRange = (newSeasonMin && newSeasonMax) ? JSON.stringify([parseInt(newSeasonMin), parseInt(newSeasonMax)]) : '';
+            
+            // Özel özellikler
+            const newKeto = document.getElementById('editFoodKeto').checked;
+            const newLowCarb = document.getElementById('editFoodLowCarb').checked;
+            const newPortionFixed = document.getElementById('editFoodPortionFixed').checked;
+            const newFillerLunch = document.getElementById('editFoodFillerLunch').checked;
+            const newFillerDinner = document.getElementById('editFoodFillerDinner').checked;
+            const newReversedSeason = document.getElementById('editFoodReversedSeason').checked;
+            
+            // Etiketler
+            const newTags = document.getElementById('editFoodTags').value.split(',').map(t => t.trim()).filter(t => t);
+            const newCompat = document.getElementById('editFoodCompat').value.split(',').map(t => t.trim()).filter(t => t);
+            const newIncompat = document.getElementById('editFoodIncompat').value.split(',').map(t => t.trim()).filter(t => t);
+            
+            // Notlar
+            const newNotes = document.getElementById('editFoodNotes').value.trim();
+            
+            const saveToDB = document.getElementById('saveFoodToDatabase').checked;
+            
+            if (!newFoodName) {
+                alert('⚠️ Yemek adı boş olamaz!');
+                return;
+            }
+            
+            // İsim normalizasyonu
+            const originalNormalized = normalizeTr(originalFoodName);
+            const newNormalized = normalizeTr(newFoodName);
+            const isSameFood = originalNormalized === newNormalized;
+            
+            // Parametre değişikliği var mı?
+            const hasParameterChange = 
+                newCalories !== (originalFood.calories || originalFood.kalori || 0) ||
+                newProtein !== (originalFood.protein || 0) ||
+                newCarbs !== (originalFood.carbs || originalFood.karbonhidrat || 0) ||
+                newFat !== (originalFood.fat || originalFood.yag || 0);
+            
+            console.log('🔍 Kaydetme senaryosu:', {
+                isSameFood,
+                hasParameterChange,
+                saveToDB,
+                originalFoodName,
+                newFoodName
+            });
+            
+            // Yeni yemek objesi (TÜM parametrelerle)
+            const updatedFood = {
+                foodName: newFoodName,
+                name: newFoodName,
+                calories: newCalories,
+                kalori: newCalories,
+                protein: newProtein,
+                carbs: newCarbs,
+                karbonhidrat: newCarbs,
+                fat: newFat,
+                yag: newFat,
+                category: newCategory,
+                role: newRole,
+                mealType: newMealTypes,
+                mealTypes: newMealTypes,
+                portionMultiplier: newPortion,
+                multiplier: newPortion,
+                dietTypes: newDietTypes,
+                minQuantity: newMin,
+                maxQuantity: newMax,
+                step: newStep,
+                seasonRange: newSeasonRange,
+                keto: newKeto,
+                lowcarb: newLowCarb,
+                portionFixed: newPortionFixed,
+                fillerLunch: newFillerLunch,
+                fillerDinner: newFillerDinner,
+                isReversedSeason: newReversedSeason,
+                tags: newTags,
+                compatibilityTags: newCompat,
+                incompatibilityTags: newIncompat,
+                notes: newNotes
+            };
+            
+            // 📝 Şablonu güncelle (HER ZAMAN)
+            currentEditingTemplate.ogunler[ogunIndex].yemekler[yemekIndex] = updatedFood;
+            
+            // 🔄 ANINDA modal'ı güncelle (kullanıcı değişikliği görsün)
+            renderTemplateEditContent();
+            
+            // 🔔 Bildirim göster (modal içinde)
+            showTemplateEditNotification('✏️ Yemek güncellendi!', 'success');
+            
+            // Dinamik makro hesaplaması
+            recalculateTemplateMacros();
+            
+            // 📊 SENARYO KONTROLÜ
+            if (isSameFood && hasParameterChange && saveToDB) {
+                // SENARYO A: Aynı yemek + parametre değişikliği + DB kayıt istendi
+                console.log('✅ SENARYO A: food_list.json + şablon güncelleniyor');
+                await updateFoodInDatabase(newFoodName, updatedFood);
+                showToast('✅ Yemek ve food_list.json güncellendi!');
+            } else if (!isSameFood && !hasParameterChange) {
+                // SENARYO B: Farklı yemek seçimi (parametre değişikliği yok)
+                console.log('✅ SENARYO B: Sadece şablon güncellendi');
+                showToast('✅ Şablonda yemek değiştirildi!');
+            } else if (!isSameFood && hasParameterChange && saveToDB) {
+                // SENARYO C: Farklı yemek + parametre değişikliği + DB kayıt istendi
+                console.log('✅ SENARYO C: Yeni yemek parametreleri food_list.json\'a kaydediliyor');
+                await updateFoodInDatabase(newFoodName, updatedFood);
+                showToast('✅ Yeni yemek food_list.json\'a kaydedildi!');
+            } else {
+                // Diğer durumlar: Sadece şablon güncellendi
+                console.log('✅ Sadece şablon güncellendi');
+                showToast('✅ Şablonda değişiklik kaydedildi!');
+            }
+            
+            // Modalı kapat
+            closeTemplateFoodEditModal();
+        };
+        
+        /**
+         * food_list.json'da yemek güncelle (GitHub API)
+         * @param {string} foodName - Yemek adı
+         * @param {object} foodData - Yemek parametreleri
+         */
+        async function updateFoodInDatabase(foodName, updatedFoodData) {
+            try {
+                console.log('📝 food_list.json güncelleme başladı:', foodName);
+                
+                // GitHub token kontrolü
+                const GITHUB_TOKEN = localStorage.getItem('github_token');
+                if (!GITHUB_TOKEN) {
+                    throw new Error('GitHub token bulunamadı! Lütfen Admin Modal > Tab 6\'dan token girin.');
+                }
+                
+                const REPO_OWNER = 'mustafasacar35';
+                const REPO_NAME = 'lipodem-takip-paneli';
+                const FILE_PATH = 'food_list.json';
+                const BRANCH = 'main';
+                
+                // 1️⃣ Mevcut food_list.json'u GitHub'dan çek
+                const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`;
+                const getResponse = await fetch(getUrl, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!getResponse.ok) {
+                    throw new Error(`food_list.json okunamadı: ${getResponse.status}`);
+                }
+                
+                const fileData = await getResponse.json();
+                const sha = fileData.sha;
+                
+                // 2️⃣ Base64'ten decode et ve parse et
+                const decoded = decodeBase64UTF8(fileData.content.replace(/\n/g, ''));
+                const foodList = JSON.parse(decoded);
+                
+                console.log('✅ food_list.json yüklendi, kategoriler:', foodList.categories.length);
+                
+                // 3️⃣ Yemeği bul ve güncelle (categories array içinde items)
+                let foodFound = false;
+                const normalizedSearchName = normalizeTr(foodName);
+                
+                for (const category of foodList.categories) {
+                    if (!category.items || !Array.isArray(category.items)) continue;
+                    
+                    const foodIndex = category.items.findIndex(f => 
+                        normalizeTr(f.name) === normalizedSearchName
+                    );
+                    
+                    if (foodIndex !== -1) {
+                        // Yemek bulundu - tüm parametreleri güncelle
+                        const existingFood = category.items[foodIndex];
+                        
+                        category.items[foodIndex] = {
+                            ...existingFood,
+                            name: updatedFoodData.name,
+                            calories: updatedFoodData.calories,
+                            protein: updatedFoodData.protein,
+                            carbs: updatedFoodData.carbs,
+                            fat: updatedFoodData.fat,
+                            category: updatedFoodData.category,
+                            role: updatedFoodData.role,
+                            keto: updatedFoodData.keto,
+                            lowcarb: updatedFoodData.lowcarb,
+                            portionFixed: updatedFoodData.portionFixed,
+                            fillerLunch: updatedFoodData.fillerLunch,
+                            fillerDinner: updatedFoodData.fillerDinner
+                        };
+                        
+                        foodFound = true;
+                        console.log(`✅ Yemek güncellendi: "${foodName}" (Kategori: ${category.name})`);
+                        break;
+                    }
+                }
+                
+                if (!foodFound) {
+                    console.warn(`⚠️ Yemek food_list.json'da bulunamadı: "${foodName}"`);
+                    console.warn('💡 Yemek eklemek için Admin Modal > Tab 5\'i kullanın');
+                    return; // Yemek yoksa ekleme yapma (güvenlik)
+                }
+                
+                // 4️⃣ JSON'u Base64'e çevir (✅ TÜRKÇE KARAKTER KORUYAN)
+                const updatedContent = JSON.stringify(foodList, null, 2);
+                const contentBase64 = encodeBase64UTF8(updatedContent);
+                
+                // 5️⃣ GitHub'a commit et
+                const putUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+                const commitMessage = `🔄 Yemek güncellendi: ${foodName} (Şablon düzenleme)`;
+                
+                const putResponse = await fetch(putUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: commitMessage,
+                        content: contentBase64,
+                        sha: sha,
+                        branch: BRANCH
+                    })
+                });
+                
+                if (!putResponse.ok) {
+                    const errorData = await putResponse.json();
+                    throw new Error(`GitHub commit hatası: ${errorData.message}`);
+                }
+                
+                const result = await putResponse.json();
+                console.log('✅ food_list.json GitHub\'a kaydedildi:', result.commit.sha.slice(0, 7));
+                
+                // 6️⃣ Lokal foodData cache'ini güncelle (sayfa yenilenmeden)
+                const foodInCache = foodData.find(f => normalizeTr(f.name) === normalizedSearchName);
+                if (foodInCache) {
+                    Object.assign(foodInCache, {
+                        name: foodData.name,
+                        calories: foodData.calories,
+                        protein: foodData.protein,
+                        carbs: foodData.carbs,
+                        fat: foodData.fat,
+                        category: foodData.category,
+                        role: foodData.role,
+                        keto: foodData.keto,
+                        lowcarb: foodData.lowcarb,
+                        portionFixed: foodData.portionFixed,
+                        fillerLunch: foodData.fillerLunch,
+                        fillerDinner: foodData.fillerDinner
+                    });
+                    console.log('✅ Lokal cache güncellendi');
+                }
+                
+            } catch (error) {
+                console.error('❌ food_list.json güncellenemedi:', error);
+                alert(`⚠️ food_list.json güncellenemedi:\n${error.message}\n\nŞablon değişikliği kaydedildi ama veritabanı güncellenmedi.`);
+                throw error;
+            }
+        }
+        
+        /**
+         * Şablon makrolarını yeniden hesapla
+         * currentEditingTemplate içindeki tüm öğünlerin yemeklerini toplayarak
+         * toplam kalori, protein, karbonhidrat, yağ hesaplar
+         */
+        function recalculateTemplateMacros() {
+            if (!currentEditingTemplate || !currentEditingTemplate.ogunler) return;
+            
+            let totalCalories = 0;
+            let totalProtein = 0;
+            let totalCarbs = 0;
+            let totalFat = 0;
+            
+            currentEditingTemplate.ogunler.forEach(ogun => {
+                if (ogun.yemekler && Array.isArray(ogun.yemekler)) {
+                    ogun.yemekler.forEach(yemek => {
+                        totalCalories += parseFloat(yemek.calories || yemek.kalori || 0);
+                        totalProtein += parseFloat(yemek.protein || 0);
+                        totalCarbs += parseFloat(yemek.carbs || yemek.karbonhidrat || 0);
+                        totalFat += parseFloat(yemek.fat || yemek.yag || 0);
+                    });
+                }
+            });
+            
+            // Şablon objesine kaydet
+            currentEditingTemplate.totalCalories = Math.round(totalCalories);
+            currentEditingTemplate.totalProtein = Math.round(totalProtein);
+            currentEditingTemplate.totalCarbs = Math.round(totalCarbs);
+            currentEditingTemplate.totalFat = Math.round(totalFat);
+            
+            console.log('📊 Makrolar yeniden hesaplandı:', {
+                kalori: currentEditingTemplate.totalCalories,
+                protein: currentEditingTemplate.totalProtein,
+                karb: currentEditingTemplate.totalCarbs,
+                yag: currentEditingTemplate.totalFat
+            });
+        }
+        
+        // ========================================
+        // 🗑️ ESKİ YOL: Food Search Popup (Deprecated - Yeni sistem: templateFoodEditModal)
+        // ========================================
+        
+        // Food search popup state
+        let foodSearchState = {
+            ogunIndex: null,
+            yemekIndex: null,
+            mode: null // 'edit' veya 'insert'
+        };
+        
+        /**
+         * Yemek arama popup'ını aç
+         * @param {number} ogunIndex - Öğün indexi
+         * @param {number} yemekIndex - Yemek indexi
+         * @param {string} mode - 'edit' veya 'insert'
+         */
+        function openFoodSearchPopup(ogunIndex, yemekIndex, mode) {
+            foodSearchState = { ogunIndex, yemekIndex, mode };
+            
+            // Popup'ı göster
+            const popup = document.getElementById('foodSearchPopup');
+            if (popup) {
+                // Search input'u temizle
+                document.getElementById('templateFoodSearch').value = '';
+                document.getElementById('templateFoodSearchResults').innerHTML = '<p style="color: #666; text-align: center;">Yemek aramak için yukarıya yazın...</p>';
+                
+                popup.style.display = 'block';
+                
+                // Auto-focus search input
+                setTimeout(() => {
+                    document.getElementById('templateFoodSearch').focus();
+                }, 100);
+            }
+        }
+        
+        /**
+         * Yemek arama popup'ını kapat
+         */
+        window.closeFoodSearchPopup = function() {
+            const popup = document.getElementById('foodSearchPopup');
+            if (popup) {
+                popup.style.display = 'none';
+                foodSearchState = { ogunIndex: null, yemekIndex: null, mode: null };
+            }
+        };
+        
+        /**
+         * Yemek ara (fuzzy search)
+         * @param {string} query - Arama terimi
+         */
+        window.searchTemplateFoods = function(query) {
+            const resultsContainer = document.getElementById('templateFoodSearchResults');
+            if (!resultsContainer) return;
+            
+            // Boş arama
+            if (!query || query.trim().length < 2) {
+                resultsContainer.innerHTML = '<p style="color: #666; text-align: center;">En az 2 karakter girin...</p>';
+                return;
+            }
+            
+            // foodData yüklenmemişse
+            if (!foodData || foodData.length === 0) {
+                resultsContainer.innerHTML = '<p style="color: #f44336; text-align: center;">⚠️ Yemek veritabanı yüklenmedi!</p>';
+                return;
+            }
+            
+            const queryNorm = normalizeTr(query.trim());
+            const queryTokens = tokenize(query);
+            
+            // Fuzzy search ile eşleşenleri bul
+            let matches = [];
+            
+            foodData.forEach(food => {
+                const foodNorm = normalizeTr(food.name);
+                const foodTokens = tokenize(food.name);
+                
+                let score = 0;
+                
+                // 1. Tam eşleşme
+                if (foodNorm === queryNorm) {
+                    score = 1000;
+                }
+                // 2. Substring eşleşme
+                else if (foodNorm.includes(queryNorm) || queryNorm.includes(foodNorm)) {
+                    score = 900;
+                }
+                // 3. Token eşleşme
+                else {
+                    const setFood = new Set(foodTokens);
+                    let overlap = 0;
+                    
+                    queryTokens.forEach(t => {
+                        if (setFood.has(t)) overlap++;
+                        else {
+                            // Partial token match (başlangıç eşleşmesi)
+                            for (const ft of foodTokens) {
+                                if (ft.startsWith(t) || t.startsWith(ft)) {
+                                    overlap += 0.5;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                    
+                    if (overlap > 0) {
+                        score = overlap * 100;
+                    }
+                }
+                
+                if (score > 0) {
+                    matches.push({ food, score });
+                }
+            });
+            
+            // Skorlara göre sırala
+            matches.sort((a, b) => b.score - a.score);
+            
+            // İlk 20 sonucu göster
+            matches = matches.slice(0, 20);
+            
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = '<p style="color: #ff9800; text-align: center;">❌ Eşleşen yemek bulunamadı</p>';
+                return;
+            }
+            
+            // Sonuçları render et
+            let html = '<div style="max-height: 400px; overflow-y: auto;">';
+            
+            matches.forEach(({ food, score }) => {
+                html += `
+                    <div onclick="selectFoodFromSearch('${food.name.replace(/'/g, "\\'")}') "style="padding: 10px; border: 1px solid #ddd; margin-bottom: 8px; cursor: pointer; border-radius: 6px; background: white; transition: all 0.2s;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='white'">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${food.name}</div>
+                        <div style="font-size: 12px; color: #666; display: flex; gap: 15px;">
+                            <span>🔥 ${Math.round(food.calories || 0)} kcal</span>
+                            <span>🥩 P: ${Math.round(food.protein || 0)}g</span>
+                            <span>🍞 K: ${Math.round(food.carbs || 0)}g</span>
+                            <span>🧈 Y: ${Math.round(food.fat || 0)}g</span>
+                        </div>
+                        ${food.category ? `<div style="font-size: 11px; color: #999; margin-top: 4px;">📂 ${food.category}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            resultsContainer.innerHTML = html;
+        };
+        
+        /**
+         * Arama sonuçlarından yemek seç
+         * @param {string} foodName - Seçilen yemek adı
+         */
+        window.selectFoodFromSearch = function(foodName) {
+            if (!currentEditingTemplate || foodSearchState.ogunIndex === null) return;
+            
+            // Yemeği foodData'dan bul
+            const food = foodData.find(f => f.name === foodName);
+            if (!food) {
+                alert('❌ Yemek bulunamadı!');
+                return;
+            }
+            
+            const { ogunIndex, yemekIndex, mode } = foodSearchState;
+            const ogun = currentEditingTemplate.ogunler[ogunIndex];
+            
+            if (!ogun || !ogun.yemekler) {
+                alert('❌ Öğün bulunamadı!');
+                return;
+            }
+            
+            // Yeni yemek objesi oluştur
+            const newFood = {
+                foodName: food.name,
+                calories: food.calories || 0,
+                protein: food.protein || 0,
+                carbs: food.carbs || 0,
+                fat: food.fat || 0,
+                eslesenYemek: food // Orijinal food objesi
+            };
+            
+            if (mode === 'edit') {
+                // Mevcut yemeği değiştir
+                ogun.yemekler[yemekIndex] = newFood;
+                console.log('✏️ Yemek güncellendi:', foodName);
+                
+                // 🔔 Bildirim göster
+                showTemplateEditNotification('✏️ Yemek güncellendi: ' + foodName, 'success');
+            } else if (mode === 'insert') {
+                // Belirtilen pozisyona ekle
+                ogun.yemekler.splice(yemekIndex, 0, newFood);
+                console.log('➕ Yemek eklendi:', foodName, 'Pozisyon:', yemekIndex);
+                
+                // 🔔 Bildirim göster
+                showTemplateEditNotification('➕ Yemek eklendi: ' + foodName, 'success');
+            }
+            
+            // 🔄 Popup'ı kapat ve modal'ı ANINDA güncelle
+            closeFoodSearchPopup();
+            renderTemplateEditContent();
+        };
+        
+        /**
+         * Kaydet modalını aç
+         */
+        window.openSaveTemplateModal = function() {
+            const modal = document.getElementById('saveTemplateModal');
+            if (modal) {
+                // Mevcut şablon adını göster
+                const currentName = currentEditingTemplate?.name || 'İsimsiz Şablon';
+                document.getElementById('saveTemplateCurrentName').textContent = currentName;
+                
+                // Otomatik şablon adı öner (yeni şablon için)
+                const nextNumber = getNextTemplateNumber();
+                document.getElementById('saveTemplateNewName').value = `Menü ${nextNumber}`;
+                
+                // Default: Üzerine yaz
+                document.getElementById('saveMode_overwrite').checked = true;
+                document.getElementById('newNameContainer').style.display = 'none';
+                
+                modal.style.display = 'block';
+            }
+        };
+        
+        /**
+         * Kaydet modalını kapat
+         */
+        window.closeSaveTemplateModal = function() {
+            const modal = document.getElementById('saveTemplateModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        /**
+         * Save mode değiştiğinde (radio button)
+         */
+        window.toggleSaveMode = function() {
+            const overwriteMode = document.getElementById('saveMode_overwrite').checked;
+            const newNameContainer = document.getElementById('newNameContainer');
+            
+            if (newNameContainer) {
+                newNameContainer.style.display = overwriteMode ? 'none' : 'block';
+            }
+        };
+        
+        /**
+         * Sonraki şablon numarasını bul
+         * @returns {number} - Sonraki şablon numarası
+         */
+        function getNextTemplateNumber() {
+            if (!dayTemplates || dayTemplates.length === 0) return 1;
+            
+            // Mevcut şablon adlarından en büyük numarayı bul
+            let maxNumber = 0;
+            
+            dayTemplates.forEach(template => {
+                const name = template.name || '';
+                // "Menü 21", "Menu 5" gibi formatları yakala
+                const match = name.match(/(?:Menü|Menu)\s*(\d+)/i);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNumber) maxNumber = num;
+                }
+            });
+            
+            return maxNumber + 1;
+        }
+        
+        /**
+         * Şablonu kaydet (GitHub'a yaz)
+         */
+        window.saveTemplate = async function() {
+            if (!currentEditingTemplate) {
+                alert('❌ Düzenlenen şablon bulunamadı!');
+                return;
+            }
+            
+            const overwriteMode = document.getElementById('saveMode_overwrite').checked;
+            let templateName;
+            let isNewTemplate = false;
+            
+            if (overwriteMode) {
+                // Üzerine yaz
+                templateName = currentEditingTemplate.name;
+            } else {
+                // Yeni şablon
+                templateName = document.getElementById('saveTemplateNewName').value.trim();
+                
+                if (!templateName) {
+                    alert('⚠️ Lütfen yeni şablon adını girin!');
+                    return;
+                }
+                
+                // Yeni ID oluştur
+                currentEditingTemplate.id = `day_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                currentEditingTemplate.name = templateName;
+                isNewTemplate = true;
+            }
+            
+            // Total macros'u güncelle
+            const gunTotals = (currentEditingTemplate.ogunler || []).reduce((acc, ogun) => {
+                (ogun.yemekler || []).forEach(y => {
+                    acc.kalori += y.calories || 0;
+                    acc.protein += y.protein || 0;
+                    acc.karb += y.carbs || 0;
+                    acc.yag += y.fat || 0;
+                });
+                return acc;
+            }, { kalori: 0, protein: 0, karb: 0, yag: 0 });
+            
+            currentEditingTemplate.totalCalories = gunTotals.kalori;
+            currentEditingTemplate.totalMacros = gunTotals;
+            
+            console.log('💾 Şablon GitHub\'a kaydediliyor:', currentEditingTemplate);
+            
+            // GitHub'a kaydet
+            try {
+                await saveTemplateToGitHub(currentEditingTemplate, isNewTemplate);
+                
+                // ✅ Başarı mesajı
+                showToast(`✅ Şablon kaydedildi: ${templateName}`, 'success');
+                
+                // 📊 Şablonları yeniden yükle
+                await loadDayTemplates();
+                
+                // 🔄 Haftalık içeriği yenile (render'daki değişiklikleri göster)
+                renderWeekContent();
+                
+                // 🚪 Modal'ları kapat
+                closeSaveTemplateModal();
+                closeTemplateEditModal();
+                
+                // 📋 Template listesini yenile
+                renderTemplateTable(dayTemplates, new Set());
+                
+                console.log('✅ Şablon başarıyla kaydedildi ve render güncellendi');
+                
+            } catch (error) {
+                console.error('❌ GitHub kaydetme hatası:', error);
+                alert(`❌ Kaydetme başarısız!\n\n${error.message}\n\nLütfen GitHub token'ınızı kontrol edin.`);
+            }
+        };
+        
+        /**
+         * Şablonu GitHub'a kaydet (gun-sablonlari.json)
+         * @param {Object} template - Kaydedilecek şablon
+         * @param {boolean} isNew - Yeni şablon mu?
+         */
+        async function saveTemplateToGitHub(template, isNew) {
+            const REPO_OWNER = 'mustafasacar35';
+            const REPO_NAME = 'lipodem-takip-paneli';
+            const FILE_PATH = 'gun-sablonlari-2025-10-25.json';
+            const BRANCH = 'main';
+            
+            // 🔑 GitHub token kontrolü (önce modal'dan, sonra localStorage'dan)
+            let token = document.getElementById('templateGithubToken')?.value?.trim();
+            
+            if (!token) {
+                // Fallback: localStorage'dan dene
+                token = localStorage.getItem('github_token');
+            }
+            
+            if (!token) {
+                throw new Error('❌ GitHub token bulunamadı!\n\nLütfen modal altındaki alana token girin veya localStorage\'a github_token ekleyin.');
+            }
+            
+            // Token'ı localStorage'a kaydet (gelecek kullanımlar için)
+            localStorage.setItem('github_token', token);
+            console.log('✅ GitHub token localStorage\'a kaydedildi');
+            
+            // Mevcut dosyayı çek
+            const getResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            if (!getResponse.ok) {
+                throw new Error(`Dosya okunamadı: ${getResponse.status} ${getResponse.statusText}`);
+            }
+            
+            const fileData = await getResponse.json();
+            const currentContent = decodeBase64UTF8(fileData.content.replace(/\n/g, ''));
+            const currentData = JSON.parse(currentContent);
+            
+            // 🔧 FIX: ogunler array'indeki değişiklikleri foods array'ine SENKRONIZE ET
+            // Bu sayede modal'da silinen yemekler JSON'dan da silinir
+            if (template.ogunler && Array.isArray(template.ogunler)) {
+                template.foods = [];
+                template.ogunler.forEach(ogun => {
+                    if (ogun.yemekler && Array.isArray(ogun.yemekler)) {
+                        ogun.yemekler.forEach(yemek => {
+                            // Her yemeği foods array'ine ekle (ogunTipi bilgisiyle)
+                            template.foods.push({
+                                ...yemek,
+                                ogunTipi: ogun.ogunAdi || ogun.originalTitle || 'öğle'
+                            });
+                        });
+                    }
+                });
+                console.log(`✅ foods array senkronize edildi: ${template.foods.length} yemek`);
+            }
+            
+            // Şablonları güncelle
+            if (isNew) {
+                // Yeni şablon ekle
+                currentData.templates.push(template);
+                currentData.totalCount = currentData.templates.length;
+            } else {
+                // Mevcut şablonu güncelle
+                const index = currentData.templates.findIndex(t => t.id === template.id);
+                if (index === -1) {
+                    throw new Error('Güncellenecek şablon bulunamadı!');
+                }
+                currentData.templates[index] = template;
+            }
+            
+            // Export date güncelle
+            currentData.exportDate = new Date().toISOString();
+            
+            // JSON'a çevir (pretty print)
+            const newContent = JSON.stringify(currentData, null, 2);
+            
+            // ✅ TÜRKÇE KARAKTER KORUYAN ENCODING
+            const newContentBase64 = encodeBase64UTF8(newContent);
+            
+            // GitHub'a gönder
+            const commitMessage = isNew 
+                ? `Yeni şablon eklendi: ${template.name}` 
+                : `Şablon güncellendi: ${template.name}`;
+            
+            const putResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: commitMessage,
+                    content: newContentBase64,
+                    sha: fileData.sha,
+                    branch: BRANCH
+                })
+            });
+            
+            if (!putResponse.ok) {
+                const errorData = await putResponse.json();
+                throw new Error(`GitHub commit başarısız: ${errorData.message || putResponse.statusText}`);
+            }
+            
+            const commitData = await putResponse.json();
+            console.log('✅ GitHub commit başarılı:', commitData.commit.sha);
+        }
     </script>
+    
+    <!-- 📝 TEMPLATE EDIT MODAL -->
+    <div id="templateEditModal" class="modal" style="display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7);">
+        <div class="modal-content" style="background-color: #fff; margin: 2% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 1000px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+            <!-- Modal Header -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 20px;">📝 Şablon Düzenle: <span id="templateEditName">-</span></h3>
+                <button onclick="closeTemplateEditModal()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; transition: all 0.2s;">
+                    ✖ Kapat
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div id="templateEditContent" style="padding: 20px; max-height: 600px; overflow-y: auto;">
+                <!-- Öğünler ve yemekler buraya gelecek -->
+            </div>
+            
+            <!-- Modal Footer -->
+            <div style="background: #f5f5f5; padding: 15px 20px; border-radius: 0 0 12px 12px;">
+                <!-- GitHub Token Girişi -->
+                <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #856404;">
+                        🔑 GitHub Token <span style="color: #dc3545;">*</span>
+                        <span style="font-weight: normal; font-size: 12px; color: #666;">(Şablonu kaydetmek için gerekli)</span>
+                    </label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input 
+                            type="password" 
+                            id="templateGithubToken" 
+                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 
+                            style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+                        />
+                        <button 
+                            onclick="toggleTemplateTokenVisibility()" 
+                            style="background: #6c757d; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 6px; font-size: 14px;">
+                            👁️ Göster
+                        </button>
+                        <button 
+                            onclick="loadTemplateTokenFromStorage()" 
+                            style="background: #17a2b8; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 6px; font-size: 14px;">
+                            💾 Yükle
+                        </button>
+                    </div>
+                    <small style="color: #856404; display: block; margin-top: 5px;">
+                        💡 Token localStorage'da kayıtlı değilse <a href="https://github.com/settings/tokens" target="_blank" style="color: #007bff;">GitHub</a>'dan oluşturun
+                    </small>
+                </div>
+                
+                <!-- Butonlar -->
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="closeTemplateEditModal()" style="background: #6c757d; color: white; border: none; padding: 12px 24px; font-size: 15px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                        ❌ İptal
+                    </button>
+                    <button onclick="openSaveTemplateModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; font-size: 15px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                        💾 Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- � YEMEK DÜZENLEME MODALI -->
+    <div id="templateFoodEditModal" class="modal" style="display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="background-color: #fff; margin: 2% auto; padding: 0; border-radius: 12px; width: 95%; max-width: 900px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-height: 95vh; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #FF6B6B 0%, #C92A2A 100%); color: white; padding: 15px 20px; border-radius: 12px 12px 0 0; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 18px;">✏️ Yemek Düzenle: <span id="editFoodModalTitle">-</span></h3>
+            </div>
+            
+            <!-- Body - Scrollable -->
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+                <!-- Yemek Adı + Akıllı Search -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                        🍽️ Yemek Adı <span style="color: #FF6B6B;">*</span>
+                    </label>
+                    <div style="position: relative;">
+                        <input type="text" id="editFoodName" placeholder="Yemek adı yazın veya arayın..." oninput="searchFoodForEdit(this.value)" autocomplete="off" style="width: 100%; padding: 12px; font-size: 15px; border: 2px solid #FF6B6B; border-radius: 8px; box-sizing: border-box;">
+                        <!-- Arama sonuçları dropdown -->
+                        <div id="editFoodSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #FF6B6B; border-top: none; border-radius: 0 0 8px 8px; max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+                    </div>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #666;">💡 İsim değiştirerek başka yemek seçebilirsiniz</p>
+                </div>
+                
+                <!-- Makrolar -->
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">⚡ Kalori (kcal) *</label>
+                        <input type="number" id="editFoodCalories" step="0.1" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">🥩 Protein (g) *</label>
+                        <input type="number" id="editFoodProtein" step="0.1" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">🌾 Karbonhidrat (g) *</label>
+                        <input type="number" id="editFoodCarbs" step="0.1" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">🧈 Yağ (g) *</label>
+                        <input type="number" id="editFoodFat" step="0.1" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                </div>
+                
+                <!-- Kategori & Rol -->
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">📂 Kategori *</label>
+                        <select id="editFoodCategory" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                            <option value="">-- Kategori Seçin --</option>
+                            <option value="KAHVALTI">KAHVALTI</option>
+                            <option value="ÖĞLEN">ÖĞLEN</option>
+                            <option value="AKŞAM">AKŞAM</option>
+                            <option value="KURUYEMİŞLER">KURUYEMİŞLER</option>
+                            <option value="ÇORBALAR">ÇORBALAR</option>
+                            <option value="SALATALAR">SALATALAR</option>
+                            <option value="ANA YEMEKLER">ANA YEMEKLER</option>
+                            <option value="TOSTLAR">TOSTLAR</option>
+                            <option value="TATLILAR">TATLILAR</option>
+                            <option value="İÇECEKLER">İÇECEKLER</option>
+                            <option value="ATIŞTIRILMALIKLAR">ATIŞTIRILMALIKLAR</option>
+                            <option value="EKMEKLER">EKMEKLER</option>
+                            <option value="PİLAVLAR">PİLAVLAR</option>
+                            <option value="DİĞER">DİĞER</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">🎭 Rol *</label>
+                        <select id="editFoodRole" required style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                            <option value="">-- Rol Seçin --</option>
+                            <option value="mainDish">Ana Yemek (mainDish)</option>
+                            <option value="sideDish">Yan Yemek (sideDish)</option>
+                            <option value="drink">İçecek (drink)</option>
+                            <option value="supplement">Takviye (supplement)</option>
+                            <option value="snack">Atıştırmalık (snack)</option>
+                            <option value="soup">Çorba (soup)</option>
+                            <option value="salad">Salata (salad)</option>
+                            <option value="bread">Ekmek (bread)</option>
+                            <option value="dessert">Tatlı (dessert)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Öğün Tipi -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">⏰ Öğün Tipi (Birden fazla seçilebilir)</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editMealType_breakfast" value="breakfast" style="width: 18px; height: 18px;">
+                            🌅 Kahvaltı
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editMealType_lunch" value="lunch" style="width: 18px; height: 18px;">
+                            ☀️ Öğle
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editMealType_dinner" value="dinner" style="width: 18px; height: 18px;">
+                            🌙 Akşam
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Porsiyon Çarpanı -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">📏 Porsiyon Çarpanı</label>
+                    <input type="number" id="editFoodPortion" step="0.1" value="1" style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                </div>
+                
+                <!-- Diyet Tipleri -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">🥑 Diyet Tipleri (Birden fazla seçilebilir)</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editDietType_ketojenik" value="ketojenik" style="width: 18px; height: 18px;">
+                            🥗 Ketojenik
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editDietType_akdeniz" value="akdeniz" style="width: 18px; height: 18px;">
+                            🌊 Akdeniz
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editDietType_vegan" value="vegan" style="width: 18px; height: 18px;">
+                            🌱 Vegan
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="editDietType_glutensiz" value="glutensiz" style="width: 18px; height: 18px;">
+                            🌾 Glutensiz
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Gelişmiş Ayarlar (Collapsible) -->
+                <details style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 12px;">
+                    <summary style="cursor: pointer; font-weight: 600; color: #333;">⚙️ Gelişmiş Ayarlar</summary>
+                    
+                    <!-- Min/Max/Step -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">Min Miktar</label>
+                            <input type="number" id="editFoodMin" step="0.1" placeholder="Min porsiyon" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">Max Miktar</label>
+                            <input type="number" id="editFoodMax" step="0.1" placeholder="Max porsiyon" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">Adım (Step)</label>
+                            <input type="number" id="editFoodStep" step="0.1" placeholder="Artış miktarı" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    
+                    <!-- Sezon -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">Sezon Başlangıç (Ay)</label>
+                            <input type="number" id="editFoodSeasonMin" min="1" max="12" placeholder="1-12" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">Sezon Bitiş (Ay)</label>
+                            <input type="number" id="editFoodSeasonMax" min="1" max="12" placeholder="1-12" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    
+                    <!-- Özel Özellikler -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #666; font-size: 13px;">🏷️ Özel Özellikler</label>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodKeto" style="width: 16px; height: 16px;">
+                                🥗 Keto
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodLowCarb" style="width: 16px; height: 16px;">
+                                📉 Düşük Karb
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodPortionFixed" style="width: 16px; height: 16px;">
+                                🔒 Porsiyon Sabit
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodFillerLunch" style="width: 16px; height: 16px;">
+                                🍽️ Öğle Dolgu
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodFillerDinner" style="width: 16px; height: 16px;">
+                                🌙 Akşam Dolgu
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+                                <input type="checkbox" id="editFoodReversedSeason" style="width: 16px; height: 16px;">
+                                🔄 Ters Sezon
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Etiketler -->
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">🏷️ Etiketler (Tags) - virgülle ayırın</label>
+                        <input type="text" id="editFoodTags" placeholder="ör: domates, meyve, salata" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">✅ Uyumluluk Etiketleri (compatibilityTags) - virgülle ayırın</label>
+                        <input type="text" id="editFoodCompat" placeholder="ör: tavuk, zeytinyağı" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">❌ Uyumsuzluk Etiketleri (incompatibilityTags) - virgülle ayırın</label>
+                        <input type="text" id="editFoodIncompat" placeholder="ör: süt, peynir" style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #666; font-size: 13px;">📝 Notlar</label>
+                        <textarea id="editFoodNotes" placeholder="Ek bilgiler, özel notlar..." style="width: 100%; padding: 8px; font-size: 13px; border: 2px solid #2196f3; border-radius: 6px; box-sizing: border-box; min-height: 60px; resize: vertical;"></textarea>
+                    </div>
+                </details>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background: #f5f5f5; padding: 15px 20px; border-radius: 0 0 12px 12px; display: flex; gap: 10px; justify-content: space-between; flex-shrink: 0; border-top: 1px solid #ddd;">
+                <button onclick="closeTemplateFoodEditModal()" style="background: #6c757d; color: white; border: none; padding: 12px 24px; font-size: 15px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                    ❌ İptal
+                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #666; cursor: pointer;">
+                        <input type="checkbox" id="saveFoodToDatabase" style="width: 16px; height: 16px;">
+                        <span>💾 food_list.json'a da kaydet</span>
+                    </label>
+                    <button onclick="saveEditedTemplateFood()" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; border: none; padding: 12px 24px; font-size: 15px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                        ✅ Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- �🔍 FOOD SEARCH POPUP -->
+    <div id="foodSearchPopup" class="modal" style="display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="background-color: #fff; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 700px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+            <!-- Popup Header -->
+            <div style="background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; padding: 15px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 18px;">🔍 Yemek Ara</h3>
+                <button onclick="closeFoodSearchPopup()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; font-size: 14px; cursor: pointer; border-radius: 4px;">
+                    ✖ Kapat
+                </button>
+            </div>
+            
+            <!-- Search Input -->
+            <div style="padding: 15px 20px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                <input type="text" id="templateFoodSearch" placeholder="Yemek adı yazın (örn: mercimek çorbası)" oninput="searchTemplateFoods(this.value)" style="width: 100%; padding: 12px; font-size: 15px; border: 2px solid #4CAF50; border-radius: 8px; box-sizing: border-box;">
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">💡 İpucu: "mer çor" gibi kısaltmalar da çalışır</p>
+            </div>
+            
+            <!-- Search Results -->
+            <div id="templateFoodSearchResults" style="padding: 15px 20px; min-height: 200px; max-height: 450px; overflow-y: auto;">
+                <p style="color: #666; text-align: center;">Yemek aramak için yukarıya yazın...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 💾 SAVE TEMPLATE MODAL -->
+    <div id="saveTemplateModal" class="modal" style="display: none; position: fixed; z-index: 10003; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="background-color: #fff; margin: 10% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border-radius: 12px 12px 0 0;">
+                <h3 style="margin: 0; font-size: 18px;">💾 Şablonu Kaydet</h3>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 25px;">
+                <p style="margin: 0 0 20px 0; color: #666; font-size: 14px;">
+                    Mevcut şablon: <strong id="saveTemplateCurrentName">-</strong>
+                </p>
+                
+                <!-- Kayıt seçenekleri -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Option 1: Üzerine Yaz -->
+                    <label style="display: flex; align-items: start; gap: 12px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#667eea'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='#e0e0e0'">
+                        <input type="radio" name="saveMode" id="saveMode_overwrite" onchange="toggleSaveMode()" checked style="margin-top: 2px; width: 18px; height: 18px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">📝 Mevcut Şablonu Güncelle</div>
+                            <div style="font-size: 13px; color: #666;">Değişiklikler mevcut şablonun üzerine yazılacak</div>
+                        </div>
+                    </label>
+                    
+                    <!-- Option 2: Yeni Şablon -->
+                    <label style="display: flex; align-items: start; gap: 12px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#667eea'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='#e0e0e0'">
+                        <input type="radio" name="saveMode" id="saveMode_new" onchange="toggleSaveMode()" style="margin-top: 2px; width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">✨ Yeni Şablon Olarak Kaydet</div>
+                            <div style="font-size: 13px; color: #666; margin-bottom: 10px;">Mevcut şablon korunacak, yeni şablon oluşturulacak</div>
+                            
+                            <!-- Yeni şablon adı input (hidden by default) -->
+                            <div id="newNameContainer" style="display: none;">
+                                <input type="text" id="saveTemplateNewName" placeholder="Örn: Menü 21" style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #4CAF50; border-radius: 6px; box-sizing: border-box;">
+                                <p style="margin: 6px 0 0 0; font-size: 11px; color: #999;">💡 Sıra numarası otomatik önerildi</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background: #f5f5f5; padding: 15px 20px; border-radius: 0 0 12px 12px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeSaveTemplateModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                    ❌ İptal
+                </button>
+                <button onclick="saveTemplate()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                    💾 Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
