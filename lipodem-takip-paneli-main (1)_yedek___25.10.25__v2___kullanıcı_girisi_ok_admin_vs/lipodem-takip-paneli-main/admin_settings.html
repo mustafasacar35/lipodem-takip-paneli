@@ -177,6 +177,13 @@
         .actions-right {
             display: flex;
             gap: 12px;
+            flex-wrap: nowrap; /* Butonları asla alt satıra geçirme */
+        }
+
+        .actions-right button {
+            white-space: nowrap; /* Buton metnini kırma */
+            flex-shrink: 1; /* Gerekirse butonları küçült */
+            min-width: 0; /* Butonların minimum genişliğini kaldır */
         }
 
         button {
@@ -385,12 +392,18 @@
             .actions-row {
                 flex-direction: column;
                 align-items: flex-start;
+                gap: 12px;
             }
 
             .actions-right {
                 width: 100%;
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                justify-content: flex-end; /* Butonları sağa hizala */
+                gap: 8px; /* Mobilde daha küçük gap */
+            }
+
+            .actions-right button {
+                font-size: 13px; /* Mobilde biraz daha küçük font */
+                padding: 10px 14px; /* Mobilde daha kompakt padding */
             }
         }
     </style>
@@ -1012,16 +1025,14 @@
                     <label for="githubTokenInput">Kişisel Erişim Token'ı</label>
                     <input type="password" id="githubTokenInput" placeholder="ghp_...">
                 </div>
-                <div class="settings-row">
-                    <button class="btn-secondary" id="clearTokenButton" type="button">Token'ı Temizle</button>
-                </div>
             </section>
         </main>
 
         <footer class="actions-row">
             <p class="status-text" id="statusText"><strong>Hazır.</strong></p>
             <div class="actions-right">
-                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yeniden Yükle</button>
+                <button class="btn-secondary" id="clearTokenButton" type="button">Token Temizle</button>
+                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yükle</button>
                 <button class="btn-primary" id="saveSettingsButton" type="button">Kaydet</button>
             </div>
         </footer>
