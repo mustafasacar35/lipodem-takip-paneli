@@ -1752,6 +1752,9 @@
             
             const foodName = food.foodName || food.name || 'İsimsiz Yemek';
             
+            // ✅ Global currentFoodName'i set et (manuel eşleştirmeler için)
+            currentFoodName = foodName;
+            
             // Admin modalını aç ve seçili yemeği göster
             const adminModal = document.getElementById('adminFoodModal');
             if (adminModal) {
@@ -1907,8 +1910,10 @@
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
         let foodData = []; // Yemek veritabanı (food_list.json)
         
-        // 🔗 Admin Modal: Seçili Tarif Kartları
+        // 🔗 Admin Modal: Seçili Tarif Kartları & Manuel Eşleştirmeler
         let selectedTarifKartlari = []; // Tab 1-2 için seçili kartlar
+        let manualMatches = {}; // Manuel eşleştirmeler: { "yemekAdı": ["tarif1", "tarif2", ...] }
+        let currentFoodName = ''; // Seçili yemek adı (modal açıldığında set edilir)
         
         // Eşleştirme kriterleri - VARSAYILAN DEĞERLER (mobil versiyonla aynı)
         let matchCriteria = {
@@ -2080,6 +2085,7 @@
                 if (manuelResp.ok) {
                     const manuelData = await manuelResp.json();
                     manuelEslestirmeler = manuelData.eslestirmeler || manuelData;
+                    manualMatches = manuelEslestirmeler; // ✅ Senkronize et
                     console.log('✅ Manuel eşleştirmeler yüklendi (tarif kartları):', Object.keys(manuelEslestirmeler).length);
                 } else {
                     console.warn('⚠️ Manuel eşleştirmeler yüklenemedi');
@@ -5554,26 +5560,28 @@
                     </p>
                     
                     <!-- Search Input -->
-                    <input type="text" 
-                           class="admin-search-input" 
-                           id="adminTarifSearch" 
-                           placeholder="🔍 Tarif kartı ara... (örn: dom çor, kuru fas)"
-                           oninput="searchAndRenderTariflar()"
-                           autocomplete="off">
-                    
-                    <!-- Seçili Kartlar Sayacı -->
-                    <div class="admin-selected-count" id="adminSelectedCount">
-                        <span id="adminSelectedCountText">0 kart seçildi</span>
+                    <div class="tarif-search-container">
+                        <input type="text" 
+                               class="tarif-search-input" 
+                               id="tarifSearchInput" 
+                               placeholder="🔍 Tarif kartı ara... (örn: dom çor, kuru fas)"
+                               oninput="searchTarifCards(this.value)"
+                               autocomplete="off">
+                        <p style="font-size: 12px; color: #999; margin-top: 5px;">
+                            💡 İpucu: Kısaltmalar kullanabilirsiniz (dom çor, çor dom, vs.)
+                        </p>
                     </div>
                     
                     <!-- Tarif Kartları Grid -->
-                    <div class="admin-tarif-grid" id="adminTarifGrid">
-                        <div class="admin-loading">Tarif kartları yükleniyor</div>
+                    <div class="tarif-grid" id="tarifCardsGrid">
+                        <div style="text-align: center; padding: 40px; color: #999;">
+                            Tarif kartları yükleniyor...
+                        </div>
                     </div>
                     
                     <!-- Kaydet Butonu -->
                     <div style="text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
-                        <button onclick="saveManuelEslestirme()" 
+                        <button onclick="saveManualMatches()" 
                                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
                             💾 Eşleştirmeyi Kaydet
                         </button>
@@ -5581,8 +5589,8 @@
                 </div>
             `;
             
-            // Tarif kartlarını render et
-            renderTarifKartlariGrid();
+            // Tarif kartlarını yükle ve render et
+            loadAndRenderTarifCards();
         }
 
         function renderTarifYasakTab() {
@@ -5762,6 +5770,80 @@
             
             // Yeniden render
             renderTarifManuelTab();
+        }
+        
+        // ========================================
+        // GITHUB KAYIT FONKSİYONLARI
+        // ========================================
+        
+        /**
+         * Dosyayı GitHub'a kaydet (PUT API)
+         * @param {string} filePath - Dosya yolu (örn: 'data/manuel_eslestirmeler.json')
+         * @param {string} content - Dosya içeriği (JSON.stringify ile)
+         * @param {string} commitMessage - Commit mesajı
+         */
+        async function saveToGitHub(filePath, content, commitMessage) {
+            const GITHUB_TOKEN = localStorage.getItem('github_token');
+            
+            if (!GITHUB_TOKEN) {
+                throw new Error('GitHub token bulunamadı! Lütfen Admin Modal > Tab 6\'dan token girin.');
+            }
+            
+            const REPO_OWNER = 'mustafasacar35';
+            const REPO_NAME = 'lipodem-takip-paneli';
+            const BRANCH = 'main';
+            
+            try {
+                // 1. Mevcut dosyanın SHA'sını al (güncelleme için gerekli)
+                const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BRANCH}`;
+                const getResponse = await fetch(getUrl, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                let sha = null;
+                if (getResponse.ok) {
+                    const fileData = await getResponse.json();
+                    sha = fileData.sha;
+                    console.log(`✅ Dosya SHA alındı: ${sha.slice(0, 7)}`);
+                }
+                
+                // 2. İçeriği Base64'e çevir
+                const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+                
+                // 3. Dosyayı GitHub'a kaydet (PUT)
+                const putUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`;
+                const putResponse = await fetch(putUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: commitMessage,
+                        content: contentBase64,
+                        sha: sha, // Güncelleme için gerekli (yoksa null olur - yeni dosya)
+                        branch: BRANCH
+                    })
+                });
+                
+                if (!putResponse.ok) {
+                    const errorData = await putResponse.json();
+                    throw new Error(`GitHub kayıt hatası: ${errorData.message}`);
+                }
+                
+                const result = await putResponse.json();
+                console.log('✅ GitHub\'a kaydedildi:', result.commit.sha.slice(0, 7));
+                
+                return result;
+                
+            } catch (error) {
+                console.error('❌ saveToGitHub hatası:', error);
+                throw error;
+            }
         }
         
         // Manuel eşleştirmeleri kaydet
