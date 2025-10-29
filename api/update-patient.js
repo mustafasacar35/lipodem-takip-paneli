@@ -28,13 +28,23 @@ export default async function handler(req, res) {
     }
 
     try {
-    const { name, surname, age, gender, weight, height, username, password, passwordHash, patientId, settings } = req.body;
+    const { name, surname, age, gender, weight, height, username, password, passwordHash, patientId, settings, weeks } = req.body;
 
-        // Validasyon
-        if (!name || !surname || !age || !gender || !weight || !height || !username) {
+        // Validasyon - En az patientId veya username olmalı
+        if (!patientId && !username) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Eksik bilgi. Tüm alanları doldurun.' 
+                error: 'patientId veya username gerekli.' 
+            });
+        }
+        
+        // Eğer tam hasta kaydı güncellenmiyorsa (sadece weeks veya settings), validasyon atla
+        const isPartialUpdate = (weeks !== undefined || settings !== undefined) && !name;
+        
+        if (!isPartialUpdate && (!name || !surname || !age || !gender || !weight || !height || !username)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Tam güncelleme için tüm hasta bilgileri gerekli.' 
             });
         }
 
@@ -79,8 +89,12 @@ export default async function handler(req, res) {
         // 2. Bilgileri güncelle
         const updatedData = {
             ...currentContent,
-            updatedAt: new Date().toISOString(),
-            personalInfo: {
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Tam hasta bilgisi güncellemesi (name varsa)
+        if (name) {
+            updatedData.personalInfo = {
                 ...(currentContent.personalInfo || {}),
                 name,
                 surname,
@@ -89,8 +103,8 @@ export default async function handler(req, res) {
                 weight: parseFloat(weight),
                 height: parseFloat(height),
                 bmi: parseFloat((parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1))
-            }
-        };
+            };
+        }
 
         // Eğer settings gönderildiyse patient dosyasına ekle / güncelle
         if (settings) {
@@ -98,6 +112,11 @@ export default async function handler(req, res) {
                 ...(currentContent.settings || {}),
                 ...settings
             };
+        }
+        
+        // Eğer weeks gönderildiyse patient dosyasına ekle / güncelle
+        if (weeks) {
+            updatedData.weeks = weeks;
         }
 
         // Şifre güncellemesi varsa

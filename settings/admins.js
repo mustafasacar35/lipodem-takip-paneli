@@ -25,6 +25,6 @@ window.GH_ADMINS = {
     }
   ],
   "patientAdmins": [
-    "deneme2"
+    "deneme"
   ]
 };
