@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { name, surname, age, gender, weight, height, username, password, passwordHash, patientId } = req.body;
+    const { name, surname, age, gender, weight, height, username, password, passwordHash, patientId, settings } = req.body;
 
         // Validasyon
         if (!name || !surname || !age || !gender || !weight || !height || !username) {
@@ -92,6 +92,14 @@ export default async function handler(req, res) {
             }
         };
 
+        // Eğer settings gönderildiyse patient dosyasına ekle / güncelle
+        if (settings) {
+            updatedData.settings = {
+                ...(currentContent.settings || {}),
+                ...settings
+            };
+        }
+
         // Şifre güncellemesi varsa
         if (passwordHash) {
             updatedData.passwordHash = passwordHash;
@@ -117,74 +125,78 @@ export default async function handler(req, res) {
             throw new Error(errorData.message || 'GitHub güncelleme hatası');
         }
 
-        // 4. Şifre değiştiyse index.json'u da güncelle
-        if (passwordHash) {
-            try {
-                console.log('🔐 Şifre güncelleme başlatıldı:', username);
-                const indexPath = 'hastalar/index.json';
-                const indexUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${indexPath}`;
+        // 4. index.json'u da güncelle (HER ZAMAN - ad, soyad, şifre senkron olsun)
+        try {
+            console.log('� index.json güncelleme başlatıldı:', username);
+            const indexPath = 'hastalar/index.json';
+            const indexUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${indexPath}`;
+            
+            const indexGetResponse = await fetch(indexUrl, {
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            console.log('📥 index.json GET status:', indexGetResponse.status);
+
+            if (indexGetResponse.ok) {
+                const indexData = await indexGetResponse.json();
+                const indexContent = JSON.parse(
+                    Buffer.from(indexData.content, 'base64').toString('utf-8')
+                );
+
+                console.log('👥 Toplam hasta sayısı:', indexContent.patients.length);
+
+                // Kullanıcıyı bul ve güncelle
+                const userIndex = indexContent.patients.findIndex(u => u.username === username);
+                console.log('🔍 Kullanıcı index:', userIndex);
                 
-                const indexGetResponse = await fetch(indexUrl, {
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-
-                console.log('📥 index.json GET status:', indexGetResponse.status);
-
-                if (indexGetResponse.ok) {
-                    const indexData = await indexGetResponse.json();
-                    const indexContent = JSON.parse(
-                        Buffer.from(indexData.content, 'base64').toString('utf-8')
-                    );
-
-                    console.log('👥 Toplam hasta sayısı:', indexContent.patients.length);
-
-                    // Kullanıcıyı bul ve güncelle
-                    const userIndex = indexContent.patients.findIndex(u => u.username === username);
-                    console.log('🔍 Kullanıcı index:', userIndex);
+                if (userIndex !== -1) {
+                    // Ad ve soyad her zaman güncelle
+                    indexContent.patients[userIndex].name = name;
+                    indexContent.patients[userIndex].surname = surname;
                     
-                    if (userIndex !== -1) {
+                    // Şifre hash varsa onu da güncelle
+                    if (passwordHash) {
                         indexContent.patients[userIndex].passwordHash = passwordHash;
-                        indexContent.patients[userIndex].name = name;
-                        indexContent.patients[userIndex].surname = surname;
+                        console.log('🔐 Şifre hash\'i index.json\'da güncellendi');
+                    }
 
-                        console.log('💾 index.json PUT gönderiliyor...');
+                    console.log('💾 index.json PUT gönderiliyor...');
 
-                        // index.json'u güncelle
-                        const putResponse = await fetch(indexUrl, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `token ${GITHUB_TOKEN}`,
-                                'Accept': 'application/vnd.github.v3+json',
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                message: `Şifre güncellendi: ${username}`,
-                                content: Buffer.from(JSON.stringify(indexContent, null, 2)).toString('base64'),
-                                sha: indexData.sha
-                            })
-                        });
+                    // index.json'u güncelle
+                    const putResponse = await fetch(indexUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Hasta bilgileri güncellendi: ${name} ${surname}`,
+                            content: Buffer.from(JSON.stringify(indexContent, null, 2)).toString('base64'),
+                            sha: indexData.sha
+                        })
+                    });
 
-                        console.log('📤 index.json PUT status:', putResponse.status);
-                        
-                        if (!putResponse.ok) {
-                            const errorData = await putResponse.json();
-                            console.error('❌ index.json PUT hatası:', errorData);
-                        } else {
-                            console.log('✅ index.json başarıyla güncellendi');
-                        }
+                    console.log('📤 index.json PUT status:', putResponse.status);
+                    
+                    if (!putResponse.ok) {
+                        const errorData = await putResponse.json();
+                        console.error('❌ index.json PUT hatası:', errorData);
                     } else {
-                        console.log('⚠️ Kullanıcı index.json\'da bulunamadı:', username);
+                        console.log('✅ index.json başarıyla güncellendi');
                     }
                 } else {
-                    console.error('❌ index.json GET hatası:', indexGetResponse.status);
+                    console.log('⚠️ Kullanıcı index.json\'da bulunamadı:', username);
                 }
-            } catch (indexError) {
-                console.error('❌ index.json güncelleme hatası:', indexError);
-                // index.json hatası kritik değil, devam et
+            } else {
+                console.error('❌ index.json GET hatası:', indexGetResponse.status);
             }
+        } catch (indexError) {
+            console.error('❌ index.json güncelleme hatası:', indexError);
+            // index.json hatası kritik değil, devam et
         }
 
         // Başarılı sonuç
