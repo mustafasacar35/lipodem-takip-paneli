@@ -5625,12 +5625,17 @@
         
         // Tarif kartlarını yükle ve render et
         async function loadAndRenderTarifCards() {
+            console.log('📥 loadAndRenderTarifCards başladı');
+            
             try {
                 // tarifler/list.json dosyasını yükle
                 const response = await fetch('tarifler/list.json');
+                console.log('📡 Fetch response:', response.status, response.ok);
+                
                 if (!response.ok) throw new Error('Tarif listesi yüklenemedi');
                 
                 const tarifList = await response.json();
+                console.log('📋 Tarif listesi alındı:', tarifList.length, 'item');
                 
                 // Global array'e kaydet
                 tarifKartlari = tarifList.map(item => {
@@ -5644,11 +5649,14 @@
                     };
                 });
                 
+                console.log('✅ tarifKartlari global array:', tarifKartlari.length, 'kart');
+                console.log('📋 İlk 3 kart:', tarifKartlari.slice(0, 3).map(t => t.name));
+                
                 // İlk render (seçililer üstte)
                 renderTarifKartlari(tarifKartlari);
                 
             } catch (error) {
-                console.error('Tarif kartları yüklenirken hata:', error);
+                console.error('❌ Tarif kartları yüklenirken hata:', error);
                 const grid = document.getElementById('tarifCardsGrid');
                 if (grid) {
                     grid.innerHTML = `
@@ -5657,6 +5665,8 @@
                             <small>${error.message}</small>
                         </div>
                     `;
+                } else {
+                    console.error('❌ Grid element bulunamadı!');
                 }
             }
         }
@@ -5692,8 +5702,17 @@
         
         // Tarif kartlarını ekranda göster (seçililer üstte)
         function renderTarifKartlari(tarifler) {
+            console.log('🔍 renderTarifKartlari çağrıldı:', {
+                tariflerCount: tarifler?.length,
+                currentFoodName: currentFoodName,
+                gridElement: document.getElementById('tarifCardsGrid')
+            });
+            
             const grid = document.getElementById('tarifCardsGrid');
-            if (!grid) return;
+            if (!grid) {
+                console.error('❌ Grid element bulunamadı! ID: tarifCardsGrid');
+                return;
+            }
             
             if (!tarifler || tarifler.length === 0) {
                 grid.innerHTML = `
@@ -5706,6 +5725,8 @@
             
             // Seçili kartlar üstte, seçili olmayanlar altta
             const currentMatches = manualMatches[currentFoodName] || [];
+            console.log('📋 Mevcut eşleştirmeler:', currentMatches);
+            
             const sorted = [...tarifler].sort((a, b) => {
                 const aSelected = currentMatches.includes(a.name);
                 const bSelected = currentMatches.includes(b.name);
@@ -5713,6 +5734,8 @@
                 if (!aSelected && bSelected) return 1;
                 return 0;
             });
+            
+            console.log('✅ Render ediliyor:', sorted.length, 'kart');
             
             grid.innerHTML = sorted.map(tarif => {
                 const isSelected = currentMatches.includes(tarif.name);
@@ -5726,6 +5749,8 @@
                     </div>
                 `;
             }).join('');
+            
+            console.log('✅ Grid innerHTML set edildi');
         }
         
         // Kart seçim toggle
