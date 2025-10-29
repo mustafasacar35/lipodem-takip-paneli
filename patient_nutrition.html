@@ -1040,94 +1040,139 @@
            🔗 ADMIN MODAL: TARIF KARTLARI GRID SİSTEMİ
            ============================================ */
         
-        /* Search Input */
-        .admin-search-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 15px;
+        /* Seçili Tarif Kartları Listesi */
+        .selected-tarif-list {
+            background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%);
+            border: 2px solid #28a745;
+            border-radius: 12px;
+            padding: 15px;
             margin-bottom: 20px;
-            transition: all 0.3s;
+            min-height: 60px;
         }
 
-        .admin-search-input:focus {
+        .selected-tarif-list-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .selected-tarif-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .selected-tarif-tag {
+            background: white;
+            border: 1px solid #28a745;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 13px;
+            color: #28a745;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .selected-tarif-tag:hover {
+            background: #fff5f5;
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .selected-tarif-tag .remove-icon {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .selected-tarif-empty {
+            color: #6c757d;
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        /* Search Input - Güzelleştirilmiş */
+        .tarif-search-container {
+            margin-bottom: 20px;
+        }
+
+        .tarif-search-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .tarif-search-input:focus {
             outline: none;
             border-color: #764ba2;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
         }
 
-        .admin-search-input::placeholder {
+        .tarif-search-input::placeholder {
             color: #999;
+            font-weight: 400;
         }
 
         /* Tarif Kartları Grid */
-        .admin-tarif-grid {
+        .tarif-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
             margin-bottom: 20px;
             max-height: 450px;
             overflow-y: auto;
             padding: 10px;
-            background: white;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
             border-radius: 8px;
         }
 
-        .admin-tarif-item {
+        .tarif-item {
             border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 10px;
             cursor: pointer;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.2s;
             background: white;
-            position: relative;
         }
 
-        .admin-tarif-item:hover {
+        .tarif-item:hover {
             border-color: #667eea;
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: scale(1.05);
         }
 
-        .admin-tarif-item.selected {
+        .tarif-item.selected {
             border-color: #28a745;
-            background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%);
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            background: #f0fff4;
         }
 
-        .admin-tarif-item.selected::before {
-            content: '✓';
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: #28a745;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .admin-tarif-item img {
+        .tarif-item img {
             width: 100%;
             height: 100px;
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 6px;
             margin-bottom: 8px;
-            background: #f8f9fa;
         }
 
-        .admin-tarif-name {
-            font-size: 13px;
+        .tarif-name {
+            font-size: 12px;
             color: #333;
             word-break: break-word;
-            line-height: 1.3;
             font-weight: 500;
         }
 
@@ -1754,6 +1799,10 @@
             
             // ✅ Global currentFoodName'i set et (manuel eşleştirmeler için)
             currentFoodName = foodName;
+            
+            // 🔥 YENİ YEMEK AÇILDIĞINDA MANUEL EŞLEŞTİRMELERİ SIFIRLA
+            // (renderTarifManuelTab otomatik eşleşenleri yükleyecek)
+            delete manualMatches[foodName];
             
             // Admin modalını aç ve seçili yemeği göster
             const adminModal = document.getElementById('adminFoodModal');
@@ -5588,6 +5637,28 @@
             // Seçili yemek adını al
             const foodName = window.selectedFoodForAdmin?.foodName || currentFoodName || '';
             
+            // 🔥 OTOMATIK EŞLEŞEN KARTLARI YÜKLE (ilk açılışta)
+            if (!manualMatches[foodName]) {
+                console.log('🔍 Otomatik eşleşen kartlar aranıyor:', foodName);
+                
+                // findTarifKartlari() kullanarak otomatik eşleşen kartları bul
+                const autoMatchedCards = findTarifKartlari(foodName);
+                
+                if (autoMatchedCards && autoMatchedCards.length > 0) {
+                    // ✅ card.name kullan (boşluklu format: "kabak sote")
+                    // Grid'de de tarif.name kullanılıyor, bu yüzden uyumlu olmalı
+                    manualMatches[foodName] = autoMatchedCards.map(card => card.name);
+                    console.log('✅ Otomatik eşleşen kartlar yüklendi:', manualMatches[foodName]);
+                    console.log('🔍 DEBUG - Kart yapısı:', autoMatchedCards[0]); // DEBUG
+                } else {
+                    // Hiç eşleşme yoksa boş array
+                    manualMatches[foodName] = [];
+                    console.log('ℹ️ Otomatik eşleşme bulunamadı');
+                }
+            } else {
+                console.log('ℹ️ Manuel eşleştirmeler zaten var:', manualMatches[foodName]);
+            }
+            
             // HTML render
             content.innerHTML = `
                 <div style="background: white; padding: 20px; border-radius: 10px;">
@@ -5596,6 +5667,16 @@
                         Menü kartındaki "<strong>${foodName}</strong>" yemeğini tarif kartlarıyla eşleştirin.
                         <br><small>💡 İpucu: "dom çor" yazarak "domates çorbası" kartını bulabilirsiniz.</small>
                     </p>
+                    
+                    <!-- Seçili Tarif Kartları Listesi -->
+                    <div class="selected-tarif-list" id="selectedTarifList">
+                        <div class="selected-tarif-list-title">
+                            ✅ Seçili Tarif Kartları
+                        </div>
+                        <div class="selected-tarif-tags" id="selectedTarifTags">
+                            <span class="selected-tarif-empty">Henüz kart seçilmedi. Aşağıdaki kartlardan tıklayarak seçin.</span>
+                        </div>
+                    </div>
                     
                     <!-- Search Input -->
                     <div class="tarif-search-container">
@@ -5766,10 +5847,14 @@
             // Seçili kartlar üstte, seçili olmayanlar altta
             const currentMatches = manualMatches[currentFoodName] || [];
             console.log('📋 Mevcut eşleştirmeler:', currentMatches);
+            console.log('🔍 DEBUG - currentFoodName:', currentFoodName);
+            console.log('🔍 DEBUG - manualMatches keys:', Object.keys(manualMatches));
+            console.log('🔍 DEBUG - manualMatches full:', manualMatches);
             
             const sorted = [...tarifler].sort((a, b) => {
                 const aSelected = currentMatches.includes(a.name);
                 const bSelected = currentMatches.includes(b.name);
+                console.log(`🔍 DEBUG - Kart: "${a.name}", selected: ${aSelected}`); // Her kart için
                 if (aSelected && !bSelected) return -1;
                 if (!aSelected && bSelected) return 1;
                 return 0;
@@ -5791,6 +5876,9 @@
             }).join('');
             
             console.log('✅ Grid innerHTML set edildi');
+            
+            // Seçili kartları güncelle (YENI!)
+            updateSelectedTarifList();
         }
         
         // Kart seçim toggle
@@ -5820,8 +5908,27 @@
                 renderTarifKartlari(tarifKartlari);
             }
             
-            // Mevcut eşleştirmeler badge'lerini güncelle
-            renderTarifManuelTab();
+            // Seçili kartları güncelle (YENI!)
+            updateSelectedTarifList();
+        }
+        
+        // Seçili tarif kartları listesini güncelle (YENI FONKSIYON!)
+        function updateSelectedTarifList() {
+            const container = document.getElementById('selectedTarifTags');
+            if (!container) return;
+            
+            const selectedCards = manualMatches[currentFoodName] || [];
+            
+            if (selectedCards.length === 0) {
+                container.innerHTML = '<span class="selected-tarif-empty">Henüz kart seçilmedi. Aşağıdaki kartlardan tıklayarak seçin.</span>';
+            } else {
+                container.innerHTML = selectedCards.map(cardName => `
+                    <span class="selected-tarif-tag">
+                        ${cardName}
+                        <span class="remove-icon" onclick="removeManualMatch('${cardName.replace(/'/g, "\\'")}')">×</span>
+                    </span>
+                `).join('');
+            }
         }
         
         // Manuel eşleştirme sil (badge × butonu)
@@ -5833,8 +5940,17 @@
                 manualMatches[currentFoodName].splice(index, 1);
             }
             
-            // Yeniden render
-            renderTarifManuelTab();
+            // Seçili kartları güncelle
+            updateSelectedTarifList();
+            
+            // Grid'i yeniden render et (selected state'i güncelle)
+            const searchInput = document.getElementById('tarifSearchInput');
+            const currentQuery = searchInput ? searchInput.value : '';
+            if (currentQuery) {
+                searchTarifCards(currentQuery);
+            } else {
+                renderTarifKartlari(tarifKartlari);
+            }
         }
         
         // ========================================
@@ -5919,18 +6035,57 @@
             }
             
             const matches = manualMatches[currentFoodName] || [];
-            if (matches.length === 0) {
-                alert('⚠️ Hiç eşleştirme seçilmedi!');
+            
+            // 🔍 Otomatik eşleşen kartları kontrol et
+            const autoMatchedCards = findTarifKartlari(currentFoodName);
+            const autoMatchedNames = autoMatchedCards.map(card => card.name);
+            
+            // Otomatik eşleşenlerle karşılaştır
+            const isSameAsAuto = 
+                matches.length === autoMatchedNames.length &&
+                matches.every(m => autoMatchedNames.includes(m)) &&
+                autoMatchedNames.every(a => matches.includes(a));
+            
+            if (isSameAsAuto) {
+                alert(`ℹ️ Seçilen kartlar otomatik eşleşenlerle aynı.\n\nManuel kayıt yapılmadı (zaten otomatik eşleşiyor).`);
                 return;
             }
             
+            if (matches.length === 0) {
+                // Kullanıcı tüm kartları kaldırmış - bu da bir manuel seçim
+                const confirmDelete = confirm(`⚠️ Hiç kart seçilmedi.\n\n"${currentFoodName}" için tüm eşleştirmeleri kaldırmak istediğinizi onaylıyor musunuz?`);
+                if (!confirmDelete) return;
+            }
+            
             try {
+                // Mevcut manuel_eslestirmeler.json'u yükle
+                const currentData = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json?t=' + Date.now())
+                    .then(r => r.ok ? r.json() : { eslestirmeler: {} })
+                    .catch(() => ({ eslestirmeler: {} }));
+                
+                const eslestirmeler = currentData.eslestirmeler || currentData;
+                
+                // Güncelle veya ekle
+                if (matches.length === 0) {
+                    // Boş eşleştirme: Sil
+                    delete eslestirmeler[currentFoodName];
+                } else {
+                    // Yeni eşleştirme: Ekle/Güncelle
+                    eslestirmeler[currentFoodName] = {
+                        kartlar: matches,
+                        guncellemeTarihi: new Date().toISOString()
+                    };
+                }
+                
                 // GitHub'a kaydet (data/manuel_eslestirmeler.json)
                 await saveToGitHub(
                     'data/manuel_eslestirmeler.json',
-                    JSON.stringify(manualMatches, null, 2),
+                    JSON.stringify({ eslestirmeler }, null, 2),
                     `Manuel eşleştirme güncellendi: ${currentFoodName} (${matches.length} tarif)`
                 );
+                
+                // Global state'i güncelle
+                manuelEslestirmeler = eslestirmeler;
                 
                 alert(`✅ ${matches.length} tarif eşleştirildi ve GitHub'a kaydedildi!\n\n${matches.join('\n')}`);
                 
