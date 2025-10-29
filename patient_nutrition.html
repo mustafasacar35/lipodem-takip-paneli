@@ -81,6 +81,7 @@
             display: flex;
             gap: 6px;
             align-items: center;
+            flex-wrap: nowrap; /* Butonlar her zaman yan yana */
         }
 
         /* Header butonları - İkonik yuvarlak */
@@ -176,6 +177,7 @@
             display: flex;
             gap: 6px;
             overflow-x: auto;
+            scroll-behavior: smooth; /* Akıcı kaydırma */
             padding: 2px;
             flex: 1;
             min-width: 0;
@@ -389,28 +391,38 @@
         }
 
         .btn-refresh-day {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            font-size: 12px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            font-size: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex;
+            box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
+            position: relative;
+        }
+
+        .btn-refresh-day::before {
+            content: "↻";
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
         }
 
         .btn-refresh-day:hover {
-            transform: rotate(180deg) scale(1.1);
-            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.5);
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.5);
+            background: linear-gradient(135deg, #764ba2 0%, #5a3a7c 100%);
         }
 
-        .btn-refresh-day:active {
-            transform: rotate(180deg) scale(0.95);
+        .btn-refresh-day:hover::before {
+            animation: spin 0.6s ease-in-out;
         }
 
         .btn-delete-day {
@@ -1096,13 +1108,13 @@
             }
 
             .header-right {
-                flex-direction: column;
-                gap: 5px;
+                gap: 5px; /* Mobilde butonlar yine yan yana, sadece gap küçülüyor */
             }
 
             .btn-header {
-                padding: 6px 12px;
-                font-size: 12px;
+                width: 32px; /* Mobilde biraz daha küçük */
+                height: 32px;
+                font-size: 16px;
             }
         }
 
@@ -4488,6 +4500,14 @@
             addBtn.title = 'Yeni Hafta Ekle';
             addBtn.innerHTML = '➕';
             container.appendChild(addBtn);
+
+            // Aktif tab'ı ortala
+            setTimeout(() => {
+                const activeTab = container.querySelector('.tab.active');
+                if (activeTab) {
+                    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 50);
         }
 
         // Switch Week
@@ -4706,9 +4726,7 @@
                         <div class="day-date">${formatDate(day.date)}</div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             ${templateEditBtn}
-                            <button class="btn-refresh-day" onclick="refreshDayTemplate(${dayIndex})" title="Farklı şablon ile değiştir">
-                                🔄
-                            </button>
+                            <button class="btn-refresh-day" onclick="refreshDayTemplate(${dayIndex})" title="Farklı şablon ile değiştir"></button>
                             <button class="btn-delete-day" onclick="deleteDay(${dayIndex})" title="Bu günü sil">
                                 🗑️
                             </button>
