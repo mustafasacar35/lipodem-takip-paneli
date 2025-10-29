@@ -1800,9 +1800,8 @@
             // ✅ Global currentFoodName'i set et (manuel eşleştirmeler için)
             currentFoodName = foodName;
             
-            // 🔥 YENİ YEMEK AÇILDIĞINDA MANUEL EŞLEŞTİRMELERİ SIFIRLA
-            // (renderTarifManuelTab otomatik eşleşenleri yükleyecek)
-            delete manualMatches[foodName];
+            // ✅ MANUEL EŞLEŞTİRMELERİ KORUYALIM (GitHub'dan yüklenen verileri silme!)
+            // renderTarifManuelTab zaten boşsa otomatik eşleşenleri yükler
             
             // Admin modalını aç ve seçili yemeği göster
             const adminModal = document.getElementById('adminFoodModal');
@@ -1819,129 +1818,141 @@
                     modalFoodName.textContent = foodName;
                 }
                 
-                // TÜM TABLARA YEMEK ADINI DOLDUR
-                document.getElementById('admin_manuel_yemek_adi').value = foodName;
-                document.getElementById('admin_yasak_yemek_adi').value = foodName;
-                document.getElementById('admin_db_yemek_adi').value = foodName;
-                document.getElementById('admin_db_yasak_yemek_adi').value = foodName;
-                document.getElementById('admin_db_ekle_yemek_adi').value = foodName;
+                // TÜM TABLARA YEMEK ADINI DOLDUR (güvenli şekilde)
+                const manuelYemekAdi = document.getElementById('admin_manuel_yemek_adi');
+                const yasakYemekAdi = document.getElementById('admin_yasak_yemek_adi');
+                const dbYemekAdi = document.getElementById('admin_db_yemek_adi');
+                const dbYasakYemekAdi = document.getElementById('admin_db_yasak_yemek_adi');
+                const dbEkleYemekAdi = document.getElementById('admin_db_ekle_yemek_adi');
+                
+                if (manuelYemekAdi) manuelYemekAdi.value = foodName;
+                if (yasakYemekAdi) yasakYemekAdi.value = foodName;
+                if (dbYemekAdi) dbYemekAdi.value = foodName;
+                if (dbYasakYemekAdi) dbYasakYemekAdi.value = foodName;
+                if (dbEkleYemekAdi) dbEkleYemekAdi.value = foodName;
                 
                 // 5. TAB: food_list.json'da ara ve DOLDUR
                 const dbYemek = foodData.find(f => 
                     cleanFoodName(f.name).toLowerCase() === cleanFoodName(foodName).toLowerCase()
                 );
                 
+                // ✅ GÜVENLI ELEMENT DOLDURMA FONKSİYONU
+                const safeSetValue = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = value;
+                };
+                const safeSetChecked = (id, checked) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = checked;
+                };
+                
                 if (dbYemek) {
                     // ✅ VERİTABANINDA VAR - TÜM PARAMETRELERİ DOLDUR
                     console.log('✅ Yemek veritabanında bulundu, tüm parametreler dolduruluyor:', dbYemek.name);
                     
                     // Temel bilgiler
-                    document.getElementById('admin_db_ekle_kalori').value = dbYemek.calories || 0;
-                    document.getElementById('admin_db_ekle_protein').value = dbYemek.protein || 0;
-                    document.getElementById('admin_db_ekle_karb').value = dbYemek.carbs || 0;
-                    document.getElementById('admin_db_ekle_yag').value = dbYemek.fat || 0;
-                    document.getElementById('admin_db_ekle_kategori').value = dbYemek.category || '';
-                    document.getElementById('admin_db_ekle_rol').value = dbYemek.role || '';
+                    safeSetValue('admin_db_ekle_kalori', dbYemek.calories || 0);
+                    safeSetValue('admin_db_ekle_protein', dbYemek.protein || 0);
+                    safeSetValue('admin_db_ekle_karb', dbYemek.carbs || 0);
+                    safeSetValue('admin_db_ekle_yag', dbYemek.fat || 0);
+                    safeSetValue('admin_db_ekle_kategori', dbYemek.category || '');
+                    safeSetValue('admin_db_ekle_rol', dbYemek.role || '');
                     
                     // Öğün tipleri
-                    document.getElementById('admin_mealType_breakfast').checked = 
-                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('breakfast');
-                    document.getElementById('admin_mealType_lunch').checked = 
-                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('lunch');
-                    document.getElementById('admin_mealType_dinner').checked = 
-                        (dbYemek.mealType || dbYemek.mealTypes || []).includes('dinner');
+                    safeSetChecked('admin_mealType_breakfast', (dbYemek.mealType || dbYemek.mealTypes || []).includes('breakfast'));
+                    safeSetChecked('admin_mealType_lunch', (dbYemek.mealType || dbYemek.mealTypes || []).includes('lunch'));
+                    safeSetChecked('admin_mealType_dinner', (dbYemek.mealType || dbYemek.mealTypes || []).includes('dinner'));
                     
                     // Porsiyon
-                    document.getElementById('admin_db_ekle_portion').value = dbYemek.portionMultiplier || dbYemek.multiplier || 1;
-                    document.getElementById('admin_db_ekle_portion2').value = dbYemek.portionMultiplier || dbYemek.multiplier || 1;
+                    safeSetValue('admin_db_ekle_portion', dbYemek.portionMultiplier || dbYemek.multiplier || 1);
+                    safeSetValue('admin_db_ekle_portion2', dbYemek.portionMultiplier || dbYemek.multiplier || 1);
                     
                     // Diyet tipleri
                     const dietTypes = dbYemek.dietTypes || [];
-                    document.getElementById('admin_dietType_ketojenik').checked = dietTypes.includes('ketojenik');
-                    document.getElementById('admin_dietType_akdeniz').checked = dietTypes.includes('akdeniz');
-                    document.getElementById('admin_dietType_vegan').checked = dietTypes.includes('vegan');
-                    document.getElementById('admin_dietType_glutensiz').checked = dietTypes.includes('glutensiz');
+                    safeSetChecked('admin_dietType_ketojenik', dietTypes.includes('ketojenik'));
+                    safeSetChecked('admin_dietType_akdeniz', dietTypes.includes('akdeniz'));
+                    safeSetChecked('admin_dietType_vegan', dietTypes.includes('vegan'));
+                    safeSetChecked('admin_dietType_glutensiz', dietTypes.includes('glutensiz'));
                     
                     // Min/Max/Step
-                    document.getElementById('admin_db_ekle_min').value = dbYemek.minQuantity || '';
-                    document.getElementById('admin_db_ekle_max').value = dbYemek.maxQuantity || '';
-                    document.getElementById('admin_db_ekle_step').value = dbYemek.step || '';
+                    safeSetValue('admin_db_ekle_min', dbYemek.minQuantity || '');
+                    safeSetValue('admin_db_ekle_max', dbYemek.maxQuantity || '');
+                    safeSetValue('admin_db_ekle_step', dbYemek.step || '');
                     
                     // Sezon
                     if (dbYemek.seasonRange) {
                         try {
                             const season = JSON.parse(dbYemek.seasonRange);
-                            document.getElementById('admin_db_ekle_season_min').value = season[0] || '';
-                            document.getElementById('admin_db_ekle_season_max').value = season[1] || '';
+                            safeSetValue('admin_db_ekle_season_min', season[0] || '');
+                            safeSetValue('admin_db_ekle_season_max', season[1] || '');
                         } catch (e) {
-                            document.getElementById('admin_db_ekle_season_min').value = '';
-                            document.getElementById('admin_db_ekle_season_max').value = '';
+                            safeSetValue('admin_db_ekle_season_min', '');
+                            safeSetValue('admin_db_ekle_season_max', '');
                         }
                     } else {
-                        document.getElementById('admin_db_ekle_season_min').value = '';
-                        document.getElementById('admin_db_ekle_season_max').value = '';
+                        safeSetValue('admin_db_ekle_season_min', '');
+                        safeSetValue('admin_db_ekle_season_max', '');
                     }
                     
                     // Özel özellikler
-                    document.getElementById('admin_keto').checked = dbYemek.keto || false;
-                    document.getElementById('admin_lowcarb').checked = dbYemek.lowcarb || false;
-                    document.getElementById('admin_portionFixed').checked = dbYemek.portionFixed || false;
-                    document.getElementById('admin_fillerLunch').checked = dbYemek.fillerLunch || false;
-                    document.getElementById('admin_fillerDinner').checked = dbYemek.fillerDinner || false;
-                    document.getElementById('admin_reversedSeason').checked = dbYemek.isReversedSeason || false;
+                    safeSetChecked('admin_keto', dbYemek.keto || false);
+                    safeSetChecked('admin_lowcarb', dbYemek.lowcarb || false);
+                    safeSetChecked('admin_portionFixed', dbYemek.portionFixed || false);
+                    safeSetChecked('admin_fillerLunch', dbYemek.fillerLunch || false);
+                    safeSetChecked('admin_fillerDinner', dbYemek.fillerDinner || false);
+                    safeSetChecked('admin_reversedSeason', dbYemek.isReversedSeason || false);
                     
                     // Etiketler
-                    document.getElementById('admin_db_ekle_tags').value = 
-                        (dbYemek.tags || []).join(', ');
-                    document.getElementById('admin_db_ekle_compat').value = 
-                        (dbYemek.compatibilityTags || []).join(', ');
-                    document.getElementById('admin_db_ekle_incompat').value = 
-                        (dbYemek.incompatibilityTags || []).join(', ');
+                    safeSetValue('admin_db_ekle_tags', (dbYemek.tags || []).join(', '));
+                    safeSetValue('admin_db_ekle_compat', (dbYemek.compatibilityTags || []).join(', '));
+                    safeSetValue('admin_db_ekle_incompat', (dbYemek.incompatibilityTags || []).join(', '));
                     
                     // Notlar
-                    document.getElementById('admin_db_ekle_notes').value = dbYemek.notes || '';
+                    safeSetValue('admin_db_ekle_notes', dbYemek.notes || '');
                     
                 } else {
                     // ⚠️ VERİTABANINDA YOK - Menü kartındaki makroları doldur, geri kalan boş
                     console.log('⚠️ Yemek veritabanında bulunamadı, menü kartı makroları kullanılıyor:', foodName);
                     
                     // Temel makrolar (menü kartından - sadece varsa)
-                    document.getElementById('admin_db_ekle_protein').value = food.protein || 0;
-                    document.getElementById('admin_db_ekle_karb').value = food.carbs || food.karbonhidrat || 0;
-                    document.getElementById('admin_db_ekle_yag').value = food.fat || food.yag || 0;
+                    safeSetValue('admin_db_ekle_protein', food.protein || 0);
+                    safeSetValue('admin_db_ekle_karb', food.carbs || food.karbonhidrat || 0);
+                    safeSetValue('admin_db_ekle_yag', food.fat || food.yag || 0);
                     
                     // Kalori otomatik hesapla
-                    calculateKaloriForAddFood();
+                    if (typeof calculateKaloriForAddFood === 'function') {
+                        calculateKaloriForAddFood();
+                    }
                     
                     // Kategori ve Rol: Sadece menü kartında VARSA ekle, YOKSA BOŞ BIRAK
-                    document.getElementById('admin_db_ekle_kategori').value = food.category || '';
-                    document.getElementById('admin_db_ekle_rol').value = food.role || '';
+                    safeSetValue('admin_db_ekle_kategori', food.category || '');
+                    safeSetValue('admin_db_ekle_rol', food.role || '');
                     
                     // Geri kalan tüm alanları temizle
-                    document.getElementById('admin_mealType_breakfast').checked = false;
-                    document.getElementById('admin_mealType_lunch').checked = false;
-                    document.getElementById('admin_mealType_dinner').checked = false;
-                    document.getElementById('admin_db_ekle_portion').value = 1;
-                    document.getElementById('admin_db_ekle_portion2').value = 1;
-                    document.getElementById('admin_dietType_ketojenik').checked = false;
-                    document.getElementById('admin_dietType_akdeniz').checked = false;
-                    document.getElementById('admin_dietType_vegan').checked = false;
-                    document.getElementById('admin_dietType_glutensiz').checked = false;
-                    document.getElementById('admin_db_ekle_min').value = '';
-                    document.getElementById('admin_db_ekle_max').value = '';
-                    document.getElementById('admin_db_ekle_step').value = '';
-                    document.getElementById('admin_db_ekle_season_min').value = '';
-                    document.getElementById('admin_db_ekle_season_max').value = '';
-                    document.getElementById('admin_keto').checked = false;
-                    document.getElementById('admin_lowcarb').checked = false;
-                    document.getElementById('admin_portionFixed').checked = false;
-                    document.getElementById('admin_fillerLunch').checked = false;
-                    document.getElementById('admin_fillerDinner').checked = false;
-                    document.getElementById('admin_reversedSeason').checked = false;
-                    document.getElementById('admin_db_ekle_tags').value = '';
-                    document.getElementById('admin_db_ekle_compat').value = '';
-                    document.getElementById('admin_db_ekle_incompat').value = '';
-                    document.getElementById('admin_db_ekle_notes').value = '';
+                    safeSetChecked('admin_mealType_breakfast', false);
+                    safeSetChecked('admin_mealType_lunch', false);
+                    safeSetChecked('admin_mealType_dinner', false);
+                    safeSetValue('admin_db_ekle_portion', 1);
+                    safeSetValue('admin_db_ekle_portion2', 1);
+                    safeSetChecked('admin_dietType_ketojenik', false);
+                    safeSetChecked('admin_dietType_akdeniz', false);
+                    safeSetChecked('admin_dietType_vegan', false);
+                    safeSetChecked('admin_dietType_glutensiz', false);
+                    safeSetValue('admin_db_ekle_min', '');
+                    safeSetValue('admin_db_ekle_max', '');
+                    safeSetValue('admin_db_ekle_step', '');
+                    safeSetValue('admin_db_ekle_season_min', '');
+                    safeSetValue('admin_db_ekle_season_max', '');
+                    safeSetChecked('admin_keto', false);
+                    safeSetChecked('admin_lowcarb', false);
+                    safeSetChecked('admin_portionFixed', false);
+                    safeSetChecked('admin_fillerLunch', false);
+                    safeSetChecked('admin_fillerDinner', false);
+                    safeSetChecked('admin_reversedSeason', false);
+                    safeSetValue('admin_db_ekle_tags', '');
+                    safeSetValue('admin_db_ekle_compat', '');
+                    safeSetValue('admin_db_ekle_incompat', '');
+                    safeSetValue('admin_db_ekle_notes', '');
                 }
                 
                 // Manuel Eşleştirme tab'ını aç
@@ -2655,30 +2666,49 @@
                     : (typeof manuelData === 'string' ? [manuelData] : []);
                 
                 const bulunanKartlar = manuelTarifAdlari.map(manuelTarifAdi => {
-                    return tarifKartlari.find(tarif => {
-                        const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                    const foundTarif = tarifKartlari.find(tarif => {
+                        const tarifName = (tarif.file || tarif.name || '').replace(/\.(jpg|jpeg|png)$/i, '');
                         const manuelName = (typeof manuelTarifAdi === 'string' ? manuelTarifAdi : '').replace(/\.(jpg|jpeg|png)$/i, '');
                         return normalizeText(tarifName) === normalizeText(manuelName) || tarifName === manuelName;
                     });
+                    
+                    // ✅ DÜZELTME: Eğer tarifKartlari string array ise, dosya adını direkt kullan
+                    if (foundTarif) {
+                        return foundTarif;
+                    } else {
+                        // Manuel eşleştirmede dosya adı varsa, onu kullan
+                        const fileName = manuelTarifAdi.includes('.jpg') || manuelTarifAdi.includes('.png') 
+                            ? manuelTarifAdi 
+                            : `${manuelTarifAdi}.jpg`;
+                        return {
+                            file: fileName,
+                            name: fileName.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' '),
+                            type: 'file',
+                            download_url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${fileName}`
+                        };
+                    }
                 }).filter(Boolean);
                 
-                if (bulunanKartlar.length > 0) return bulunanKartlar;
+                if (bulunanKartlar.length > 0) {
+                    console.log('✅ Manuel eşleştirme bulundu:', bulunanKartlar.map(k => k.file || k.name));
+                    return bulunanKartlar;
+                }
             }
 
             // 2. Otomatik eşleştirme (fuzzy matching)
             const potansiyelTarif = tarifKartlari.find(tarif => {
-                const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifName = (tarif.file || tarif.name || '').replace(/\.(jpg|jpeg|png)$/i, '');
                 const tarifNormalized = normalizeText(tarifName);
                 return tarifNormalized === normalizedCleaned || tarifNormalized.replace(/_/g, '') === normalizedCleaned;
             }) || tarifKartlari.find(tarif => {
-                const tarifName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifName = (tarif.file || tarif.name || '').replace(/\.(jpg|jpeg|png)$/i, '');
                 const tarifNormalized = normalizeText(tarifName);
                 return tarifNormalized.includes(normalizedCleaned) || normalizedCleaned.includes(tarifNormalized);
             });
             
             // 3. Yasak kurallarını kontrol et
             if (potansiyelTarif) {
-                const tarifAdi = potansiyelTarif.name.replace(/\.(jpg|jpeg|png)$/i, '');
+                const tarifAdi = (potansiyelTarif.file || potansiyelTarif.name || '').replace(/\.(jpg|jpeg|png)$/i, '');
                 const yasakData = eslesmemeKurallari[yemekAdi] 
                     || eslesmemeKurallari[normalizeText(yemekAdi)] 
                     || eslesmemeKurallari[cleanedYemekAdi] 
@@ -2692,6 +2722,7 @@
                         return [];
                     }
                 }
+                console.log('✅ Otomatik eşleştirme bulundu:', potansiyelTarif.file || potansiyelTarif.name);
                 return [potansiyelTarif];
             }
             
@@ -5645,9 +5676,19 @@
                 const autoMatchedCards = findTarifKartlari(foodName);
                 
                 if (autoMatchedCards && autoMatchedCards.length > 0) {
-                    // ✅ card.name kullan (boşluklu format: "kabak sote")
-                    // Grid'de de tarif.name kullanılıyor, bu yüzden uyumlu olmalı
-                    manualMatches[foodName] = autoMatchedCards.map(card => card.name);
+                    // ✅ DÜZELTME: file özelliğini güvenli şekilde çıkar
+                    manualMatches[foodName] = autoMatchedCards.map(card => {
+                        // String ise direkt kullan, object ise file veya name property'sini al
+                        const fileName = typeof card === 'string' 
+                            ? card 
+                            : (card.file || card.name || '');
+                        
+                        // Uzantı yoksa .jpg ekle
+                        return fileName.match(/\.(jpg|jpeg|png)$/i) 
+                            ? fileName 
+                            : `${fileName}.jpg`;
+                    }).filter(Boolean); // undefined/null değerleri filtrele
+                    
                     console.log('✅ Otomatik eşleşen kartlar yüklendi:', manualMatches[foodName]);
                     console.log('🔍 DEBUG - Kart yapısı:', autoMatchedCards[0]); // DEBUG
                 } else {
@@ -5760,13 +5801,17 @@
                 
                 // Global array'e kaydet
                 tarifKartlari = tarifList.map(item => {
+                    // String mi object mi kontrol et
+                    const fileName = typeof item === 'string' ? item : (item.file || item.name || item);
+                    
                     // Dosya adından isim çıkar: "domates_corbasi.jpg" → "domates çorbası"
-                    const name = item.file.replace('.jpg', '').replace(/_/g, ' ');
+                    const displayName = fileName.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+                    
                     return {
-                        file: item.file,
-                        name: name,
-                        tags: item.tags || [],
-                        imagePath: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${item.file}` // ✅ GitHub Raw URL
+                        file: fileName,  // "kabak_sote.jpg" (alt çizgili, uzantılı)
+                        name: displayName,  // "kabak sote" (boşluklu, uzantısız - görüntüleme için)
+                        tags: (typeof item === 'object' && item.tags) ? item.tags : [],
+                        imagePath: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${fileName}` // ✅ GitHub Raw URL
                     };
                 });
                 
@@ -5845,16 +5890,19 @@
             }
             
             // Seçili kartlar üstte, seçili olmayanlar altta
-            const currentMatches = manualMatches[currentFoodName] || [];
-            console.log('📋 Mevcut eşleştirmeler:', currentMatches);
+            // ✅ Object → Array dönüşümü (GitHub JSON format: {kartlar: [...], guncellemeTarihi: ...})
+            let currentMatchData = manualMatches[currentFoodName] || [];
+            const currentMatches = Array.isArray(currentMatchData) 
+                ? currentMatchData 
+                : (currentMatchData.kartlar || []);
+            
+            console.log('� Mevcut eşleştirmeler (array):', currentMatches);
             console.log('🔍 DEBUG - currentFoodName:', currentFoodName);
-            console.log('🔍 DEBUG - manualMatches keys:', Object.keys(manualMatches));
-            console.log('🔍 DEBUG - manualMatches full:', manualMatches);
             
             const sorted = [...tarifler].sort((a, b) => {
-                const aSelected = currentMatches.includes(a.name);
-                const bSelected = currentMatches.includes(b.name);
-                console.log(`🔍 DEBUG - Kart: "${a.name}", selected: ${aSelected}`); // Her kart için
+                const aSelected = currentMatches.includes(a.file);
+                const bSelected = currentMatches.includes(b.file);
+                console.log(`🔍 DEBUG - Kart: "${a.file}", selected: ${aSelected}`);
                 if (aSelected && !bSelected) return -1;
                 if (!aSelected && bSelected) return 1;
                 return 0;
@@ -5863,10 +5911,10 @@
             console.log('✅ Render ediliyor:', sorted.length, 'kart');
             
             grid.innerHTML = sorted.map(tarif => {
-                const isSelected = currentMatches.includes(tarif.name);
+                const isSelected = currentMatches.includes(tarif.file);
                 return `
                     <div class="tarif-item ${isSelected ? 'selected' : ''}" 
-                         onclick="toggleTarifSelection('${tarif.name.replace(/'/g, "\\'")}')">
+                         onclick="toggleTarifSelection('${tarif.file.replace(/'/g, "\\'")}')">
                         <img src="${tarif.imagePath}" 
                              alt="${tarif.name}"
                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'14\\'%3E${tarif.name.slice(0,2)}%3C/text%3E%3C/svg%3E'">
@@ -5883,19 +5931,28 @@
         
         // Kart seçim toggle
         function toggleTarifSelection(tarifName) {
+            // ✅ Object → Array dönüşümü
             if (!manualMatches[currentFoodName]) {
                 manualMatches[currentFoodName] = [];
             }
             
-            const index = manualMatches[currentFoodName].indexOf(tarifName);
+            // GitHub format ise array'e çevir
+            let currentArray = Array.isArray(manualMatches[currentFoodName])
+                ? manualMatches[currentFoodName]
+                : (manualMatches[currentFoodName].kartlar || []);
+            
+            const index = currentArray.indexOf(tarifName);
             
             if (index === -1) {
                 // Ekle
-                manualMatches[currentFoodName].push(tarifName);
+                currentArray.push(tarifName);
             } else {
                 // Çıkar
-                manualMatches[currentFoodName].splice(index, 1);
+                currentArray.splice(index, 1);
             }
+            
+            // Geri kaydet (array formatında)
+            manualMatches[currentFoodName] = currentArray;
             
             // Search input değerini koru
             const searchInput = document.getElementById('tarifSearchInput');
@@ -5917,17 +5974,26 @@
             const container = document.getElementById('selectedTarifTags');
             if (!container) return;
             
-            const selectedCards = manualMatches[currentFoodName] || [];
+            // ✅ Object → Array dönüşümü
+            let selectedData = manualMatches[currentFoodName] || [];
+            const selectedCards = Array.isArray(selectedData) 
+                ? selectedData 
+                : (selectedData.kartlar || []);
             
             if (selectedCards.length === 0) {
                 container.innerHTML = '<span class="selected-tarif-empty">Henüz kart seçilmedi. Aşağıdaki kartlardan tıklayarak seçin.</span>';
             } else {
-                container.innerHTML = selectedCards.map(cardName => `
-                    <span class="selected-tarif-tag">
-                        ${cardName}
-                        <span class="remove-icon" onclick="removeManualMatch('${cardName.replace(/'/g, "\\'")}')">×</span>
-                    </span>
-                `).join('');
+                container.innerHTML = selectedCards.filter(Boolean).map(cardFile => {
+                    // Dosya adından okunabilir isim oluştur: "kabak_sote.jpg" → "kabak sote"
+                    const displayName = (cardFile || '').replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+                    
+                    return `
+                        <span class="selected-tarif-tag">
+                            ${displayName}
+                            <span class="remove-icon" onclick="removeManualMatch('${(cardFile || '').replace(/'/g, "\\'")}')">×</span>
+                        </span>
+                    `;
+                }).join('');
             }
         }
         
@@ -5935,10 +6001,18 @@
         function removeManualMatch(matchName) {
             if (!manualMatches[currentFoodName]) return;
             
-            const index = manualMatches[currentFoodName].indexOf(matchName);
+            // ✅ Object → Array dönüşümü
+            let currentArray = Array.isArray(manualMatches[currentFoodName])
+                ? manualMatches[currentFoodName]
+                : (manualMatches[currentFoodName].kartlar || []);
+            
+            const index = currentArray.indexOf(matchName);
             if (index !== -1) {
-                manualMatches[currentFoodName].splice(index, 1);
+                currentArray.splice(index, 1);
             }
+            
+            // Geri kaydet
+            manualMatches[currentFoodName] = currentArray;
             
             // Seçili kartları güncelle
             updateSelectedTarifList();
