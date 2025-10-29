@@ -1035,6 +1035,157 @@
             border-radius: 12px;
             min-height: 400px;
         }
+
+        /* ============================================
+           🔗 ADMIN MODAL: TARIF KARTLARI GRID SİSTEMİ
+           ============================================ */
+        
+        /* Search Input */
+        .admin-search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .admin-search-input:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .admin-search-input::placeholder {
+            color: #999;
+        }
+
+        /* Tarif Kartları Grid */
+        .admin-tarif-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .admin-tarif-item {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            background: white;
+            position: relative;
+        }
+
+        .admin-tarif-item:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .admin-tarif-item.selected {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .admin-tarif-item.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #28a745;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .admin-tarif-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+        }
+
+        .admin-tarif-name {
+            font-size: 13px;
+            color: #333;
+            word-break: break-word;
+            line-height: 1.3;
+            font-weight: 500;
+        }
+
+        /* Seçili Kartlar Sayacı */
+        .admin-selected-count {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+
+        .admin-selected-count.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Yükleme Animasyonu */
+        .admin-loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .admin-loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Kart Bulunamadı */
+        .admin-no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 15px;
+        }
+
+        .admin-no-results::before {
+            content: '🔍';
+            display: block;
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -1755,6 +1906,9 @@
         
         let tarifKartlari = []; // Tarif kartları listesi (tarifler/list.json)
         let foodData = []; // Yemek veritabanı (food_list.json)
+        
+        // 🔗 Admin Modal: Seçili Tarif Kartları
+        let selectedTarifKartlari = []; // Tab 1-2 için seçili kartlar
         
         // Eşleştirme kriterleri - VARSAYILAN DEĞERLER (mobil versiyonla aynı)
         let matchCriteria = {
@@ -5385,15 +5539,50 @@
         // Placeholder render fonksiyonları (sonra doldurulacak)
         function renderTarifManuelTab() {
             const content = document.getElementById('adminTabContent');
+            if (!content) return;
+            
+            // Seçili yemek adını al
+            const foodName = window.selectedFoodForAdmin?.foodName || '';
+            
+            // HTML render
             content.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #666;">
-                    <h3>📝 Tarif Kartları Manuel Eşleştirme</h3>
-                    <p>Şablon yemeklerini tarif kartlarıyla eşleştirin</p>
-                    <small style="color: #999; display: block; margin-top: 20px;">
-                        Bu özellik yakında eklenecek...
-                    </small>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <h3 style="color: #667eea; margin-bottom: 10px;">📝 Manuel Eşleştirme (Tarif Kartları)</h3>
+                    <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                        Menü kartındaki "<strong>${foodName}</strong>" yemeğini tarif kartlarıyla eşleştirin.
+                        <br><small>💡 İpucu: "dom çor" yazarak "domates çorbası" kartını bulabilirsiniz.</small>
+                    </p>
+                    
+                    <!-- Search Input -->
+                    <input type="text" 
+                           class="admin-search-input" 
+                           id="adminTarifSearch" 
+                           placeholder="🔍 Tarif kartı ara... (örn: dom çor, kuru fas)"
+                           oninput="searchAndRenderTariflar()"
+                           autocomplete="off">
+                    
+                    <!-- Seçili Kartlar Sayacı -->
+                    <div class="admin-selected-count" id="adminSelectedCount">
+                        <span id="adminSelectedCountText">0 kart seçildi</span>
+                    </div>
+                    
+                    <!-- Tarif Kartları Grid -->
+                    <div class="admin-tarif-grid" id="adminTarifGrid">
+                        <div class="admin-loading">Tarif kartları yükleniyor</div>
+                    </div>
+                    
+                    <!-- Kaydet Butonu -->
+                    <div style="text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+                        <button onclick="saveManuelEslestirme()" 
+                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            💾 Eşleştirmeyi Kaydet
+                        </button>
+                    </div>
                 </div>
             `;
+            
+            // Tarif kartlarını render et
+            renderTarifKartlariGrid();
         }
 
         function renderTarifYasakTab() {
@@ -5420,6 +5609,188 @@
                     </small>
                 </div>
             `;
+        }
+
+        // ========================================
+        // TAB 1: TARİF KARTLARI - AKILLI SEARCH FONKSİYONLARI
+        // ========================================
+        
+        // Tarif kartlarını yükle ve render et
+        async function loadAndRenderTarifCards() {
+            try {
+                // tarifler/list.json dosyasını yükle
+                const response = await fetch('tarifler/list.json');
+                if (!response.ok) throw new Error('Tarif listesi yüklenemedi');
+                
+                const tarifList = await response.json();
+                
+                // Global array'e kaydet
+                tarifKartlari = tarifList.map(item => {
+                    // Dosya adından isim çıkar: "domates_corbasi.jpg" → "domates çorbası"
+                    const name = item.file.replace('.jpg', '').replace(/_/g, ' ');
+                    return {
+                        file: item.file,
+                        name: name,
+                        tags: item.tags || [],
+                        imagePath: `tarifler/${item.file}`
+                    };
+                });
+                
+                // İlk render (seçililer üstte)
+                renderTarifKartlari(tarifKartlari);
+                
+            } catch (error) {
+                console.error('Tarif kartları yüklenirken hata:', error);
+                const grid = document.getElementById('tarifCardsGrid');
+                if (grid) {
+                    grid.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #dc3545;">
+                            ❌ Tarif kartları yüklenemedi!<br>
+                            <small>${error.message}</small>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // Fuzzy search - "dom çor" → "domates çorbası"
+        function searchTarifCards(query) {
+            if (!query || query.trim() === '') {
+                // Boşsa tüm kartları göster (seçililer üstte)
+                renderTarifKartlari(tarifKartlari);
+                return;
+            }
+            
+            const normalizedQuery = normalizeTr(query);
+            const queryTokens = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
+            
+            // Fuzzy match: Her query token'ı tarif adında var mı?
+            const filtered = tarifKartlari.filter(tarif => {
+                const normalizedName = normalizeTr(tarif.name);
+                
+                // Tüm query token'ları tarif adında olmalı
+                return queryTokens.every(token => {
+                    // Token tam eşleşme
+                    if (normalizedName.includes(token)) return true;
+                    
+                    // Token kısaltma: "dom" → "domates", "çor" → "çorbası"
+                    const words = normalizedName.split(/\s+/);
+                    return words.some(word => word.startsWith(token) && token.length >= 2);
+                });
+            });
+            
+            renderTarifKartlari(filtered);
+        }
+        
+        // Tarif kartlarını ekranda göster (seçililer üstte)
+        function renderTarifKartlari(tarifler) {
+            const grid = document.getElementById('tarifCardsGrid');
+            if (!grid) return;
+            
+            if (!tarifler || tarifler.length === 0) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #999; grid-column: 1 / -1;">
+                        🔍 Eşleşen tarif bulunamadı
+                    </div>
+                `;
+                return;
+            }
+            
+            // Seçili kartlar üstte, seçili olmayanlar altta
+            const currentMatches = manualMatches[currentFoodName] || [];
+            const sorted = [...tarifler].sort((a, b) => {
+                const aSelected = currentMatches.includes(a.name);
+                const bSelected = currentMatches.includes(b.name);
+                if (aSelected && !bSelected) return -1;
+                if (!aSelected && bSelected) return 1;
+                return 0;
+            });
+            
+            grid.innerHTML = sorted.map(tarif => {
+                const isSelected = currentMatches.includes(tarif.name);
+                return `
+                    <div class="tarif-item ${isSelected ? 'selected' : ''}" 
+                         onclick="toggleTarifSelection('${tarif.name.replace(/'/g, "\\'")}')">
+                        <img src="${tarif.imagePath}" 
+                             alt="${tarif.name}"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'14\\'%3E${tarif.name.slice(0,2)}%3C/text%3E%3C/svg%3E'">
+                        <div class="tarif-name">${tarif.name}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Kart seçim toggle
+        function toggleTarifSelection(tarifName) {
+            if (!manualMatches[currentFoodName]) {
+                manualMatches[currentFoodName] = [];
+            }
+            
+            const index = manualMatches[currentFoodName].indexOf(tarifName);
+            
+            if (index === -1) {
+                // Ekle
+                manualMatches[currentFoodName].push(tarifName);
+            } else {
+                // Çıkar
+                manualMatches[currentFoodName].splice(index, 1);
+            }
+            
+            // Search input değerini koru
+            const searchInput = document.getElementById('tarifSearchInput');
+            const currentQuery = searchInput ? searchInput.value : '';
+            
+            // Yeniden render (search varsa filtrelenmiş, yoksa tam liste)
+            if (currentQuery) {
+                searchTarifCards(currentQuery);
+            } else {
+                renderTarifKartlari(tarifKartlari);
+            }
+            
+            // Mevcut eşleştirmeler badge'lerini güncelle
+            renderTarifManuelTab();
+        }
+        
+        // Manuel eşleştirme sil (badge × butonu)
+        function removeManualMatch(matchName) {
+            if (!manualMatches[currentFoodName]) return;
+            
+            const index = manualMatches[currentFoodName].indexOf(matchName);
+            if (index !== -1) {
+                manualMatches[currentFoodName].splice(index, 1);
+            }
+            
+            // Yeniden render
+            renderTarifManuelTab();
+        }
+        
+        // Manuel eşleştirmeleri kaydet
+        async function saveManualMatches() {
+            if (!currentFoodName) {
+                alert('❌ Menü kartı seçilmedi!');
+                return;
+            }
+            
+            const matches = manualMatches[currentFoodName] || [];
+            if (matches.length === 0) {
+                alert('⚠️ Hiç eşleştirme seçilmedi!');
+                return;
+            }
+            
+            try {
+                // GitHub'a kaydet (data/manuel_eslestirmeler.json)
+                await saveToGitHub(
+                    'data/manuel_eslestirmeler.json',
+                    JSON.stringify(manualMatches, null, 2),
+                    `Manuel eşleştirme güncellendi: ${currentFoodName} (${matches.length} tarif)`
+                );
+                
+                alert(`✅ ${matches.length} tarif eşleştirildi ve GitHub'a kaydedildi!\n\n${matches.join('\n')}`);
+                
+            } catch (error) {
+                console.error('Kaydetme hatası:', error);
+                alert('❌ Kaydetme sırasında hata:\n' + error.message);
+            }
         }
 
         function renderYemekYasakTab() {
