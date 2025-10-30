@@ -326,6 +326,19 @@
             <p style="margin-top: 10px; color: #666;">Giriş yapılıyor...</p>
         </div>
 
+        <div class="demo-info">
+            <strong>Demo Giriş Bilgileri:</strong>
+            <div style="margin: 5px 0;">
+                <code>deneme</code> / <code>deneme</code> (Demo Hasta)
+            </div>
+            <div style="margin: 5px 0;">
+                <code>demo.hasta</code> / <code>test</code> (Gerçek Hasta)
+            </div>
+            <div style="margin: 5px 0;">
+                <code>hasta001</code> / <code>hasta123</code> (Test Hesabı)
+            </div>
+        </div>
+
         <div class="admin-link">
             <a href="admin_patients.html">👨‍⚕️ Yönetici Girişi</a>
         </div>
@@ -455,7 +468,7 @@
                 const manifest = {
                     "short_name": "Hasta Girişi",
                     "name": "Hasta Giriş Paneli",
-                    "start_url": ".",
+                    "start_url": "./login.html",
                     "display": "standalone",
                     "background_color": "#667eea",
                     "theme_color": "#764ba2",
@@ -519,14 +532,15 @@
                         );
                     });
                 `;
-                // GitHub Pages blob: URL desteklemiyor, ServiceWorker'ı devre dışı bırak
-                console.log('ℹ️ ServiceWorker GitHub Pages için devre dışı (blob: URL desteklenmiyor)');
-                
-                // const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
-                // const swURL = URL.createObjectURL(swBlob);
-                // navigator.serviceWorker.register(swURL)
-                //     .then(registration => console.log('ServiceWorker registered:', registration.scope))
-                //     .catch(err => console.log('ServiceWorker registration failed:', err));
+                // ServiceWorker için ana service-worker.js dosyasını kullan (async wrapper)
+                (async () => {
+                    try {
+                        const registration = await navigator.serviceWorker.register('./service-worker.js');
+                        console.log('✅ ServiceWorker registered:', registration.scope);
+                    } catch (err) {
+                        console.log('⚠️ ServiceWorker registration failed:', err);
+                    }
+                })();
             }
         }
 

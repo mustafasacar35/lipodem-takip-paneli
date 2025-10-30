@@ -39,20 +39,28 @@ self.addEventListener('activate', (event) => {
 
 // Network-first stratejisi (önce internetten, sonra cache'den)
 self.addEventListener('fetch', (event) => {
+  // Skip caching for non-GET requests (PUT, POST, DELETE etc.)
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Başarılı yanıtı cache'e kaydet
-        if (response.status === 200) {
+        // Başarılı yanıtı cache'e kaydet (sadece GET istekleri için)
+        if (response.status === 200 && event.request.method === 'GET') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
+          }).catch(err => {
+            console.warn('Cache put failed:', err);
           });
         }
         return response;
       })
       .catch(() => {
-        // Network başarısız, cache'den dön
+        // Network başarısız, cache'den dön (sadece GET istekleri için)
         return caches.match(event.request);
       })
   );

@@ -26,6 +26,9 @@
 
     <title>Beslenme Planım - Lipodem Takip</title>
     
+    <!-- Authentication System -->
+    <script src="auth.js"></script>
+    
     <!-- Nutrition Data Manager -->
     <script src="nutrition_data_manager.js"></script>
     
@@ -4359,7 +4362,7 @@
                 }
                 
                 // localStorage'a kaydet (hash güncellemesinden SONRA)
-                const cleanId = currentPatient.id.replace(/^patient_/i, '');
+                const cleanId = String(currentPatient.id).replace(/^patient_/i, '');
                 const cachedDataKey = `patient_data_${cleanId}`;
                 localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
                 console.log('💾 Ayarlar localStorage\'a kaydedildi (passwordHash:', patientData.passwordHash.substring(0, 10) + '...)');
@@ -4435,7 +4438,7 @@
                 console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
                 
                 // GitHub'a kaydet (API üzerinden)
-                const cleanId = currentPatient.id.replace(/^patient_/i, '');
+                const cleanId = String(currentPatient.id).replace(/^patient_/i, '');
                 const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
                 
                 const response = await fetch(apiUrl, {
