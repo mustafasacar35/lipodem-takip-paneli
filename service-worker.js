@@ -1,9 +1,12 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme
-const CACHE_NAME = 'lipodem-takip-v1';
+const CACHE_NAME = 'lipodem-takip-v2';
 const urlsToCache = [
-  '/patient_dashboard.html',
-  '/index.html',
-  '/login.html'
+  './patient_nutrition.html',
+  './patient_dashboard.html',
+  './index.html',
+  './login.html',
+  './nutrition_data_manager.js',
+  './manifest.json'
 ];
 
 // Service Worker kurulumu

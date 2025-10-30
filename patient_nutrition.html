@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
 
     <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -11,8 +11,17 @@
     <meta name="application-name" content="Beslenme Planım">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#667eea">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
-    <link rel="manifest" href="manifest.json">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-navbutton-color" content="#667eea">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="./logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="./logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./logo.png">
+    <link rel="manifest" href="./manifest.json">
 
     <title>Beslenme Planım - Lipodem Takip</title>
     
@@ -2354,6 +2363,17 @@
             };
         }
 
+        // Debug fonksiyonları - Console'da çalıştırın
+        window.enableBadgeDebug = function() {
+            window.debugBadges = true;
+            console.log('🔍 Rozet debug modu AÇILDI');
+        };
+        
+        window.disableBadgeDebug = function() {
+            window.debugBadges = false;
+            console.log('🔍 Rozet debug modu KAPANDI');
+        };
+
         // Admin ayarlarını GitHub'dan yükle (mobil_versiyon_v1.html ile AYNI KAYNAK)
         async function loadAdminSettings() {
             try {
@@ -2373,6 +2393,21 @@
                 const decoded = decodeBase64UTF8((data.content || '').replace(/\n/g, ''));
                 const parsed = JSON.parse(decoded);
                 appSettings = parsed;
+                
+                // Rozet ayarlarını konsola yazdır
+                console.log('🏷️ Hasta paneli - Rozet ayarları yüklendi:', appSettings?.badgeVisibility);
+                if (appSettings?.badgeVisibility) {
+                    const enabledBadges = Object.entries(appSettings.badgeVisibility)
+                        .filter(([key, value]) => value)
+                        .map(([key]) => key);
+                    const disabledBadges = Object.entries(appSettings.badgeVisibility)
+                        .filter(([key, value]) => !value)
+                        .map(([key]) => key);
+                    console.log('   ✅ Aktif rozetler:', enabledBadges);
+                    console.log('   ❌ Kapalı rozetler:', disabledBadges);
+                } else {
+                    console.log('   ⚠️ badgeVisibility ayarları bulunamadı, varsayılan ayarlar kullanılacak');
+                }
 
                 // matchCriteria'yı filterCriteria'dan doldur (mobil versiyon mantığı)
                 if (appSettings.filterCriteria) {
@@ -3136,6 +3171,11 @@
                 mealType: false,
                 tags: false
             };
+            
+            // Debug: Rozet ayarlarını kontrol et
+            if (window.debugBadges || false) {
+                console.log(`🔍 ${food.foodName || food.name} için rozet ayarları:`, badgeSettings);
+            }
 
             // 🔍 foodData'dan zenginleştirilmiş bilgileri al (Hibrit eşleştirme)
             let enrichedFood = food;
@@ -10807,6 +10847,66 @@
             </div>
         </div>
     </div>
+
+    <!-- PWA Service Worker Kaydı -->
+    <script>
+        // Service Worker ve PWA Kurulumu
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('✅ Service Worker kaydedildi:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Service Worker kayıt hatası:', error);
+                    });
+            });
+        }
+
+        // PWA yükleme promptunu yakalama
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Otomatik banner'ı engelle
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // İsteğe bağlı: Özel install butonu gösterebilirsiniz
+            console.log('💫 PWA yüklenebilir durumda');
+            
+            // Otomatik olarak install prompt göster (iPhone için)
+            if (window.DeviceMotionEvent !== undefined && typeof DeviceMotionEvent.requestPermission === 'function') {
+                // iOS cihaz
+                setTimeout(() => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('✅ PWA yüklemesi kabul edildi');
+                            } else {
+                                console.log('❌ PWA yüklemesi reddedildi');
+                            }
+                            deferredPrompt = null;
+                        });
+                    }
+                }, 2000);
+            }
+        });
+
+        // PWA başarıyla yüklendiğinde
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('🎉 PWA başarıyla yüklendi!');
+        });
+
+        // Offline/Online durumu kontrol et
+        window.addEventListener('online', () => {
+            console.log('🌐 İnternet bağlantısı aktif');
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📱 Offline modda çalışıyor');
+        });
+    </script>
 
 </body>
 </html>
