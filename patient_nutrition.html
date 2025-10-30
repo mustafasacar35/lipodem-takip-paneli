@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+    <meta name="format-detection" content="telephone=no">
 
     <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Beslenme Planım">
     <meta name="application-name" content="Beslenme Planım">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#667eea">
     <meta name="msapplication-TileColor" content="#667eea">
     <meta name="msapplication-navbutton-color" content="#667eea">
@@ -35,6 +36,39 @@
             box-sizing: border-box;
         }
 
+        /* iOS PWA için güvenli alan ayarları */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            /* iOS cihazlarda ek üst margin */
+            .header {
+                padding-top: max(8px, calc(8px + env(safe-area-inset-top, 0px))) !important;
+            }
+            
+            /* Ana içerik için de ek üst margin */
+            .main-container {
+                margin-top: env(safe-area-inset-top, 0px) !important;
+            }
+        }
+
+        /* iPhone ve mobil cihazlar için özel ayarlar */
+        @media only screen and (max-device-width: 812px) and (-webkit-device-pixel-ratio: 3) {
+            /* iPhone X ve sonrası için ekstra üst boşluk */
+            .header {
+                padding-top: 20px !important;
+            }
+            
+            .main-container {
+                padding-top: 15px !important;
+            }
+        }
+
+        /* Portrait mod için */
+        @media (orientation: portrait) and (max-width: 414px) {
+            .header {
+                min-height: 50px;
+                padding-top: max(12px, env(safe-area-inset-top, 0px));
+            }
+        }
+
         html, body {
             height: 100%;
             overflow: hidden;
@@ -50,6 +84,12 @@
             -webkit-user-select: none; /* iOS'ta metin seçimini engelle */
             -webkit-touch-callout: none; /* iOS'ta uzun basma menüsünü engelle */
             user-select: none; /* Genel metin seçimini engelle */
+            
+            /* iOS Safe Area desteği */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         /* Header - Mobil Optimize */
@@ -63,6 +103,11 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             flex-shrink: 0;
             min-height: 44px;
+            
+            /* iOS için ek üst margin - safe area'ya ek olarak */
+            margin-top: max(0px, env(safe-area-inset-top, 0px));
+            position: relative;
+            z-index: 1000;
         }
 
         .header-left {
@@ -98,6 +143,11 @@
             background: rgba(255,255,255,0.2);
             border: 2px solid rgba(255,255,255,0.5);
             color: white;
+            
+            /* iOS için minimum dokunma alanı */
+            min-width: 44px;
+            min-height: 44px;
+            touch-action: manipulation;
             padding: 0;
             width: 36px;
             height: 36px;
@@ -171,6 +221,9 @@
             display: flex;
             flex-direction: column;
             padding: 10px 12px;
+            
+            /* Safe area için padding - sadır üst kısım */
+            padding-top: max(10px, calc(10px + env(safe-area-inset-top, 0px)));
         }
 
         /* Tabs Container - Mobil Optimize */
@@ -1466,6 +1519,16 @@
     </style>
 </head>
 <body>
+    <!-- iOS Safe Area Spacer - iPhone için üst boşluk -->
+    <div style="
+        height: env(safe-area-inset-top, 0px);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: sticky;
+        top: 0;
+        z-index: 1001;
+        pointer-events: none;
+    "></div>
+
     <!-- Header -->
     <div class="header">
         <div class="header-left">
@@ -8066,8 +8129,8 @@
             const mobileIframe = document.getElementById('mobileIframe');
             const btnBack = document.getElementById('btnBack');
             
-            // iframe URL'ini set et
-            mobileIframe.src = 'https://mustafasacar35.github.io/lipodem-takip-paneli/mobil_versiyon_v1.html';
+            // iframe URL'ini set et - lokal dosya
+            mobileIframe.src = 'mobil_versiyon_v1.html';
             
             // Ana içeriği gizle, mobil versiyonu göster
             mainContainer.style.display = 'none';
@@ -10850,12 +10913,18 @@
 
     <!-- PWA Service Worker Kaydı -->
     <script>
-        // Service Worker ve PWA Kurulumu
+        // Service Worker ve PWA Kurulumu  
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service-worker.js')
+                // GitHub Pages için relative path
+                const swPath = './service-worker.js';
+                navigator.serviceWorker.register(swPath)
                     .then(function(registration) {
                         console.log('✅ Service Worker kaydedildi:', registration.scope);
+                        
+                        // iOS Safe Area kontrolü
+                        const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top');
+                        console.log('📱 iOS Safe Area Top:', safeAreaTop || 'Yok');
                     })
                     .catch(function(error) {
                         console.log('❌ Service Worker kayıt hatası:', error);
