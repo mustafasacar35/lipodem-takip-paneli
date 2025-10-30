@@ -36,17 +36,11 @@
             box-sizing: border-box;
         }
 
-        /* iOS PWA için güvenli alan ayarları - Minimal padding */
-        @supports (padding-top: env(safe-area-inset-top)) {
-            .header {
-                padding-top: calc(2px + env(safe-area-inset-top, 0px)) !important;
-            }
-        }
-
-        /* iPhone kamera çentiği altından başlasın */
+        /* iPhone için header kamera çentiği tam altından başlasın */
         @media only screen and (max-device-width: 812px) {
             .header {
-                padding-top: env(safe-area-inset-top, 6px) !important;
+                padding-top: env(safe-area-inset-top, 0px) !important;
+                margin-top: 0px !important;
             }
         }
 
@@ -76,7 +70,7 @@
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 8px 12px;
+            padding: 4px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1499,16 +1493,6 @@
     </style>
 </head>
 <body>
-    <!-- iOS Safe Area Spacer - iPhone için üst boşluk -->
-    <div style="
-        height: env(safe-area-inset-top, 0px);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        position: sticky;
-        top: 0;
-        z-index: 1001;
-        pointer-events: none;
-    "></div>
-
     <!-- Header -->
     <div class="header">
         <div class="header-left">
