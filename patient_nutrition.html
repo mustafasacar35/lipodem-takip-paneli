@@ -427,17 +427,17 @@
         }
 
         .btn-refresh-day {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             padding: 0;
-            font-size: 12px;
+            font-size: 16px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 50%;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -446,15 +446,19 @@
 
         .btn-refresh-day::before {
             content: "↻";
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             display: block;
         }
 
         .btn-refresh-day:hover {
-            transform: scale(1.15);
-            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.5);
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.5);
             background: linear-gradient(135deg, #764ba2 0%, #5a3a7c 100%);
+        }
+
+        .btn-refresh-day:active {
+            transform: scale(0.95);
         }
 
         .btn-refresh-day:hover::before {
@@ -1514,9 +1518,9 @@
             <button class="btn-header" onclick="openSettings()" title="Ayarlar">
                 ⚙️
             </button>
-            <!-- Çıkış Butonu - Sadece İkon -->
-            <button class="btn-header" onclick="logout()" title="Çıkış">
-                🚪
+            <!-- Çıkış Butonu - Net Görünüm -->
+            <button class="btn-header" onclick="logout()" title="Çıkış" style="background: rgba(255,0,0,0.2); border-color: rgba(255,0,0,0.5);">
+                ❌
             </button>
         </div>
     </div>
@@ -4742,16 +4746,14 @@
                             mealsHtml += `
                                 <tr>
                                     <td>
-                                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                                <span>${food.foodName || 'İsimsiz Yemek'}</span>
-                                            </div>
-                                            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                            <button class="btn-refresh-food" onclick="refreshFoodInMeal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Alternatif yemek bul" style="order: 1;">
+                                            </button>
+                                            <span style="order: 2;">${food.foodName || 'İsimsiz Yemek'}</span>
+                                            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; order: 3;">
                                                 ${foodBadgesHtml}
                                                 ${tarifBadgesHtml}
                                                 ${adminIconHtml}
-                                                <button class="btn-refresh-food" onclick="refreshFoodInMeal(${currentWeekIndex}, ${dayIndex}, ${ogunIndex}, ${yemekIndex})" title="Alternatif yemek bul">
-                                                </button>
                                             </div>
                                         </div>
                                     </td>
