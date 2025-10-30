@@ -177,6 +177,13 @@
         .actions-right {
             display: flex;
             gap: 12px;
+            flex-wrap: nowrap; /* Butonları asla alt satıra geçirme */
+        }
+
+        .actions-right button {
+            white-space: nowrap; /* Buton metnini kırma */
+            flex-shrink: 1; /* Gerekirse butonları küçült */
+            min-width: 0; /* Butonların minimum genişliğini kaldır */
         }
 
         button {
@@ -385,12 +392,18 @@
             .actions-row {
                 flex-direction: column;
                 align-items: flex-start;
+                gap: 12px;
             }
 
             .actions-right {
                 width: 100%;
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                justify-content: flex-end; /* Butonları sağa hizala */
+                gap: 8px; /* Mobilde daha küçük gap */
+            }
+
+            .actions-right button {
+                font-size: 13px; /* Mobilde biraz daha küçük font */
+                padding: 10px 14px; /* Mobilde daha kompakt padding */
             }
         }
     </style>
@@ -991,13 +1004,26 @@
             </section>
 
             <section class="settings-section">
+                <h2>📋 Şablon Yükleme</h2>
+                <div class="settings-row">
+                    <label for="templateFileInput">Gün Şablonları JSON Dosyası</label>
+                    <input type="file" id="templateFileInput" accept=".json" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; font-size: 13px;">
+                </div>
+                <div class="settings-row">
+                    <button class="btn-primary" id="uploadTemplatesButton" type="button" style="width: fit-content;">📥 Şablonları Yükle ve Birleştir</button>
+                </div>
+                <div class="settings-row">
+                    <p style="font-size: 12px; color: #64748b; margin: 0;">
+                        <strong>Not:</strong> Yüklenen şablonlar mevcut şablonlarla birleştirilecek. Aynı ID'ye sahip şablonlar atlanacak, yeni şablonlar eklenecek. Türkçe karakterler korunacak.
+                    </p>
+                </div>
+            </section>
+
+            <section class="settings-section">
                 <h2>GitHub Erişimi</h2>
                 <div class="settings-row">
                     <label for="githubTokenInput">Kişisel Erişim Token'ı</label>
                     <input type="password" id="githubTokenInput" placeholder="ghp_...">
-                </div>
-                <div class="settings-row">
-                    <button class="btn-secondary" id="clearTokenButton" type="button">Token'ı Temizle</button>
                 </div>
             </section>
         </main>
@@ -1005,7 +1031,8 @@
         <footer class="actions-row">
             <p class="status-text" id="statusText"><strong>Hazır.</strong></p>
             <div class="actions-right">
-                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yeniden Yükle</button>
+                <button class="btn-secondary" id="clearTokenButton" type="button">Token Temizle</button>
+                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yükle</button>
                 <button class="btn-primary" id="saveSettingsButton" type="button">Kaydet</button>
             </div>
         </footer>
@@ -1136,6 +1163,8 @@
         const suggestionsPanel = document.getElementById('suggestionsPanel');
         const roleSuggestions = document.getElementById('roleSuggestions');
         const categorySuggestions = document.getElementById('categorySuggestions');
+        const templateFileInput = document.getElementById('templateFileInput');
+        const uploadTemplatesButton = document.getElementById('uploadTemplatesButton');
 
     // Admins UI refs
     const adminsListDiv = document.getElementById('adminsList');
@@ -1847,6 +1876,16 @@
                 rotationPayload.resetDay = settingsDraft.rotation.resetDay;
             }
 
+            // Rozet Görünürlük Ayarlarını Topla
+            const badgeVisibilityPayload = {
+                role: document.getElementById('badgeRoleVisible')?.checked ?? true,
+                dietType: document.getElementById('badgeDietTypeVisible')?.checked ?? true,
+                category: document.getElementById('badgeCategoryVisible')?.checked ?? false,
+                season: document.getElementById('badgeSeasonVisible')?.checked ?? false,
+                mealType: document.getElementById('badgeMealTypeVisible')?.checked ?? false,
+                tags: document.getElementById('badgeTagsVisible')?.checked ?? false
+            };
+
             return {
                 ...appSettings,
                 defaultAlternativeCount: settingsDraft.defaultAlternativeCount,
@@ -1862,6 +1901,7 @@
                 filterCriteria: settingsDraft.filterCriteria,
                 scoreCriteria: settingsDraft.scoreCriteria,
                 dietFormulas: settingsDraft.dietFormulas,
+                badgeVisibility: badgeVisibilityPayload,
                 updatedAt: new Date().toISOString()
             };
         }
@@ -2132,6 +2172,10 @@
                     return;
                 }
                 const payload = collectPayloadFromForm();
+                console.log('🔵 AYARLAR KAYDEDİLİYOR:');
+                console.log('   📊 Badge Visibility:', payload.badgeVisibility);
+                console.log('   🎯 Filter Criteria:', payload.filterCriteria);
+                console.log('   📝 Tam Payload:', payload);
                 try {
                     setSavingState(true);
                     saveSettingsButton.textContent = 'Kaydediliyor...';
@@ -2139,6 +2183,19 @@
                     
                     // 1. GitHub'a kaydet
                     const result = await saveSettingsToGitHub(payload, token);
+                    console.log('✅ GitHub\'a başarıyla kaydedildi!');
+                    console.log('   🏷️ Rozet Ayarları:', payload.badgeVisibility);
+                    
+                    // Rozet ayarlarının durumunu göster
+                    const enabledBadges = Object.entries(payload.badgeVisibility)
+                        .filter(([key, value]) => value)
+                        .map(([key]) => key);
+                    const disabledBadges = Object.entries(payload.badgeVisibility)
+                        .filter(([key, value]) => !value)
+                        .map(([key]) => key);
+                    
+                    console.log('   ✅ Aktif Rozetler:', enabledBadges);
+                    console.log('   ❌ Kapalı Rozetler:', disabledBadges);
                     persistToken(token);
                     settingsSha = result.content?.sha || settingsSha;
                     appSettings = payload;
@@ -2171,6 +2228,433 @@
                 persistToken('');
                 githubTokenInput.value = '';
                 showStatus('Token yerel depolamadan temizlendi.', 'info');
+            });
+
+            // Template Upload Functionality
+            uploadTemplatesButton.addEventListener('click', async () => {
+                const file = templateFileInput.files[0];
+                if (!file) {
+                    showStatus('❌ Lütfen bir JSON dosyası seçin.', 'error');
+                    return;
+                }
+
+                if (!file.name.endsWith('.json')) {
+                    showStatus('❌ Lütfen sadece .json dosyası yükleyin.', 'error');
+                    return;
+                }
+
+                try {
+                    uploadTemplatesButton.disabled = true;
+                    uploadTemplatesButton.textContent = '⏳ Şablonlar yükleniyor...';
+                    showStatus('📥 Şablonlar okunuyor...', 'info');
+
+                    // Read file as text with UTF-8 encoding
+                    const fileContent = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = () => reject(new Error('Dosya okunamadı'));
+                        reader.readAsText(file, 'UTF-8');
+                    });
+
+                    // Parse JSON
+                    const parsedData = JSON.parse(fileContent);
+                    
+                    // Handle different JSON structures
+                    let newTemplates;
+                    if (Array.isArray(parsedData)) {
+                        // Direct array of templates
+                        newTemplates = parsedData;
+                    } else if (parsedData.templates && Array.isArray(parsedData.templates)) {
+                        // Object with templates array (exported format)
+                        newTemplates = parsedData.templates;
+                    } else {
+                        throw new Error('JSON dosyası bir şablon dizisi veya templates özelliği içeren obje olmalıdır');
+                    }
+
+                    showStatus('🔄 Mevcut şablonlar GitHub\'dan alınıyor...', 'info');
+
+                    // Get existing templates from GitHub
+                    const token = githubTokenInput.value.trim();
+                    if (!token) {
+                        throw new Error('GitHub token bulunamadı. Lütfen token girin.');
+                    }
+
+                    const templatesResponse = await fetch(
+                        'https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/gun-sablonlari-2025-10-25.json',
+                        {
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        }
+                    );
+
+                    if (!templatesResponse.ok) {
+                        throw new Error('Mevcut şablonlar GitHub\'dan alınamadı');
+                    }
+
+                    const templatesData = await templatesResponse.json();
+                    // Properly decode UTF-8 content to preserve Turkish characters
+                    const existingContent = decodeURIComponent(escape(atob(templatesData.content)));
+                    const existingData = JSON.parse(existingContent);
+                    
+                    // Handle different JSON structures for existing templates
+                    let existingTemplates;
+                    if (Array.isArray(existingData)) {
+                        existingTemplates = existingData;
+                    } else if (existingData && typeof existingData === 'object' && existingData.templates && Array.isArray(existingData.templates)) {
+                        existingTemplates = existingData.templates;
+                    } else {
+                        console.warn('⚠️ GitHub\'dan alınan veri beklenmedik formatta, boş liste kullanılıyor');
+                        existingTemplates = [];
+                    }
+
+                    console.log(`📊 Mevcut şablon sayısı: ${existingTemplates.length}`);
+                    
+                    // Fix Turkish characters in existing templates if they are corrupted
+                    function fixTurkishInObject(obj) {
+                        if (typeof obj === 'string') {
+                            return fixTurkishChars(obj);
+                        } else if (Array.isArray(obj)) {
+                            return obj.map(item => fixTurkishInObject(item));
+                        } else if (obj && typeof obj === 'object') {
+                            const fixed = {};
+                            for (const [key, value] of Object.entries(obj)) {
+                                fixed[fixTurkishChars(key)] = fixTurkishInObject(value);
+                            }
+                            return fixed;
+                        }
+                        return obj;
+                    }
+                    
+                    // Check and fix existing templates for Turkish character corruption
+                    let fixedExistingTemplates = false;
+                    existingTemplates = existingTemplates.map(template => {
+                        const originalName = template.name || '';
+                        const fixedTemplate = fixTurkishInObject(template);
+                        
+                        // Check if template name contains corrupted Turkish characters
+                        if (originalName.includes('Ã') || originalName.includes('Ä') || originalName.includes('Å')) {
+                            console.log(`🔧 Türkçe karakter düzeltmesi: "${originalName}" → "${fixedTemplate.name}"`);
+                            fixedExistingTemplates = true;
+                        }
+                        
+                        return fixedTemplate;
+                    });
+                    
+                    if (fixedExistingTemplates) {
+                        console.log('✅ Mevcut şablonlarda Türkçe karakter düzeltmeleri yapıldı');
+                    }
+
+                    // Helper function to normalize Turkish text for comparison
+                    function normalizeTurkishText(text) {
+                        if (!text || typeof text !== 'string') return '';
+                        return fixTurkishChars(text)
+                            .toLowerCase()
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                    }
+
+                    // Helper function to generate detailed content hash for duplicate detection
+                    function getTemplateContentHash(template) {
+                        if (!template.ogunler || !Array.isArray(template.ogunler)) {
+                            console.warn('⚠️ Şablon öğün bilgisi eksik:', template.name || 'İsimsiz şablon');
+                            return '';
+                        }
+                        
+                        // Create detailed hash based on meal structure including all yemek properties
+                        const contentData = template.ogunler.map(ogun => ({
+                            ogunAdi: normalizeTurkishText(ogun.ogunAdi || ''),
+                            yemekler: (ogun.yemekler || []).map(yemek => {
+                                // Normalize food name for comparison - use multiple possible fields
+                                const foodName = normalizeTurkishText(
+                                    yemek.foodName || yemek.originalText || yemek.name || ''
+                                );
+                                
+                                return {
+                                    foodName: foodName,
+                                    originalText: normalizeTurkishText(yemek.originalText || ''),
+                                    calories: Math.round(parseFloat(yemek.calories) || 0),
+                                    protein: Math.round(parseFloat(yemek.protein) || 0),
+                                    carbs: Math.round(parseFloat(yemek.carbs) || 0),
+                                    fat: Math.round(parseFloat(yemek.fat) || 0),
+                                    // Include eşleşen yemek info if available
+                                    eslesenYemekName: yemek.eslesenYemek ? 
+                                        normalizeTurkishText(yemek.eslesenYemek.name || '') : '',
+                                    // Include any additional identifying fields
+                                    portion: yemek.portion || '',
+                                    unit: normalizeTurkishText(yemek.unit || '')
+                                };
+                            }).sort((a, b) => a.foodName.localeCompare(b.foodName))
+                        })).sort((a, b) => a.ogunAdi.localeCompare(b.ogunAdi));
+                        
+                        const hashString = JSON.stringify(contentData);
+                        console.log(`🔍 "${template.name}" için hash oluşturuldu (${hashString.length} karakter)`);
+                        return hashString;
+                    }
+                    
+                    // Enhanced function to check if templates have identical meal content
+                    function hasIdenticalMealContent(template1, template2) {
+                        if (!template1 || !template2) return false;
+                        
+                        const hash1 = getTemplateContentHash(template1);
+                        const hash2 = getTemplateContentHash(template2);
+                        
+                        // If either hash is empty, consider them different
+                        if (!hash1 || !hash2) {
+                            console.log(`⚠️ Hash boş: "${template1.name}" (${hash1 ? 'OK' : 'BOŞ'}) vs "${template2.name}" (${hash2 ? 'OK' : 'BOŞ'})`);
+                            return false;
+                        }
+                        
+                        // If hashes are identical, content is the same
+                        if (hash1 === hash2) {
+                            console.log(`🔍 İçerik eşleşmesi bulundu: "${template1.name}" ve "${template2.name}" aynı yemek içeriğine sahip`);
+                            return true;
+                        }
+                        
+                        return false;
+                    }
+
+                    // Function to check meal content difference (even one different line should allow addition)
+                    function hasDifferentMealContent(newTemplate, existingTemplates) {
+                        const newHash = getTemplateContentHash(newTemplate);
+                        if (!newHash) return true; // If can't generate hash, assume different
+                        
+                        for (const existing of existingTemplates) {
+                            const existingHash = getTemplateContentHash(existing);
+                            if (existingHash && newHash === existingHash) {
+                                console.log(`❌ Aynı içerik tespit edildi: "${newTemplate.name}" = "${existing.name}"`);
+                                return false; // Found identical content
+                            }
+                        }
+                        
+                        console.log(`✅ Benzersiz içerik: "${newTemplate.name}" eklemeye uygun`);
+                        return true; // No identical content found
+                    }
+
+                    // Ensure existingTemplates is properly initialized as array
+                    if (!Array.isArray(existingTemplates)) {
+                        console.error('❌ existingTemplates array değil, boş array kullanılıyor');
+                        existingTemplates = [];
+                    }
+
+                    // Merge templates (skip duplicates by ID and content)
+                    const existingIds = new Set();
+                    const templatesAdded = [];
+                    const templatesSkipped = [];
+                    const templatesSkippedByContent = [];
+                    
+                    // Safely extract existing IDs
+                    existingTemplates.forEach(t => {
+                        if (t && t.id) {
+                            existingIds.add(t.id);
+                        }
+                    });
+
+                    console.log(`📊 İşlem öncesi durum:`);
+                    console.log(`   - Mevcut şablon sayısı: ${existingTemplates.length}`);
+                    console.log(`   - Yüklenecek şablon sayısı: ${newTemplates.length}`);
+                    console.log(`   - Mevcut ID'ler: [${Array.from(existingIds).join(', ')}]`);
+
+                    newTemplates.forEach((template, templateIndex) => {
+                        if (!template || typeof template !== 'object') {
+                            console.warn(`⚠️ ${templateIndex + 1}. şablon geçersiz:`, template);
+                            return;
+                        }
+
+                        if (!template.id) {
+                            console.warn(`⚠️ ${templateIndex + 1}. şablon ID olmadan atlandı:`, template.name || 'İsimsiz');
+                            return;
+                        }
+                        
+                        console.log(`\n🔍 ${templateIndex + 1}/${newTemplates.length} - Şablon kontrol ediliyor: "${template.name}" (ID: ${template.id})`);
+                        
+                        // First check: ID already exists
+                        if (existingIds.has(template.id)) {
+                            console.log(`⚠️ Aynı ID'li şablon zaten mevcut: ${template.id}`);
+                            templatesSkipped.push({
+                                id: template.id, 
+                                name: template.name || 'İsimsiz', 
+                                reason: 'ID zaten mevcut'
+                            });
+                            return;
+                        }
+                        
+                        // Second check: Content already exists (even one different meal line should allow addition)
+                        if (!hasDifferentMealContent(template, existingTemplates)) {
+                            const duplicateTemplate = existingTemplates.find(t => 
+                                getTemplateContentHash(t) === getTemplateContentHash(template)
+                            );
+                            console.log(`⚠️ Aynı yemek içeriği mevcut: "${template.name}"`);
+                            if (duplicateTemplate) {
+                                console.log(`   Mevcut şablon: "${duplicateTemplate.name}" (ID: ${duplicateTemplate.id})`);
+                            }
+                            templatesSkippedByContent.push({
+                                id: template.id, 
+                                name: template.name || 'İsimsiz', 
+                                reason: 'Aynı yemek içeriği mevcut',
+                                duplicateOf: duplicateTemplate?.name || 'Bilinmeyen'
+                            });
+                            return;
+                        }
+                        
+                        // Template can be added - generate new menu number
+                        console.log(`✅ Yeni şablon ekleniyor: "${template.name}"`);
+                        
+                        const existingMenuNumbers = existingTemplates
+                            .map(t => {
+                                if (!t || !t.name) return 0;
+                                const match = String(t.name).match(/^(\d+)\./);
+                                return match ? parseInt(match[1]) : 0;
+                            })
+                            .filter(num => num > 0);
+                        
+                        const nextMenuNumber = existingMenuNumbers.length > 0 
+                            ? Math.max(...existingMenuNumbers) + 1 
+                            : existingTemplates.length + 1;
+                        
+                            // Generate clean menu name format
+                            const templateName = template.name || `Şablon ${template.id}`;
+                            
+                            // Extract any existing menu number or create new one
+                            let cleanMenuName;
+                            const existingMenuMatch = templateName.match(/^(\d+)\./);
+                            
+                            if (existingMenuMatch) {
+                                // Already has menu number, keep it but clean the name
+                                cleanMenuName = `Menü ${existingMenuMatch[1]}`;
+                            } else {
+                                // No menu number, create new clean name
+                                cleanMenuName = `Menü ${nextMenuNumber}`;
+                            }
+                            
+                            const oldName = template.name;
+                            template.name = cleanMenuName;
+                            console.log(`📝 Şablon adı düzenlendi: "${oldName}" → "${template.name}"`);
+                            
+                            // Also update the display name if it exists
+                            if (template.displayName) {
+                                template.displayName = cleanMenuName;
+                            }                        // Deep clean template data and preserve Turkish characters
+                        const cleanedTemplate = JSON.parse(JSON.stringify(template));
+                        
+                        // Recursively fix Turkish characters in the entire template
+                        function fixTurkishInObject(obj) {
+                            if (typeof obj === 'string') {
+                                return fixTurkishChars(obj);
+                            } else if (Array.isArray(obj)) {
+                                return obj.map(item => fixTurkishInObject(item));
+                            } else if (obj && typeof obj === 'object') {
+                                const fixed = {};
+                                for (const [key, value] of Object.entries(obj)) {
+                                    fixed[fixTurkishChars(key)] = fixTurkishInObject(value);
+                                }
+                                return fixed;
+                            }
+                            return obj;
+                        }
+                        
+                        const turkishFixedTemplate = fixTurkishInObject(cleanedTemplate);
+                        
+                        existingTemplates.push(turkishFixedTemplate);
+                        templatesAdded.push({
+                            id: turkishFixedTemplate.id, 
+                            name: turkishFixedTemplate.name,
+                            menuNumber: nextMenuNumber
+                        });
+                        existingIds.add(turkishFixedTemplate.id);
+                    });
+
+                    console.log(`\n📊 İşlem sonucu özeti:`);
+                    console.log(`   - Toplam şablon sayısı: ${existingTemplates.length}`);
+                    console.log(`   - Eklenen: ${templatesAdded.length}`);
+                    console.log(`   - ID'ye göre atlanan: ${templatesSkipped.length}`);
+                    console.log(`   - İçeriğe göre atlanan: ${templatesSkippedByContent.length}`);
+
+                    showStatus('💾 Birleştirilmiş şablonlar GitHub\'a kaydediliyor...', 'info');
+
+                    // Preserve original JSON structure with metadata - maintain Turkish character integrity
+                    const mergedData = {
+                        version: existingData.version || "1.0",
+                        exportDate: new Date().toISOString(),
+                        totalCount: existingTemplates.length,
+                        templates: existingTemplates,
+                        lastUpdate: {
+                            date: new Date().toISOString(),
+                            addedCount: templatesAdded.length,
+                            skippedCount: templatesSkipped.length + templatesSkippedByContent.length,
+                            description: `${templatesAdded.length} yeni şablon eklendi, ${templatesSkipped.length + templatesSkippedByContent.length} duplicate atlandı`
+                        }
+                    };
+
+                    // Ensure proper UTF-8 encoding for Turkish characters
+                    const mergedContent = JSON.stringify(mergedData, null, 2);
+                    
+                    // Properly encode UTF-8 content for GitHub API to preserve Turkish characters
+                    const encodedContent = btoa(unescape(encodeURIComponent(mergedContent)));
+                    
+                    console.log('📝 JSON içeriği UTF-8 ile kodlandı, Türkçe karakterler korundu');
+
+                    const updateResponse = await fetch(
+                        'https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/gun-sablonlari-2025-10-25.json',
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/vnd.github.v3+json'
+                            },
+                            body: JSON.stringify({
+                                message: `📥 Şablon yükleme (Türkçe karakter korundu): ${templatesAdded.length} yeni menü, ${templatesSkipped.length + templatesSkippedByContent.length} duplicate atlandı`,
+                                content: encodedContent,
+                                sha: templatesData.sha
+                            })
+                        }
+                    );
+
+                    if (!updateResponse.ok) {
+                        throw new Error('Şablonlar GitHub\'a kaydedilemedi');
+                    }
+
+                    // Show detailed success message
+                    let message = '✅ Şablon yükleme işlemi başarıyla tamamlandı!\\n\\n📊 ÖZET:\\n';
+                    message += `� Toplam mevcut şablon sayısı: ${existingTemplates.length}\n`;
+                    message += `�📥 ${templatesAdded.length} yeni şablon eklendi\n`;
+                    
+                    if (templatesSkipped.length > 0) {
+                        message += `⏭️ ${templatesSkipped.length} şablon (aynı ID) atlandı\n`;
+                    }
+                    
+                    if (templatesSkippedByContent.length > 0) {
+                        message += `🔄 ${templatesSkippedByContent.length} şablon (aynı yemek içeriği) atlandı\n`;
+                    }
+                    
+                    message += `\n🎯 Karşılaştırma kriteri: Öğün adları ve yemek satırlarının tam eşleşmesi\n`;
+                    message += `📝 Yeni şablonlar otomatik menü numarası aldı`;
+                    
+                    // Show details in console for debugging
+                    if (templatesAdded.length > 0) {
+                        console.log('📥 Eklenen şablonlar:', templatesAdded.map(t => t.name));
+                    }
+                    if (templatesSkipped.length > 0) {
+                        console.log('⏭️ ID\'ye göre atlanan şablonlar:', templatesSkipped.map(t => t.name));
+                    }
+                    if (templatesSkippedByContent.length > 0) {
+                        console.log('🔄 İçerik benzerlişine göre atlanan şablonlar:', templatesSkippedByContent.map(t => t.name));
+                    }
+
+                    showStatus(message.replace(/\n/g, '<br>'), 'success');
+                    
+                    // Clear file input
+                    templateFileInput.value = '';
+
+                } catch (error) {
+                    console.error('❌ Şablon yükleme hatası:', error);
+                    showStatus(`❌ Hata: ${error.message}`, 'error');
+                } finally {
+                    uploadTemplatesButton.disabled = false;
+                    uploadTemplatesButton.textContent = '📥 Şablonları Yükle ve Birleştir';
+                }
             });
         }
 
