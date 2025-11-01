@@ -36157,8 +36157,8 @@ ${mesajlar.join('\n')}
     // ==================== ÖĞÜN ŞABLON SİSTEMİ ====================
     
     // GitHub Raw URL'leri (mevcut repository kullanılıyor)
-    const GITHUB_MEAL_TEMPLATES_URL = 'https://raw.githubusercontent.com/mustafasacar/lipodem-takip-paneli/main/meal-templates.json';
-  const GITHUB_DAY_TEMPLATES_URL = 'https://raw.githubusercontent.com/mustafasacar/lipodem-takip-paneli/main/day_templates.json';
+    const GITHUB_MEAL_TEMPLATES_URL = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/meal-templates.json';
+  const GITHUB_DAY_TEMPLATES_URL = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json';
     
     // Öğün şablonunun kaydedilip kaydedilmediğini kontrol eden fonksiyon
     function checkMealTemplateSaved(gunAdi, ogunAdi) {
@@ -36526,9 +36526,13 @@ ${mesajlar.join('\n')}
       const repoName = 'lipodem-takip-paneli';
       const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${dosyaAdi}`;
       
+      // gun-sablonlari-2025-10-25.json için özel format
+      const isGunSablonlari = (dosyaAdi === 'gun-sablonlari-2025-10-25.json');
+      
       try {
         // Önce mevcut dosyayı al
         let mevcutIcerik = [];
+        let mevcutWrapper = null; // gun-sablonlari için wrapper objesi
         let sha = null;
         
         const mevcutResponse = await fetch(apiUrl, {
@@ -36550,7 +36554,28 @@ ${mesajlar.join('\n')}
                 mevcutIcerik = [];
               } else {
                 try {
-                  mevcutIcerik = JSON.parse(decoded);
+                  const parsed = JSON.parse(decoded);
+                  
+                  // gun-sablonlari-2025-10-25.json formatı kontrolü
+                  if (isGunSablonlari) {
+                    if (parsed && parsed.templates && Array.isArray(parsed.templates)) {
+                      mevcutWrapper = parsed;
+                      mevcutIcerik = parsed.templates;
+                      console.log('✅ gun-sablonlari wrapper formatı kullanılıyor');
+                    } else {
+                      console.warn('⚠️ gun-sablonlari formatı yanlış, yeni wrapper oluşturuluyor');
+                      mevcutIcerik = [];
+                      mevcutWrapper = {
+                        version: "1.0",
+                        exportDate: new Date().toISOString(),
+                        totalCount: 0,
+                        templates: []
+                      };
+                    }
+                  } else {
+                    // Eski format (day_templates.json, meal-templates.json)
+                    mevcutIcerik = Array.isArray(parsed) ? parsed : [];
+                  }
                 } catch(parseErr){
                   console.error('❌ JSON parse hatası, decoded ilk 200:', decoded.slice(0,200));
                   throw parseErr;
@@ -36567,10 +36592,26 @@ ${mesajlar.join('\n')}
           } catch(innerErr){
             console.error('❌ Mevcut şablon içeriği parse edilemedi, boş diziye düşüldü:', innerErr);
             mevcutIcerik = [];
+            if (isGunSablonlari) {
+              mevcutWrapper = {
+                version: "1.0",
+                exportDate: new Date().toISOString(),
+                totalCount: 0,
+                templates: []
+              };
+            }
           }
         } else if (mevcutResponse.status === 404) {
-          console.log('📄 meal-templates.json dosyası yok, yeni oluşturulacak');
+          console.log(`📄 ${dosyaAdi} dosyası yok, yeni oluşturulacak`);
           mevcutIcerik = [];
+          if (isGunSablonlari) {
+            mevcutWrapper = {
+              version: "1.0",
+              exportDate: new Date().toISOString(),
+              totalCount: 0,
+              templates: []
+            };
+          }
           sha = null;
         } else {
           throw new Error(`GitHub API dosya okuma hatası: ${mevcutResponse.status}`);
@@ -36592,7 +36633,7 @@ ${mesajlar.join('\n')}
           return arr.join('||');
         };
 
-        const isDayTemplateFile = (dosyaAdi === 'day_templates.json');
+        const isDayTemplateFile = (dosyaAdi === 'day_templates.json' || isGunSablonlari);
 
   if (!isDayTemplateFile) {
           // MEAL TEMPLATE eski davranış: tamamen aynı içerik varsa hata fırlat
@@ -36649,8 +36690,23 @@ ${mesajlar.join('\n')}
         // Yeni şablonu her zaman yeni bir eleman olarak ekle (birleştirme yok)
         mevcutIcerik.push(finalSablon);
         
+        // Final JSON oluştur
+        let finalJson;
+        if (isGunSablonlari) {
+          // gun-sablonlari-2025-10-25.json formatı için wrapper kullan
+          finalJson = {
+            version: mevcutWrapper?.version || "1.0",
+            exportDate: new Date().toISOString(),
+            totalCount: mevcutIcerik.length,
+            templates: mevcutIcerik
+          };
+        } else {
+          // Eski format - direkt array
+          finalJson = mevcutIcerik;
+        }
+        
         // Türkçe karakter desteği için UTF-8 encoding
-        const jsonString = JSON.stringify(mevcutIcerik, null, 2);
+        const jsonString = JSON.stringify(finalJson, null, 2);
         console.log('🔍 JSON string uzunluğu:', jsonString.length);
         
         // UTF-8 string'i base64'e çevir - daha güvenli yöntem
@@ -36659,7 +36715,8 @@ ${mesajlar.join('\n')}
         
         // Commit mesajını dosya tipine göre özelleştir
         let commitMsg;
-        if (dosyaAdi === 'day_templates.json') commitMsg = `Yeni GÜN şablonu eklendi: ${finalSablon.name}`;
+        if (isGunSablonlari) commitMsg = `Yeni GÜN şablonu eklendi: ${finalSablon.name}`;
+        else if (dosyaAdi === 'day_templates.json') commitMsg = `Yeni GÜN şablonu eklendi: ${finalSablon.name}`;
         else if (dosyaAdi === 'meal-templates.json') commitMsg = `Yeni ÖĞÜN şablonu eklendi: ${finalSablon.name}`;
         else commitMsg = `Yeni şablon eklendi: ${finalSablon.name}`;
 
@@ -40285,14 +40342,25 @@ ${mesajlar.join('\n')}
           console.warn('⚠️ Öğün şablonları yüklenemedi:', e?.message || e);
         }
 
-        // Day templates oku
+        // Day templates oku (yeni format: gun-sablonlari-2025-10-25.json)
         try {
-          const dt = await githubGetFileJson('day_templates.json', true);
-          if (Array.isArray(dt)) {
-            const dedupeDays = dedupeTemplateArray(dt, { scope: 'day', preferNewer: true });
+          const dt = await githubGetFileJson('gun-sablonlari-2025-10-25.json', true);
+          // Yeni format kontrolü: { version, exportDate, totalCount, templates: [...] }
+          let templatesArray = [];
+          if (dt && dt.templates && Array.isArray(dt.templates)) {
+            templatesArray = dt.templates;
+            console.log("✅ gun-sablonlari-2025-10-25.json wrapper formatı kullanıldı, template sayısı:", dt.totalCount);
+          } else if (Array.isArray(dt)) {
+            // Eski format için geriye dönük uyumluluk
+            templatesArray = dt;
+            console.log("ℹ️ Eski array formatı tespit edildi");
+          }
+          
+          if (templatesArray.length > 0) {
+            const dedupeDays = dedupeTemplateArray(templatesArray, { scope: 'day', preferNewer: true });
             if (dedupeDays.removed > 0) {
               console.warn('🔁 Gün şablonları dedupla edildi:', {
-                onceHad: dt.length,
+                onceHad: templatesArray.length,
                 now: dedupeDays.list.length,
                 removed: dedupeDays.removed,
                 samples: dedupeDays.duplicates.slice(0, 5)
@@ -40301,7 +40369,7 @@ ${mesajlar.join('\n')}
             dayTemplates = dedupeDays.list;
             console.log("✅ GitHub'dan gün şablonları yüklendi:", dayTemplates.length, 'adet');
           } else {
-            console.log('ℹ️ day_templates.json boş veya bulunamadı');
+            console.log('ℹ️ gun-sablonlari-2025-10-25.json boş veya bulunamadı');
           }
         } catch (e) {
           console.warn('⚠️ Gün şablonları yüklenemedi:', e?.message || e);
@@ -44290,9 +44358,9 @@ ${mesajlar.join('\n')}
       window.gunSablonKayitModu = false;
       window.gunSablonVerileri = null;
       
-      // GitHub'a JSON dosyası olarak kaydet (day_templates.json)
+      // GitHub'a JSON dosyası olarak kaydet (gun-sablonlari-2025-10-25.json)
       try {
-        await githubaSablonKaydet('day_templates.json', gunSablonu);
+        await githubaSablonKaydet('gun-sablonlari-2025-10-25.json', gunSablonu);
         const diyetInfo = seciliDiyetTuru ? ` (${seciliDiyetTuru.name})` : '';
         showToast(`✅ "${sablonIsmi}" gün şablonu kaydedildi!${diyetInfo} (${finalYemekler.length} yemek, ${toplamKalori.toFixed(0)} kcal)`, 'success', 4000);
         // Local state'e ekle ve persist et
