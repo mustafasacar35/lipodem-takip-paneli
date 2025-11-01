@@ -211,24 +211,164 @@
             align-items: center;
             flex-wrap: wrap; /* Responsive - ikinci satıra geçebilir */
         }
-
-        .tabs-container {
+        
+        /* Hafta Seçici Dropdown */
+        .week-selector {
+            position: relative;
+            min-width: 200px;
+        }
+        
+        .week-selector-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .week-selector-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+        
+        .week-selector-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 5px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .week-selector-dropdown.active {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .week-dropdown-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .week-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .week-dropdown-item:hover {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+        }
+        
+        .week-dropdown-item.active {
+            background: linear-gradient(135deg, #667eea25, #764ba225);
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .week-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .week-item-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .week-item-date {
+            font-size: 11px;
+            color: #999;
+        }
+        
+        .week-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .week-item-actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .week-item-actions .btn-edit {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .week-item-actions .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        
+        .week-item-actions button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Hafta işlem butonları */
+        .week-actions {
             display: flex;
             gap: 6px;
-            overflow-x: auto;
-            scroll-behavior: smooth; /* Akıcı kaydırma */
-            padding: 2px;
-            flex: 1;
-            min-width: 0;
+            flex-wrap: wrap;
         }
-
-        .tabs-container::-webkit-scrollbar {
-            height: 4px;
+        
+        .week-actions button {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
         }
-
-        .tabs-container::-webkit-scrollbar-thumb {
+        
+        .week-actions button:hover {
             background: #667eea;
-            border-radius: 3px;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .tabs-container {
+            display: none; /* Eski tab sistemi gizli */
         }
 
         .tab {
@@ -1159,6 +1299,30 @@
                 height: 32px;
                 font-size: 16px;
             }
+            
+            /* Modal tam ekran */
+            #addDayModal .modal-content {
+                width: 100% !important;
+                height: 100vh !important;
+                max-width: 100% !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+            }
+            
+            /* Hafta seçici ve butonlar responsive */
+            .week-selector {
+                min-width: 100%;
+            }
+            
+            .week-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+            
+            .week-actions button {
+                flex: 1;
+            }
         }
 
         /* Loading Spinner */
@@ -1537,7 +1701,29 @@
     <div class="main-container" id="mainContainer">
         <!-- Tabs -->
         <div class="tabs-wrapper">
-            <div class="tabs-container" id="tabsContainer">
+            <!-- Hafta Seçici Dropdown -->
+            <div class="week-selector">
+                <button class="week-selector-button" onclick="toggleWeekDropdown()">
+                    <span id="currentWeekDisplay">Hafta 1</span>
+                    <span>▼</span>
+                </button>
+                <div class="week-selector-dropdown" id="weekDropdown">
+                    <!-- Dinamik olarak doldurulacak -->
+                </div>
+            </div>
+            
+            <!-- Hafta İşlem Butonları -->
+            <div class="week-actions">
+                <button onclick="addNewWeek()" title="Yeni Hafta Ekle">
+                    ➕ Hafta Ekle
+                </button>
+                <button onclick="deleteCurrentWeek()" title="Mevcut Haftayı Sil">
+                    🗑️ Sil
+                </button>
+            </div>
+            
+            <!-- Eski tab container (gizli) -->
+            <div class="tabs-container" id="tabsContainer" style="display: none;">
                 <!-- Tabs will be generated here -->
                 <!-- Yeni Hafta Ekle butonu renderTabs() içinde dinamik oluşturulacak -->
             </div>
@@ -1554,75 +1740,116 @@
 
     <!-- Add Day Modal -->
     <div class="modal" id="addDayModal">
-        <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3>Gün Ekle (Çoklu Seçim Yapabilirsiniz)</h3>
+        <div class="modal-content" style="max-width: 1400px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0;">
+                <h3>🍽️ Gün Ekle</h3>
                 <button class="modal-close" onclick="closeModal('addDayModal')">&times;</button>
             </div>
             
-            <!-- Otomatik Haftalık Planlama Butonu -->
-            <div style="margin-bottom: 20px;">
-                <button 
-                    onclick="openAutoWeekPlanModal()" 
-                    style="width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;"
-                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.6)';"
-                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.4)';"
-                >
-                    <span style="font-size: 24px;">🤖</span>
-                    <span>OTOMATIK HAFTALIK PLAN OLUŞTUR</span>
-                    <span style="font-size: 24px;">✨</span>
-                </button>
-                <small style="display: block; text-align: center; color: #666; margin-top: 8px;">
-                    Hedef kaloriye en uygun menülerle otomatik haftalık plan oluşturur
-                </small>
+            <!-- Kompakt Filtreleme: 2 Satır -->
+            <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; flex-shrink: 0;">
+                <!-- Satır 1: İstenen/İstenmeyen Yemekler -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                    <input 
+                        type="text" 
+                        id="wantedFoodsFilter" 
+                        placeholder="✅ İstenen yemekler (virgülle ayırın)" 
+                        style="width: 100%; padding: 6px 10px; border: 2px solid #28a745; border-radius: 6px; font-size: 12px; color: #28a745; font-weight: 500;"
+                        oninput="applySmartFilter()"
+                    >
+                    <input 
+                        type="text" 
+                        id="unwantedFoodsFilter" 
+                        placeholder="❌ İstenmeyen yemekler (virgülle ayırın)" 
+                        style="width: 100%; padding: 6px 10px; border: 2px solid #dc3545; border-radius: 6px; font-size: 12px; color: #dc3545; font-weight: 500;"
+                        oninput="applySmartFilter()"
+                    >
+                </div>
+                
+                <!-- Satır 2: Filtreler + İstatistik + Otomatik Plan Butonu -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; background: linear-gradient(135deg, #667eea15, #764ba215); border: 2px solid #667eea; border-radius: 8px;">
+                    <!-- İstatistik (Sol) -->
+                    <div style="font-size: 11px; color: #666; font-weight: 600; white-space: nowrap; margin-right: auto;">
+                        <span id="filteredTemplateCount" style="color: #667eea; font-weight: 700;">0</span>/<span id="totalTemplateCount">0</span>
+                    </div>
+                    
+                    <!-- Hedef Kalori -->
+                    <div style="display: flex; align-items: center; gap: 3px;">
+                        <label style="font-size: 10px; font-weight: 600; color: #667eea;">🎯</label>
+                        <input 
+                            type="number" 
+                            id="templateTargetCalories"
+                            placeholder="1500"
+                            style="width: 70px; padding: 4px 6px; border: 2px solid #667eea; border-radius: 4px; text-align: center; font-weight: 600; font-size: 11px;"
+                            oninput="updateCalorieRangeFromTarget()"
+                        >
+                    </div>
+                    
+                    <!-- Min-Max -->
+                    <div style="display: flex; align-items: center; gap: 3px;">
+                        <input 
+                            type="number" 
+                            id="minCalorieInput" 
+                            placeholder="Min"
+                            style="width: 70px; padding: 4px 6px; border: 2px solid #667eea; border-radius: 4px; text-align: center; font-weight: 600; font-size: 11px;"
+                            oninput="applyDietAndCalorieFilter()"
+                        >
+                        <span style="color: #667eea; font-weight: bold; font-size: 10px;">—</span>
+                        <input 
+                            type="number" 
+                            id="maxCalorieInput" 
+                            placeholder="Max"
+                            style="width: 70px; padding: 4px 6px; border: 2px solid #667eea; border-radius: 4px; text-align: center; font-weight: 600; font-size: 11px;"
+                            oninput="applyDietAndCalorieFilter()"
+                        >
+                    </div>
+                    
+                    <!-- Tolerans -->
+                    <div style="display: flex; align-items: center; gap: 3px;">
+                        <span style="color: #ddd;">│</span>
+                        <input 
+                            type="number" 
+                            id="calorieToleranceInput" 
+                            min="0" 
+                            max="50" 
+                            step="5"
+                            style="width: 50px; padding: 4px 6px; border: 2px solid #667eea; border-radius: 4px; text-align: center; font-weight: 600; font-size: 11px;"
+                            oninput="updateCalorieRangeFromTarget()"
+                        >
+                        <span style="font-size: 10px; color: #667eea; font-weight: 600;">%</span>
+                        <button 
+                            onclick="saveCalorieToleranceToPatient()" 
+                            style="padding: 4px 7px; background: #28a745; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer;"
+                            title="Toleransı Kaydet"
+                        >💾</button>
+                    </div>
+                    
+                    <!-- Diyet Türü -->
+                    <select 
+                        id="templateDietTypeFilter" 
+                        style="padding: 4px 8px; border: 2px solid #667eea; border-radius: 4px; font-size: 11px; font-weight: 500; cursor: pointer; min-width: 140px;"
+                        onchange="applyDietAndCalorieFilter()"
+                    ></select>
+                    
+                    <!-- Otomatik Plan Butonu -->
+                    <button 
+                        onclick="openAutoWeekPlanModal()" 
+                        style="padding: 6px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(102,126,234,0.3); margin-left: auto;"
+                        title="Otomatik Haftalık Plan Oluştur"
+                    >🤖 Otomatik Plan</button>
+                </div>
             </div>
             
-            <!-- Akıllı Arama Filtreleri -->
-            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #28a745;">
-                            ✅ İstenen Yemekler (virgülle ayırın)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="wantedFoodsFilter" 
-                            placeholder="örn: lupin, poğaça" 
-                            style="width: 100%; padding: 8px; border: 2px solid #28a745; border-radius: 6px;"
-                            oninput="applySmartFilter()"
-                        >
-                        <small style="color: #666; display: block; margin-top: 3px;">
-                            Tüm kelimeleri içeren yemekleri gösterir
-                        </small>
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc3545;">
-                            ❌ İstenmeyen Yemekler (virgülle ayırın)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="unwantedFoodsFilter" 
-                            placeholder="örn: zeytin, peynir" 
-                            style="width: 100%; padding: 8px; border: 2px solid #dc3545; border-radius: 6px;"
-                            oninput="applySmartFilter()"
-                        >
-                        <small style="color: #666; display: block; margin-top: 3px;">
-                            Bu kelimeleri içeren yemekleri gizler
-                        </small>
-                    </div>
-                </div>
-                <div id="filterStats" style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px; font-size: 13px; color: #666;">
-                    <span id="visibleCount">0</span> / <span id="totalCount">0</span> menü gösteriliyor
-                </div>
-            </div>
-            
-            <!-- Menü Tablosu -->
-            <div class="form-group">
+            <!-- Menü Tablosu (Scrollable) -->
+            <div class="form-group" style="flex: 1; overflow-y: auto; margin: 0;">
                 <div id="dayTemplateTable" style="overflow-x: auto;">
                     <!-- Table will be loaded here -->
                 </div>
             </div>
-            <button class="btn-primary" onclick="saveMultipleDaysToWeek()" id="saveMultipleDaysBtn" style="display: none;">Seçilen Günleri Kaydet</button>
+            
+            <div style="flex-shrink: 0; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                <button class="btn-primary" onclick="saveMultipleDaysToWeek()" id="saveMultipleDaysBtn" style="display: none;">Seçilen Günleri Kaydet</button>
+            </div>
         </div>
 ```
     </div>
@@ -1819,7 +2046,7 @@
                         Kalori Toleransı (%)
                         <span style="color: #666; font-size: 12px; display: block;">Şablon filtrelemede ±% sapma oranı (admin varsayılanı: <span id="adminDefaultTolerance">5</span>%)</span>
                     </label>
-                    <input type="number" id="calorieTolerancePercent" placeholder="örn: 10" min="0" max="50" step="1" oninput="updateToleranceInfo()">
+                    <input type="number" id="calorieTolerance" placeholder="örn: 10" min="0" max="50" step="1" oninput="updateToleranceInfo()">
                 </div>
 
                 <div class="form-group">
@@ -4260,8 +4487,8 @@
                 document.getElementById('adminDefaultTolerance').textContent = adminDefaultTolerance;
                 
                 // Hasta kendi toleransını belirlediyse onu göster, yoksa admin varsayılanını kullan
-                const patientTolerance = settings.calorieTolerancePercent || adminDefaultTolerance;
-                document.getElementById('calorieTolerancePercent').value = patientTolerance;
+                const patientTolerance = settings.calorieTolerance || adminDefaultTolerance;
+                document.getElementById('calorieTolerance').value = patientTolerance;
                 
                 // Tolerans bilgisini göster
                 document.getElementById('toleranceInfo').textContent = `Min ve Max otomatik ±%${patientTolerance} tolerans ile ayarlanır`;
@@ -4296,7 +4523,7 @@
         async function saveSettings() {
             const newSettings = {
                 dietType: document.getElementById('dietType').value,
-                calorieTolerancePercent: parseInt(document.getElementById('calorieTolerancePercent').value) || (appSettings?.calorieTolerancePercent || 5),
+                calorieTolerance: parseInt(document.getElementById('calorieTolerance').value) || (appSettings?.calorieTolerancePercent || 5),
                 targetCalories: parseInt(document.getElementById('targetCalories').value) || 1000,
                 minCalories: parseInt(document.getElementById('minCalories').value) || 950,
                 maxCalories: parseInt(document.getElementById('maxCalories').value) || 1050,
@@ -4550,8 +4777,97 @@
                 showToast('Hafta silindi');
             }
         }
+        
+        // Mevcut haftayı sil (buton için)
+        function deleteCurrentWeek() {
+            removeWeek(currentWeekIndex);
+        }
 
-        // Render Tabs
+        // Hafta Dropdown Toggle
+        function toggleWeekDropdown() {
+            const dropdown = document.getElementById('weekDropdown');
+            dropdown.classList.toggle('active');
+            
+            // Dropdown açıkken dışarı tıklanırsa kapat
+            if (dropdown.classList.contains('active')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeDropdownOnClickOutside);
+                }, 10);
+            }
+        }
+        
+        function closeDropdownOnClickOutside(e) {
+            const dropdown = document.getElementById('weekDropdown');
+            const button = document.querySelector('.week-selector-button');
+            
+            if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+                dropdown.classList.remove('active');
+                document.removeEventListener('click', closeDropdownOnClickOutside);
+            }
+        }
+        
+        // Hafta Dropdown İçeriğini Render Et
+        function renderWeekDropdown() {
+            const dropdown = document.getElementById('weekDropdown');
+            dropdown.innerHTML = '';
+            
+            weeks.forEach((week, index) => {
+                const item = document.createElement('div');
+                item.className = `week-dropdown-item ${index === currentWeekIndex ? 'active' : ''}`;
+                
+                // Hafta tarih aralığını hesapla
+                const startDate = week.startDate ? new Date(week.startDate) : null;
+                const endDate = week.endDate ? new Date(week.endDate) : null;
+                const dateRange = startDate && endDate 
+                    ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+                    : 'Tarih belirlenmedi';
+                
+                item.innerHTML = `
+                    <div class="week-item-info" onclick="selectWeekFromDropdown(${index})">
+                        <div class="week-item-title">${week.name}</div>
+                        <div class="week-item-date">${dateRange}</div>
+                    </div>
+                    <div class="week-item-actions" onclick="event.stopPropagation()">
+                        ${weeks.length > 1 ? `<button class="btn-delete" onclick="removeWeek(${index})" title="Haftayı Sil">🗑️</button>` : ''}
+                    </div>
+                `;
+                
+                dropdown.appendChild(item);
+            });
+        }
+        
+        // Dropdown'dan hafta seç
+        function selectWeekFromDropdown(index) {
+            currentWeekIndex = index;
+            activeWeekIndex = index;
+            
+            // Display güncelle
+            updateCurrentWeekDisplay();
+            
+            // Dropdown kapat
+            document.getElementById('weekDropdown').classList.remove('active');
+            
+            // İçeriği render et
+            renderWeekContent();
+        }
+        
+        // Mevcut hafta display'ini güncelle
+        function updateCurrentWeekDisplay() {
+            const week = weeks[currentWeekIndex];
+            if (week) {
+                document.getElementById('currentWeekDisplay').textContent = week.name;
+            }
+        }
+        
+        // Kısa tarih formatı
+        function formatDateShort(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            return `${day}.${month}`;
+        }
+
+        // Render Tabs (Eski sistem - gizli tutuluyor ama çalışır durumda)
         function renderTabs() {
             const container = document.getElementById('tabsContainer');
             container.innerHTML = '';
@@ -4582,6 +4898,10 @@
                     activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
             }, 50);
+            
+            // Dropdown'u da güncelle
+            renderWeekDropdown();
+            updateCurrentWeekDisplay();
         }
 
         // Switch Week
@@ -4890,9 +5210,161 @@
             const unwantedInput = document.getElementById('unwantedFoodsFilter');
             if (wantedInput) wantedInput.value = '';
             if (unwantedInput) unwantedInput.value = '';
+            
+            // Diyet türü ve kalori filtrelerini hasta ayarlarından doldur
+            initializeDietAndCalorieFilters();
 
             // Load filtered templates
             loadDayTemplates();
+        }
+        
+        // Diyet türü ve kalori filtrelerini başlat
+        function initializeDietAndCalorieFilters() {
+            // Diyet türleri dropdown'unu doldur
+            const dietTypeSelect = document.getElementById('templateDietTypeFilter');
+            if (dietTypeSelect) {
+                const diyetTurleri = window.diyetTurleri || [
+                    { id: 'ketojenik', name: 'Ketojenik' },
+                    { id: 'lowcarb', name: 'Low Carb' },
+                    { id: 'eliminasyonlu-ketojenik', name: 'Eliminasyonlu Ketojenik' }
+                ];
+                
+                // GENEL seçeneğini en üste ekle
+                dietTypeSelect.innerHTML = '<option value="">🌐 Genel (Tümü)</option>' + 
+                    diyetTurleri.map(dt => 
+                        `<option value="${dt.id}">${dt.name}</option>`
+                    ).join('');
+                
+                // Hasta ayarlarından default diyet türünü seç
+                const currentDietType = document.getElementById('dietType')?.value || settings.dietType || 'ketojenik';
+                dietTypeSelect.value = currentDietType;
+            }
+            
+            // Hedef kaloriyi hasta ayarlarından al
+            const targetCalInput = document.getElementById('templateTargetCalories');
+            if (targetCalInput) {
+                const targetCal = parseInt(document.getElementById('targetCalories')?.value) || 
+                                parseInt(settings?.targetCalories) || 
+                                parseInt(patientData?.settings?.targetCalories) || 
+                                1500;
+                targetCalInput.value = targetCal;
+            }
+            
+            // Kalori toleransını ÖNCE hastadan, SONRA admin settings'den al
+            const calorieToleranceInput = document.getElementById('calorieToleranceInput');
+            if (calorieToleranceInput) {
+                let currentTolerance = null;
+                
+                // 1. Hasta ayarlarından dene
+                if (patientData?.settings?.calorieTolerance) {
+                    currentTolerance = parseInt(patientData.settings.calorieTolerance);
+                } 
+                // 2. Settings modal'dan dene
+                else if (document.getElementById('calorieTolerance')?.value) {
+                    currentTolerance = parseInt(document.getElementById('calorieTolerance').value);
+                }
+                // 3. Global settings'den dene
+                else if (settings?.calorieTolerance) {
+                    currentTolerance = parseInt(settings.calorieTolerance);
+                }
+                // 4. Admin settings'den al
+                else if (window.appSettings?.calorieTolerancePercent) {
+                    currentTolerance = parseInt(window.appSettings.calorieTolerancePercent);
+                }
+                // 5. Default
+                else {
+                    currentTolerance = 10;
+                }
+                
+                calorieToleranceInput.value = currentTolerance;
+            }
+            
+            // Min-Max kalori değerlerini hesapla ve doldur
+            updateCalorieRangeFromTarget();
+        }
+        
+        // Kalori aralığını toleransa göre hesapla ve göster
+        function updateCalorieRange() {
+            const targetCalories = parseInt(document.getElementById('targetCalories')?.value) || 
+                                 parseInt(document.getElementById('templateTargetCalories')?.value) || 
+                                 settings.targetCalories || 1500;
+            const tolerance = parseInt(document.getElementById('calorieToleranceInput')?.value) || 10;
+            
+            const minCalories = Math.round(targetCalories * (1 - tolerance / 100));
+            const maxCalories = Math.round(targetCalories * (1 + tolerance / 100));
+            
+            const minInput = document.getElementById('minCalorieInput');
+            const maxInput = document.getElementById('maxCalorieInput');
+            
+            if (minInput) minInput.value = minCalories;
+            if (maxInput) maxInput.value = maxCalories;
+        }
+        
+        // Hedef kaloriden kalori aralığını hesapla
+        function updateCalorieRangeFromTarget() {
+            const targetInput = document.getElementById('templateTargetCalories');
+            const toleranceInput = document.getElementById('calorieToleranceInput');
+            
+            if (!targetInput || !toleranceInput) return;
+            
+            const targetCalories = parseInt(targetInput.value) || 1500;
+            const tolerance = parseInt(toleranceInput.value) || 10;
+            
+            const minCalories = Math.round(targetCalories * (1 - tolerance / 100));
+            const maxCalories = Math.round(targetCalories * (1 + tolerance / 100));
+            
+            const minInput = document.getElementById('minCalorieInput');
+            const maxInput = document.getElementById('maxCalorieInput');
+            
+            if (minInput) minInput.value = minCalories;
+            if (maxInput) maxInput.value = maxCalories;
+            
+            // Şablonları filtrele
+            applyDietAndCalorieFilter();
+        }
+        
+        // Diyet türü ve kalori filtrelerini uygula
+        function applyDietAndCalorieFilter() {
+            // Şablonları yeniden yükle (filtreleme loadDayTemplates içinde yapılıyor)
+            loadDayTemplates();
+        }
+        
+        // Kalori toleransını hastaya kaydet
+        async function saveCalorieToleranceToPatient() {
+            const newTolerance = parseInt(document.getElementById('calorieToleranceInput')?.value);
+            
+            if (!newTolerance || newTolerance < 0 || newTolerance > 50) {
+                showToast('⚠️ Geçerli bir tolerans değeri girin (0-50)', 'error');
+                return;
+            }
+            
+            // Settings objesini güncelle
+            settings.calorieTolerance = newTolerance;
+            
+            // Hasta verisini güncelle
+            if (!patientData.settings) patientData.settings = {};
+            patientData.settings.calorieTolerance = newTolerance;
+            
+            // Settings modal'daki input'u da güncelle
+            const settingsToleranceInput = document.getElementById('calorieTolerance');
+            if (settingsToleranceInput) {
+                settingsToleranceInput.value = newTolerance;
+            }
+            
+            // GitHub'a kaydet
+            try {
+                await savePatientData();
+                showToast('✅ Kalori toleransı kaydedildi: ' + newTolerance + '%', 'success');
+                
+                // Kalori aralığını yeniden hesapla
+                updateCalorieRange();
+                
+                // Şablonları yeniden filtrele
+                loadDayTemplates();
+            } catch (error) {
+                console.error('Kalori toleransı kaydetme hatası:', error);
+                showToast('❌ Kalori toleransı kaydedilemedi', 'error');
+            }
         }
 
         // Open Auto Week Plan Modal
@@ -5227,31 +5699,35 @@
 
             // Filter templates based on settings
             filteredTemplates = dayTemplates.filter(template => {
-                // Diet type filter (eliminasyonlu-ketojenik ve ketojenik aynı kabul edilir)
-                const currentDietType = document.getElementById('dietType')?.value || settings.dietType;
-                if (currentDietType && template.dietType) {
-                    const settingsDiet = currentDietType === 'eliminasyonlu-ketojenik' ? 'ketojenik' : currentDietType;
-                    if (template.dietType !== settingsDiet) {
+                // Diyet türü filtresi - YENİ: Modal'daki dropdown'dan al
+                const selectedDietType = document.getElementById('templateDietTypeFilter')?.value;
+                
+                // Eğer "Genel" seçiliyse (value='') diyet türüne göre filtreleme yapma
+                if (selectedDietType && template.dietType) {
+                    // eliminasyonlu-ketojenik ve ketojenik aynı kabul edilir
+                    const normalizedSelected = selectedDietType === 'eliminasyonlu-ketojenik' ? 'ketojenik' : selectedDietType;
+                    const normalizedTemplate = template.dietType === 'eliminasyonlu-ketojenik' ? 'ketojenik' : template.dietType;
+                    
+                    if (normalizedTemplate !== normalizedSelected) {
                         return false;
                     }
                 }
 
-                // Calorie filter - GÜNCEL min ve max değerlerini kullan
+                // Kalori filtresi - YENİ: Modal'daki input'lardan al
                 const calories = template.totalMacros?.kalori || 0;
                 
-                // Input'lardan güncel değerleri al
-                const minCaloriesInput = parseInt(document.getElementById('minCalories')?.value) || 0;
-                const maxCaloriesInput = parseInt(document.getElementById('maxCalories')?.value) || 9999;
+                const minCaloriesInput = parseInt(document.getElementById('minCalorieInput')?.value) || 0;
+                const maxCaloriesInput = parseInt(document.getElementById('maxCalorieInput')?.value) || 999999;
                 
                 if (minCaloriesInput > 0 && calories < minCaloriesInput) {
                     return false;
                 }
                 
-                if (maxCaloriesInput > 0 && maxCaloriesInput < 9999 && calories > maxCaloriesInput) {
+                if (maxCaloriesInput > 0 && maxCaloriesInput < 999999 && calories > maxCaloriesInput) {
                     return false;
                 }
 
-                // Disliked foods filter
+                // Disliked foods filter (ESKİ - kalıyor)
                 const dislikedFoodsValue = document.getElementById('dislikedFoods')?.value || '';
                 const dislikedFoodsList = dislikedFoodsValue
                     .split(',')
@@ -5271,6 +5747,17 @@
 
                 return true;
             });
+            
+            // Filtreleme istatistiğini güncelle
+            const filteredCountEl = document.getElementById('filteredTemplateCount');
+            if (filteredCountEl) {
+                filteredCountEl.textContent = filteredTemplates.length;
+            }
+            
+            const totalCountEl = document.getElementById('totalTemplateCount');
+            if (totalCountEl) {
+                totalCountEl.textContent = dayTemplates.length;
+            }
 
             if (filteredTemplates.length === 0) {
                 tableContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Filtrelerinize uygun şablon bulunamadı</div>';
@@ -5335,7 +5822,7 @@
                 <table class="template-table">
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Menüler</th>
+                            <th style="width: 15%;" class="${getSortIcon('menu')}" onclick="toggleSort('menu')">Menüler</th>
                             <th style="width: 45%;">Öğünler</th>
                             <th style="width: 10%;" class="${getSortIcon('calories')}" onclick="toggleSort('calories')">Kalori</th>
                             <th style="width: 10%;" class="${getSortIcon('karb')}" onclick="toggleSort('karb')">Karb (g)</th>
@@ -5494,6 +5981,13 @@
                 let aValue, bValue;
                 
                 switch(field) {
+                    case 'menu':
+                        // Menü adından sayıyı çıkar (örn: "Menü 15" -> 15)
+                        const aMatch = (a.name || '').match(/Menü\s*(\d+)/i);
+                        const bMatch = (b.name || '').match(/Menü\s*(\d+)/i);
+                        aValue = aMatch ? parseInt(aMatch[1]) : 999999; // Eşleşmeyen en sonda
+                        bValue = bMatch ? parseInt(bMatch[1]) : 999999;
+                        break;
                     case 'calories':
                         aValue = a.totalMacros?.kalori || 0;
                         bValue = b.totalMacros?.kalori || 0;

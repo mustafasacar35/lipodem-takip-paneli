@@ -4057,6 +4057,28 @@
 
     .template-tag--day {
       margin-left: 8px;
+      /* Varsayılan mavi renk - TAM KAYIT için */
+      background: linear-gradient(135deg, #0d6efd, #0a58ca) !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(13, 110, 253, 0.35) !important;
+      box-shadow: 0 0 6px rgba(13, 110, 253, 0.25) !important;
+    }
+
+    /* Kısmi kayıt rozeti - TURUNCU ve animasyon */
+    .template-tag--partial {
+      background: linear-gradient(135deg, #ff9800, #f57c00) !important;
+      border: 1px solid rgba(255, 152, 0, 0.5) !important;
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.35) !important;
+      animation: pulse-warning 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-warning {
+      0%, 100% {
+        box-shadow: 0 0 8px rgba(255, 152, 0, 0.35);
+      }
+      50% {
+        box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
+      }
     }
 
     .template-tag--meal {
@@ -39289,6 +39311,7 @@ ${mesajlar.join('\n')}
       // Temizlik: önceki açılıştan kalma wrap ve durumları sıfırla
       try {
         modal.__duplicateTemplate = null;
+        modal.hesaplananSablonIsmi = null; // Hesaplanan şablon ismini temizle
         if (modal.ogunYemekleri) modal.ogunYemekleri = [];
         if (modal.ogunYemekleriSelected) modal.ogunYemekleriSelected = [];
         const oldWraps = modal.querySelectorAll('#tplSelectionWrap');
@@ -39641,26 +39664,85 @@ ${mesajlar.join('\n')}
         console.log('⚠️ Diyet türleri yüklenemedi:', error.message);
       }
       
-      // En büyük şablon numarasını bul - displayName veya name üzerinden
+      // ÖNEMLİ: Doğru şablon listesini seç
+      const mevcutSablonlar = modalTipi === 'gun' 
+        ? (window.gunSablonlari || [])  // Gün şablonları
+        : (window.mealTemplates || []); // Öğün şablonları
+      
+      console.log(`📋 ${modalTipi} modu - ${mevcutSablonlar.length} mevcut şablon`);
+      
+      // En büyük şablon numarasını bul - GÜN ŞABLONLARI İÇİN GITHUB'DAN OKU!
       let enBuyukNumara = 0;
+      
+      // KAYNAK 1: Session tracker - bu session'da kaydedilen son numara
+      if (modalTipi === 'gun' && window._sonKaydedilenMenuNumarasi) {
+        enBuyukNumara = window._sonKaydedilenMenuNumarasi;
+        console.log(`📌 Session tracker: En büyük numara = ${enBuyukNumara}`);
+      }
+      
+      if (modalTipi === 'gun') {
+        // KAYNAK 2: GitHub'dan mevcut şablonları oku (async, biraz yavaş olabilir)
+        console.log('🔍 GitHub\'dan en büyük Menü numarası aranıyor...');
+        try {
+          const githubData = await genericGithubJsonUpdate('gun-sablonlari-2025-10-25.json', null, 'READ');
+          const githubTemplates = githubData?.templates || githubData || [];
+          
+          console.log(`📋 GitHub'dan ${githubTemplates.length} gün şablonu okundu`);
+          
+          githubTemplates.forEach(sablon => {
+            const ad = (sablon && (sablon.displayName || sablon.name || '')).toString().trim();
+            if (!ad) return;
+            
+            // "Menü X" formatını kontrol et
+            const menuMatch = ad.match(/^Menü\s*(\d+)/i);
+            if (menuMatch) {
+              const n = parseInt(menuMatch[1]);
+              if (isFinite(n) && n > enBuyukNumara) {
+                enBuyukNumara = n;
+                console.log(`📊 GitHub - Yeni en büyük: ${n} (${ad})`);
+              }
+            }
+          });
+        } catch (error) {
+          console.warn('⚠️ GitHub\'dan okuma hatası:', error.message);
+        }
+      }
+      
+      // KAYNAK 3: LocalStorage - henüz GitHub'a sync olmamış yeni kayıtlar
       (mevcutSablonlar || []).forEach(sablon => {
         const ad = (sablon && (sablon.displayName || sablon.name || '')).toString().trim();
         if (!ad) return;
-        const m = ad.match(/^(?:Ö|O|0)?\s*(\d+)\./i);
-        if (m) {
-          const n = parseInt(m[1]);
-          if (isFinite(n) && n > enBuyukNumara) enBuyukNumara = n;
+        
+        // Gün şablonu için "Menü X" formatını kontrol et
+        if (modalTipi === 'gun') {
+          const menuMatch = ad.match(/^Menü\s*(\d+)/i);
+          if (menuMatch) {
+            const n = parseInt(menuMatch[1]);
+            if (isFinite(n) && n > enBuyukNumara) {
+              enBuyukNumara = n;
+              console.log(`📊 LocalStorage - Yeni en büyük: ${n} (${ad})`);
+            }
+          }
+        } else {
+          // Öğün şablonu için "Ö X" formatını kontrol et
+          const m = ad.match(/^(?:Ö|O|0)?\s*(\d+)\./i);
+          if (m) {
+            const n = parseInt(m[1]);
+            if (isFinite(n) && n > enBuyukNumara) enBuyukNumara = n;
+          }
         }
       });
       
-      // Sıradaki numara
-  const yeniSablonNumarasi = enBuyukNumara + 1;
-  const yeniPrefix = `Ö${yeniSablonNumarasi}`;
+      // Sıradaki numara ve prefix
+      const yeniSablonNumarasi = enBuyukNumara + 1;
+      const yeniPrefix = modalTipi === 'gun' ? `Menü ${yeniSablonNumarasi}` : `Ö${yeniSablonNumarasi}`;
       
       console.log('🔢 Şablon numaralandırma:', {
+        modalTipi,
         mevcutSablonSayisi: mevcutSablonlar.length,
         enBuyukNumara,
-        yeniSablonNumarasi
+        yeniSablonNumarasi,
+        yeniPrefix
       });
       
   // Öğün adını normalize et (görsel başlık için TR-lowercase kullanacağız)
@@ -39668,48 +39750,74 @@ ${mesajlar.join('\n')}
   const temizOgunAdi = ogunLabelRaw; // mevcut kullanımlar için korunur
   const ogunAdiLower = ogunLabelRaw.toLocaleLowerCase('tr-TR');
 
-  // Hasta bilgisi varsa yeni format kullan; yoksa anlamlı bir yedek isim üret
+  // Şablon ismini oluştur
   let oncerilerinIsim;
-      console.log('🔍 Ad oluşturma için hastaBilgileri kontrol:', {
-        hastaBilgileri,
-        isim: hastaBilgileri?.isim,
-        tarihAraligi: hastaBilgileri?.tarihAraligi, 
-        haftaNo: hastaBilgileri?.haftaNo
-      });
-      if (hastaBilgileri && hastaBilgileri.isim && hastaBilgileri.tarihAraligi && (hastaBilgileri.haftaNo!=null)) {
-        console.log('🔍 Zengin format dalına giriyor');
-  // Tarih aralığını olduğu gibi (yıl eklemeden) büyük harfe çevir
-  const formatliTarih = String(hastaBilgileri.tarihAraligi || '').toLocaleUpperCase('tr-TR');
+  
+  if (modalTipi === 'gun') {
+    // GÜN ŞABLONU: Basit "Menü X" formatı
+    oncerilerinIsim = yeniPrefix; // "Menü 1", "Menü 2", vb.
+    console.log('🔍 Gün şablonu - basit format:', oncerilerinIsim);
+  } else {
+    // ÖĞÜN ŞABLONU: Detaylı format (hasta bilgileri ile)
+    console.log('🔍 Ad oluşturma için hastaBilgileri kontrol:', {
+      hastaBilgileri,
+      isim: hastaBilgileri?.isim,
+      tarihAraligi: hastaBilgileri?.tarihAraligi, 
+      haftaNo: hastaBilgileri?.haftaNo
+    });
+    if (hastaBilgileri && hastaBilgileri.isim && hastaBilgileri.tarihAraligi && (hastaBilgileri.haftaNo!=null)) {
+      console.log('🔍 Zengin format dalına giriyor');
+      // Tarih aralığını olduğu gibi (yıl eklemeden) büyük harfe çevir
+      const formatliTarih = String(hastaBilgileri.tarihAraligi || '').toLocaleUpperCase('tr-TR');
 
-  // Gün adını tamamen büyük harfe çevir (örn: PAZAR)
-  const gunRaw = String(hastaBilgileri.gunAdi || '').toLocaleLowerCase('tr-TR');
-  const gunAdi = gunRaw ? gunRaw.toLocaleUpperCase('tr-TR') : '';
+      // Gün adını tamamen büyük harfe çevir (örn: PAZAR)
+      const gunRaw = String(hastaBilgileri.gunAdi || '').toLocaleLowerCase('tr-TR');
+      const gunAdi = gunRaw ? gunRaw.toLocaleUpperCase('tr-TR') : '';
 
-        // Tek satırda zengin format
-  const hastaIsmiUpper = String(hastaBilgileri.isim || '').toLocaleUpperCase('tr-TR');
-  oncerilerinIsim = `${yeniPrefix}. 📋 ${hastaIsmiUpper} - ${formatliTarih} - ${gunAdi} - ${ogunAdiLower} - ${hastaBilgileri.haftaNo}. hafta`;
-        console.log('🔍 Zengin format oluşturuldu:', oncerilerinIsim);
-      } else {
-        console.log('🔍 Yedek format dalına giriyor');
-        // Yedek: Hasta/Tarih/Gün bilgilerini UI ve aktif haftadan türet, sadece günü (token) çıkar
-        const aktifIdx = (typeof getAktifHaftaIndex==='function') ? getAktifHaftaIndex() : null;
-        const aktifHaftaObj = (window?.seciliHasta?.haftalar && aktifIdx!=null) ? window.seciliHasta.haftalar[aktifIdx] : null;
-        const tarihUpper = String(aktifHaftaObj?.tarihAraligi || new Date().toLocaleDateString('tr-TR')).toLocaleUpperCase('tr-TR');
-        const hastaUpper = String(window?.seciliHasta?.isim || window?.seciliHasta?.ad || 'HASTA').toLocaleUpperCase('tr-TR');
-        const label = (typeof getActiveGunLabelSafe === 'function') ? (getActiveGunLabelSafe() || '') : '';
-        const labelUpper = String(label).toLocaleUpperCase('tr-TR');
-        const daysUpper = ['PAZARTESİ','SALI','ÇARŞAMBA','PERŞEMBE','CUMA','CUMARTESİ','PAZAR'];
-        let gunUpper = '';
-        for (const d of daysUpper) { if (labelUpper.includes(d)) { gunUpper = d; break; } }
-        if (!gunUpper) gunUpper = 'GÜN';
-        const haftaNoSafe = (typeof aktifIdx==='number') ? (aktifIdx+1) : (aktifHaftaObj?.haftaNo || 'X');
-  oncerilerinIsim = `${yeniPrefix}. 📋 ${hastaUpper} - ${tarihUpper} - ${gunUpper} - ${ogunAdiLower} - ${haftaNoSafe}. hafta`;
-        console.log('🔍 Yedek format oluşturuldu:', oncerilerinIsim);
-      }
+      // Tek satırda zengin format
+      const hastaIsmiUpper = String(hastaBilgileri.isim || '').toLocaleUpperCase('tr-TR');
+      oncerilerinIsim = `${yeniPrefix}. 📋 ${hastaIsmiUpper} - ${formatliTarih} - ${gunAdi} - ${ogunAdiLower} - ${hastaBilgileri.haftaNo}. hafta`;
+      console.log('🔍 Zengin format oluşturuldu:', oncerilerinIsim);
+    } else {
+      console.log('🔍 Yedek format dalına giriyor');
+      // Yedek: Hasta/Tarih/Gün bilgilerini UI ve aktif haftadan türet, sadece günü (token) çıkar
+      const aktifIdx = (typeof getAktifHaftaIndex==='function') ? getAktifHaftaIndex() : null;
+      const aktifHaftaObj = (window?.seciliHasta?.haftalar && aktifIdx!=null) ? window.seciliHasta.haftalar[aktifIdx] : null;
+      const tarihUpper = String(aktifHaftaObj?.tarihAraligi || new Date().toLocaleDateString('tr-TR')).toLocaleUpperCase('tr-TR');
+      const hastaUpper = String(window?.seciliHasta?.isim || window?.seciliHasta?.ad || 'HASTA').toLocaleUpperCase('tr-TR');
+      const label = (typeof getActiveGunLabelSafe === 'function') ? (getActiveGunLabelSafe() || '') : '';
+      const labelUpper = String(label).toLocaleUpperCase('tr-TR');
+      const daysUpper = ['PAZARTESİ','SALI','ÇARŞAMBA','PERŞEMBE','CUMA','CUMARTESİ','PAZAR'];
+      let gunUpper = '';
+      for (const d of daysUpper) { if (labelUpper.includes(d)) { gunUpper = d; break; } }
+      if (!gunUpper) gunUpper = 'GÜN';
+      const haftaNoSafe = (typeof aktifIdx==='number') ? (aktifIdx+1) : (aktifHaftaObj?.haftaNo || 'X');
+      oncerilerinIsim = `${yeniPrefix}. 📋 ${hastaUpper} - ${tarihUpper} - ${gunUpper} - ${ogunAdiLower} - ${haftaNoSafe}. hafta`;
+      console.log('🔍 Yedek format oluşturuldu:', oncerilerinIsim);
+    }
+  }
 
       // Formu doldur
       document.getElementById('sablonKaydetIsim').value = oncerilerinIsim;
-      document.getElementById('sablonKaydetOneri').textContent = `💡 Önerilen format: ${oncerilerinIsim}`;
+      
+      // ÖNEMLİ: Gün şablonu için hesaplanan ismi modal objesine de kaydet
+      // Böylece kullanıcı input'u değiştirse bile doğru isim kullanılır
+      modal.hesaplananSablonIsmi = oncerilerinIsim;
+      
+      // Öneri metni - gün şablonu için basit, öğün için detaylı
+      if (modalTipi === 'gun') {
+        document.getElementById('sablonKaydetOneri').textContent = `💡 Gün şablonu (manuel düzenleyebilirsiniz)`;
+        // Gün şablonu için input'u EDİLEBİLİR bırak (kullanıcı numarayı değiştirebilsin)
+        document.getElementById('sablonKaydetIsim').readOnly = false;
+        document.getElementById('sablonKaydetIsim').style.backgroundColor = '#ffffff';
+        document.getElementById('sablonKaydetIsim').style.cursor = 'text';
+      } else {
+        document.getElementById('sablonKaydetOneri').textContent = `💡 Önerilen format: ${oncerilerinIsim}`;
+        // Öğün şablonu için input düzenlenebilir
+        document.getElementById('sablonKaydetIsim').readOnly = false;
+        document.getElementById('sablonKaydetIsim').style.backgroundColor = '';
+        document.getElementById('sablonKaydetIsim').style.cursor = '';
+      }
       // Uyarı/Çeklist bloğu için HTML yardımcıları
       const clsBadge = (c) => {
         const map = { main: ['#0d6efd','#fff'], bread:['#fd7e14','#fff'], soup:['#20c997','#fff'], salad:['#198754','#fff'], carb:['#6f42c1','#fff'], dairy:['#0dcaf0','#000'], beverage:['#6c757d','#fff'], dessert:['#d63384','#fff'], fruit:['#198754','#fff'], other:['#adb5bd','#000'] };
@@ -39877,8 +39985,19 @@ ${mesajlar.join('\n')}
       }), {kalori: 0, protein: 0, karb: 0, yag: 0});
       
       // Özet bilgilerini doldur
-  document.getElementById('sablonKaydetYemekSayisi').textContent = enrichedFoods.length;
-      document.getElementById('sablonKaydetKalori').textContent = toplamMakrolar.kalori.toFixed(0);
+      document.getElementById('sablonKaydetYemekSayisi').textContent = enrichedFoods.length;
+      
+      // Kalori ve makroları göster - Karb > 30 ise sarı arka plan + kırmızı yazı
+      const karbVal = toplamMakrolar.karb;
+      const isHighCarb = karbVal > 30;
+      const karbHtml = isHighCarb 
+        ? `<span style="background:#fff3cd; color:#dc3545; padding:2px 6px; border-radius:4px; font-weight:700;">⚠️ ${karbVal.toFixed(1)}g</span>`
+        : `<span>${karbVal.toFixed(1)}g</span>`;
+      
+      document.getElementById('sablonKaydetKalori').innerHTML = `${toplamMakrolar.kalori.toFixed(0)} kcal 
+        <span style="font-size:12px; color:#6c757d; margin-left:8px;">
+          (P: ${toplamMakrolar.protein.toFixed(1)}g | K: ${karbHtml} | Y: ${toplamMakrolar.yag.toFixed(1)}g)
+        </span>`;
       document.getElementById('sablonKaydetOgunTipi').textContent = ogunAdi;
       document.getElementById('sablonKaydetTarih').textContent = new Date().toLocaleDateString('tr-TR');
       
@@ -43377,25 +43496,11 @@ ${mesajlar.join('\n')}
       // Modal açıklamasını güncelle
       document.getElementById('sablonKaydetAciklama').textContent = `${tumYemekler.length} yemek kaydedilecek`;
       
-      // Önerilen ismi öğün şablonundaki formatta güncelle
-      const toplamKalori = gunIcerigi.totalCalories.toFixed(0);
-      // Gün şablonları arasında en büyük önde gelen numarayı bulup +1 ver (ID prefix)
-      let nextDayPrefix = 1;
-      try {
-        const mevcutGunlar = Array.isArray(window.gunSablonlari) ? window.gunSablonlari : [];
-        mevcutGunlar.forEach(s => {
-          if(!s || !s.name) return;
-            const m = String(s.name).trim().match(/^(\d+)\./);
-            if(m){ const n = parseInt(m[1],10); if(!isNaN(n) && n >= nextDayPrefix) nextDayPrefix = n+1; }
-        });
-      } catch(e){ console.warn('Prefix hesaplama hatası', e); }
-  // Gün şablonu isim formatı (TR): "N. 📋 HASTA - TARİH - GÜN - TÜM GÜN - X. hafta"
-  const gunUpper = String(gunAdi||'').toLocaleUpperCase('tr-TR');
-  const hastaUpper = String(hastaAdi||'').toLocaleUpperCase('tr-TR');
-  const tarihUpper = String(tarihAralik||'').toLocaleUpperCase('tr-TR');
-  const oncerilenIsim = `${nextDayPrefix}. 📋 ${hastaUpper} - ${tarihUpper} - ${gunUpper} - TÜM GÜN - ${haftaNumarasi}. hafta`;
-  document.getElementById('sablonKaydetIsim').value = oncerilenIsim;
-  document.getElementById('sablonKaydetOneri').textContent = `💡 Önerilen format: ${oncerilenIsim}`;
+      // ÖNEMLİ: sablonKaydetModalAc() zaten "Menü X" formatını ayarladı
+      // Burada override ETMEYELİM! Kullanıcı düzenleyebilsin
+      // Sadece öneri metnini güncelleyelim
+      const oncerilenIsim = document.getElementById('sablonKaydetIsim').value; // Modal tarafından ayarlanan değeri koru
+      document.getElementById('sablonKaydetOneri').textContent = `💡 Gün şablonu (manuel düzenleyebilirsiniz)`;
       
       // Hasta bilgilerini göster ve doldur
       const hastaBilgiDiv = document.getElementById('sablonKaydetHastaBilgi');
@@ -43405,9 +43510,28 @@ ${mesajlar.join('\n')}
       document.getElementById('sablonKaydetHastaHafta').textContent = `${haftaNumarasi}. Hafta`;
       document.getElementById('sablonKaydetHastaGun').textContent = gunAdi.toUpperCase();
       
-      // Özet bilgilerini güncelle
+      // Özet bilgilerini güncelle - MAKROLARI HESAPLA
+      const toplamMakrolar = tumYemekler.reduce((toplam, yemek) => ({
+        kalori: toplam.kalori + (yemek.calories || 0),
+        protein: toplam.protein + (yemek.protein || 0),
+        karb: toplam.karb + (yemek.carbs || 0),
+        yag: toplam.yag + (yemek.fat || 0)
+      }), {kalori: 0, protein: 0, karb: 0, yag: 0});
+      
       document.getElementById('sablonKaydetYemekSayisi').textContent = tumYemekler.length;
-      document.getElementById('sablonKaydetKalori').textContent = toplamKalori;
+      
+      // Kalori ve makroları göster - Karb > 30 ise sarı arka plan + kırmızı yazı
+      const karbVal = toplamMakrolar.karb;
+      const isHighCarb = karbVal > 30;
+      const karbHtml = isHighCarb 
+        ? `<span style="background:#fff3cd; color:#dc3545; padding:2px 6px; border-radius:4px; font-weight:700;">⚠️ ${karbVal.toFixed(1)}g</span>`
+        : `<span>${karbVal.toFixed(1)}g</span>`;
+      
+      document.getElementById('sablonKaydetKalori').innerHTML = `${toplamMakrolar.kalori.toFixed(0)} kcal 
+        <span style="font-size:12px; color:#6c757d; margin-left:8px;">
+          (P: ${toplamMakrolar.protein.toFixed(1)}g | K: ${karbHtml} | Y: ${toplamMakrolar.yag.toFixed(1)}g)
+        </span>`;
+      
       document.getElementById('sablonKaydetOgunTipi').textContent = `TÜM GÜN (${gunIcerigi.ogunler.length} öğün)`;
       document.getElementById('sablonKaydetTarih').textContent = new Date().toLocaleDateString('tr-TR');
       
@@ -44556,7 +44680,13 @@ ${mesajlar.join('\n')}
   // 📁 Gün şablonu modal onayı (GitHub JSON kayıt ile)
   async function gunSablonuKaydetOnay() {
     const modal = document.getElementById('sablonKaydetModal');
+    
+    // Düzenleme modu kontrolü
+    const isDuzenlemeModu = window.gunSablonDuzenlemeModu && window.gunSablonDuzenlenenId;
+    
+    // Gün şablonu için kullanıcı input'tan düzenleyebilsin (örneğin "Menü 28" olarak değiştirebilsin)
     const sablonIsmi = document.getElementById('sablonKaydetIsim').value.trim();
+    
     const diyetTuruId = document.getElementById('sablonKaydetDiyetTuru').value;
     
     if (!sablonIsmi) {
@@ -44564,6 +44694,8 @@ ${mesajlar.join('\n')}
       document.getElementById('sablonKaydetIsim').focus();
       return;
     }
+    
+    console.log('💾 Kayıt edilecek şablon ismi:', sablonIsmi, isDuzenlemeModu ? '(DÜZENLEME MODU)' : '(YENİ KAYIT)');
     
     try {
       const { gunAdi, gunIcerigi, tumYemekler } = window.gunSablonVerileri;
@@ -44590,42 +44722,44 @@ ${mesajlar.join('\n')}
         seciliDiyetTuru = window.diyetTurleri.find(d => d.id === diyetTuruId);
       }
       
-      // Gün şablonu oluştur
-      const gunSablonu = {
+      // Düzenleme modundaysa mevcut şablonu güncelle, değilse yeni oluştur
+      const gunSablonu = isDuzenlemeModu ? window.gunSablonDuzenlenenSablon : {
         id: `day_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: sablonIsmi,
-        type: 'day', // Gün şablonu işaretlesi
-        gunAdi: gunAdi.toUpperCase(),
-        totalCalories: toplamKalori,
-        totalMacros: {
-          kalori: toplamKalori,
-          protein: finalYemekler.reduce((t, y) => t + (y.protein || 0), 0),
-          karb: finalYemekler.reduce((t, y) => t + (y.carbs || 0), 0),
-          yag: finalYemekler.reduce((t, y) => t + (y.fat || 0), 0)
-        },
-        ogunler: gunIcerigi.ogunler.filter(ogun => 
-          ogun.yemekler.some(yemek => finalYemekler.some(fy => fy.foodName === yemek.foodName))
-        ),
-        foods: finalYemekler.map(yemek => ({
-          foodName: yemek.foodName,
-          originalText: yemek.originalText,
-          ogunTipi: yemek.ogunTipi,
-          calories: yemek.calories || 0,
-          protein: yemek.protein || 0,
-          carbs: yemek.carbs || 0,
-          fat: yemek.fat || 0
-        })),
         createdDate: new Date().toISOString().split('T')[0],
-        dietType: seciliDiyetTuru ? seciliDiyetTuru.id : null,
-        dietTypeName: seciliDiyetTuru ? seciliDiyetTuru.name : null,
-        tags: ['custom', 'day'],
-        sourcePatient: modal.hastaBilgileri ? {
-          name: modal.hastaBilgileri.isim,
-          dateRange: modal.hastaBilgileri.tarihAraligi,
-          weekNumber: modal.hastaBilgileri.haftaNo,
-          dayName: modal.hastaBilgileri.gunAdi
-        } : null
+        tags: ['custom', 'day']
       };
+      
+      // Şablon alanlarını güncelle
+      gunSablonu.name = sablonIsmi;
+      gunSablonu.type = 'day';
+      gunSablonu.gunAdi = gunAdi.toUpperCase();
+      gunSablonu.totalCalories = toplamKalori;
+      gunSablonu.totalMacros = {
+        kalori: toplamKalori,
+        protein: finalYemekler.reduce((t, y) => t + (y.protein || 0), 0),
+        karb: finalYemekler.reduce((t, y) => t + (y.carbs || 0), 0),
+        yag: finalYemekler.reduce((t, y) => t + (y.fat || 0), 0)
+      };
+      gunSablonu.ogunler = gunIcerigi.ogunler.filter(ogun => 
+        ogun.yemekler.some(yemek => finalYemekler.some(fy => fy.foodName === yemek.foodName))
+      );
+      gunSablonu.foods = finalYemekler.map(yemek => ({
+        foodName: yemek.foodName,
+        originalText: yemek.originalText,
+        ogunTipi: yemek.ogunTipi,
+        calories: yemek.calories || 0,
+        protein: yemek.protein || 0,
+        carbs: yemek.carbs || 0,
+        fat: yemek.fat || 0
+      }));
+      gunSablonu.dietType = seciliDiyetTuru ? seciliDiyetTuru.id : null;
+      gunSablonu.dietTypeName = seciliDiyetTuru ? seciliDiyetTuru.name : null;
+      gunSablonu.sourcePatient = modal.hastaBilgileri ? {
+        name: modal.hastaBilgileri.isim,
+        dateRange: modal.hastaBilgileri.tarihAraligi,
+        weekNumber: modal.hastaBilgileri.haftaNo,
+        dayName: modal.hastaBilgileri.gunAdi
+      } : null;
 
       // sourcePatient fallback ve eksik alan tamamlama
       try {
@@ -44653,9 +44787,17 @@ ${mesajlar.join('\n')}
       
       // GitHub'a JSON dosyası olarak kaydet (gun-sablonlari-2025-10-25.json - persistDayTemplateChange ile uyumlu)
       try {
-        console.log('💾 GitHub\'a kayıt başlıyor...');
-        await githubaSablonKaydet('gun-sablonlari-2025-10-25.json', gunSablonu);
-        console.log('✅ GitHub\'a kayıt başarılı!');
+        console.log('💾 GitHub\'a kayıt başlıyor...', isDuzenlemeModu ? '(GÜNCELLEME)' : '(YENİ)');
+        
+        if (isDuzenlemeModu) {
+          // Düzenleme modu: Mevcut şablonu güncelle
+          await persistDayTemplateChange('update', gunSablonu.id, gunSablonu);
+          console.log('✅ GitHub\'a güncelleme başarılı!');
+        } else {
+          // Yeni kayıt: Yeni şablon ekle
+          await githubaSablonKaydet('gun-sablonlari-2025-10-25.json', gunSablonu);
+          console.log('✅ GitHub\'a yeni kayıt başarılı!');
+        }
         
         // Toplu kaydetme modundaysa flag set et (modal kapatma kontrolünü devre dışı bırak)
         if (window._topluKaydetGunlerKuyruk && window._topluKaydetIstatistik) {
@@ -44668,11 +44810,35 @@ ${mesajlar.join('\n')}
         window.gunSablonKayitModu = false;
         window.gunSablonVerileri = null;
         
+        // Düzenleme modu flag'lerini temizle
+        window.gunSablonDuzenlemeModu = false;
+        window.gunSablonDuzenlenenId = null;
+        window.gunSablonDuzenlenenSablon = null;
+        
         const diyetInfo = seciliDiyetTuru ? ` (${seciliDiyetTuru.name})` : '';
-        showToast(`✅ "${sablonIsmi}" gün şablonu kaydedildi!${diyetInfo} (${finalYemekler.length} yemek, ${toplamKalori.toFixed(0)} kcal)`, 'success', 4000);
-        // Local state'e ekle ve persist et
+        const actionText = isDuzenlemeModu ? 'güncellendi' : 'kaydedildi';
+        showToast(`✅ "${sablonIsmi}" gün şablonu ${actionText}!${diyetInfo} (${finalYemekler.length} yemek, ${toplamKalori.toFixed(0)} kcal)`, 'success', 4000);
+        
+        // ÖNEMLİ: Session tracker'ı güncelle - bu session'da kaydedilen son menü numarasını kaydet
+        const menuNumaraMatch = sablonIsmi.match(/^Menü\s*(\d+)/i);
+        if (menuNumaraMatch) {
+          const kaydedilenNumara = parseInt(menuNumaraMatch[1]);
+          window._sonKaydedilenMenuNumarasi = kaydedilenNumara;
+          console.log(`📌 Session tracker güncellendi: ${kaydedilenNumara}`);
+        }
+        
+        // Local state'e ekle veya güncelle
         try {
-          window.gunSablonlari.push(gunSablonu);
+          if (isDuzenlemeModu) {
+            // Düzenleme modu: Mevcut şablonu güncelle
+            const index = window.gunSablonlari.findIndex(s => s.id === gunSablonu.id);
+            if (index !== -1) {
+              window.gunSablonlari[index] = gunSablonu;
+            }
+          } else {
+            // Yeni kayıt: Listeye ekle
+            window.gunSablonlari.push(gunSablonu);
+          }
           localStorage.setItem('gunSablonlari', JSON.stringify(window.gunSablonlari));
         } catch {}
 
@@ -44859,6 +45025,7 @@ ${mesajlar.join('\n')}
             <div><strong>Öğün Sayısı:</strong> ${(sablon.ogunler||[]).length} öğün</div>
             <div><strong>Yemek Sayısı:</strong> ${(sablon.foods||[]).length} yemek</div>
             <div><strong>Toplam Kalori:</strong> ${sablon.totalCalories || sablon.totalMacros?.kalori || 0} kcal</div>
+            <div><strong>Diyet Türü:</strong> ${sablon.dietTypeName || sablon.dietType || 'Genel'}</div>
             ${sablon.sourcePatient ? `<div><strong>Kaynak:</strong> ${escapeHTML(sablon.sourcePatient.name)}${sablon.sourcePatient.dateRange? ' - '+escapeHTML(sablon.sourcePatient.dateRange):''}</div>`:''}
           </div>
           <div>${ogunlerHTML || '<div style=\"font-size:12px; color:#888;\">Öğün yok</div>'}</div>
@@ -44908,18 +45075,80 @@ ${mesajlar.join('\n')}
     // TODO: İleride incremental update.
   }
 
-  function gunSablonuYenidenAdlandir(id){
-    const sablon = gunSablonuBul(id); if(!sablon) return;
-    const yeni = prompt('Yeni isim girin:', sablon.name); if(!yeni) return;
-    sablon.name = yeni.trim();
-    gunSablonlariKaydetLocal();
-    gunSablonlariAccordionGuncelle();
-    showToast('✏️ Gün şablonu adı güncellendi','success',2000);
-    // Github'a da yansıt
-    persistDayTemplateChange('rename', sablon.id, { name: sablon.name }).catch(e => {
-      console.error('GitHub sync hatası:', e);
-      showToast('⚠️ Lokal güncellendi ama GitHub senkronizasyonu başarısız', 'warning', 3000);
-    });
+  async function gunSablonuYenidenAdlandir(id){
+    // Tam düzenleme modalı aç - kaydederken açılan modal ile aynı
+    const sablon = gunSablonuBul(id); 
+    if(!sablon) {
+      showToast('❌ Şablon bulunamadı!', 'error');
+      return;
+    }
+    
+    console.log('✏️ Gün şablonu düzenleniyor:', sablon);
+    
+    // Hasta bilgilerini şablondan al
+    const hastaBilgileri = sablon.sourcePatient ? {
+      isim: sablon.sourcePatient.name || 'Bilinmeyen',
+      tarihAraligi: sablon.sourcePatient.dateRange || 'Tarih yok',
+      haftaNo: sablon.sourcePatient.weekNumber || 1,
+      gunAdi: sablon.gunAdi || 'Gün'
+    } : null;
+    
+    // Yemekleri hazırla
+    const tumYemekler = sablon.foods || [];
+    
+    // Gün içeriğini şablondan oluştur
+    const gunIcerigi = {
+      gunAdi: sablon.gunAdi,
+      totalCalories: sablon.totalCalories || 0,
+      ogunler: sablon.ogunler || []
+    };
+    
+    // Global düzenleme modu flag'i
+    window.gunSablonDuzenlemeModu = true;
+    window.gunSablonDuzenlenenId = id;
+    window.gunSablonDuzenlenenSablon = sablon;
+    
+    // ÖNEMLİ: gunSablonVerileri'ni düzenleme için hazırla
+    window.gunSablonKayitModu = true;
+    window.gunSablonVerileri = {
+      gunAdi: sablon.gunAdi,
+      gunIcerigi: gunIcerigi,
+      tumYemekler: tumYemekler
+    };
+    
+    // Modal aç
+    await sablonKaydetModalAc('GÜN ŞABLONU DÜZENLE', tumYemekler, hastaBilgileri, 'gun');
+    
+    // Modal tam yüklendikten sonra değerleri doldur (setTimeout ile async yüklenmeyi bekle)
+    setTimeout(() => {
+      // Mevcut değerleri doldur
+      document.getElementById('sablonKaydetIsim').value = sablon.name || sablon.displayName || '';
+      
+      // Diyet türünü seç
+      if (sablon.dietType) {
+        const diyetSelect = document.getElementById('sablonKaydetDiyetTuru');
+        if (diyetSelect) {
+          diyetSelect.value = sablon.dietType;
+          console.log('✅ Diyet türü set edildi:', sablon.dietType, 'Seçilen:', diyetSelect.value);
+        } else {
+          console.warn('⚠️ Diyet türü dropdown bulunamadı!');
+        }
+      }
+      
+      // Checkbox'ları işaretle (tüm yemekleri seçili yap)
+      const checkboxes = document.querySelectorAll('#sablonKaydetModal input[type="checkbox"]');
+      checkboxes.forEach(cb => cb.checked = true);
+      console.log(`✅ ${checkboxes.length} checkbox işaretlendi`);
+    }, 100);
+    
+    // Modal açıklama güncelle
+    document.getElementById('sablonKaydetAciklama').innerHTML = `
+      <strong style="color:#ff9800;">✏️ DÜZENLEME MODU</strong><br>
+      ${tumYemekler.length} yemek - Değişiklikleriniz kaydedilecek
+    `;
+    
+    // Öneri metni güncelle
+    document.getElementById('sablonKaydetOneri').textContent = '💡 Değişiklik yapmak için düzenleyin ve kaydedin';
   }
 
   async function gunSablonuOgunDuzenle(id, ogunIndex){
@@ -45497,11 +45726,126 @@ ${mesajlar.join('\n')}
     });
   }
   function updateDayRowSaveStateFor(gunAdi){
+    console.log('🎯 updateDayRowSaveStateFor çağrıldı:', gunAdi);
     try {
       const rows = _getDayRowElements();
+      console.log('📋 Bulunan satırlar:', rows.length, rows.map(r => r.gunAdi));
+      
       const target = rows.find(r=> _normTrSimple(r.gunAdi) === _normTrSimple(gunAdi));
-      if(!target) return;
-      const tpl = findMatchingDayTemplateForCurrentContext(target.gunAdi);
+      if(!target) {
+        console.log('❌ Hedef satır bulunamadı:', gunAdi);
+        return;
+      }
+      console.log('✅ Hedef satır bulundu:', target.gunAdi);
+      
+      let tpl = findMatchingDayTemplateForCurrentContext(target.gunAdi);
+      console.log('📝 Şablon bulundu mu?', !!tpl, tpl ? tpl.name : 'YOK');
+      
+      // KISMÎ KAYIT KONTROLÜ - Şablon bulunamasa bile metadata'ya göre kontrol et
+      let isPartialSave = false;
+      
+      // Önce şablon varsa onunla kontrol et
+      if (tpl) {
+        try {
+          // Mevcut günün toplam yemek sayısını bul
+          let tarifler = window.currentFoodAnalysisData || [];
+          
+          if (tarifler.length === 0) {
+            const haftalar = (typeof getHaftaListesi === 'function') ? getHaftaListesi() : null;
+            const seciliIndex = (typeof getAktifHaftaIndex === 'function') ? getAktifHaftaIndex() : 0;
+            const hafta = Array.isArray(haftalar) ? haftalar[seciliIndex] : null;
+            if (hafta && Array.isArray(hafta.tarifler)) {
+              tarifler = hafta.tarifler;
+            }
+          }
+          
+          const gunIcerigi = (typeof extractDayContent === 'function') ? extractDayContent(tarifler, target.gunAdi) : null;
+          
+          let mevcutYemekSayisi = 0;
+          if (gunIcerigi && gunIcerigi.ogunler) {
+            gunIcerigi.ogunler.forEach(ogun => {
+              mevcutYemekSayisi += (ogun.yemekler || []).length;
+            });
+          }
+          
+          const kaydedilmisYemekSayisi = tpl.foods ? tpl.foods.length : 0;
+          
+          console.log(`🔍 Kısmi kayıt kontrolü (şablon mevcut): ${target.gunAdi}`, {
+            mevcutYemekSayisi,
+            kaydedilmisYemekSayisi,
+            tariflerUzunluk: tarifler.length,
+            gunIcerigiVarMi: !!gunIcerigi
+          });
+          
+          if (mevcutYemekSayisi > 0 && kaydedilmisYemekSayisi < mevcutYemekSayisi) {
+            isPartialSave = true;
+            console.log(`⚠️ Kısmi kayıt (şablon var): ${target.gunAdi} - Mevcut: ${mevcutYemekSayisi}, Kayıtlı: ${kaydedilmisYemekSayisi}`);
+          }
+        } catch (err) {
+          console.warn('Şablon bazlı kısmi kayıt kontrolü hatası:', err);
+        }
+      } else {
+        // Şablon bulunamadı ama metadata'ya göre bu gün için kayıt var mı kontrol et
+        console.log(`🔍 Şablon bulunamadı, metadata kontrolü yapılıyor: ${target.gunAdi}`);
+        
+        try {
+          const ctx = _getCurrentPatientWeekContext();
+          const nameNorm = _normTrSimple(ctx.hastaIsim);
+          const gunUpper = String(target.gunAdi||'').toLocaleUpperCase('tr-TR');
+          const arr = Array.isArray(window.gunSablonlari) ? window.gunSablonlari : [];
+          
+          // Bu gün için HERHANGI bir şablon var mı? (hasta/hafta bakmadan)
+          const anyDayTemplate = arr.find(t => {
+            const tGun = (t.gunAdi || '').toLocaleUpperCase('tr-TR');
+            return tGun === gunUpper;
+          });
+          
+          if (anyDayTemplate) {
+            console.log(`📝 Metadata'sız eşleşme bulundu: ${anyDayTemplate.name}`);
+            
+            // Şimdi yemek sayısı kontrolü yap
+            let tarifler = window.currentFoodAnalysisData || [];
+            if (tarifler.length === 0) {
+              const haftalar = (typeof getHaftaListesi === 'function') ? getHaftaListesi() : null;
+              const seciliIndex = (typeof getAktifHaftaIndex === 'function') ? getAktifHaftaIndex() : 0;
+              const hafta = Array.isArray(haftalar) ? haftalar[seciliIndex] : null;
+              if (hafta && Array.isArray(hafta.tarifler)) {
+                tarifler = hafta.tarifler;
+              }
+            }
+            
+            const gunIcerigi = (typeof extractDayContent === 'function') ? extractDayContent(tarifler, target.gunAdi) : null;
+            
+            let mevcutYemekSayisi = 0;
+            if (gunIcerigi && gunIcerigi.ogunler) {
+              gunIcerigi.ogunler.forEach(ogun => {
+                mevcutYemekSayisi += (ogun.yemekler || []).length;
+              });
+            }
+            
+            const kaydedilmisYemekSayisi = anyDayTemplate.foods ? anyDayTemplate.foods.length : 0;
+            
+            console.log(`🔍 Kısmi kayıt kontrolü (metadata'sız): ${target.gunAdi}`, {
+              mevcutYemekSayisi,
+              kaydedilmisYemekSayisi
+            });
+            
+            if (mevcutYemekSayisi > 0 && kaydedilmisYemekSayisi < mevcutYemekSayisi) {
+              isPartialSave = true;
+              console.log(`⚠️ Kısmi kayıt (metadata'sız): ${target.gunAdi} - Mevcut: ${mevcutYemekSayisi}, Kayıtlı: ${kaydedilmisYemekSayisi}`);
+            }
+            
+            // anyDayTemplate'i tpl olarak kullan (rozet için)
+            if (!tpl) {
+              tpl = anyDayTemplate;
+              console.log(`✅ Şablon metadata'sız eşleşme ile set edildi:`, tpl.name);
+            }
+          }
+        } catch (metaErr) {
+          console.warn('Metadata bazlı kısmi kayıt kontrolü hatası:', metaErr);
+        }
+      }
+      
       // Kaydet butonunu bul
       const outerHost = target.td ? target.td.querySelector('div[style*="justify-content:space-between"], div[style*="justify-content: space-between"], div') : null;
       const allButtons = outerHost ? Array.from(outerHost.querySelectorAll('button')) : [];
@@ -45541,7 +45885,8 @@ ${mesajlar.join('\n')}
         const badgeMeta = Object.assign({
           templateId: tpl?.id || '',
           templateName: tpl?.name || tpl?.displayName || 'Gün Şablonu',
-          source: 'manual'
+          source: 'manual',
+          isPartial: isPartialSave  // Kısmi kayıt bilgisi ekle
         }, storedMeta || {});
         if (!badgeMeta.templateName) {
           badgeMeta.templateName = tpl?.name || tpl?.displayName || 'Gün Şablonu';
@@ -45557,15 +45902,20 @@ ${mesajlar.join('\n')}
         target.row.setAttribute('data-saved-template-id', tpl.id);
         target.row.setAttribute('data-template-applied', 'true');
         target.row.dataset.templateSource = badgeMeta.source;
+        if (isPartialSave) {
+          target.row.dataset.partialSave = 'true';
+        } else {
+          delete target.row.dataset.partialSave;
+        }
 
-        // Admin kontrol etiketi (✓) sadece yönetici rolleri için göster
+        // Admin kontrol etiketi (✓ veya ⚠️) sadece yönetici rolleri için göster
         if (!isPatientRole) {
           let adminBadge = checkBadge;
           if (!adminBadge) {
             adminBadge = document.createElement('span');
             adminBadge.className = 'day-saved-badge template-tag template-tag--admin template-tag--pulse';
             adminBadge.style.marginLeft = '0';
-            adminBadge.textContent = '✓';
+            adminBadge.textContent = isPartialSave ? '⚠️' : '✓';
             if (btnCluster) {
               if (saveBtn && saveBtn.parentElement === btnCluster) {
                 btnCluster.insertBefore(adminBadge, saveBtn);
@@ -45580,10 +45930,30 @@ ${mesajlar.join('\n')}
                 target.td.appendChild(adminBadge);
               }
             }
+          } else {
+            adminBadge.textContent = isPartialSave ? '⚠️' : '✓';
           }
           const adminDescriptor = buildTemplateBadgeDescriptor('day', false, badgeMeta);
-          adminBadge.title = adminDescriptor.title;
+          adminBadge.title = isPartialSave 
+            ? `⚠️ KISMI KAYIT - ${adminDescriptor.title}\n(Bazı öğünler eksik kaydedilmiş)`
+            : adminDescriptor.title;
           adminBadge.className = `day-saved-badge template-tag template-tag--admin template-tag--pulse template-tag--${badgeMeta.source}`;
+          
+          if (isPartialSave) {
+            // KISMI KAYIT - TURUNCU
+            adminBadge.className += ' template-tag--partial';
+            adminBadge.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
+            adminBadge.style.color = '#fff';
+            adminBadge.style.border = '1px solid rgba(255, 152, 0, 0.5)';
+            adminBadge.style.boxShadow = '0 0 8px rgba(255, 152, 0, 0.35)';
+          } else {
+            // TAM KAYIT - MAVİ
+            adminBadge.style.background = 'linear-gradient(135deg, #0d6efd, #0a58ca)';
+            adminBadge.style.color = '#fff';
+            adminBadge.style.border = '1px solid rgba(13, 110, 253, 0.35)';
+            adminBadge.style.boxShadow = '0 0 6px rgba(13, 110, 253, 0.25)';
+          }
+          
           adminBadge.style.marginLeft = '0';
         } else if (checkBadge && checkBadge.parentElement) {
           checkBadge.parentElement.removeChild(checkBadge);
@@ -45594,15 +45964,41 @@ ${mesajlar.join('\n')}
           const titleSpan = target.td ? target.td.querySelector('span') : null;
           templateTag = document.createElement('span');
           templateTag.className = 'day-template-tag template-tag template-tag--day';
+          if (isPartialSave) {
+            templateTag.className += ' template-tag--partial';
+          }
           if (titleSpan) {
             titleSpan.appendChild(templateTag);
           } else if (target.td) {
             target.td.appendChild(templateTag);
           }
         } else {
-          // nothing
+          // Kısmi kayıt class'ını güncelle
+          if (isPartialSave) {
+            if (!templateTag.className.includes('template-tag--partial')) {
+              templateTag.className += ' template-tag--partial';
+            }
+          } else {
+            templateTag.className = templateTag.className.replace('template-tag--partial', '').trim();
+          }
         }
+        
+        // configureTemplateTagElement çağrılmadan önce partial class'ını sakla
+        const hadPartial = templateTag.className.includes('template-tag--partial');
         configureTemplateTagElement(templateTag, 'day', isPatientRole, badgeMeta);
+        
+        // Partial class'ını geri ekle (configureTemplateTagElement sıfırladığı için)
+        if (hadPartial && !templateTag.className.includes('template-tag--partial')) {
+          templateTag.className += ' template-tag--partial';
+        }
+        
+        // Kısmi kayıt ise ⚠️ ikonu ekle
+        if (isPartialSave) {
+          const currentText = templateTag.textContent || '';
+          if (!currentText.includes('⚠️')) {
+            templateTag.textContent = '⚠️ ' + currentText;
+          }
+        }
       } else {
         if (saveBtn) { saveBtn.style.display = ''; saveBtn.removeAttribute('data-hidden-by-saved'); }
         if (checkBadge && checkBadge.parentElement) { checkBadge.parentElement.removeChild(checkBadge); }
@@ -45614,13 +46010,51 @@ ${mesajlar.join('\n')}
     } catch(e){ console.warn('updateDayRowSaveStateFor hata', e); }
   }
   function refreshDayRowSaveState(){
+    console.log('🔄 refreshDayRowSaveState çağrıldı');
     try {
       const rows = _getDayRowElements();
-      rows.forEach(r=> updateDayRowSaveStateFor(r.gunAdi));
+      console.log('📋 Toplam satır sayısı:', rows.length);
+      rows.forEach(r=> {
+        console.log('  → Rozet güncelleniyor:', r.gunAdi);
+        updateDayRowSaveStateFor(r.gunAdi);
+      });
     } catch(e){ console.warn('refreshDayRowSaveState hata', e); }
   }
   // Sayfa ilk yüklenişinden kısa süre sonra ve template yüklemelerinden sonra durumu yenile
-  try { setTimeout(()=>{ if (typeof refreshDayRowSaveState==='function') refreshDayRowSaveState(); }, 300); } catch {}
+  // Hasta seçilene kadar bekle ve birkaç kez dene
+  try { 
+    console.log('⏰ Rozet refresh planlandı - hasta yüklenene kadar beklenecek');
+    
+    let deneme = 0;
+    const maxDeneme = 10;
+    
+    const rozetRefreshDene = () => {
+      deneme++;
+      console.log(`⏰ Rozet refresh denemesi ${deneme}/${maxDeneme}`);
+      
+      if (typeof refreshDayRowSaveState === 'function') {
+        const rows = _getDayRowElements();
+        
+        if (rows && rows.length > 0) {
+          console.log(`✅ ${rows.length} satır bulundu, rozet refresh başlatılıyor`);
+          refreshDayRowSaveState();
+        } else if (deneme < maxDeneme) {
+          console.log(`⏳ Henüz satır yok (${deneme}/${maxDeneme}), 800ms sonra tekrar denenecek...`);
+          setTimeout(rozetRefreshDene, 800);
+        } else {
+          console.warn('⚠️ Maksimum deneme sayısına ulaşıldı, satırlar hala yok');
+        }
+      } else {
+        console.error('❌ refreshDayRowSaveState fonksiyonu bulunamadı!');
+      }
+    };
+    
+    // İlk denemeyi 1000ms sonra başlat (auth ve hasta yükleme için zaman tanı)
+    setTimeout(rozetRefreshDene, 1000);
+    
+  } catch(e) { 
+    console.error('❌ Rozet refresh planlaması hatası:', e);
+  }
 
   </script>
   <script>
@@ -46246,6 +46680,14 @@ async function topluKaydetGunleri() {
     const protein = proteinTd ? proteinTd.textContent.trim() : '-';
     const yag = yagTd ? yagTd.textContent.trim() : '-';
     
+    // Karb kontrolü - sayıya çevir
+    const karbNumara = parseFloat(karb);
+    const isHighCarb = !isNaN(karbNumara) && karbNumara > 30;
+    const karbStyle = isHighCarb 
+      ? 'background: #fff3cd; color: #dc3545; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
+      : '';
+    const karbIcon = isHighCarb ? '⚠️ ' : '🍞 ';
+    
     const rozetHtml = kaydedilmis 
       ? `<span style="color: #28a745; font-weight: bold; margin-left: 8px;">✓ Arşivde</span>`
       : `<span style="color: #6c757d; font-weight: normal; margin-left: 8px;">Henüz kayıtlı değil</span>`;
@@ -46276,7 +46718,7 @@ async function topluKaydetGunleri() {
             </div>
             <div style="font-size: 12px; color: #666; display: flex; gap: 12px;">
               <span>🔥 ${kalori} kcal</span>
-              <span>🍞 ${karb}g</span>
+              <span style="${karbStyle}">${karbIcon}${karb}g</span>
               <span>🥩 ${protein}g</span>
               <span>🧈 ${yag}g</span>
             </div>
