@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v13-LOGOS-ADDED'; // ✅ V13 - logo2/3/4 eklendi
+const CACHE_NAME = 'lipodem-takip-v14-PATIENT-NUTRITION-MANIFEST'; // ✅ V14 - manifest-patient-nutrition.json eklendi
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -21,6 +21,10 @@ const urlsToCache = [
   '/ios-install-prompt.js',
   '/onesignal_config.js',
   '/manifest.json',
+  '/manifest-patient-nutrition.json',  // ✅ Patient Nutrition Manifest
+  '/manifest-admin-settings.json',
+  '/manifest-admin-patients.json',
+  '/manifest-admin-chat.json',
   '/logo.png',
   '/logo2.png',  // ✅ Admin Settings
   '/logo3.png',  // ✅ Admin Patients
@@ -29,7 +33,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v13 LOGOS ADDED kuruluyor...');
+  console.log('🔧 Service Worker v14 PATIENT-NUTRITION-MANIFEST kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
