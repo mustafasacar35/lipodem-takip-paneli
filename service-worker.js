@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v17-FORCE-REFRESH'; // ✅ V17 - Zorla tarayıcı cache temizleme
+const CACHE_NAME = 'lipodem-takip-v18-PWA'; // ✅ V18 - PWA Cache (OneSignal ayrı)
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -33,7 +33,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v17 FORCE-REFRESH kuruluyor...');
+  console.log('🔧 Service Worker v18 PWA kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
