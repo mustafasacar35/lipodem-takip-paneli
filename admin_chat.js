@@ -174,6 +174,19 @@ async function initializeOneSignal() {
             }
         });
         
+        // Badge sayısını sıfırla (admin chat açıldığında)
+        try {
+            await OneSignal.User.PushSubscription.optIn();
+            console.log('🔄 Badge sıfırlanıyor...');
+            // iOS badge sıfırlama
+            if (OneSignal.User && OneSignal.User.PushSubscription) {
+                await OneSignal.User.PushSubscription.optIn();
+            }
+            console.log('✅ Badge sıfırlandı');
+        } catch (badgeError) {
+            console.warn('⚠️ Badge sıfırlama hatası:', badgeError);
+        }
+        
         console.log('✅ OneSignal başarıyla yapılandırıldı - arka plan bildirimleri aktif');
         
     } catch (error) {
@@ -990,6 +1003,19 @@ async function markAsRead() {
             .eq('sender_id', selectedPatientId)
             .eq('receiver_type', 'admin')
             .eq('is_read', false);
+        
+        // OneSignal badge sıfırla (mesaj okunduğunda)
+        if (typeof OneSignal !== 'undefined') {
+            try {
+                // Tüm bildirimleri temizle (badge sıfırlanır)
+                if (OneSignal.Notifications) {
+                    await OneSignal.Notifications.requestPermission();
+                }
+                console.log('🔄 OneSignal badge sıfırlandı (mesaj okundu)');
+            } catch (badgeErr) {
+                console.warn('⚠️ Badge sıfırlama hatası:', badgeErr);
+            }
+        }
         
         // Hasta listesini güncelle
         loadPatients();
