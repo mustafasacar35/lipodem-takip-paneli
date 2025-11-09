@@ -449,6 +449,12 @@ function formatPatientName(patientId) {
 // Hastaları listele
 function displayPatients(patients) {
     const container = document.getElementById('patientList');
+    const countElement = document.getElementById('patientCount');
+    
+    // Hasta sayısını güncelle
+    if (countElement) {
+        countElement.textContent = patients ? patients.length : 0;
+    }
     
     if (!patients || patients.length === 0) {
         container.innerHTML = `
