@@ -41,8 +41,18 @@
     <!-- OneSignal Config (Bildirim için) -->
     <script src="./onesignal_config.js"></script>
     
-    <!-- OneSignal SDK -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
+    <!-- OneSignal SDK v16 -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        // OneSignal v16 - Deferred initialization
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: "109f129c-cd73-4708-ba9a-b3c8103c52dc",
+                allowLocalhostAsSecureOrigin: true
+            });
+        });
+    </script>
     
     <!-- Chat Manager -->
     <script src="chat_manager.js"></script>

@@ -125,6 +125,18 @@ async function initializeOneSignal() {
             console.log('📝 İzin sonucu:', result);
         }
         
+        // Push subscription oluştur (ARKA PLAN BİLDİRİMLERİ İÇİN)
+        console.log('🔄 Push subscription kontrol ediliyor...');
+        const subscriptionState = await OneSignal.User.PushSubscription.optedIn;
+        
+        if (!subscriptionState) {
+            console.log('📬 Push subscription oluşturuluyor...');
+            await OneSignal.User.PushSubscription.optIn();
+            console.log('✅ Push subscription aktif - arka plan bildirimleri çalışacak');
+        } else {
+            console.log('✅ Push subscription zaten aktif');
+        }
+        
         // Player ID al (Admin'i tanımlamak için)
         const playerId = await OneSignal.User.PushSubscription.id;
         if (playerId) {
@@ -138,7 +150,20 @@ async function initializeOneSignal() {
             localStorage.setItem('onesignal_player_id', playerId);
         }
         
-        console.log('✅ OneSignal başarıyla yapılandırıldı');
+        // OneSignal mesaj listener'ı ekle (foreground notifications)
+        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+            console.log('📬 OneSignal foreground notification:', event);
+            // Native notification'ı da göster (çift bildirim için)
+            if (event.notification && event.notification.body) {
+                showNewMessageNotification({
+                    message: event.notification.body,
+                    sender_id: 'onesignal',
+                    created_at: new Date().toISOString()
+                });
+            }
+        });
+        
+        console.log('✅ OneSignal başarıyla yapılandırıldı - arka plan bildirimleri aktif');
         
     } catch (error) {
         console.error('❌ OneSignal yapılandırma hatası:', error);

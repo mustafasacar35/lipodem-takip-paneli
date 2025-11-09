@@ -653,49 +653,39 @@ async function initializePatientOneSignal() {
         
         console.log('🔔 Hasta OneSignal başlatılıyor...');
         
-        // OneSignal başlat
-        // Eğer OneSignal top-level'de zaten init olduysa yeniden init etme
-        if (!(window.parent && window.parent.__OS_INIT_DONE)) {
-            await OS.init({
-                appId: window.ONESIGNAL_CONFIG.appId,
-                allowLocalhostAsSecureOrigin: true,
-                serviceWorkerParam: { scope: '/' },
-                serviceWorkerPath: 'OneSignalSDKWorker.js',
-                
-                // Slidedown prompt ayarları (iOS için önemli)
-                promptOptions: {
-                    slidedown: {
-                        enabled: true,
-                        autoPrompt: true,
-                        actionMessage: "Yeni mesajlardan haberdar olmak ister misiniz?",
-                        acceptButtonText: "İzin Ver",
-                        cancelButtonText: "Şimdi Değil"
-                    }
-                }
-            });
-        }
-        
         // Bildirim izni kontrol et
         const permission = await OS.Notifications.permission;
         console.log('📱 Mevcut izin durumu:', permission);
         
         if (permission !== 'granted') {
             console.log('🔔 Bildirim izni isteniyor...');
-            
-            // iOS için Slidedown kullan
-            try {
-                await OS.Slidedown.promptPush();
-                console.log('✅ Slidedown prompt gösterildi');
-            } catch (e) {
-                console.log('⚠️ Slidedown hatası, native prompt deneniyor...');
-                await OS.Notifications.requestPermission();
-            }
+            const result = await OS.Notifications.requestPermission();
+            console.log('📝 İzin sonucu:', result);
+        }
+        
+        // Push subscription oluştur (ARKA PLAN BİLDİRİMLERİ İÇİN)
+        console.log('🔄 Push subscription kontrol ediliyor...');
+        const subscriptionState = await OS.User.PushSubscription.optedIn;
+        
+        if (!subscriptionState) {
+            console.log('📬 Push subscription oluşturuluyor...');
+            await OS.User.PushSubscription.optIn();
+            console.log('✅ Push subscription aktif - arka plan bildirimleri çalışacak');
+        } else {
+            console.log('✅ Push subscription zaten aktif');
         }
         
         // External User ID olarak patient ID'yi set et
         try {
             await OS.login(currentPatientId);
+            console.log('✅ OneSignal login başarılı:', currentPatientId);
+            
+            // Patient tag ekle
+            await OS.User.addTag('user_type', 'patient');
+            await OS.User.addTag('patient_id', currentPatientId);
+            console.log('✅ Patient tags eklendi');
         } catch (e) {
+            console.error('❌ OneSignal login hatası:', e);
             // Üst pencereden login dene (özellikle iOS iframe)
             try {
                 if (window.top && window.top !== window.self) {
@@ -704,7 +694,16 @@ async function initializePatientOneSignal() {
             } catch (e2) {}
         }
         
-        console.log('✅ Hasta OneSignal başlatıldı, External ID:', currentPatientId);
+        // OneSignal mesaj listener'ı ekle (foreground notifications)
+        OS.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+            console.log('📬 OneSignal foreground notification:', event);
+            // Native notification'ı da göster
+            if (event.notification && event.notification.body) {
+                showNotification('💬 Yöneticinizden Mesaj', event.notification.body);
+            }
+        });
+        
+        console.log('✅ Hasta OneSignal başlatıldı - arka plan bildirimleri aktif, External ID:', currentPatientId);
         
     } catch (error) {
         console.error('❌ Hasta OneSignal hatası:', error);
