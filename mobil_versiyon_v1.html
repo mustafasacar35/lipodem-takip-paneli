@@ -4406,20 +4406,11 @@
             }
         };
         
-        // Sayfa yüklendiğinde admin kontrolü yap (birden fazla event ile garanti)
-        window.addEventListener('DOMContentLoaded', checkAdminStatus);
-        window.addEventListener('load', checkAdminStatus);
-        
-        // Admin butonunu DOM'a ekle (sayfa tamamen yüklendiğinde)
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log('🔧 DOMContentLoaded - Admin butonu ekleniyor...');
+        // 🚀 HEMEN BUTONU EKLE (DOMContentLoaded beklemeden)
+        (function() {
+            console.log('🔧 Admin butonu ekleniyor (HEMEN)...');
             
-            // Eğer zaten varsa ekleme
-            if (document.getElementById('adminEditButton')) {
-                console.log('⚠️ Admin butonu zaten var');
-                return;
-            }
-            
+            // Butonu oluştur
             const adminBtn = document.createElement('button');
             adminBtn.id = 'adminEditButton';
             adminBtn.className = 'admin-edit-button';
@@ -4433,15 +4424,36 @@
             adminBtn.title = 'Yemek Düzenle';
             adminBtn.innerHTML = '✏️';
             adminBtn.style.display = 'none';
-            document.body.appendChild(adminBtn);
-            console.log('✅ Admin butonu DOM\'a eklendi:', adminBtn);
             
-            // Hemen admin kontrolünü yap
-            setTimeout(checkAdminStatus, 200);
+            // Body hazır değilse bekle
+            if (document.body) {
+                document.body.appendChild(adminBtn);
+                console.log('✅ Admin butonu DOM\'a eklendi (ANINDA):', adminBtn);
+            } else {
+                // Body henüz yok, DOMContentLoaded'da ekle
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.body.appendChild(adminBtn);
+                    console.log('✅ Admin butonu DOM\'a eklendi (DOMContentLoaded):', adminBtn);
+                });
+            }
+        })();
+        
+        // Sayfa yüklendiğinde admin kontrolü yap (birden fazla event ile garanti)
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 DOMContentLoaded - Admin kontrolü yapılıyor...');
+            checkAdminStatus();
         });
         
-        // Hemen de çalıştır (script yüklendiğinde)
-        setTimeout(checkAdminStatus, 100);
+        window.addEventListener('load', function() {
+            console.log('🔍 Load - Admin kontrolü yapılıyor...');
+            checkAdminStatus();
+        });
+        
+        // Hemen de çalıştır (100ms sonra)
+        setTimeout(function() {
+            console.log('🔍 Timeout - Admin kontrolü yapılıyor...');
+            checkAdminStatus();
+        }, 100);
 
 
     </script>
