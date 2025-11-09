@@ -1,11 +1,12 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme
-const CACHE_NAME = 'lipodem-takip-v8'; // ✅ Versiyon artırıldı - Admin sayfaları eklendi
+const CACHE_NAME = 'lipodem-takip-v9'; // ✅ Versiyon artırıldı - mobil_versiyon_v1.html eklendi
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
   '/login.html',
   '/patient_nutrition.html',
   '/patient_dashboard.html',
+  '/mobil_versiyon_v1.html', // ✅ YENİ: Mobil yemek bulucu
   '/admin_settings.html',
   '/admin_patients.html',
   '/admin_chat.html',
@@ -31,7 +32,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v6 kuruluyor...');
+  console.log('🔧 Service Worker v9 kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
