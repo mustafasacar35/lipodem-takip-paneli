@@ -44,13 +44,73 @@
     <!-- OneSignal SDK v16 -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-        // OneSignal v16 - Deferred initialization
+        // OneSignal v16 - Hasta bildirimleri için gelişmiş yapılandırma
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "109f129c-cd73-4708-ba9a-b3c8103c52dc",
-                allowLocalhostAsSecureOrigin: true
-            });
+            console.log('🔔 OneSignal v16 yapılandırması başlatılıyor (HASTA)...');
+            console.log('🔍 DEBUG: OneSignal init VERSION 1.0 (PATIENT)');
+            
+            try {
+                await OneSignal.init({
+                    appId: "109f129c-cd73-4708-ba9a-b3c8103c52dc",
+                    allowLocalhostAsSecureOrigin: true,
+                    serviceWorkerParam: { scope: "/" },
+                    serviceWorkerPath: "service-worker.js"
+                });
+                
+                console.log('✅ OneSignal SDK yüklendi (HASTA)');
+                
+                // Bildirim izni kontrol
+                const permission = await OneSignal.Notifications.permission;
+                console.log('📱 Bildirim izni:', permission);
+                
+                // Kullanıcı login bilgisi al (auth.js'den)
+                const patientId = localStorage.getItem('currentUser');
+                const patientName = localStorage.getItem('patientName') || 'Hasta';
+                
+                if (patientId) {
+                    console.log('👤 Hasta ID:', patientId);
+                    
+                    // User tag ekle (admin değil, hasta)
+                    await OneSignal.User.addTag('user_type', 'patient');
+                    await OneSignal.User.addTag('patient_id', patientId);
+                    await OneSignal.User.addTag('patient_name', patientName);
+                    console.log('🏷️ Hasta tag eklendi:', patientId, patientName);
+                }
+                
+                // Push subscription (background bildirimler için)
+                console.log('🔄 Push subscription kontrol ediliyor...');
+                const isPushSupported = await OneSignal.Notifications.isPushSupported();
+                console.log('📲 Push destekleniyor mu:', isPushSupported);
+                
+                if (isPushSupported) {
+                    const isOptedIn = await OneSignal.User.PushSubscription.optedIn;
+                    console.log('✅ Push subscription durumu:', isOptedIn ? 'Aktif' : 'Pasif');
+                    
+                    if (!isOptedIn && permission) {
+                        // Background bildirimler için opt-in
+                        await OneSignal.User.PushSubscription.optIn();
+                        console.log('✅ Push subscription aktif edildi (background bildirimler)');
+                    }
+                }
+                
+                // Player ID al (debug için)
+                const playerId = await OneSignal.User.PushSubscription.id;
+                console.log('🆔 OneSignal Player ID:', playerId);
+                
+                // Foreground notification handler
+                OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+                    console.log('🔔 Foreground bildirim alındı (uygulama açık):', event);
+                    // Bildirim göster
+                    event.preventDefault();
+                    event.notification.display();
+                });
+                
+                console.log('✅ OneSignal v16 yapılandırması tamamlandı (HASTA)');
+                
+            } catch (error) {
+                console.error('❌ OneSignal init hatası (HASTA):', error);
+            }
         });
     </script>
     
