@@ -1053,8 +1053,16 @@ async function sendNotificationToPatient(patientId, message) {
         
         console.log('🔔 Hastaya bildirim gönderiliyor (serverless):', patientName);
         
+        // Localhost kontrolü - Vercel production URL kullan
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const apiUrl = isLocalhost 
+            ? 'https://lipodem-takip-paneli-4qin.vercel.app/api/send-notification'
+            : '/api/send-notification';
+        
+        console.log('🌐 API URL:', apiUrl);
+        
         // Sunucu üzerinden güvenli gönderim
-        const resp = await fetch('/api/send-notification', {
+        const resp = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
