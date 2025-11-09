@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Admin Mesajlaşma - Lipodem Takip</title>
     
     <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
@@ -46,17 +46,32 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         /* Header */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
+            padding: 12px 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .header-mobile {
+            display: none;
+        }
+        
+        .header-desktop {
             display: flex;
             flex-direction: column;
             gap: 15px;
+            width: 100%;
         }
         
         .header-top {
@@ -437,6 +452,25 @@
             border-top: 1px solid #e0e0e0;
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+        
+        #adminEmojiButton {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        #adminEmojiButton:hover {
+            transform: scale(1.1);
         }
 
         .chat-input input {
@@ -452,7 +486,7 @@
             border-color: #667eea;
         }
 
-        .chat-input button {
+        .chat-input button:not(#adminEmojiButton) {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -463,7 +497,7 @@
             transition: transform 0.2s;
         }
 
-        .chat-input button:hover {
+        .chat-input button:not(#adminEmojiButton):hover {
             transform: translateY(-2px);
         }
 
@@ -502,6 +536,138 @@
         /* Responsive */
         /* Mobil için responsive tasarım */
         @media (max-width: 768px) {
+            /* HEADER KOMPAKT */
+            .header {
+                padding: 8px 12px;
+                min-height: 50px;
+            }
+            
+            .header-desktop {
+                display: none !important;
+            }
+            
+            .header-mobile {
+                display: flex !important;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+            }
+            
+            .hamburger-menu {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                font-size: 24px;
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+            
+            .mobile-title {
+                flex: 1;
+                font-size: 16px;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .mobile-logout {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                font-size: 20px;
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            
+            /* DRAWER MENU */
+            .drawer-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 9998;
+                display: none;
+            }
+            
+            .drawer-overlay.active {
+                display: block;
+            }
+            
+            .drawer-menu {
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100vh;
+                background: white;
+                z-index: 9999;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+                padding-top: env(safe-area-inset-top);
+            }
+            
+            .drawer-menu.active {
+                left: 0;
+            }
+            
+            .drawer-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                font-weight: 600;
+                font-size: 18px;
+            }
+            
+            .drawer-nav {
+                flex: 1;
+                padding: 10px;
+                overflow-y: auto;
+            }
+            
+            .drawer-nav-btn {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 15px;
+                margin-bottom: 8px;
+                background: #f5f7fa;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 15px;
+                font-weight: 500;
+                color: #333;
+                text-decoration: none;
+                width: 100%;
+                text-align: left;
+            }
+            
+            .drawer-nav-btn.active {
+                background: #667eea;
+                color: white;
+            }
+            
+            .drawer-nav-btn:hover {
+                background: #e8eaf6;
+            }
+            
+            .drawer-nav-btn.active:hover {
+                background: #5568d3;
+            }
+            
             .container {
                 flex-direction: column;
             }
@@ -509,10 +675,42 @@
             .patient-list {
                 width: 100%;
                 max-width: 100%;
-                position: fixed;
-                z-index: 1000;
-                height: calc(100vh - 80px);
+                position: relative;
+                z-index: 100;
+                background: #f5f7fa;
+                border-bottom: 1px solid #e0e0e0;
+                transition: all 0.3s ease;
+            }
+            
+            .patient-list-accordion-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 600;
+                user-select: none;
+            }
+            
+            .patient-list-accordion-toggle .arrow {
+                font-size: 18px;
                 transition: transform 0.3s ease;
+            }
+            
+            .patient-list.collapsed .arrow {
+                transform: rotate(-90deg);
+            }
+            
+            .patient-list-content {
+                max-height: 300px;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+            
+            .patient-list.collapsed .patient-list-content {
+                max-height: 0;
             }
 
             .patient-list.hidden {
@@ -521,7 +719,9 @@
 
             .chat-area {
                 width: 100%;
-                height: calc(100vh - 80px);
+                flex: 1;
+                display: flex;
+                flex-direction: column;
             }
 
             .chat-area.hidden {
@@ -529,15 +729,45 @@
             }
 
             .message-bubble {
-                max-width: 85%;
+                max-width: 70%;
+                font-size: 15px;
             }
 
             .chat-input {
-                padding: 10px;
+                padding: 8px 10px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom));
+                gap: 6px;
+            }
+            
+            .chat-input button {
+                padding: 0;
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                border-radius: 50%;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            #adminEmojiButton {
+                font-size: 22px !important;
+                padding: 0 !important;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .chat-input input {
+                padding: 10px 15px;
+                font-size: 16px; /* iOS zoom engellemek için min 16px */
             }
 
             .chat-messages {
-                max-height: calc(100vh - 200px);
+                max-height: calc(100vh - 280px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
                 padding: 10px;
             }
 
@@ -570,61 +800,116 @@
         .back-to-patients {
             display: none;
         }
+        
+        /* Desktop için accordion toggle gizle */
+        .patient-list-accordion-toggle {
+            display: none;
+        }
+        
+        /* Desktop için patient-list-content varsayılan açık */
+        .patient-list-content {
+            max-height: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Drawer Overlay (Mobil) -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    
+    <!-- Drawer Menu (Mobil) -->
+    <div class="drawer-menu" id="drawerMenu">
+        <div class="drawer-header">
+            💬 Admin Panel
+        </div>
+        <div class="drawer-nav">
+            <a href="admin_settings.html" class="drawer-nav-btn">
+                ⚙️ Ayarlar
+            </a>
+            <a href="admin_patients.html" class="drawer-nav-btn">
+                👥 Hasta Listesi
+            </a>
+            <a href="admin_chat.html" class="drawer-nav-btn active">
+                💬 Sohbet Yönetimi
+            </a>
+            <a href="admin_chat_settings.html" class="drawer-nav-btn">
+                ⚙️ Chat Ayarları
+            </a>
+            <button onclick="logoutAdmin()" class="drawer-nav-btn" style="margin-top: 20px; background: #f44336; color: white;">
+                🚪 Çıkış Yap
+            </button>
+        </div>
+    </div>
+    
     <!-- Header -->
     <div class="header">
-        <div class="header-top">
-            <div>
-                <h1>💬 Admin Mesajlaşma Paneli</h1>
-                <p>Hasta mesajlarını görüntüleyin ve yanıtlayın</p>
+        <!-- DESKTOP HEADER -->
+        <div class="header-desktop">
+            <div class="header-top">
+                <div>
+                    <h1>💬 Admin Mesajlaşma Paneli</h1>
+                    <p>Hasta mesajlarını görüntüleyin ve yanıtlayın</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Bildirim Toggle -->
+                    <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                        <span id="notificationIcon">🔔</span>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">Bildirimler</span>
+                        <input type="checkbox" id="notificationToggle" checked onchange="toggleNotifications()" style="width: 40px; height: 20px; cursor: pointer;">
+                    </label>
+                    <button onclick="window.location.href='admin_chat_settings.html'" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        ⚙️ Ayarlar
+                    </button>
+                    <button onclick="logoutAdmin()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        🚪 Çıkış
+                    </button>
+                </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <!-- Bildirim Toggle -->
-                <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 5px; cursor: pointer;">
-                    <span id="notificationIcon">🔔</span>
-                    <span style="font-size: 14px; color: white; font-weight: 600;">Bildirimler</span>
-                    <input type="checkbox" id="notificationToggle" checked onchange="toggleNotifications()" style="width: 40px; height: 20px; cursor: pointer;">
-                </label>
-                <button onclick="window.location.href='admin_chat_settings.html'" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+            
+            <!-- Admin Navigasyon Butonları -->
+            <div class="admin-nav-buttons">
+                <a href="admin_settings.html" class="admin-nav-btn">
                     ⚙️ Ayarlar
-                </button>
-                <button onclick="logoutAdmin()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
-                    🚪 Çıkış
-                </button>
+                </a>
+                <a href="admin_patients.html" class="admin-nav-btn">
+                    👥 Hasta Listesi
+                </a>
+                <a href="admin_chat.html" class="admin-nav-btn active">
+                    💬 Sohbet Yönetimi
+                </a>
             </div>
         </div>
         
-        <!-- Admin Navigasyon Butonları -->
-        <div class="admin-nav-buttons">
-            <a href="admin_settings.html" class="admin-nav-btn">
-                ⚙️ Ayarlar
-            </a>
-            <a href="admin_patients.html" class="admin-nav-btn">
-                👥 Hasta Listesi
-            </a>
-            <a href="admin_chat.html" class="admin-nav-btn active">
-                💬 Sohbet Yönetimi
-            </a>
+        <!-- MOBILE HEADER -->
+        <div class="header-mobile">
+            <button class="hamburger-menu" onclick="openDrawer()">☰</button>
+            <div class="mobile-title">💬 Sohbet</div>
+            <button class="mobile-logout" onclick="logoutAdmin()">🚪</button>
         </div>
     </div>
 
     <!-- Main Container -->
     <div class="main-container">
         <!-- Hasta Listesi -->
-        <div class="patient-list">
-            <div class="patient-list-header">
-                <h3>Hastalar</h3>
-                <input 
-                    type="text" 
-                    class="search-box" 
-                    placeholder="Hasta ara..." 
-                    oninput="filterPatients(this.value)"
-                >
+        <div class="patient-list" id="patientListContainer">
+            <!-- Accordion Toggle (Sadece Mobil) -->
+            <div class="patient-list-accordion-toggle" onclick="togglePatientList()">
+                <span>👥 Hastalar (<span id="patientCount">0</span>)</span>
+                <span class="arrow">▼</span>
             </div>
-            <div class="patients" id="patientList">
-                <div class="loading">Hastalar yükleniyor...</div>
+            
+            <!-- Accordion Content -->
+            <div class="patient-list-content">
+                <div class="patient-list-header">
+                    <input 
+                        type="text" 
+                        class="search-box" 
+                        placeholder="Hasta ara..." 
+                        oninput="filterPatients(this.value)"
+                    >
+                </div>
+                <div class="patients" id="patientList">
+                    <div class="loading">Hastalar yükleniyor...</div>
+                </div>
             </div>
         </div>
 
@@ -632,7 +917,7 @@
         <div class="chat-area">
             <div class="no-selection" id="noSelection">
                 <div>
-                    👈 Soldan bir hasta seçin<br>
+                    ☝️ Yukarıdan hastalar listesini açın<br>
                     <button class="broadcast-btn" onclick="showBroadcastModal()" style="margin-top: 20px;">
                         📢 Toplu Bildirim Gönder
                     </button>
@@ -658,7 +943,7 @@
                 </div>
 
                 <div class="chat-input">
-                    <button id="adminEmojiButton" onclick="toggleAdminEmojiPicker()" style="background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 0 10px;">
+                    <button id="adminEmojiButton" onclick="toggleAdminEmojiPicker()" title="Emoji Ekle">
                         😊
                     </button>
                     <input 
@@ -667,7 +952,7 @@
                         placeholder="Mesajınızı yazın..."
                         onkeypress="if(event.key==='Enter') sendMessage()"
                     >
-                    <button onclick="sendMessage()">Gönder</button>
+                    <button onclick="sendMessage()" title="Gönder">📤</button>
                 </div>
                 
                 <!-- Admin Emoji Picker -->
@@ -724,6 +1009,39 @@
     
     <!-- Admin Auth Check & Global Functions -->
     <script>
+        // ===== DRAWER MENU FONKSİYONLARI =====
+        function openDrawer() {
+            document.getElementById('drawerMenu').classList.add('active');
+            document.getElementById('drawerOverlay').classList.add('active');
+        }
+        
+        function closeDrawer() {
+            document.getElementById('drawerMenu').classList.remove('active');
+            document.getElementById('drawerOverlay').classList.remove('active');
+        }
+        
+        // ===== HASTA LİSTESİ ACCORDION (MOBİL) =====
+        function togglePatientList() {
+            // Sadece mobilde çalışsın (768px altı)
+            if (window.innerWidth <= 768) {
+                const container = document.getElementById('patientListContainer');
+                container.classList.toggle('collapsed');
+            }
+        }
+        
+        // Hasta seçilince mobilde listeyi kapat
+        function selectPatientAndClose(patientId) {
+            if (typeof selectPatient === 'function') {
+                selectPatient(patientId);
+            }
+            
+            // Mobilde listeyi kapat
+            if (window.innerWidth <= 768) {
+                const container = document.getElementById('patientListContainer');
+                container.classList.add('collapsed');
+            }
+        }
+        
         // Global logout fonksiyonu - header'daki buton için
         function logoutAdmin() {
             if (typeof AdminAuth !== 'undefined' && typeof AdminAuth.logoutAdmin === 'function') {
