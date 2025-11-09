@@ -210,9 +210,28 @@ async function initNativeNotifications() {
 
 // Yeni mesaj bildirimi göster
 function showNewMessageNotification(message) {
+    console.log('🔔 showNewMessageNotification çağrıldı:', message);
+    
     // İzin kontrolü
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-        console.warn('⚠️ Bildirim izni yok');
+    console.log('📱 Notification support:', 'Notification' in window);
+    console.log('🔑 Notification.permission:', Notification.permission);
+    
+    if (!('Notification' in window)) {
+        console.error('❌ Bu tarayıcı bildirimleri desteklemiyor!');
+        return;
+    }
+    
+    if (Notification.permission !== 'granted') {
+        console.warn('⚠️ Bildirim izni yok! Permission:', Notification.permission);
+        
+        // İzin iste
+        Notification.requestPermission().then(permission => {
+            console.log('📝 Yeni izin durumu:', permission);
+            if (permission === 'granted') {
+                // İzin verildi, bildirimi göster
+                showNewMessageNotification(message);
+            }
+        });
         return;
     }
     
@@ -226,43 +245,59 @@ function showNewMessageNotification(message) {
     const patient = allPatients.find(p => p.id === message.sender_id);
     const patientName = patient ? patient.name : 'Hasta';
     
-    // Bildirim oluştur
-    const notification = new Notification(`💬 ${patientName}`, {
-        body: message.message || 'Yeni mesaj',
-        icon: '/logo.png',
-        badge: '/logo.png',
-        vibrate: [200, 100, 200, 100, 200], // Vibrate pattern
-        tag: `message-${message.id}`,
-        requireInteraction: false, // 5 saniye sonra otomatik kapansın
-        data: {
-            patientId: message.sender_id,
-            messageId: message.id,
-            url: window.location.origin + '/admin_chat.html'
-        },
-        actions: [ // Android/Desktop'ta butonlar
-            { action: 'open', title: 'Aç' },
-            { action: 'close', title: 'Kapat' }
-        ]
-    });
+    console.log('👤 Hasta:', patientName);
+    console.log('💬 Mesaj:', message.message);
     
-    // Bildirime tıklayınca
-    notification.onclick = function(event) {
-        event.preventDefault();
+    try {
+        // Bildirim oluştur
+        const notification = new Notification(`💬 ${patientName}`, {
+            body: message.message || 'Yeni mesaj',
+            icon: '/logo.png',
+            badge: '/logo.png',
+            vibrate: [200, 100, 200, 100, 200], // Vibrate pattern
+            tag: `message-${message.id}`,
+            requireInteraction: false, // 5 saniye sonra otomatik kapansın
+            data: {
+                patientId: message.sender_id,
+                messageId: message.id,
+                url: window.location.origin + '/admin_chat.html'
+            }
+        });
         
-        // Pencereyi focus et
-        window.focus();
+        console.log('✅ Notification oluşturuldu:', notification);
         
-        // İlgili hastayı seç
-        if (message.sender_id) {
-            selectPatient(message.sender_id);
+        // Bildirime tıklayınca
+        notification.onclick = function(event) {
+            event.preventDefault();
+            console.log('🖱️ Bildirime tıklandı');
+            
+            // Pencereyi focus et
+            window.focus();
+            
+            // İlgili hastayı seç
+            if (message.sender_id) {
+                selectPatient(message.sender_id);
+            }
+            
+            // Bildirimi kapat
+            notification.close();
+        };
+        
+        // Ses çal
+        console.log('🔊 Ses çalınıyor...');
+        playNotificationSound();
+        
+        // Titreşim
+        if ('vibrate' in navigator) {
+            console.log('📳 Titreşim aktif');
+            navigator.vibrate([200, 100, 200, 100, 200]);
+        } else {
+            console.warn('⚠️ Titreşim desteklenmiyor');
         }
         
-        // Bildirimi kapat
-        notification.close();
-    };
-    
-    // Ses çal (opsiyonel)
-    playNotificationSound();
+    } catch (error) {
+        console.error('❌ Bildirim oluşturma hatası:', error);
+    }
 }
 
 // Bildirim sesi (opsiyonel)
@@ -890,10 +925,13 @@ function subscribeToMessages() {
                 document.getElementById('chatMessages').appendChild(messageElement);
                 scrollToBottom();
                 
-                // ✅ BİLDİRİM GÖSTER (Sayfa arka plandaysa veya kapalıysa)
-                if (document.hidden || !document.hasFocus()) {
-                    showNewMessageNotification(payload.new);
-                }
+                // ✅ BİLDİRİM GÖSTER - HER ZAMAN (test için)
+                console.log('📬 Yeni mesaj geldi, bildirim tetikleniyor...');
+                console.log('📱 document.hidden:', document.hidden);
+                console.log('🔍 hasFocus:', document.hasFocus());
+                
+                // TELEFONDA TEST: Her zaman bildirim göster
+                showNewMessageNotification(payload.new);
                 
                 // Badge güncelle (PWA ikon sayısı)
                 if (window.badgeManager && document.hidden) {
