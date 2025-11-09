@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v12-FORCE-UPDATE'; // ✅ V12 - GitHub Pages cache bypass
+const CACHE_NAME = 'lipodem-takip-v13-LOGOS-ADDED'; // ✅ V13 - logo2/3/4 eklendi
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -21,13 +21,15 @@ const urlsToCache = [
   '/ios-install-prompt.js',
   '/onesignal_config.js',
   '/manifest.json',
-  '/logo.png'
-  // logo2.png, logo3.png, logo4.png yok - kaldırıldı
+  '/logo.png',
+  '/logo2.png',  // ✅ Admin Settings
+  '/logo3.png',  // ✅ Admin Patients
+  '/logo4.png'   // ✅ Admin Chat
 ];
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v12 FORCE UPDATE kuruluyor...');
+  console.log('🔧 Service Worker v13 LOGOS ADDED kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
