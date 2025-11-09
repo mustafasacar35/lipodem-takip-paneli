@@ -48,7 +48,7 @@
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
             console.log('🔔 OneSignal v16 yapılandırması başlatılıyor (HASTA)...');
-            console.log('🔍 DEBUG: OneSignal init VERSION 1.0 (PATIENT)');
+            console.log('🔍 DEBUG: OneSignal init VERSION 2.0 (PATIENT + AUTO PROMPT)');
             
             try {
                 await OneSignal.init({
@@ -64,6 +64,31 @@
                 const permission = await OneSignal.Notifications.permission;
                 console.log('📱 Bildirim izni:', permission);
                 
+                // İzin verilmemişse OTOMATIK İSTE (iPhone için kritik)
+                if (permission === false || !permission) {
+                    console.log('🔔 Bildirim izni YOK - otomatik isteniyor...');
+                    
+                    // Bildirim banner göster
+                    showNotificationBanner();
+                    
+                } else if (permission === true) {
+                    console.log('✅ Bildirim izni VAR - push subscription aktif ediliyor...');
+                    
+                    // Push subscription (background bildirimler için)
+                    const isPushSupported = await OneSignal.Notifications.isPushSupported();
+                    console.log('📲 Push destekleniyor mu:', isPushSupported);
+                    
+                    if (isPushSupported) {
+                        const isOptedIn = await OneSignal.User.PushSubscription.optedIn;
+                        console.log('🔄 Push subscription durumu:', isOptedIn ? 'Aktif' : 'Pasif');
+                        
+                        if (!isOptedIn) {
+                            await OneSignal.User.PushSubscription.optIn();
+                            console.log('✅ Push subscription aktif edildi');
+                        }
+                    }
+                }
+                
                 // Kullanıcı login bilgisi al (auth.js'den)
                 const patientId = localStorage.getItem('currentUser');
                 const patientName = localStorage.getItem('patientName') || 'Hasta';
@@ -78,30 +103,13 @@
                     console.log('🏷️ Hasta tag eklendi:', patientId, patientName);
                 }
                 
-                // Push subscription (background bildirimler için)
-                console.log('🔄 Push subscription kontrol ediliyor...');
-                const isPushSupported = await OneSignal.Notifications.isPushSupported();
-                console.log('📲 Push destekleniyor mu:', isPushSupported);
-                
-                if (isPushSupported) {
-                    const isOptedIn = await OneSignal.User.PushSubscription.optedIn;
-                    console.log('✅ Push subscription durumu:', isOptedIn ? 'Aktif' : 'Pasif');
-                    
-                    if (!isOptedIn && permission) {
-                        // Background bildirimler için opt-in
-                        await OneSignal.User.PushSubscription.optIn();
-                        console.log('✅ Push subscription aktif edildi (background bildirimler)');
-                    }
-                }
-                
                 // Player ID al (debug için)
                 const playerId = await OneSignal.User.PushSubscription.id;
                 console.log('🆔 OneSignal Player ID:', playerId);
                 
                 // Foreground notification handler
                 OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-                    console.log('🔔 Foreground bildirim alındı (uygulama açık):', event);
-                    // Bildirim göster
+                    console.log('� Foreground bildirim alındı (uygulama açık):', event);
                     event.preventDefault();
                     event.notification.display();
                 });
@@ -112,6 +120,58 @@
                 console.error('❌ OneSignal init hatası (HASTA):', error);
             }
         });
+        
+        // Bildirim izin banner göster (iPhone için)
+        function showNotificationBanner() {
+            const banner = document.createElement('div');
+            banner.id = 'notification-permission-banner';
+            banner.innerHTML = `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: center; position: fixed; top: 0; left: 0; right: 0; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">🔔 Yeni mesajlardan haberdar olun</p>
+                    <button onclick="enableNotifications()" style="background: white; color: #667eea; border: none; padding: 10px 20px; border-radius: 25px; font-weight: bold; cursor: pointer; margin-right: 10px;">Bildirimleri Aç</button>
+                    <button onclick="closeBanner()" style="background: transparent; color: white; border: 1px solid white; padding: 10px 20px; border-radius: 25px; cursor: pointer;">Şimdi Değil</button>
+                </div>
+            `;
+            document.body.insertBefore(banner, document.body.firstChild);
+        }
+        
+        // Bildirim izni iste
+        async function enableNotifications() {
+            try {
+                console.log('🔔 Kullanıcı bildirim iznine tıkladı - izin isteniyor...');
+                const result = await OneSignal.Notifications.requestPermission();
+                console.log('📝 İzin sonucu:', result);
+                
+                if (result) {
+                    // Push subscription aktif et
+                    await OneSignal.User.PushSubscription.optIn();
+                    console.log('✅ Push subscription aktif edildi');
+                    
+                    // Banner kapat
+                    closeBanner();
+                    
+                    // Başarı mesajı
+                    alert('✅ Bildirimler açıldı! Artık yeni mesajlardan haberdar olacaksınız.');
+                } else {
+                    alert('❌ Bildirim izni reddedildi. Tarayıcı ayarlarından açabilirsiniz.');
+                }
+            } catch (error) {
+                console.error('❌ Bildirim izin hatası:', error);
+                alert('❌ Bildirim izni alınamadı: ' + error.message);
+            }
+        }
+        
+        // Banner kapat
+        function closeBanner() {
+            const banner = document.getElementById('notification-permission-banner');
+            if (banner) banner.remove();
+            
+            // 1 saat sonra tekrar göster
+            setTimeout(() => {
+                const permission = OneSignal.Notifications.permission;
+                if (!permission) showNotificationBanner();
+            }, 3600000);
+        }
     </script>
     
     <!-- Chat Manager -->
