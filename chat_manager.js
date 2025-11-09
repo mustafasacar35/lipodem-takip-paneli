@@ -1,0 +1,728 @@
+// ====================================
+// CHAT MANAGER - SUPABASE MESAJLAŞMA
+// ====================================
+
+// SUPABASE BAĞLANTISI
+// ⚠️ ÖNEMLİ: Supabase projenizi oluşturduktan sonra bu bilgileri güncelleyin!
+const SUPABASE_URL = 'https://rorkccxpjndllxemsmlo.supabase.co'; // Buraya kendi URL'nizi yazın
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcmtjY3hwam5kbGx4ZW1zbWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNTQxNTIsImV4cCI6MjA3NzkzMDE1Mn0.dVuUrVvBigxo2rMpUQcHKoemD7ovqejupi2OkkrxE7c'; // Buraya kendi ANON KEY'inizi yazın
+
+let supabaseClient = null;
+let currentPatientId = null;
+let messagesSubscription = null;
+
+// Supabase başlatma
+function initializeChat() {
+    // Supabase client oluştur
+    if (typeof supabase === 'undefined') {
+        console.error('Supabase kütüphanesi yüklenmedi!');
+        return;
+    }
+    
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Mevcut hasta ID'sini al (birden fazla kaynaktan)
+    currentPatientId = sessionStorage.getItem('currentPatientId') || 
+                       localStorage.getItem('currentPatientId') ||
+                       getPatientIdFromAuth();
+    
+    if (!currentPatientId) {
+        console.error('❌ Hasta ID bulunamadı! Chat devre dışı.');
+        // Chat widget'ı gizle
+        const chatWidget = document.getElementById('chatWidget');
+        if (chatWidget) {
+            chatWidget.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Chat widget'ı göster (gizliyse)
+    const chatWidget = document.getElementById('chatWidget');
+    if (chatWidget) {
+        chatWidget.style.display = 'block';
+    }
+    
+    console.log('✅ Chat başlatıldı. Hasta ID:', currentPatientId);
+    
+    // OneSignal başlat (arka planda)
+    initializePatientOneSignal().catch(err => {
+        console.error('OneSignal başlatılamadı:', err);
+    });
+    
+    // Mesajları yükle
+    loadMessages();
+    
+    // Realtime dinlemeyi başlat
+    subscribeToMessages();
+    
+    // Okunmamış mesaj sayısını güncelle
+    updateUnreadCount();
+    
+    // Online status heartbeat başlat (her 30 saniyede bir)
+    startHeartbeat();
+}
+
+// Auth sisteminden hasta ID al
+function getPatientIdFromAuth() {
+    // 1. Auth.js session kontrolü - DOĞRU KEY İSİMLERİ
+    try {
+        // Auth.js'in kullandığı key isimleri dene
+        const sessionKeys = ['patient_session', 'patientSession', 'SESSION_STORAGE_KEY'];
+        
+        for (let key of sessionKeys) {
+            const sessionData = localStorage.getItem(key);
+            if (sessionData) {
+                const session = JSON.parse(sessionData);
+                if (session && session.patientId) {
+                    console.log(`✅ Auth sisteminden hasta ID alındı (${key}):`, session.patientId);
+                    return session.patientId;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Auth session okunamadı:', e);
+    }
+    
+    // 2. Global getCurrentUser fonksiyonu
+    if (typeof getCurrentUser === 'function') {
+        const user = getCurrentUser();
+        if (user && user.patientId) {
+            return user.patientId;
+        }
+    }
+    
+    // 3. URL parametresinden al (test için)
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientIdFromUrl = urlParams.get('patientId');
+    if (patientIdFromUrl) {
+        console.log('URL parametresinden hasta ID alındı:', patientIdFromUrl);
+        return patientIdFromUrl;
+    }
+    
+    return null;
+}
+
+// Chat penceresi aç/kapat
+function toggleChat() {
+    const chatBox = document.getElementById('chatBox');
+    chatBox.classList.toggle('open');
+    
+    // Açıldığında okunmamış mesajları okundu işaretle
+    if (chatBox.classList.contains('open')) {
+        markMessagesAsRead();
+    }
+}
+
+// Mesajları yükle
+async function loadMessages() {
+    if (!supabaseClient || !currentPatientId) return;
+    
+    try {
+        // Son 50 mesajı getir
+        const { data, error } = await supabaseClient
+            .from('messages')
+            .select('*')
+            .or(`sender_id.eq.${currentPatientId},receiver_id.eq.${currentPatientId}`)
+            .order('created_at', { ascending: true })
+            .limit(50);
+        
+        if (error) throw error;
+        
+        // Mesajları göster
+        displayMessages(data);
+        
+        // En alta scroll
+        scrollToBottom();
+        
+    } catch (error) {
+        console.error('Mesajlar yüklenemedi:', error);
+        showError('Mesajlar yüklenirken bir hata oluştu.');
+    }
+}
+
+// Mesajları ekrana yazdır
+function displayMessages(messages) {
+    const container = document.getElementById('chatMessages');
+    
+    if (!messages || messages.length === 0) {
+        container.innerHTML = `
+            <div class="no-messages">
+                Henüz mesaj yok.<br>
+                Yöneticinize mesaj gönderin!
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    // Mesajları tarihe göre grupla
+    let lastDate = null;
+    
+    messages.forEach(msg => {
+        // Türkiye saatine çevir (UTC+3)
+        const messageDate = new Date(new Date(msg.created_at).getTime() + (3 * 60 * 60 * 1000));
+        const dateKey = messageDate.toLocaleDateString('tr-TR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        // Eğer yeni bir gün başladıysa tarih başlığı ekle
+        if (dateKey !== lastDate) {
+            const dateHeader = createDateHeader(messageDate);
+            container.appendChild(dateHeader);
+            lastDate = dateKey;
+        }
+        
+        const messageDiv = createMessageElement(msg);
+        container.appendChild(messageDiv);
+    });
+}
+
+// Tarih başlığı oluştur (WhatsApp tarzı)
+function createDateHeader(date) {
+    const div = document.createElement('div');
+    div.className = 'date-separator';
+    
+    // Türkiye saatine çevir (UTC+3)
+    const localDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+    
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    let dateText;
+    
+    // Bugün mü?
+    if (localDate.toDateString() === today.toDateString()) {
+        dateText = 'Bugün';
+    }
+    // Dün mü?
+    else if (localDate.toDateString() === yesterday.toDateString()) {
+        dateText = 'Dün';
+    }
+    // Diğer günler
+    else {
+        dateText = localDate.toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    }
+    
+    div.innerHTML = `<span>${dateText}</span>`;
+    return div;
+}
+
+// Tek bir mesaj elementi oluştur
+function createMessageElement(msg) {
+    const div = document.createElement('div');
+    const isSent = msg.sender_id === currentPatientId;
+    
+    div.className = `message ${isSent ? 'sent' : 'received'}`;
+    
+    // Admin mesajı için kim gönderdi göster
+    let senderName = 'Siz';
+    if (!isSent) {
+        // Eğer sender_admin varsa göster
+        if (msg.sender_admin) {
+            senderName = `👨‍⚕️ ${msg.sender_admin === 'admin' ? 'Dr. Mustafa SACAR' : 
+                                   msg.sender_admin === 'admin2' ? 'Dyt. Merve' : 'Yönetici'}`;
+        } else {
+            senderName = '👨‍⚕️ Yönetici';
+        }
+    }
+    
+    const time = formatMessageTime(msg.created_at);
+    
+    // Görüldü tiki (sadece gönderilen mesajlarda)
+    const checkmark = isSent ? `<span class="message-checkmark ${msg.is_read ? 'read' : 'sent'}">✓✓</span>` : '';
+    
+    div.innerHTML = `
+        ${!isSent ? `<div class="message-sender">${senderName}</div>` : ''}
+        <div class="message-bubble">
+            <div class="message-content">${escapeHtml(msg.message)}</div>
+            <div class="message-time-inline">${time} ${checkmark}</div>
+        </div>
+    `;
+    
+    return div;
+}
+
+// Mesaj gönder
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    if (!supabaseClient || !currentPatientId) {
+        showError('Mesaj gönderilemedi. Lütfen sayfayı yenileyin.');
+        return;
+    }
+    
+    try {
+        // Gönder butonunu devre dışı bırak
+        const sendBtn = document.getElementById('sendButton');
+        sendBtn.disabled = true;
+        
+        // Mesajı veritabanına ekle
+        const { data, error } = await supabaseClient
+            .from('messages')
+            .insert([
+                {
+                    sender_id: currentPatientId,
+                    sender_type: 'patient',
+                    receiver_id: 'admin', // Tüm adminlere gider
+                    receiver_type: 'admin',
+                    message: message
+                }
+            ])
+            .select();
+        
+        if (error) throw error;
+        
+        // Input'u temizle
+        input.value = '';
+        
+        // Mesajı ekrana ekle (realtime zaten ekleyecek ama anında gösterelim)
+        if (data && data[0]) {
+            const messageElement = createMessageElement(data[0]);
+            document.getElementById('chatMessages').appendChild(messageElement);
+            scrollToBottom();
+            
+            // 🔔 ADMIN'E BİLDİRİM GÖNDER
+            await sendNotificationToAdmin(currentPatientId, message);
+        }
+        
+        // Gönder butonunu aktif et
+        sendBtn.disabled = false;
+        input.focus();
+        
+    } catch (error) {
+        console.error('Mesaj gönderilemedi:', error);
+        showError('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+        document.getElementById('sendButton').disabled = false;
+    }
+}
+
+// Realtime dinleme başlat
+function subscribeToMessages() {
+    if (!supabaseClient || !currentPatientId) return;
+    
+    // Önceki subscription varsa kaldır
+    if (messagesSubscription) {
+        messagesSubscription.unsubscribe();
+    }
+    
+    // Yeni mesajları dinle
+    messagesSubscription = supabaseClient
+        .channel('messages-channel')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `receiver_id=eq.${currentPatientId}`
+            },
+            (payload) => {
+                console.log('Yeni mesaj geldi:', payload);
+                
+                // Mesajı ekrana ekle
+                const messageElement = createMessageElement(payload.new);
+                document.getElementById('chatMessages').appendChild(messageElement);
+                scrollToBottom();
+                
+                // Okunmamış sayıyı güncelle
+                updateUnreadCount();
+                
+                // Bildirim göster (chat kapalıysa)
+                const chatBox = document.getElementById('chatBox');
+                if (!chatBox.classList.contains('open')) {
+                    // Admin mesajı için başlık
+                    const notificationTitle = payload.new.sender_type === 'admin' 
+                        ? '💬 Yönetici Mesajı' 
+                        : 'Yeni mesaj';
+                    showNotification(notificationTitle, payload.new.message);
+                }
+            }
+        )
+        .subscribe();
+}
+
+// Okunmamış mesaj sayısını güncelle
+async function updateUnreadCount() {
+    if (!supabaseClient || !currentPatientId) return;
+    
+    try {
+        const { count, error } = await supabaseClient
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('receiver_id', currentPatientId)
+            .eq('is_read', false);
+        
+        if (error) throw error;
+        
+        const badge = document.getElementById('unreadBadge');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Okunmamış mesaj sayısı alınamadı:', error);
+    }
+}
+
+// Mesajları okundu işaretle
+async function markMessagesAsRead() {
+    if (!supabaseClient || !currentPatientId) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('messages')
+            .update({ is_read: true })
+            .eq('receiver_id', currentPatientId)
+            .eq('is_read', false);
+        
+        if (error) throw error;
+        
+        // Badge'i gizle
+        document.getElementById('unreadBadge').style.display = 'none';
+        
+    } catch (error) {
+        console.error('Mesajlar okundu işaretlenemedi:', error);
+    }
+}
+
+// Yardımcı fonksiyonlar
+function scrollToBottom() {
+    const container = document.getElementById('chatMessages');
+    container.scrollTop = container.scrollHeight;
+}
+
+function formatMessageTime(timestamp) {
+    // Sadece saat:dakika göster (tarih yok - zaten tarih başlıkları var)
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    alert(message); // Basit alert, isterseniz toast notification yapabiliriz
+}
+
+function showNotification(title, body) {
+    // Browser notification (izin verilmişse)
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+            body: body,
+            icon: './logo.png',
+            badge: './logo.png'
+        });
+    }
+}
+
+// Sayfa yüklendiğinde chat'i başlat
+window.addEventListener('DOMContentLoaded', () => {
+    // Notification izni iste (ilk seferde)
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // Chat'i başlat - Birden fazla deneme yap
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const tryInitialize = () => {
+        attempts++;
+        
+        // Session kontrolü - DOĞRU KEY İSİMLERİ
+        const sessionKeys = ['patient_session', 'patientSession'];
+        let sessionFound = false;
+        
+        for (let key of sessionKeys) {
+            const session = localStorage.getItem(key);
+            if (session) {
+                sessionFound = true;
+                console.log(`✅ Session bulundu (${key}), chat başlatılıyor...`);
+                initializeChat();
+                return;
+            }
+        }
+        
+        if (!sessionFound && attempts < maxAttempts) {
+            console.log(`⏳ Session bekleniyor... (${attempts}/${maxAttempts})`);
+            setTimeout(tryInitialize, 500); // 500ms sonra tekrar dene
+        } else if (!sessionFound) {
+            console.warn('⚠️ Session bulunamadı, chat başlatılamıyor.');
+            // Chat widget'ı gizleme - belki daha sonra login olur
+        }
+    };
+    
+    // İlk deneme 500ms sonra
+    setTimeout(tryInitialize, 500);
+});
+
+// Sayfa kapanırken subscription'ı temizle
+window.addEventListener('beforeunload', () => {
+    if (messagesSubscription) {
+        messagesSubscription.unsubscribe();
+    }
+});
+
+// ====================================
+// ONESIGNAL BİLDİRİM GÖNDERİMİ
+// ====================================
+async function sendNotificationToAdmin(patientId, message) {
+    try {
+        // Config kontrol
+        if (!window.ONESIGNAL_CONFIG || !window.ONESIGNAL_CONFIG.restApiKey) {
+            console.warn('⚠️ OneSignal config eksik, bildirim gönderilemiyor');
+            return;
+        }
+        
+        // Hasta adını al
+        let patientName = `Hasta #${patientId}`;
+        try {
+            // Önce patient_session'dan dene
+            const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+            if (session.name && session.surname) {
+                patientName = `${session.name} ${session.surname}`.trim();
+            } else {
+                // Yoksa patient_data'dan dene
+                const patientData = JSON.parse(localStorage.getItem(`patient_data_${patientId}`) || '{}');
+                if (patientData.personalInfo) {
+                    patientName = `${patientData.personalInfo.name || ''} ${patientData.personalInfo.surname || ''}`.trim();
+                }
+            }
+            console.log('📝 Bildirim için hasta adı:', patientName);
+        } catch (e) {
+            console.log('Hasta adı alınamadı:', e);
+        }
+        
+        // Mesajı kısalt (uzunsa)
+        const shortMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+        
+        console.log('🔔 Admin\'e bildirim gönderiliyor...');
+        
+        // OneSignal REST API ile bildirim gönder
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${window.ONESIGNAL_CONFIG.restApiKey}`
+            },
+            body: JSON.stringify({
+                app_id: window.ONESIGNAL_CONFIG.appId,
+                
+                // Sadece "admin" tag'ine sahip kullanıcılara gönder
+                included_segments: ['All'],
+                filters: [
+                    { field: 'tag', key: 'user_type', relation: '=', value: 'admin' }
+                ],
+                
+                // Bildirim içeriği
+                headings: { en: '💬 Yeni Hasta Mesajı' },
+                contents: { en: `${patientName}: ${shortMessage}` },
+                
+                // Tıklayınca nereye gitsin
+                url: `${window.location.origin}/admin_chat.html`,
+                
+                // Ses ve badge
+                ios_sound: 'default',
+                android_sound: 'default',
+                ios_badgeType: 'Increase',
+                ios_badgeCount: 1,
+                
+                // Data (bildirime tıklayınca kullanılabilir)
+                data: {
+                    patient_id: patientId,
+                    patient_name: patientName,
+                    message_preview: shortMessage
+                }
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.errors) {
+            console.error('❌ OneSignal bildirim hatası:', result.errors);
+        } else {
+            console.log('✅ Bildirim gönderildi:', result.id, '- Alıcı sayısı:', result.recipients);
+        }
+        
+    } catch (error) {
+        console.error('❌ Bildirim gönderme hatası:', error);
+    }
+}
+
+// ====================================
+// HASTA TARAFINDA ONESIGNAL (BİLDİRİM ALMAK İÇİN)
+// ====================================
+async function initializePatientOneSignal() {
+    try {
+        // OneSignal SDK'nın yüklenmesini bekle
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        while (!((typeof OneSignal !== 'undefined') || (window.parent && typeof window.parent.OneSignal !== 'undefined')) && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+        }
+        
+        const OS = (typeof OneSignal !== 'undefined') ? OneSignal : (window.parent && window.parent.OneSignal ? window.parent.OneSignal : undefined);
+        
+        if (!OS) {
+            console.warn('⚠️ OneSignal SDK bu sayfada veya üst pencerede bulunamadı');
+            // Üst pencereye init ve login isteği gönder (iOS iframe senaryosu)
+            try {
+                if (window.top && window.top !== window.self && currentPatientId) {
+                    window.top.postMessage({ type: 'onesignal:ensure-init', externalId: currentPatientId }, '*');
+                }
+            } catch (e) {}
+            return;
+        }
+        
+        if (!window.ONESIGNAL_CONFIG || !window.ONESIGNAL_CONFIG.appId) {
+            console.warn('⚠️ OneSignal config eksik');
+            return;
+        }
+        
+        console.log('🔔 Hasta OneSignal başlatılıyor...');
+        
+        // OneSignal başlat
+        // Eğer OneSignal top-level'de zaten init olduysa yeniden init etme
+        if (!(window.parent && window.parent.__OS_INIT_DONE)) {
+            await OS.init({
+                appId: window.ONESIGNAL_CONFIG.appId,
+                allowLocalhostAsSecureOrigin: true,
+                serviceWorkerParam: { scope: '/' },
+                serviceWorkerPath: 'OneSignalSDKWorker.js',
+                
+                // Slidedown prompt ayarları (iOS için önemli)
+                promptOptions: {
+                    slidedown: {
+                        enabled: true,
+                        autoPrompt: true,
+                        actionMessage: "Yeni mesajlardan haberdar olmak ister misiniz?",
+                        acceptButtonText: "İzin Ver",
+                        cancelButtonText: "Şimdi Değil"
+                    }
+                }
+            });
+        }
+        
+        // Bildirim izni kontrol et
+        const permission = await OS.Notifications.permission;
+        console.log('📱 Mevcut izin durumu:', permission);
+        
+        if (permission !== 'granted') {
+            console.log('🔔 Bildirim izni isteniyor...');
+            
+            // iOS için Slidedown kullan
+            try {
+                await OS.Slidedown.promptPush();
+                console.log('✅ Slidedown prompt gösterildi');
+            } catch (e) {
+                console.log('⚠️ Slidedown hatası, native prompt deneniyor...');
+                await OS.Notifications.requestPermission();
+            }
+        }
+        
+        // External User ID olarak patient ID'yi set et
+        try {
+            await OS.login(currentPatientId);
+        } catch (e) {
+            // Üst pencereden login dene (özellikle iOS iframe)
+            try {
+                if (window.top && window.top !== window.self) {
+                    window.top.postMessage({ type: 'onesignal:login', externalId: currentPatientId }, '*');
+                }
+            } catch (e2) {}
+        }
+        
+        console.log('✅ Hasta OneSignal başlatıldı, External ID:', currentPatientId);
+        
+    } catch (error) {
+        console.error('❌ Hasta OneSignal hatası:', error);
+    }
+}
+
+// ====================================
+// ONLINE STATUS HEARTBEAT
+// ====================================
+let heartbeatInterval = null;
+
+async function startHeartbeat() {
+    // İlk heartbeat'i hemen gönder
+    await sendHeartbeat();
+    
+    // Her 30 saniyede bir heartbeat gönder
+    heartbeatInterval = setInterval(async () => {
+        await sendHeartbeat();
+    }, 30000); // 30 saniye
+    
+    // Sayfa kapatıldığında temizle
+    window.addEventListener('beforeunload', () => {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+        }
+    });
+}
+
+async function sendHeartbeat() {
+    if (!supabaseClient || !currentPatientId) return;
+    
+    try {
+        // Hasta adını al
+        const patientName = getPatientName();
+        
+        // UPSERT: Hasta yoksa ekle, varsa last_seen güncelle
+        const { error } = await supabaseClient
+            .from('patients')
+            .upsert({
+                patient_id: currentPatientId,
+                name: patientName,
+                last_seen: new Date().toISOString()
+            }, {
+                onConflict: 'patient_id'
+            });
+        
+        if (error) {
+            console.warn('Heartbeat güncellenemedi:', error);
+        } else {
+            console.log('🟢 Heartbeat gönderildi:', currentPatientId);
+        }
+    } catch (error) {
+        console.warn('Heartbeat hatası:', error);
+    }
+}
+
+// Hasta adını al
+function getPatientName() {
+    try {
+        // sessionStorage'dan hasta bilgilerini al
+        const sessionKeys = ['patient_session', 'patientSession'];
+        for (let key of sessionKeys) {
+            const session = sessionStorage.getItem(key) || localStorage.getItem(key);
+            if (session) {
+                const data = JSON.parse(session);
+                if (data.name) return data.name;
+                if (data.patientName) return data.patientName;
+            }
+        }
+    } catch (e) {
+        console.warn('Hasta adı alınamadı:', e);
+    }
+    return 'Bilinmeyen Hasta';
+}

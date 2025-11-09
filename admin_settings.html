@@ -1,0 +1,3053 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Yönetici Ayarları">
+    <meta name="application-name" content="Yönetici Ayarları">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest-admin-settings.json">
+    <link rel="apple-touch-icon" href="/logo2.png">
+    <!-- / PWA ve Mobil Uygulama Meta Etiketleri -->
+
+    <title>Yönetici Ayarları</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .settings-wrapper {
+            width: min(760px, 100%);
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 30px 65px rgba(15, 23, 42, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-header {
+            padding: 22px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .admin-nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .admin-nav-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .admin-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .admin-nav-btn.active {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .settings-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .settings-body {
+            padding: 26px 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            max-height: 78vh;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            border: 1px solid #e0e7ff;
+            border-radius: 14px;
+            padding: 18px;
+            background: #f8fafc;
+        }
+
+        .settings-section h2 {
+            margin: 0 0 14px 0;
+            font-size: 16px;
+            color: #4338ca;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .settings-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 13px;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        input[type="password"],
+        textarea {
+            padding: 11px 13px;
+            border: 1px solid #cbd5f5;
+            border-radius: 9px;
+            font-size: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+        }
+
+        input.disabled {
+            background: #e2e8f0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .settings-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(102, 126, 234, 0.12);
+            color: #4338ca;
+            font-size: 12px;
+        }
+
+        .settings-chip button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: inherit;
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .empty-hint {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 28px;
+            border-top: 1px solid #e0e7ff;
+            background: #f8fafc;
+        }
+
+        .actions-right {
+            display: flex;
+            gap: 12px;
+            flex-wrap: nowrap; /* Butonları asla alt satıra geçirme */
+        }
+
+        .actions-right button {
+            white-space: nowrap; /* Buton metnini kırma */
+            flex-shrink: 1; /* Gerekirse butonları küçült */
+            min-width: 0; /* Butonların minimum genişliğini kaldır */
+        }
+
+        button {
+            padding: 11px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+            color: #ffffff;
+            box-shadow: 0 14px 28px rgba(59, 130, 246, 0.30);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .status-text strong {
+            font-weight: 700;
+        }
+
+        .info-banner {
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.35);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #0f172a;
+            margin-top: 4px;
+        }
+
+        .info-banner code {
+            background: rgba(15, 23, 42, 0.08);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .suggestion-hint {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        details {
+            background: #e0f2fe;
+            border-radius: 10px;
+            padding: 10px 12px;
+            border: 1px solid rgba(14, 165, 233, 0.35);
+            font-size: 12px;
+            color: #0369a1;
+        }
+
+        details summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .suggestions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .suggestions-grid span {
+            background: rgba(14, 165, 233, 0.15);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        /* Filtreleme Kriterleri Grid Layout */
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .criteria-item {
+            border: 1px solid #e0e7ff;
+            border-radius: 10px;
+            padding: 14px;
+            background: white;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .criteria-item:hover {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+        }
+
+        .criteria-header {
+            margin-bottom: 10px;
+        }
+
+        .criteria-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        .criteria-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .criteria-label {
+            user-select: none;
+        }
+
+        .criteria-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-left: 26px;
+        }
+
+        .criteria-select,
+        select {
+            padding: 9px 11px;
+            border: 1px solid #cbd5f5;
+            border-radius: 8px;
+            font-size: 13px;
+            background: white;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .criteria-select:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
+        .criteria-select:disabled,
+        select:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .info-hint ul {
+            list-style-type: disc;
+        }
+
+        .info-hint li {
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .criteria-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .settings-wrapper {
+                border-radius: 14px;
+            }
+
+            .settings-header, .settings-body, .actions-row {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .settings-header h1 {
+                font-size: 21px;
+            }
+
+            .settings-section {
+                padding: 16px;
+            }
+
+            .actions-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .actions-right {
+                width: 100%;
+                justify-content: flex-end; /* Butonları sağa hizala */
+                gap: 8px; /* Mobilde daha küçük gap */
+            }
+
+            .actions-right button {
+                font-size: 13px; /* Mobilde biraz daha küçük font */
+                padding: 10px 14px; /* Mobilde daha kompakt padding */
+            }
+        }
+    </style>
+    <!-- Admins config: local fallback first, then remote authoritative override -->
+    <script src="settings/admins.js"></script>
+    <script>
+        // Remote admins.js with hard cache-busting, loaded synchronously to preserve order
+        document.write('<script src="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/settings/admins.js?t=' + Date.now() + '"><\\/scr' + 'ipt>');
+    </script>
+    <!-- Patient auth (for patientAdmins support when served over http/https) -->
+    <script src="auth.js"></script>
+    <script>
+        // Expose PatientAuth on window for AdminAuth delegation (in case auth.js didn't attach it)
+        console.info('[Shim] Checking PatientAuth. typeof PatientAuth:', typeof PatientAuth, 'window.PatientAuth:', !!window.PatientAuth);
+        try {
+            if (typeof PatientAuth !== 'undefined' && !window.PatientAuth) {
+                window.PatientAuth = PatientAuth;
+                console.info('[Shim] window.PatientAuth was assigned from global lexical binding');
+            } else if (!window.PatientAuth) {
+                console.warn('[Shim] PatientAuth not available in global scope, creating emergency shim');
+                // Emergency shim for patientAdmins login when auth.js doesn't expose PatientAuth to window
+                window.PatientAuth = {
+                    async hashPassword(password) {
+                        if (window.crypto && crypto.subtle) {
+                            const encoder = new TextEncoder();
+                            const data = encoder.encode(password);
+                            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                            const hashArray = Array.from(new Uint8Array(hashBuffer));
+                            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                        }
+                        throw new Error('Web Crypto API not available');
+                    },
+                    async loadPatientIndex() {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/index.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient index not found');
+                    },
+                    async loadPatientDetails(patientId) {
+                        const ts = Date.now();
+                        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${patientId}.json?t=${ts}`, { cache: 'no-store' });
+                        if (response.ok) return await response.json();
+                        throw new Error('Patient details not found');
+                    },
+                    async login(username, password, rememberMe = false) {
+                        try {
+                            const index = await this.loadPatientIndex();
+                            const norm = (v) => (v || '').toString().trim().toLowerCase();
+                            const patient = index.patients.find(p => norm(p.username) === norm(username));
+                            if (!patient) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            if (patient.status === 'archived') return { success: false, error: 'Bu hesap arşivlenmiştir' };
+                            
+                            const inputHash = await this.hashPassword(password);
+                            let effectiveHash = patient.passwordHash || '';
+                            
+                            try {
+                                const details = await this.loadPatientDetails(patient.id);
+                                const detailsHash = details?.passwordHash || details?.personalInfo?.passwordHash;
+                                if (detailsHash && typeof detailsHash === 'string') {
+                                    effectiveHash = detailsHash;
+                                }
+                            } catch (e) {
+                                console.warn('[Shim PatientAuth] Details not loaded, using index hash');
+                            }
+                            
+                            if (inputHash !== effectiveHash) return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
+                            
+                            return { success: true, patient: { username: patient.username, patientId: patient.id } };
+                        } catch (error) {
+                            console.error('[Shim PatientAuth] Login error:', error);
+                            return { success: false, error: 'Giriş sırasında bir hata oluştu' };
+                        }
+                    }
+                };
+                console.info('[Shim] Emergency PatientAuth created on window');
+            }
+        } catch(e) { 
+            console.error('[Shim] Error:', e); 
+        }
+        console.info('[Shim] Final check - window.PatientAuth:', !!window.PatientAuth);
+    </script>
+    <!-- Page init moved to end of body -->
+    <!-- Define page functions in head so they're available immediately -->
+    <script>
+        function addLogoutButton(){
+            try {
+                const header = document.querySelector('.settings-header');
+                if (!header || document.getElementById('adminLogoutBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'adminLogoutBtn';
+                btn.textContent = '🚪 Çıkış';
+                btn.style.cssText = 'margin-left:auto; align-self:flex-end; padding:8px 12px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444 0%, #dc2626 100%); color:#fff; font-weight:700; cursor:pointer;';
+                btn.onclick = () => { if (window.AdminAuth) { AdminAuth.clearSession(); location.reload(); } };
+                header.appendChild(btn);
+            } catch(e) { console.error('addLogoutButton error:', e); }
+        }
+        window.addLogoutButton = addLogoutButton;
+
+        function init() {
+            if (typeof registerInputHandlers === 'function') registerInputHandlers();
+            if (typeof attachActionHandlers === 'function') attachActionHandlers();
+            if (typeof fetchSuggestions === 'function') fetchSuggestions();
+            if (typeof loadSettingsFromGitHub === 'function') loadSettingsFromGitHub();
+            // Admins UI
+            if (typeof loadAdminsRuntime === 'function') loadAdminsRuntime();
+            if (typeof renderAdminsList === 'function') renderAdminsList();
+            if (typeof renderPatientAdmins === 'function') renderPatientAdmins();
+            if (typeof attachAdminsUIHandlers === 'function') attachAdminsUIHandlers();
+            if (typeof fetchAdminsSha === 'function') fetchAdminsSha();
+            if (typeof renderActiveAdmin === 'function') renderActiveAdmin();
+            // If only local fallback is present (e.g., only 'admin'), try to reload remote admins.js to override
+            try {
+                if (typeof window.ghAdmins !== 'undefined' && (!window.ghAdmins || !Array.isArray(window.ghAdmins.admins) || window.ghAdmins.admins.length <= 1)) {
+                    if (typeof reloadRemoteAdminsConfig === 'function') reloadRemoteAdminsConfig();
+                }
+            } catch(_) { /* noop */ }
+            // Additionally, fetch and parse raw admins.js as authoritative source and apply it
+            if (typeof fetchRemoteAdminsObject === 'function') {
+                fetchRemoteAdminsObject().then(obj => {
+                    if (obj && Array.isArray(obj.admins)){
+                        window.ghAdmins = obj;
+                        if (typeof ensureGhAdminsShape === 'function') ensureGhAdminsShape();
+                        if (typeof renderAdminsList === 'function') renderAdminsList();
+                        if (typeof renderPatientAdmins === 'function') renderPatientAdmins();
+                        if (typeof showStatus === 'function') showStatus('Uzaktan admins.js içeriği uygulandı.', 'info');
+                    }
+                }).catch(()=>{});
+            }
+        }
+        window.init = init;
+        
+        console.info('[Head] Functions defined. addLogoutButton:', typeof addLogoutButton, 'init:', typeof init);
+    </script>
+    <!-- Admin auth gate (hard cache-busting, load after GH_ADMINS scripts) -->
+    <script src="admin_auth.js"></script>
+</head>
+<body>
+    <div class="settings-wrapper">
+        <header class="settings-header">
+            <div>
+                <h1>Yönetici Ayarları</h1>
+                <p>Bu panelden <code>settings/config.json</code> dosyasını düzenleyebilirsiniz. Kaydetmek için repo yazma yetkisi olan bir GitHub token'ı gerekir.</p>
+            </div>
+            
+            <!-- Admin Navigasyon Butonları -->
+            <div class="admin-nav-buttons">
+                <a href="admin_settings.html" class="admin-nav-btn active">
+                    ⚙️ Ayarlar
+                </a>
+                <a href="admin_patients.html" class="admin-nav-btn">
+                    👥 Hasta Listesi
+                </a>
+                <a href="admin_chat.html" class="admin-nav-btn">
+                    💬 Sohbet Yönetimi
+                </a>
+            </div>
+            
+            <div class="info-banner">
+                Token'ı tarayıcıda tutmak için <strong>Yerel depolama</strong> kullanılır. Ortak cihazlarda <em>Kaydet</em> işleminden sonra <strong>token'ı temizlemeyi</strong> unutmayın.
+            </div>
+        </header>
+
+        <main class="settings-body">
+            <section class="settings-section">
+                <h2>Aktif Admin</h2>
+                <div class="settings-row">
+                    <span id="activeAdminBadge" style="display:inline-block;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#4338ca;font-weight:700;font-size:13px;">—</span>
+                    <span class="suggestion-hint">Bu oturumla işlem yapıyorsunuz.</span>
+                </div>
+                <div class="settings-row">
+                    <button type="button" class="btn-secondary" id="forceReloginBtn">Yeniden Giriş İste</button>
+                </div>
+            </section>
+            <section class="settings-section">
+                <h2>Genel</h2>
+                <div class="settings-row">
+                    <label for="defaultAlternativeCountInput">Varsayılan alternatif sayısı</label>
+                    <input type="number" id="defaultAlternativeCountInput" min="1" max="10">
+                </div>
+                <div class="settings-row checkbox-row">
+                    <label for="enableTagFilterInput">
+                        <input type="checkbox" id="enableTagFilterInput"> Tag filtrelemesini aktifleştir
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <label for="calorieToleranceInput">
+                        Kalori toleransı (%)
+                        <span style="color: #666; font-size: 12px; display: block;">Şablon filtrelemede ±% sapma oranı (örn: 5 = ±%5)</span>
+                    </label>
+                    <input type="number" id="calorieToleranceInput" min="0" max="50" step="1" value="5">
+                </div>
+                <div class="settings-row">
+                    <label for="templateReuseWeeksInput">
+                        Şablon tekrar kullanım süresi (hafta)
+                        <span style="color: #666; font-size: 12px; display: block;">Bir şablon kaç hafta sonra tekrar kullanılabilir (örn: 4 = 4 hafta sonra)</span>
+                    </label>
+                    <input type="number" id="templateReuseWeeksInput" min="1" max="12" step="1" value="4">
+                </div>
+            </section>
+
+            <!-- Diyet Formülleri Bölümü -->
+            <section class="settings-section">
+                <h2>🥗 Diyet Formülleri ve Makro Hesaplama</h2>
+                
+                <div style="margin-bottom: 20px; padding: 12px; background: #e0e7ff; border-radius: 8px;">
+                    <strong>📌 Formül Yapısı:</strong><br>
+                    • Karbonhidrat = Kilo × Çarpan (gram)<br>
+                    • Protein = Kilo × Çarpan (gram)<br>
+                    • Yağ = Kilo × Çarpan (gram)<br>
+                    • Kalori = (Karb×4) + (Protein×4) + (Yağ×9)<br>
+                    • Final Kalori = Kalori × Aktivite Çarpanı
+                </div>
+
+                <!-- Ketojenik Diyet -->
+                <div style="border: 2px solid #4ade80; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: #15803d;">Ketojenik Diyet</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div class="settings-row">
+                            <label>Karbonhidrat Çarpanı</label>
+                            <input type="number" id="ketoCarb" step="0.1" min="0" value="0.3">
+                        </div>
+                        <div class="settings-row">
+                            <label>Protein Çarpanı</label>
+                            <input type="number" id="ketoProtein" step="0.1" min="0" value="0.8">
+                        </div>
+                        <div class="settings-row">
+                            <label>Yağ Çarpanı</label>
+                            <input type="number" id="ketoFat" step="0.1" min="0" value="1.2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lowcarb Diyet -->
+                <div style="border: 2px solid #60a5fa; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: #1e40af;">Lowcarb Diyet</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div class="settings-row">
+                            <label>Karbonhidrat Çarpanı</label>
+                            <input type="number" id="lowcarbCarb" step="0.1" min="0" value="0.6">
+                        </div>
+                        <div class="settings-row">
+                            <label>Protein Çarpanı</label>
+                            <input type="number" id="lowcarbProtein" step="0.1" min="0" value="0.8">
+                        </div>
+                        <div class="settings-row">
+                            <label>Yağ Çarpanı</label>
+                            <input type="number" id="lowcarbFat" step="0.1" min="0" value="1.0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aktivite Çarpanları -->
+                <div style="border: 2px solid #f59e0b; border-radius: 12px; padding: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: #92400e;">Aktivite Seviyesi Çarpanları</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                        <div class="settings-row">
+                            <label>1 - Hareketsiz</label>
+                            <input type="number" id="activity1" step="0.1" min="0" max="2" value="0.8">
+                        </div>
+                        <div class="settings-row">
+                            <label>2 - Az Aktif</label>
+                            <input type="number" id="activity2" step="0.1" min="0" max="2" value="0.9">
+                        </div>
+                        <div class="settings-row">
+                            <label>3 - Orta Aktif</label>
+                            <input type="number" id="activity3" step="0.1" min="0" max="2" value="1.0">
+                        </div>
+                        <div class="settings-row">
+                            <label>4 - Çok Aktif</label>
+                            <input type="number" id="activity4" step="0.1" min="0" max="2" value="1.1">
+                        </div>
+                        <div class="settings-row">
+                            <label>5 - Süper Aktif</label>
+                            <input type="number" id="activity5" step="0.1" min="0" max="2" value="1.2">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Tag İstisnaları</h2>
+                <div class="settings-row">
+                    <label for="tagExclusionInput">Yeni istisna tagı ekle</label>
+                    <input type="text" id="tagExclusionInput" placeholder="Örn: mevsim" autocomplete="off">
+                    <span class="suggestion-hint">Enter veya odak dışında bırakmak listedeki yeni tag'ı ekler.</span>
+                </div>
+                <div class="settings-chip-list" id="tagExclusionList"></div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Yöneticiler (admins.js)</h2>
+                <div class="settings-row">
+                    <div id="adminsList"></div>
+                </div>
+                <div class="settings-row">
+                    <details>
+                        <summary>Yeni / Düzenle</summary>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px;">
+                            <div>
+                                <label>Kullanıcı Adı</label>
+                                <input type="text" id="adminEditUsername" placeholder="admin"/>
+                            </div>
+                            <div>
+                                <label>Yeni Şifre (opsiyonel)</label>
+                                <input type="password" id="adminEditPassword" placeholder="Yeni şifre (boşsa değişmez)"/>
+                            </div>
+                            <div>
+                                <label>Roller</label>
+                                <input type="text" id="adminEditRoles" placeholder="virgülle: admin,editor"/>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;">
+                            <button type="button" class="btn-primary" id="adminSaveBtn">Kaydet / Güncelle</button>
+                            <button type="button" class="btn-secondary" id="adminClearBtn">Temizle</button>
+                        </div>
+                    </details>
+                </div>
+                <div class="settings-row">
+                    <label>Hasta bazlı admin yetkisi (patientAdmins)</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="patientAdminInput" placeholder="hastaKullaniciAdi" style="max-width:260px;"/>
+                        <button type="button" class="btn-secondary" id="patientAdminAddBtn">Ekle</button>
+                    </div>
+                    <div class="settings-chip-list" id="patientAdminsList"></div>
+                </div>
+                <div class="settings-row">
+                    <button type="button" class="btn-primary" id="saveAdminsFileBtn">Admins Dosyasını Kaydet</button>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Muaf Rol ve Kategoriler</h2>
+                <div class="settings-row">
+                    <label for="roleExclusionInput">Rol istisnası ekle</label>
+                    <input type="text" id="roleExclusionInput" placeholder="Örn: Diyetisyen" list="rolesDatalist" autocomplete="off">
+                    <datalist id="rolesDatalist"></datalist>
+                </div>
+                <div class="settings-chip-list" id="roleExclusionList"></div>
+
+                <div class="settings-row">
+                    <label for="categoryExclusionInput">Kategori istisnası ekle</label>
+                    <input type="text" id="categoryExclusionInput" placeholder="Örn: Atıştırmalık" list="categoriesDatalist" autocomplete="off">
+                    <datalist id="categoriesDatalist"></datalist>
+                </div>
+                <div class="settings-chip-list" id="categoryExclusionList"></div>
+
+                <details id="suggestionsPanel" hidden>
+                    <summary>⚙️ Önerilen rol/kategori listesi</summary>
+                    <div class="suggestions-grid" id="roleSuggestions"></div>
+                    <div class="suggestions-grid" id="categorySuggestions"></div>
+                </details>
+            </section>
+
+            <section class="settings-section">
+                <h2>Rotasyon</h2>
+                <div class="settings-row checkbox-row">
+                    <label for="rotationEnabledInput">
+                        <input type="checkbox" id="rotationEnabledInput"> Rotasyonu aktifleştir
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <label for="rotationChunkSizeInput">Günlük alternatif sayısı</label>
+                    <input type="number" id="rotationChunkSizeInput" min="1" max="10">
+                </div>
+                <div class="settings-row">
+                    <label for="rotationResetDayInput">Rotasyon sıfırlama günü (0 = Pazartesi)</label>
+                    <input type="number" id="rotationResetDayInput" min="0" max="6" placeholder="Boş bırakılırsa ISO haftası baz alınır">
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>🔍 Filtreleme Kriterleri</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Kullanıcı panelinde hangi filtreleme kriterlerinin gösterileceğini ve zorunlu/opsiyonel olduğunu ayarlayın.
+                </p>
+                
+                <div class="criteria-grid">
+                    <!-- Role (Yemek Türü) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaRoleVisible" checked>
+                                <span class="criteria-label">👨‍🍳 Yemek Türü (Role)</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaRoleMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaRoleMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaRoleDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaRoleDefault" class="criteria-select">
+                                <option value="active" selected>Aktif (Filtre açık)</option>
+                                <option value="inactive">Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Diet Type (Diyet Türü) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaDietTypeVisible" checked>
+                                <span class="criteria-label">🥗 Diyet Türü</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaDietTypeMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaDietTypeMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaDietTypeDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaDietTypeDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Category (Kategori) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaCategoryVisible">
+                                <span class="criteria-label">📂 Kategori</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaCategoryMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaCategoryMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaCategoryDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaCategoryDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Season (Sezon) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaSeasonVisible">
+                                <span class="criteria-label">🌤️ Sezon</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaSeasonMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaSeasonMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaSeasonDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaSeasonDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- MealType (Öğün) -->
+                    <div class="criteria-item">
+                        <div class="criteria-header">
+                            <label class="criteria-checkbox">
+                                <input type="checkbox" id="criteriaMealTypeVisible">
+                                <span class="criteria-label">🍽️ Öğün</span>
+                            </label>
+                        </div>
+                        <div class="criteria-body">
+                            <label for="criteriaMealTypeMode" style="font-size: 12px; color: #64748b;">Kullanıcı için:</label>
+                            <select id="criteriaMealTypeMode" class="criteria-select">
+                                <option value="optional" selected>Opsiyonel (Kullanıcı açıp kapayabilir)</option>
+                                <option value="required">Zorunlu (Her zaman aktif)</option>
+                            </select>
+                            <label for="criteriaMealTypeDefault" style="font-size: 12px; color: #64748b; margin-top: 6px;">Sayfa açıldığında:</label>
+                            <select id="criteriaMealTypeDefault" class="criteria-select">
+                                <option value="active">Aktif (Filtre açık)</option>
+                                <option value="inactive" selected>Pasif (Filtre kapalı)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong> 
+                    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                        <li><strong>Opsiyonel:</strong> Kullanıcı panelinde rozet gösterilir, kullanıcı tıklayarak aktif/pasif edebilir.</li>
+                        <li><strong>Zorunlu:</strong> Filtreleme her zaman aktiftir, kullanıcı değiştiremez (rozet gizlidir).</li>
+                        <li><strong>Sayfa açıldığında:</strong> İlk açılışta filtrenin aktif mi pasif mi olacağını belirler (sadece opsiyoneller için geçerli).</li>
+                        <li>Checkbox işaretsizse kriter tamamen gizlenir ve kullanılmaz.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>📊 Benzerlik Skoru Kriterleri</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Alternatif yemek benzerliği hesaplanırken hangi makroların dikkate alınacağını belirleyin. 
+                    Seçili kriterler kullanılarak benzerlik skoru hesaplanır.
+                </p>
+                
+                <div class="criteria-grid">
+                    <!-- Kalori -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaCalories">
+                            <span class="criteria-label">🔥 Kalori</span>
+                        </label>
+                    </div>
+
+                    <!-- Protein -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaProtein" checked>
+                            <span class="criteria-label">🥩 Protein</span>
+                        </label>
+                    </div>
+
+                    <!-- Karbonhidrat -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaCarbs">
+                            <span class="criteria-label">🍞 Karbonhidrat</span>
+                        </label>
+                    </div>
+
+                    <!-- Yağ -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="scoreCriteriaFat" checked>
+                            <span class="criteria-label">🧈 Yağ</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>🧮 Benzerlik Hesaplama Modu</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Alternatif yemek benzerliği nasıl hesaplansın? Basit mod sadece kalori ağırlığına bakar, 
+                    Gelişmiş mod hem kalori hem de oransal farkı dikkate alır.
+                </p>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+                    <!-- Basit Mod -->
+                    <label style="flex: 1; cursor: pointer;">
+                        <input type="radio" name="scoringMode" value="simple" id="scoringModeSimple" 
+                               style="margin-right: 8px;" checked>
+                        <div style="padding: 16px; border: 2px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 15px; color: #1e293b;">📊 Basit Mod</h3>
+                            <p style="font-size: 12px; color: #64748b; margin: 0;">
+                                Makro farkları kalori eşdeğeriyle hesaplanır.<br>
+                                <strong>Protein/Karb:</strong> ×4 kcal/g<br>
+                                <strong>Yağ:</strong> ×9 kcal/g
+                            </p>
+                        </div>
+                    </label>
+                    
+                    <!-- Gelişmiş Mod -->
+                    <label style="flex: 1; cursor: pointer;">
+                        <input type="radio" name="scoringMode" value="advanced" id="scoringModeAdvanced" 
+                               style="margin-right: 8px;">
+                        <div style="padding: 16px; border: 2px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 15px; color: #1e293b;">🎯 Gelişmiş Mod</h3>
+                            <p style="font-size: 12px; color: #64748b; margin: 0;">
+                                Hem kalori hem oran bazlı hesaplama.<br>
+                                <strong>Örnek:</strong> 20g'dan 3g ≠ 40g'dan 3g<br>
+                                <strong>Daha hassas</strong> skorlama
+                            </p>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Sensitivity Slider (sadece Gelişmiş Mod için) -->
+                <div id="sensitivityContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(99, 102, 241, 0.05); border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #4338ca;">
+                        🎚️ Hassasiyet Ayarı (Gelişmiş Mod)
+                    </label>
+                    <p style="font-size: 12px; color: #64748b; margin: 0 0 12px 0;">
+                        Skorlama ne kadar hassas olsun? Düşük değer = daha sert puanlama, Yüksek değer = daha yumuşak puanlama.
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span style="font-size: 12px; color: #64748b; min-width: 80px;">Sert (5)</span>
+                        <input type="range" id="sensitivityDivider" min="5" max="20" step="1" value="10" 
+                               style="flex: 1; height: 6px; border-radius: 5px; outline: none; 
+                                      background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);">
+                        <span style="font-size: 12px; color: #64748b; min-width: 80px;">Yumuşak (20)</span>
+                    </div>
+                    <div style="margin-top: 12px; text-align: center;">
+                        <span style="font-size: 14px; font-weight: 600; color: #4338ca;">
+                            Mevcut Değer: <span id="sensitivityValue">10</span>
+                        </span>
+                    </div>
+                    <div style="margin-top: 12px; padding: 10px; background: white; border-radius: 6px; font-size: 11px; color: #475569;">
+                        <strong>Örnek Etki (Protein 20g → 17g, %15 fark):</strong><br>
+                        Değer 5: Skor ~88% | Değer 10: Skor ~94% | Değer 20: Skor ~97%
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong><br>
+                    <strong>Basit Mod:</strong> Her makronun kalori değeri baz alınır. Protein ve karb ×4 kcal/g, Yağ ×9 kcal/g ile ağırlıklandırılır.<br>
+                    <strong>Gelişmiş Mod:</strong> Aynı gram farkı bile oransal olarak değerlendirilir. 20g'dan 3g eksik (%15) ile 40g'dan 3g eksik (%7.5) farklı skorlar alır.
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>🏷️ Rozet Gösterimi</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                    Hasta panelindeki yemek satırlarında hangi bilgi rozetlerinin gösterileceğini seçin.
+                </p>
+                
+                <div class="criteria-grid">
+                    <!-- Role Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeRoleVisible" checked>
+                            <span class="criteria-label">👨‍🍳 Rol Rozeti (Ana yemek, Ekmek, vb.)</span>
+                        </label>
+                    </div>
+
+                    <!-- DietType Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeDietTypeVisible" checked>
+                            <span class="criteria-label">🥑 Diyet Tipi Rozeti (Keto, Lowcarb)</span>
+                        </label>
+                    </div>
+
+                    <!-- Category Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeCategoryVisible">
+                            <span class="criteria-label">📂 Kategori Rozeti (ÖĞLEN, AKŞAM, vb.)</span>
+                        </label>
+                    </div>
+
+                    <!-- Season Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeSeasonVisible">
+                            <span class="criteria-label">🌱 Mevsim Rozeti</span>
+                        </label>
+                    </div>
+
+                    <!-- MealType Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeMealTypeVisible">
+                            <span class="criteria-label">🍽️ Öğün Tipi Rozeti (Sabah, Öğle, Akşam)</span>
+                        </label>
+                    </div>
+
+                    <!-- Tags Badge -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="badgeTagsVisible">
+                            <span class="criteria-label">🏷️ Tag Rozeti (tavuk, yumurta, vb.)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong> 
+                    Seçilen rozetler hasta panelindeki yemek satırlarında görünür. Çok fazla rozet ekranı karmaşıklaştırabilir.
+                </div>
+            </section>
+            
+            <!-- Özellik Görünürlüğü Ayarları -->
+            <section class="settings-section">
+                <h2 class="section-title">🎛️ Özellik Görünürlüğü</h2>
+                <p class="section-description">Hasta panelindeki buton ve özelliklerin görünürlüğünü yönetin</p>
+                
+                <div class="criteria-grid">
+                    <!-- PDF Export Butonu -->
+                    <div class="criteria-item">
+                        <label class="criteria-checkbox">
+                            <input type="checkbox" id="pdfExportVisible" checked>
+                            <span class="criteria-label">📄 PDF İndir Butonu</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="info-hint" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; font-size: 12px; color: #3b82f6;">
+                    <strong>💡 İpucu:</strong> 
+                    PDF butonu haftalık beslenme planını indirmek için kullanılır. Varsayılan olarak açıktır.
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>📋 Şablon Yükleme</h2>
+                <div class="settings-row">
+                    <label for="templateFileInput">Gün Şablonları JSON Dosyası</label>
+                    <input type="file" id="templateFileInput" accept=".json" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; font-size: 13px;">
+                </div>
+                <div class="settings-row">
+                    <button class="btn-primary" id="uploadTemplatesButton" type="button" style="width: fit-content;">📥 Şablonları Yükle ve Birleştir</button>
+                </div>
+                <div class="settings-row">
+                    <p style="font-size: 12px; color: #64748b; margin: 0;">
+                        <strong>Not:</strong> Yüklenen şablonlar mevcut şablonlarla birleştirilecek. Aynı ID'ye sahip şablonlar atlanacak, yeni şablonlar eklenecek. Türkçe karakterler korunacak.
+                    </p>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>GitHub Erişimi</h2>
+                <div class="settings-row">
+                    <label for="githubTokenInput">Kişisel Erişim Token'ı</label>
+                    <input type="password" id="githubTokenInput" placeholder="ghp_...">
+                </div>
+            </section>
+        </main>
+
+        <footer class="actions-row">
+            <p class="status-text" id="statusText"><strong>Hazır.</strong></p>
+            <div class="actions-right">
+                <button class="btn-secondary" id="clearTokenButton" type="button">Token Temizle</button>
+                <button class="btn-secondary" id="reloadButton" type="button">Ayarları Yükle</button>
+                <button class="btn-primary" id="saveSettingsButton" type="button">Kaydet</button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const REPO_OWNER = 'mustafasacar35';
+    const REPO_NAME = 'lipodem-takip-paneli';
+        const SETTINGS_PATH = 'settings/config.json';
+        const SETTINGS_BRANCH = 'main';
+        const LOCAL_STORAGE_TOKEN_KEY = 'lipodemSettingsGithubToken';
+
+        const defaultSettings = {
+            version: 1,
+            updatedAt: new Date().toISOString(),
+            defaultAlternativeCount: 3,
+            enableTagFilter: true,
+            calorieTolerancePercent: 5,
+            templateReuseWeeks: 4,
+            tagExclusions: [],
+            tagExemptions: {
+                roles: [],
+                categories: []
+            },
+            rotation: {
+                enabled: true,
+                chunkSize: 3
+            },
+            filterCriteria: {
+                role: {
+                    visible: true,
+                    mode: 'optional',
+                    defaultState: 'active'
+                },
+                dietType: {
+                    visible: true,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                category: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                season: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                },
+                mealType: {
+                    visible: false,
+                    mode: 'optional',
+                    defaultState: 'inactive'
+                }
+            },
+            badgeVisibility: {
+                role: false,
+                dietType: false,
+                category: false,
+                season: false,
+                mealType: false,
+                tags: false
+            },
+            featureVisibility: {
+                pdfExportButton: true
+            },
+            scoreCriteria: {
+                activeByDefault: ['protein', 'fat']
+            },
+            dietFormulas: {
+                ketojenik: {
+                    carb: 0.3,
+                    protein: 0.8,
+                    fat: 1.2
+                },
+                lowcarb: {
+                    carb: 0.6,
+                    protein: 0.8,
+                    fat: 1.0
+                },
+                activityMultipliers: {
+                    1: 0.8,
+                    2: 0.9,
+                    3: 1.0,
+                    4: 1.1,
+                    5: 1.2
+                }
+            }
+        };
+
+        let appSettings = { ...defaultSettings };
+        let settingsSha = null;
+        let settingsDraft = null;
+        let isSaving = false;
+        let isLoading = false;
+        let availableRoles = new Set();
+        let availableCategories = new Set();
+
+        const statusText = document.getElementById('statusText');
+        const defaultAlternativeCountInput = document.getElementById('defaultAlternativeCountInput');
+        const enableTagFilterInput = document.getElementById('enableTagFilterInput');
+        const calorieToleranceInput = document.getElementById('calorieToleranceInput');
+        const tagExclusionInput = document.getElementById('tagExclusionInput');
+        const roleExclusionInput = document.getElementById('roleExclusionInput');
+        const categoryExclusionInput = document.getElementById('categoryExclusionInput');
+        const rotationEnabledInput = document.getElementById('rotationEnabledInput');
+        
+        // Diyet Formülü Input Elementleri
+        const ketoCarb = document.getElementById('ketoCarb');
+        const ketoProtein = document.getElementById('ketoProtein');
+        const ketoFat = document.getElementById('ketoFat');
+        const lowcarbCarb = document.getElementById('lowcarbCarb');
+        const lowcarbProtein = document.getElementById('lowcarbProtein');
+        const lowcarbFat = document.getElementById('lowcarbFat');
+        const activity1 = document.getElementById('activity1');
+        const activity2 = document.getElementById('activity2');
+        const activity3 = document.getElementById('activity3');
+        const activity4 = document.getElementById('activity4');
+        const activity5 = document.getElementById('activity5');
+        const rotationChunkSizeInput = document.getElementById('rotationChunkSizeInput');
+        const rotationResetDayInput = document.getElementById('rotationResetDayInput');
+        const githubTokenInput = document.getElementById('githubTokenInput');
+        const clearTokenButton = document.getElementById('clearTokenButton');
+        const reloadButton = document.getElementById('reloadButton');
+        const saveSettingsButton = document.getElementById('saveSettingsButton');
+        const tagExclusionList = document.getElementById('tagExclusionList');
+        const roleExclusionList = document.getElementById('roleExclusionList');
+        const categoryExclusionList = document.getElementById('categoryExclusionList');
+        const rolesDatalist = document.getElementById('rolesDatalist');
+        const categoriesDatalist = document.getElementById('categoriesDatalist');
+        const suggestionsPanel = document.getElementById('suggestionsPanel');
+        const roleSuggestions = document.getElementById('roleSuggestions');
+        const categorySuggestions = document.getElementById('categorySuggestions');
+        const templateFileInput = document.getElementById('templateFileInput');
+        const uploadTemplatesButton = document.getElementById('uploadTemplatesButton');
+
+    // Admins UI refs
+    const adminsListDiv = document.getElementById('adminsList');
+    const adminEditUsername = document.getElementById('adminEditUsername');
+    const adminEditPassword = document.getElementById('adminEditPassword');
+    const adminEditRoles = document.getElementById('adminEditRoles');
+    const adminSaveBtn = document.getElementById('adminSaveBtn');
+    const adminClearBtn = document.getElementById('adminClearBtn');
+    const patientAdminInput = document.getElementById('patientAdminInput');
+    const patientAdminAddBtn = document.getElementById('patientAdminAddBtn');
+    const patientAdminsList = document.getElementById('patientAdminsList');
+    const saveAdminsFileBtn = document.getElementById('saveAdminsFileBtn');
+    const forceReloginBtn = document.getElementById('forceReloginBtn');
+
+        // Filtreleme Kriterleri Input Referansları
+        const criteriaRoleVisible = document.getElementById('criteriaRoleVisible');
+        const criteriaRoleMode = document.getElementById('criteriaRoleMode');
+        const criteriaRoleDefault = document.getElementById('criteriaRoleDefault');
+        const criteriaDietTypeVisible = document.getElementById('criteriaDietTypeVisible');
+        const criteriaDietTypeMode = document.getElementById('criteriaDietTypeMode');
+        const criteriaDietTypeDefault = document.getElementById('criteriaDietTypeDefault');
+        const criteriaCategoryVisible = document.getElementById('criteriaCategoryVisible');
+        const criteriaCategoryMode = document.getElementById('criteriaCategoryMode');
+        const criteriaCategoryDefault = document.getElementById('criteriaCategoryDefault');
+        const criteriaSeasonVisible = document.getElementById('criteriaSeasonVisible');
+        const criteriaSeasonMode = document.getElementById('criteriaSeasonMode');
+        const criteriaSeasonDefault = document.getElementById('criteriaSeasonDefault');
+        const criteriaMealTypeVisible = document.getElementById('criteriaMealTypeVisible');
+        const criteriaMealTypeMode = document.getElementById('criteriaMealTypeMode');
+        const criteriaMealTypeDefault = document.getElementById('criteriaMealTypeDefault');
+
+        // Benzerlik Skoru Kriterleri Input Referansları
+        const scoreCriteriaCalories = document.getElementById('scoreCriteriaCalories');
+        const scoreCriteriaProtein = document.getElementById('scoreCriteriaProtein');
+        const scoreCriteriaCarbs = document.getElementById('scoreCriteriaCarbs');
+        const scoreCriteriaFat = document.getElementById('scoreCriteriaFat');
+
+        function fixTurkishChars(text) {
+            if (!text || typeof text !== 'string') return text;
+            let fixed = text;
+            for (let i = 0; i < 2; i++) {
+                try {
+                    const decoded = decodeURIComponent(escape(fixed));
+                    if (decoded === fixed) break;
+                    fixed = decoded;
+                } catch (error) {
+                    break;
+                }
+            }
+
+            const charMap = {
+                'Ä±': 'ı', 'ä±': 'ı', 'Ã': 'Ç', 'Ã§': 'ç', 'ã‡': 'Ç', 'ã§': 'ç', 'ÅŸ': 'ş', 'åŸ': 'ş',
+                'Åž': 'Ş', 'åž': 'Ş', 'Ä°': 'İ', 'ä°': 'İ', 'Ã¶': 'ö', 'ã¶': 'ö', 'Ã–': 'Ö', 'ã–': 'Ö',
+                'Ã¼': 'ü', 'ã¼': 'ü', 'Ãœ': 'Ü', 'ãœ': 'Ü', 'ÄŸ': 'ğ', 'äŸ': 'ğ', 'Äž': 'Ğ', 'äž': 'Ğ',
+                'ÃÂ±': 'ı', 'ÃÂ°': 'İ', 'ÃÂ': 'ğ', 'ÃÂ': 'Ğ', 'ÃÂŸ': 'ş', 'ÃÂ': 'Ş', 'ÃÂ§': 'ç',
+                'ÃÂ': 'Ç', 'ÃÂ¶': 'ö', 'ÃÂ': 'Ö', 'ÃÂ¼': 'ü', 'ÃÂ': 'Ü', 'ÃÂ½': 'ı', 'ÃÂ': 'İ',
+                'ÃÂ±': 'ñ', 'ÃÂ': 'ß', 'ÃÂ¿': 'ÿ', 'Ã': '', '×': '', 'Â': ' '
+            };
+
+            let previous;
+            do {
+                previous = fixed;
+                for (const [wrong, correct] of Object.entries(charMap)) {
+                    fixed = fixed.replace(new RegExp(wrong, 'g'), correct);
+                }
+            } while (fixed !== previous);
+
+            return fixed;
+        }
+
+        function normalizeText(str) {
+            if (!str) return '';
+            const cleaned = fixTurkishChars(str);
+            return cleaned
+                .toLowerCase()
+                .replace(/ç/g, 'c')
+                .replace(/ğ/g, 'g')
+                .replace(/ı/g, 'i')
+                .replace(/i̇/g, 'i')
+                .replace(/ö/g, 'o')
+                .replace(/ş/g, 's')
+                .replace(/ü/g, 'u')
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        function sanitizeString(value) {
+            if (typeof value !== 'string') return '';
+            return fixTurkishChars(value).trim();
+        }
+
+        function sanitizeStringList(values) {
+            if (!Array.isArray(values)) return [];
+            const unique = new Set();
+            const result = [];
+            values.forEach(item => {
+                const cleaned = sanitizeString(item);
+                const normalized = normalizeText(cleaned);
+                if (!cleaned || !normalized || unique.has(normalized)) return;
+                unique.add(normalized);
+                result.push(cleaned);
+            });
+            return result;
+        }
+
+        function showStatus(message, tone = 'info') {
+            const palette = {
+                success: '#059669',
+                error: '#dc2626',
+                info: '#475569'
+            };
+            statusText.textContent = message;
+            statusText.style.color = palette[tone] || palette.info;
+        }
+        // ---------- Admins helpers ----------
+        function getActiveAdminName(){
+            try { return (window.AdminAuth && AdminAuth.getSession && AdminAuth.getSession()) ? (AdminAuth.getSession().username) : ''; }
+            catch(_) { return ''; }
+        }
+        function renderActiveAdmin(){
+            const u = getActiveAdminName();
+            const el = document.getElementById('activeAdminBadge');
+            if (el) el.textContent = u ? `Admin: ${u}` : '—';
+        }
+
+        // ---------- Admins state ----------
+        const ADMINS_PATH = 'settings/admins.js';
+        let ghAdmins = { admins: [], patientAdmins: [] };
+        let adminsSha = null;
+        let editingAdminIndex = -1; // -1 => create, >=0 => edit
+
+        function clone(obj){ return JSON.parse(JSON.stringify(obj || {})); }
+        function toRolesArray(val){
+            if (Array.isArray(val)) return val.map(v=>sanitizeString(v)).filter(Boolean);
+            if (typeof val === 'string') return val.split(',').map(v=>sanitizeString(v)).filter(Boolean);
+            return [];
+        }
+        function usernamesEqual(a,b){ return normalizeText(a) === normalizeText(b); }
+        function findAdminIndexByUsername(username){
+            const n = normalizeText(username);
+            return (ghAdmins.admins||[]).findIndex(a => normalizeText(a.username) === n);
+        }
+        function ensureGhAdminsShape(){
+            if (!ghAdmins || typeof ghAdmins !== 'object') ghAdmins = { admins: [], patientAdmins: [] };
+            if (!Array.isArray(ghAdmins.admins)) ghAdmins.admins = [];
+            if (!Array.isArray(ghAdmins.patientAdmins)) ghAdmins.patientAdmins = [];
+        }
+        function loadAdminsRuntime(){
+            try { ghAdmins = clone(window.GH_ADMINS || { admins: [], patientAdmins: [] }); }
+            catch(_) { ghAdmins = { admins: [], patientAdmins: [] }; }
+            ensureGhAdminsShape();
+        }
+        async function fetchAdminsSha(){
+            try{
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADMINS_PATH}?ref=${SETTINGS_BRANCH}`;
+                const res = await fetch(url);
+                if (res.ok){ const data = await res.json(); adminsSha = data.sha || null; }
+            } catch(_) { adminsSha = null; }
+        }
+        function parseAdminsFromRawText(text){
+            try{
+                const idx = text.indexOf('window.GH_ADMINS');
+                if (idx === -1) return null;
+                const eq = text.indexOf('=', idx);
+                if (eq === -1) return null;
+                const startObj = text.indexOf('{', eq);
+                const endObj = text.lastIndexOf('}');
+                if (startObj === -1 || endObj === -1 || endObj <= startObj) return null;
+                const jsonStr = text.substring(startObj, endObj + 1);
+                const obj = JSON.parse(jsonStr);
+                if (!obj || !Array.isArray(obj.admins)) return null;
+                return obj;
+            }catch(_){ return null; }
+        }
+        async function fetchRemoteAdminsObject(){
+            try{
+                const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return null;
+                const txt = await res.text();
+                return parseAdminsFromRawText(txt);
+            }catch(_){ return null; }
+        }
+        function renderAdminsList(){
+            adminsListDiv.innerHTML = '';
+            ensureGhAdminsShape();
+            const list = ghAdmins.admins;
+            if (!list.length){
+                adminsListDiv.innerHTML = '<span class="empty-hint">Henüz yönetici yok.</span>';
+                return;
+            }
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:6px;">Kullanıcı</th>
+                        <th style="text-align:left;padding:6px;">Roller</th>
+                        <th style="text-align:right;padding:6px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            list.forEach((a, idx)=>{
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;">${a.username}</td>
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;">${(a.roles||[]).join(', ')}</td>
+                    <td style="padding:6px;border-top:1px solid #e5e7eb;text-align:right;">
+                        <button type="button" class="btn-secondary" data-action="edit">Düzenle</button>
+                        <button type="button" class="btn-secondary" data-action="delete">Sil</button>
+                    </td>`;
+                tr.querySelector('[data-action="edit"]').addEventListener('click', ()=>{
+                    editAdminAt(idx);
+                });
+                tr.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+                    if (confirm(`${a.username} silinsin mi?`)){
+                        ghAdmins.admins.splice(idx,1);
+                        renderAdminsList();
+                    }
+                });
+                tbody.appendChild(tr);
+            });
+            adminsListDiv.appendChild(table);
+        }
+        function renderPatientAdmins(){
+            ensureGhAdminsShape();
+            renderChipList(patientAdminsList, ghAdmins.patientAdmins, (value)=>{
+                ghAdmins.patientAdmins = ghAdmins.patientAdmins.filter(v => normalizeText(v) !== normalizeText(value));
+                renderPatientAdmins();
+            });
+        }
+        function clearAdminForm(){
+            editingAdminIndex = -1;
+            adminEditUsername.value = '';
+            adminEditPassword.value = '';
+            adminEditRoles.value = '';
+        }
+        function editAdminAt(index){
+            ensureGhAdminsShape();
+            const a = ghAdmins.admins[index];
+            if (!a) return;
+            editingAdminIndex = index;
+            adminEditUsername.value = a.username || '';
+            adminEditPassword.value = '';
+            adminEditRoles.value = (a.roles||[]).join(', ');
+        }
+        async function computeSha256Hex(val){
+            if (!val) return '';
+            try{
+                if (window.AdminAuth && typeof AdminAuth.sha256Hex === 'function'){
+                    return await AdminAuth.sha256Hex(val);
+                }
+            }catch(_){/* ignore */}
+            if (window.crypto && crypto.subtle && window.TextEncoder){
+                const enc = new TextEncoder();
+                const buf = await crypto.subtle.digest('SHA-256', enc.encode(val));
+                return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+            }
+            throw new Error('Şifre karması için uygun bir yöntem bulunamadı. Lütfen AdminAuth skripti yüklü olsun.');
+        }
+        function upsertAdminFromForm(){
+            ensureGhAdminsShape();
+            const username = sanitizeString(adminEditUsername.value);
+            const roles = toRolesArray(adminEditRoles.value);
+            const newPassword = adminEditPassword.value;
+            if (!username){ showStatus('Kullanıcı adı girin.', 'error'); return; }
+
+            // Duplicate check (case/diacritics insensitive)
+            const existingIdx = findAdminIndexByUsername(username);
+            if (editingAdminIndex === -1 && existingIdx !== -1){
+                showStatus('Bu kullanıcı zaten mevcut.', 'error');
+                return;
+            }
+            if (editingAdminIndex >= 0){
+                const otherIdx = existingIdx;
+                if (otherIdx !== -1 && otherIdx !== editingAdminIndex){
+                    showStatus('Bu kullanıcı adı başka bir kayıtta var.', 'error');
+                    return;
+                }
+            }
+
+            const apply = async ()=>{
+                if (editingAdminIndex === -1){
+                    const admin = { username, roles };
+                    if (newPassword){ admin.passwordHash = await computeSha256Hex(newPassword); }
+                    else { showStatus('Yeni admin için şifre girilmeli.', 'error'); return; }
+                    ghAdmins.admins.push(admin);
+                } else {
+                    const target = ghAdmins.admins[editingAdminIndex];
+                    target.username = username;
+                    target.roles = roles;
+                    if (newPassword){ target.passwordHash = await computeSha256Hex(newPassword); }
+                }
+                clearAdminForm();
+                renderAdminsList();
+                showStatus('Admin kaydı hazırlandı (henüz kaydetmediniz).', 'success');
+            };
+            apply().catch(err=> showStatus(err.message || 'İşlem başarısız.', 'error'));
+        }
+        function addPatientAdmin(){
+            ensureGhAdminsShape();
+            const val = sanitizeString(patientAdminInput.value);
+            if (!val) return;
+            const exists = ghAdmins.patientAdmins.some(v => normalizeText(v) === normalizeText(val));
+            if (!exists){ ghAdmins.patientAdmins.push(val); renderPatientAdmins(); showStatus('Hasta admin eklendi (henüz kaydetmediniz).', 'success'); }
+            patientAdminInput.value = '';
+        }
+        function reloadRemoteAdminsConfig(){
+            try{
+                const s = document.createElement('script');
+                s.src = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`;
+                s.onload = ()=>{ try { loadAdminsRuntime(); renderAdminsList(); renderPatientAdmins(); showStatus('Uzaktan admins.js yeniden yüklendi.', 'info'); } catch(_){} };
+                s.onerror = ()=>{};
+                document.head.appendChild(s);
+            }catch(_){/* noop */}
+        }
+        async function ensureAdminsSha(){
+            if (!adminsSha){ await fetchAdminsSha(); }
+        }
+        async function saveAdminsToGitHub(){
+            const token = githubTokenInput.value.trim();
+            if (!token){ showStatus('Admins dosyasını kaydetmek için GitHub token gerekli.', 'error'); return; }
+            ensureGhAdminsShape();
+            const contentJs = `window.GH_ADMINS = ${JSON.stringify(ghAdmins, null, 2)};\n`;
+            const endpoint = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADMINS_PATH}`;
+            const encoded = btoa(unescape(encodeURIComponent(contentJs)));
+            const body = { message: 'Admin panelinden admins.js güncellemesi', content: encoded, branch: SETTINGS_BRANCH };
+            await ensureAdminsSha();
+            if (adminsSha) body.sha = adminsSha;
+            try{
+                saveAdminsFileBtn.disabled = true;
+                saveAdminsFileBtn.textContent = 'Kaydediliyor...';
+                showStatus('admins.js GitHub üzerinde güncelleniyor...', 'info');
+                let res = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok){
+                    // Olası sha hatasında bir kez daha dene
+                    const firstErr = await res.json().catch(()=>({}));
+                    if (res.status === 409 || String(firstErr?.message||'').toLowerCase().includes('sha')){
+                        await fetchAdminsSha();
+                        const retryBody = { ...body, sha: adminsSha };
+                        res = await fetch(endpoint, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/vnd.github+json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(retryBody)
+                        });
+                    }
+                }
+                if (!res.ok){
+                    const eb = await res.json().catch(()=>({}));
+                    throw new Error(eb.message || `Hata: ${res.status}`);
+                }
+                const data = await res.json();
+                adminsSha = data.content?.sha || adminsSha;
+                showStatus('admins.js kaydedildi. Doğrulanıyor...', 'success');
+                // Doğrula ve gerekirse uzaktan konfigi yeniden yükle
+                try{
+                    const verifyRes = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${ADMINS_PATH}?t=${Date.now()}`);
+                    if (verifyRes.ok){
+                        const txt = await verifyRes.text();
+                        const anyUser = (ghAdmins.admins[ghAdmins.admins.length-1]||{}).username || '';
+                        if (anyUser && txt.includes(anyUser)){
+                            showStatus('Değişiklik doğrulandı ve yansıtıldı.', 'success');
+                        } else {
+                            showStatus('Kaydedildi ancak tarayıcı önbelleği olabilir. Sayfayı yenileyin.', 'info');
+                        }
+                    }
+                }catch(_){/* ignore */}
+                reloadRemoteAdminsConfig();
+            }catch(err){
+                showStatus(err.message || 'admins.js kaydedilemedi.', 'error');
+            } finally {
+                saveAdminsFileBtn.disabled = false;
+                saveAdminsFileBtn.textContent = 'Admins Dosyasını Kaydet';
+            }
+        }
+        function attachAdminsUIHandlers(){
+            if (adminSaveBtn) adminSaveBtn.addEventListener('click', upsertAdminFromForm);
+            if (adminClearBtn) adminClearBtn.addEventListener('click', clearAdminForm);
+            if (patientAdminAddBtn) patientAdminAddBtn.addEventListener('click', addPatientAdmin);
+            if (patientAdminInput) patientAdminInput.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); addPatientAdmin(); } });
+            if (saveAdminsFileBtn) saveAdminsFileBtn.addEventListener('click', saveAdminsToGitHub);
+            if (forceReloginBtn) forceReloginBtn.addEventListener('click', ()=>{
+                const u = new URL(location.href);
+                u.searchParams.set('relogin','1');
+                location.href = u.toString();
+            });
+        }
+
+        function setLoadingState(active) {
+            isLoading = active;
+            const disabled = active || isSaving;
+            [defaultAlternativeCountInput, enableTagFilterInput, tagExclusionInput,
+                roleExclusionInput, categoryExclusionInput, rotationEnabledInput,
+                rotationChunkSizeInput, rotationResetDayInput, githubTokenInput,
+                saveSettingsButton, reloadButton, clearTokenButton]
+                .forEach(element => {
+                    element.disabled = !!disabled;
+                    if (element.tagName === 'INPUT' && element.type !== 'checkbox') {
+                        element.classList.toggle('disabled', !!disabled && element !== githubTokenInput);
+                    }
+                });
+        }
+
+        function setSavingState(active) {
+            isSaving = active;
+            const disabled = active || isLoading;
+            saveSettingsButton.disabled = !!disabled;
+            reloadButton.disabled = !!disabled;
+        }
+
+        function ensureSorted(values) {
+            return values.sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }));
+        }
+
+        function renderChipList(container, values, onRemove) {
+            container.innerHTML = '';
+            if (!values || values.length === 0) {
+                const hint = document.createElement('span');
+                hint.className = 'empty-hint';
+                hint.textContent = 'Henüz eklenmedi.';
+                container.appendChild(hint);
+                return;
+            }
+            const sanitized = sanitizeStringList(values);
+            ensureSorted(sanitized);
+            sanitized.forEach(value => {
+                const chip = document.createElement('span');
+                chip.className = 'settings-chip';
+                chip.textContent = value;
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = '×';
+                removeBtn.setAttribute('aria-label', `${value} kaydını sil`);
+                removeBtn.addEventListener('click', () => onRemove(value));
+                chip.appendChild(removeBtn);
+                container.appendChild(chip);
+            });
+        }
+
+        function addValueToList(list, rawValue) {
+            if (!rawValue) return false;
+            const trimmed = sanitizeString(rawValue);
+            if (!trimmed) return false;
+            const normalized = normalizeText(trimmed);
+            if (!normalized) return false;
+            const exists = list.some(item => normalizeText(item) === normalized);
+            if (exists) return false;
+            list.push(trimmed);
+            return true;
+        }
+
+        function buildSettingsDraft() {
+            const rotation = appSettings.rotation || {};
+            const filterCriteria = appSettings.filterCriteria || {};
+            
+            return {
+                defaultAlternativeCount: Number.isFinite(appSettings.defaultAlternativeCount) ? appSettings.defaultAlternativeCount : 3,
+                enableTagFilter: !!appSettings.enableTagFilter,
+                calorieTolerancePercent: Number.isFinite(appSettings.calorieTolerancePercent) ? appSettings.calorieTolerancePercent : 5,
+                templateReuseWeeks: Number.isFinite(appSettings.templateReuseWeeks) ? appSettings.templateReuseWeeks : 4,
+                tagExclusions: sanitizeStringList(Array.isArray(appSettings.tagExclusions) ? appSettings.tagExclusions : []),
+                tagExemptions: {
+                    roles: sanitizeStringList(Array.isArray(appSettings.tagExemptions?.roles) ? appSettings.tagExemptions.roles : []),
+                    categories: sanitizeStringList(Array.isArray(appSettings.tagExemptions?.categories) ? appSettings.tagExemptions.categories : [])
+                },
+                rotation: {
+                    enabled: rotation.enabled !== undefined ? !!rotation.enabled : true,
+                    chunkSize: Number.isFinite(rotation.chunkSize) && rotation.chunkSize > 0 ? rotation.chunkSize : 3,
+                    resetDay: Number.isFinite(rotation.resetDay) ? rotation.resetDay : ''
+                },
+                filterCriteria: {
+                    role: {
+                        visible: filterCriteria.role?.visible !== undefined ? !!filterCriteria.role.visible : true,
+                        mode: filterCriteria.role?.mode || 'optional',
+                        defaultState: filterCriteria.role?.defaultState || 'active'
+                    },
+                    dietType: {
+                        visible: filterCriteria.dietType?.visible !== undefined ? !!filterCriteria.dietType.visible : true,
+                        mode: filterCriteria.dietType?.mode || 'optional',
+                        defaultState: filterCriteria.dietType?.defaultState || 'inactive'
+                    },
+                    category: {
+                        visible: filterCriteria.category?.visible !== undefined ? !!filterCriteria.category.visible : false,
+                        mode: filterCriteria.category?.mode || 'optional',
+                        defaultState: filterCriteria.category?.defaultState || 'inactive'
+                    },
+                    season: {
+                        visible: filterCriteria.season?.visible !== undefined ? !!filterCriteria.season.visible : false,
+                        mode: filterCriteria.season?.mode || 'optional',
+                        defaultState: filterCriteria.season?.defaultState || 'inactive'
+                    },
+                    mealType: {
+                        visible: filterCriteria.mealType?.visible !== undefined ? !!filterCriteria.mealType.visible : false,
+                        mode: filterCriteria.mealType?.mode || 'optional',
+                        defaultState: filterCriteria.mealType?.defaultState || 'inactive'
+                    }
+                },
+                badgeVisibility: {
+                    role: appSettings.badgeVisibility?.role !== undefined ? appSettings.badgeVisibility.role : true,
+                    dietType: appSettings.badgeVisibility?.dietType !== undefined ? appSettings.badgeVisibility.dietType : true,
+                    category: appSettings.badgeVisibility?.category !== undefined ? appSettings.badgeVisibility.category : false,
+                    season: appSettings.badgeVisibility?.season !== undefined ? appSettings.badgeVisibility.season : false,
+                    mealType: appSettings.badgeVisibility?.mealType !== undefined ? appSettings.badgeVisibility.mealType : false,
+                    tags: appSettings.badgeVisibility?.tags !== undefined ? appSettings.badgeVisibility.tags : false
+                },
+                featureVisibility: {
+                    pdfExportButton: appSettings.featureVisibility?.pdfExportButton !== undefined ? appSettings.featureVisibility.pdfExportButton : true
+                },
+                scoreCriteria: {
+                    activeByDefault: appSettings.scoreCriteria?.activeByDefault ?? ['protein', 'fat']
+                },
+                scoringMode: appSettings.scoringMode || 'simple',
+                sensitivityDivider: appSettings.sensitivityDivider || 10,
+                dietFormulas: {
+                    ketojenik: {
+                        carb: appSettings.dietFormulas?.ketojenik?.carb ?? 0.3,
+                        protein: appSettings.dietFormulas?.ketojenik?.protein ?? 0.8,
+                        fat: appSettings.dietFormulas?.ketojenik?.fat ?? 1.2
+                    },
+                    lowcarb: {
+                        carb: appSettings.dietFormulas?.lowcarb?.carb ?? 0.6,
+                        protein: appSettings.dietFormulas?.lowcarb?.protein ?? 0.8,
+                        fat: appSettings.dietFormulas?.lowcarb?.fat ?? 1.0
+                    },
+                    activityMultipliers: {
+                        1: appSettings.dietFormulas?.activityMultipliers?.[1] ?? 0.8,
+                        2: appSettings.dietFormulas?.activityMultipliers?.[2] ?? 0.9,
+                        3: appSettings.dietFormulas?.activityMultipliers?.[3] ?? 1.0,
+                        4: appSettings.dietFormulas?.activityMultipliers?.[4] ?? 1.1,
+                        5: appSettings.dietFormulas?.activityMultipliers?.[5] ?? 1.2
+                    }
+                }
+            };
+        }
+
+        function populateSettingsForm() {
+            // GitHub'dan yüklenen appSettings'i kullan
+            console.log('📥 populateSettingsForm - appSettings:', appSettings);
+            settingsDraft = buildSettingsDraft(); // appSettings'den oluştur
+            
+            console.log('✅ settingsDraft oluşturuldu:', {
+                scoringMode: settingsDraft.scoringMode,
+                badgeVisibility: settingsDraft.badgeVisibility,
+                scoreCriteria: settingsDraft.scoreCriteria
+            });
+            
+            defaultAlternativeCountInput.value = settingsDraft.defaultAlternativeCount;
+            enableTagFilterInput.checked = settingsDraft.enableTagFilter;
+            calorieToleranceInput.value = settingsDraft.calorieTolerancePercent;
+            const templateReuseInput = document.getElementById('templateReuseWeeksInput');
+            if (templateReuseInput) templateReuseInput.value = settingsDraft.templateReuseWeeks;
+            rotationEnabledInput.checked = settingsDraft.rotation.enabled;
+            rotationChunkSizeInput.value = settingsDraft.rotation.chunkSize;
+            rotationResetDayInput.value = settingsDraft.rotation.resetDay === '' ? '' : settingsDraft.rotation.resetDay;
+            githubTokenInput.value = getStoredToken();
+
+            // Diyet Formül Ayarlarını Doldur
+            if (settingsDraft.dietFormulas) {
+                ketoCarb.value = settingsDraft.dietFormulas.ketojenik.carb;
+                ketoProtein.value = settingsDraft.dietFormulas.ketojenik.protein;
+                ketoFat.value = settingsDraft.dietFormulas.ketojenik.fat;
+                lowcarbCarb.value = settingsDraft.dietFormulas.lowcarb.carb;
+                lowcarbProtein.value = settingsDraft.dietFormulas.lowcarb.protein;
+                lowcarbFat.value = settingsDraft.dietFormulas.lowcarb.fat;
+                activity1.value = settingsDraft.dietFormulas.activityMultipliers[1];
+                activity2.value = settingsDraft.dietFormulas.activityMultipliers[2];
+                activity3.value = settingsDraft.dietFormulas.activityMultipliers[3];
+                activity4.value = settingsDraft.dietFormulas.activityMultipliers[4];
+                activity5.value = settingsDraft.dietFormulas.activityMultipliers[5];
+            }
+
+            // Filtreleme Kriterleri Ayarlarını Doldur
+            if (settingsDraft.filterCriteria) {
+                criteriaRoleVisible.checked = settingsDraft.filterCriteria.role?.visible ?? true;
+                criteriaRoleMode.value = settingsDraft.filterCriteria.role?.mode ?? 'optional';
+                criteriaRoleDefault.value = settingsDraft.filterCriteria.role?.defaultState ?? 'active';
+                
+                criteriaDietTypeVisible.checked = settingsDraft.filterCriteria.dietType?.visible ?? true;
+                criteriaDietTypeMode.value = settingsDraft.filterCriteria.dietType?.mode ?? 'optional';
+                criteriaDietTypeDefault.value = settingsDraft.filterCriteria.dietType?.defaultState ?? 'inactive';
+                
+                criteriaCategoryVisible.checked = settingsDraft.filterCriteria.category?.visible ?? false;
+                criteriaCategoryMode.value = settingsDraft.filterCriteria.category?.mode ?? 'optional';
+                criteriaCategoryDefault.value = settingsDraft.filterCriteria.category?.defaultState ?? 'inactive';
+                
+                criteriaSeasonVisible.checked = settingsDraft.filterCriteria.season?.visible ?? false;
+                criteriaSeasonMode.value = settingsDraft.filterCriteria.season?.mode ?? 'optional';
+                criteriaSeasonDefault.value = settingsDraft.filterCriteria.season?.defaultState ?? 'inactive';
+                
+                criteriaMealTypeVisible.checked = settingsDraft.filterCriteria.mealType?.visible ?? false;
+                criteriaMealTypeMode.value = settingsDraft.filterCriteria.mealType?.mode ?? 'optional';
+                criteriaMealTypeDefault.value = settingsDraft.filterCriteria.mealType?.defaultState ?? 'inactive';
+            }
+
+            // Rozet Gösterimi Ayarlarını Doldur - GitHub'dan gelen değerleri kullan
+            if (settingsDraft.badgeVisibility) {
+                // Nullish coalescing kullanma - GitHub'daki false değerleri korumak için
+                document.getElementById('badgeRoleVisible').checked = settingsDraft.badgeVisibility.role === true;
+                document.getElementById('badgeDietTypeVisible').checked = settingsDraft.badgeVisibility.dietType === true;
+                document.getElementById('badgeCategoryVisible').checked = settingsDraft.badgeVisibility.category === true;
+                document.getElementById('badgeSeasonVisible').checked = settingsDraft.badgeVisibility.season === true;
+                document.getElementById('badgeMealTypeVisible').checked = settingsDraft.badgeVisibility.mealType === true;
+                document.getElementById('badgeTagsVisible').checked = settingsDraft.badgeVisibility.tags === true;
+            } else {
+                // badgeVisibility yoksa tüm rozetleri kapat
+                document.getElementById('badgeRoleVisible').checked = false;
+                document.getElementById('badgeDietTypeVisible').checked = false;
+                document.getElementById('badgeCategoryVisible').checked = false;
+                document.getElementById('badgeSeasonVisible').checked = false;
+                document.getElementById('badgeMealTypeVisible').checked = false;
+                document.getElementById('badgeTagsVisible').checked = false;
+            }
+            
+            // Özellik Görünürlüğü Ayarlarını Doldur
+            if (settingsDraft.featureVisibility) {
+                document.getElementById('pdfExportVisible').checked = settingsDraft.featureVisibility.pdfExportButton === true;
+            } else {
+                document.getElementById('pdfExportVisible').checked = true; // Varsayılan açık
+            }
+
+            // Benzerlik Skoru Kriterleri Ayarlarını Doldur
+            if (settingsDraft.scoreCriteria && Array.isArray(settingsDraft.scoreCriteria.activeByDefault)) {
+                const activeScoreCriteria = settingsDraft.scoreCriteria.activeByDefault;
+                scoreCriteriaCalories.checked = activeScoreCriteria.includes('calories');
+                scoreCriteriaProtein.checked = activeScoreCriteria.includes('protein');
+                scoreCriteriaCarbs.checked = activeScoreCriteria.includes('carbs');
+                scoreCriteriaFat.checked = activeScoreCriteria.includes('fat');
+            } else {
+                // Varsayılan: protein ve fat aktif
+                scoreCriteriaCalories.checked = false;
+                scoreCriteriaProtein.checked = true;
+                scoreCriteriaCarbs.checked = false;
+                scoreCriteriaFat.checked = true;
+            }
+            
+            // Benzerlik Hesaplama Modu Ayarlarını Doldur
+            const scoringModeSimple = document.getElementById('scoringModeSimple');
+            const scoringModeAdvanced = document.getElementById('scoringModeAdvanced');
+            const sensitivitySlider = document.getElementById('sensitivityDivider');
+            const sensitivityValueSpan = document.getElementById('sensitivityValue');
+            
+            const mode = settingsDraft.scoringMode || 'simple';
+            if (scoringModeSimple && scoringModeAdvanced) {
+                if (mode === 'advanced') {
+                    scoringModeAdvanced.checked = true;
+                } else {
+                    scoringModeSimple.checked = true;
+                }
+            }
+            
+            if (sensitivitySlider && sensitivityValueSpan) {
+                const dividerValue = settingsDraft.sensitivityDivider || 10;
+                sensitivitySlider.value = dividerValue;
+                sensitivityValueSpan.textContent = dividerValue;
+            }
+            
+            // Sensitivity container görünürlüğünü güncelle
+            const sensitivityContainer = document.getElementById('sensitivityContainer');
+            if (sensitivityContainer) {
+                sensitivityContainer.style.display = mode === 'advanced' ? 'block' : 'none';
+            }
+
+            renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+            renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+            renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+
+            updateRotationFieldStates();
+        }
+
+        function removeTagExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExclusions = settingsDraft.tagExclusions.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+        }
+
+        function removeRoleExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExemptions.roles = settingsDraft.tagExemptions.roles.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+        }
+
+        function removeCategoryExclusion(value) {
+            if (!settingsDraft) return;
+            settingsDraft.tagExemptions.categories = settingsDraft.tagExemptions.categories.filter(item => normalizeText(item) !== normalizeText(value));
+            renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+        }
+
+        function collectPayloadFromForm() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const parsedDefault = parseInt(defaultAlternativeCountInput.value, 10);
+            const parsedChunk = parseInt(rotationChunkSizeInput.value, 10);
+            const parsedReset = rotationResetDayInput.value === '' ? '' : parseInt(rotationResetDayInput.value, 10);
+            const parsedTolerance = parseInt(calorieToleranceInput.value, 10);
+            const templateReuseInput = document.getElementById('templateReuseWeeksInput');
+            const parsedTemplateReuse = parseInt(templateReuseInput?.value, 10);
+
+            settingsDraft.defaultAlternativeCount = Number.isFinite(parsedDefault) && parsedDefault > 0 ? parsedDefault : 3;
+            settingsDraft.enableTagFilter = enableTagFilterInput.checked;
+            settingsDraft.calorieTolerancePercent = Number.isFinite(parsedTolerance) && parsedTolerance >= 0 ? parsedTolerance : 5;
+            settingsDraft.templateReuseWeeks = Number.isFinite(parsedTemplateReuse) && parsedTemplateReuse >= 1 ? parsedTemplateReuse : 4;
+            settingsDraft.rotation.enabled = rotationEnabledInput.checked;
+            settingsDraft.rotation.chunkSize = Number.isFinite(parsedChunk) && parsedChunk > 0 ? parsedChunk : settingsDraft.defaultAlternativeCount;
+            settingsDraft.rotation.resetDay = Number.isFinite(parsedReset) && parsedReset >= 0 && parsedReset <= 6 ? parsedReset : '';
+
+            // Filtreleme Kriterleri Güncelle
+            settingsDraft.filterCriteria.role.visible = criteriaRoleVisible.checked;
+            settingsDraft.filterCriteria.role.mode = criteriaRoleMode.value;
+            settingsDraft.filterCriteria.role.defaultState = criteriaRoleDefault.value;
+            
+            settingsDraft.filterCriteria.dietType.visible = criteriaDietTypeVisible.checked;
+            settingsDraft.filterCriteria.dietType.mode = criteriaDietTypeMode.value;
+            settingsDraft.filterCriteria.dietType.defaultState = criteriaDietTypeDefault.value;
+            
+            settingsDraft.filterCriteria.category.visible = criteriaCategoryVisible.checked;
+            settingsDraft.filterCriteria.category.mode = criteriaCategoryMode.value;
+            settingsDraft.filterCriteria.category.defaultState = criteriaCategoryDefault.value;
+            
+            settingsDraft.filterCriteria.season.visible = criteriaSeasonVisible.checked;
+            settingsDraft.filterCriteria.season.mode = criteriaSeasonMode.value;
+            settingsDraft.filterCriteria.season.defaultState = criteriaSeasonDefault.value;
+            
+            settingsDraft.filterCriteria.mealType.visible = criteriaMealTypeVisible.checked;
+            settingsDraft.filterCriteria.mealType.mode = criteriaMealTypeMode.value;
+            settingsDraft.filterCriteria.mealType.defaultState = criteriaMealTypeDefault.value;
+
+            // Benzerlik Skoru Kriterleri Güncelle
+            const activeScoreCriteria = [];
+            if (scoreCriteriaCalories.checked) activeScoreCriteria.push('calories');
+            if (scoreCriteriaProtein.checked) activeScoreCriteria.push('protein');
+            if (scoreCriteriaCarbs.checked) activeScoreCriteria.push('carbs');
+            if (scoreCriteriaFat.checked) activeScoreCriteria.push('fat');
+            settingsDraft.scoreCriteria = {
+                activeByDefault: activeScoreCriteria
+            };
+            
+            // Benzerlik Hesaplama Modu Güncelle
+            const scoringModeSimple = document.getElementById('scoringModeSimple');
+            const scoringModeAdvanced = document.getElementById('scoringModeAdvanced');
+            const sensitivitySlider = document.getElementById('sensitivityDivider');
+            
+            settingsDraft.scoringMode = scoringModeAdvanced && scoringModeAdvanced.checked ? 'advanced' : 'simple';
+            settingsDraft.sensitivityDivider = sensitivitySlider ? parseInt(sensitivitySlider.value, 10) : 10;
+
+            // Diyet Formülleri Güncelle
+            settingsDraft.dietFormulas.ketojenik.carb = parseFloat(ketoCarb.value) || 0.3;
+            settingsDraft.dietFormulas.ketojenik.protein = parseFloat(ketoProtein.value) || 0.8;
+            settingsDraft.dietFormulas.ketojenik.fat = parseFloat(ketoFat.value) || 1.2;
+            settingsDraft.dietFormulas.lowcarb.carb = parseFloat(lowcarbCarb.value) || 0.6;
+            settingsDraft.dietFormulas.lowcarb.protein = parseFloat(lowcarbProtein.value) || 0.8;
+            settingsDraft.dietFormulas.lowcarb.fat = parseFloat(lowcarbFat.value) || 1.0;
+            settingsDraft.dietFormulas.activityMultipliers[1] = parseFloat(activity1.value) || 0.8;
+            settingsDraft.dietFormulas.activityMultipliers[2] = parseFloat(activity2.value) || 0.9;
+            settingsDraft.dietFormulas.activityMultipliers[3] = parseFloat(activity3.value) || 1.0;
+            settingsDraft.dietFormulas.activityMultipliers[4] = parseFloat(activity4.value) || 1.1;
+            settingsDraft.dietFormulas.activityMultipliers[5] = parseFloat(activity5.value) || 1.2;
+
+            const rotationPayload = {
+                enabled: settingsDraft.rotation.enabled,
+                chunkSize: settingsDraft.rotation.chunkSize
+            };
+            if (settingsDraft.rotation.resetDay !== '') {
+                rotationPayload.resetDay = settingsDraft.rotation.resetDay;
+            }
+
+            // Rozet Görünürlük Ayarlarını Topla
+            const badgeVisibilityPayload = {
+                role: document.getElementById('badgeRoleVisible')?.checked ?? true,
+                dietType: document.getElementById('badgeDietTypeVisible')?.checked ?? true,
+                category: document.getElementById('badgeCategoryVisible')?.checked ?? false,
+                season: document.getElementById('badgeSeasonVisible')?.checked ?? false,
+                mealType: document.getElementById('badgeMealTypeVisible')?.checked ?? false,
+                tags: document.getElementById('badgeTagsVisible')?.checked ?? false
+            };
+
+            return {
+                ...appSettings,
+                defaultAlternativeCount: settingsDraft.defaultAlternativeCount,
+                enableTagFilter: settingsDraft.enableTagFilter,
+                calorieTolerancePercent: settingsDraft.calorieTolerancePercent,
+                templateReuseWeeks: settingsDraft.templateReuseWeeks,
+                tagExclusions: sanitizeStringList(settingsDraft.tagExclusions),
+                tagExemptions: {
+                    roles: sanitizeStringList(settingsDraft.tagExemptions.roles),
+                    categories: sanitizeStringList(settingsDraft.tagExemptions.categories)
+                },
+                rotation: rotationPayload,
+                filterCriteria: settingsDraft.filterCriteria,
+                scoreCriteria: settingsDraft.scoreCriteria,
+                scoringMode: settingsDraft.scoringMode || 'simple',
+                sensitivityDivider: settingsDraft.sensitivityDivider || 10,
+                dietFormulas: settingsDraft.dietFormulas,
+                badgeVisibility: badgeVisibilityPayload,
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        function getStoredToken() {
+            try {
+                return window.localStorage ? (window.localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY) || '') : '';
+            } catch (error) {
+                console.warn('⚠️ Token okunamadı:', error);
+                return '';
+            }
+        }
+
+        function persistToken(token) {
+            try {
+                if (!window.localStorage) return;
+                if (token) window.localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
+                else window.localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);
+            } catch (error) {
+                console.warn('⚠️ Token kaydedilemedi:', error);
+            }
+        }
+
+        function updateRotationFieldStates() {
+            const isEnabled = rotationEnabledInput.checked;
+            rotationChunkSizeInput.disabled = !isEnabled;
+            rotationResetDayInput.disabled = !isEnabled;
+            rotationChunkSizeInput.classList.toggle('disabled', !isEnabled);
+            rotationResetDayInput.classList.toggle('disabled', !isEnabled);
+        }
+
+        function registerInputHandlers() {
+            tagExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddTagExclusion();
+                }
+            });
+            tagExclusionInput.addEventListener('blur', tryAddTagExclusion);
+
+            roleExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddRoleExclusion();
+                }
+            });
+            roleExclusionInput.addEventListener('blur', tryAddRoleExclusion);
+
+            categoryExclusionInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    tryAddCategoryExclusion();
+                }
+            });
+            categoryExclusionInput.addEventListener('blur', tryAddCategoryExclusion);
+
+            rotationEnabledInput.addEventListener('change', updateRotationFieldStates);
+            
+            // Scoring Mode ve Sensitivity Event Listeners
+            const scoringModeSimple = document.getElementById('scoringModeSimple');
+            const scoringModeAdvanced = document.getElementById('scoringModeAdvanced');
+            const sensitivityContainer = document.getElementById('sensitivityContainer');
+            const sensitivitySlider = document.getElementById('sensitivityDivider');
+            const sensitivityValueSpan = document.getElementById('sensitivityValue');
+            
+            // Mode değişince sensitivity container'ı göster/gizle
+            function updateSensitivityVisibility() {
+                if (scoringModeAdvanced && scoringModeAdvanced.checked) {
+                    sensitivityContainer.style.display = 'block';
+                } else {
+                    sensitivityContainer.style.display = 'none';
+                }
+            }
+            
+            if (scoringModeSimple) {
+                scoringModeSimple.addEventListener('change', updateSensitivityVisibility);
+            }
+            if (scoringModeAdvanced) {
+                scoringModeAdvanced.addEventListener('change', updateSensitivityVisibility);
+            }
+            
+            // Slider değeri değişince göster
+            if (sensitivitySlider && sensitivityValueSpan) {
+                sensitivitySlider.addEventListener('input', () => {
+                    sensitivityValueSpan.textContent = sensitivitySlider.value;
+                });
+            }
+            
+            // İlk yükleme
+            updateSensitivityVisibility();
+        }
+
+        function tryAddTagExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExclusions, tagExclusionInput.value);
+            if (added) {
+                renderChipList(tagExclusionList, settingsDraft.tagExclusions, removeTagExclusion);
+                tagExclusionInput.value = '';
+                showStatus('Tag listesine eklendi.', 'success');
+            }
+        }
+
+        function tryAddRoleExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExemptions.roles, roleExclusionInput.value);
+            if (added) {
+                renderChipList(roleExclusionList, settingsDraft.tagExemptions.roles, removeRoleExclusion);
+                roleExclusionInput.value = '';
+                showStatus('Rol listesine eklendi.', 'success');
+            }
+        }
+
+        function tryAddCategoryExclusion() {
+            if (!settingsDraft) settingsDraft = buildSettingsDraft();
+            const added = addValueToList(settingsDraft.tagExemptions.categories, categoryExclusionInput.value);
+            if (added) {
+                renderChipList(categoryExclusionList, settingsDraft.tagExemptions.categories, removeCategoryExclusion);
+                categoryExclusionInput.value = '';
+                showStatus('Kategori listesine eklendi.', 'success');
+            }
+        }
+
+        async function loadSettingsFromGitHub() {
+            setLoadingState(true);
+            showStatus('Ayarlar yükleniyor...', 'info');
+            settingsSha = null;
+            const token = githubTokenInput.value.trim();
+            
+            try {
+                const headers = {
+                    'Accept': 'application/vnd.github+json'
+                };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SETTINGS_PATH}?ref=${SETTINGS_BRANCH}`, {
+                    headers: headers
+                });
+                if (!response.ok) throw new Error(`Ayarlar yüklenemedi: ${response.status}`);
+                const data = await response.json();
+                settingsSha = data.sha;
+                const decoded = atob((data.content || '').replace(/\n/g, ''));
+                appSettings = { ...defaultSettings, ...JSON.parse(decoded) };
+                
+                // 🔍 DEBUG: GitHub'dan yüklenen ham veri
+                console.log('📥 GitHub config.json RAW:', {
+                    scoringMode: appSettings.scoringMode,
+                    sensitivityDivider: appSettings.sensitivityDivider,
+                    badgeVisibility: appSettings.badgeVisibility,
+                    scoreCriteria: appSettings.scoreCriteria
+                });
+                
+                appSettings.tagExclusions = sanitizeStringList(appSettings.tagExclusions);
+                appSettings.tagExemptions = {
+                    roles: sanitizeStringList(appSettings.tagExemptions?.roles),
+                    categories: sanitizeStringList(appSettings.tagExemptions?.categories)
+                };
+                showStatus('Ayarlar GitHub üzerinden yüklendi.', 'success');
+            } catch (error) {
+                console.warn('⚠️ Ayarlar API ile alınamadı:', error.message);
+                try {
+                    const fallback = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SETTINGS_BRANCH}/${SETTINGS_PATH}`);
+                    if (fallback.ok) {
+                        const fallbackSettings = await fallback.json();
+                        appSettings = { ...defaultSettings, ...fallbackSettings };
+                        appSettings.tagExclusions = sanitizeStringList(appSettings.tagExclusions);
+                        appSettings.tagExemptions = {
+                            roles: sanitizeStringList(appSettings.tagExemptions?.roles),
+                            categories: sanitizeStringList(appSettings.tagExemptions?.categories)
+                        };
+                        showStatus('Ham dosyadan yüklendi (salt okunur).', 'info');
+                    } else {
+                        appSettings = { ...defaultSettings };
+                        showStatus('Ayar dosyası bulunamadı. Varsayılanlar kullanılacak.', 'error');
+                    }
+                } catch (fallbackError) {
+                    console.warn('⚠️ Ayarların ham dosyası da alınamadı:', fallbackError.message);
+                    appSettings = { ...defaultSettings };
+                    showStatus('Ayarlar yüklenemedi. Varsayılan değerler kullanılıyor.', 'error');
+                }
+            } finally {
+                setLoadingState(false);
+                populateSettingsForm();
+            }
+        }
+
+        async function saveSettingsToGitHub(payload, token) {
+            const repo = 'mustafasacar35/lipodem-takip-paneli';
+            const path = 'settings/config.json';
+            const branch = 'main';
+            
+            // Önce mevcut dosyanın SHA'sını al
+            let sha = null;
+            try {
+                const checkUrl = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`;
+                const checkResp = await fetch(checkUrl, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+                if (checkResp.ok) {
+                    const data = await checkResp.json();
+                    sha = data.sha;
+                }
+            } catch (e) {
+                console.warn('SHA alınamadı, yeni dosya oluşturulacak');
+            }
+
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+            const updateUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
+            
+            const body = {
+                message: `Ayarlar güncellendi (${new Date().toLocaleString('tr-TR')})`,
+                content: content,
+                branch: branch
+            };
+            
+            if (sha) body.sha = sha;
+
+            const response = await fetch(updateUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub güncellemesi başarısız: ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+
+        // Local dosyayı güncelle (File System Access API - sadece modern tarayıcılarda çalışır)
+        async function saveSettingsLocally(payload) {
+            // Not: Bu sadece kullanıcı dosya erişimi verirse çalışır
+            // Otomatik çalışmaz, bu yüzden hata olursa JSON indirme yoluna geçeriz
+            
+            const jsonString = JSON.stringify(payload, null, 4);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            
+            // Dosyayı kaydetmek için handle oluştur
+            if ('showSaveFilePicker' in window) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: 'config.json',
+                    types: [{
+                        description: 'JSON Files',
+                        accept: { 'application/json': ['.json'] }
+                    }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                console.log('✅ Local dosya güncellendi');
+            } else {
+                throw new Error('File System Access API desteklenmiyor');
+            }
+        }
+
+        // JSON dosyasını indir
+        function downloadConfigJSON(payload) {
+            const jsonString = JSON.stringify(payload, null, 4);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            console.log('📥 config.json indirildi - lütfen settings/ klasörüne kopyalayın');
+        }
+
+        async function fetchSuggestions() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/food_list.json');
+                if (!response.ok) return;
+                const data = await response.json();
+                availableRoles = new Set();
+                availableCategories = new Set();
+                if (Array.isArray(data.categories)) {
+                    data.categories.forEach(category => {
+                        if (Array.isArray(category.items)) {
+                            category.items.forEach(item => {
+                                const roleValue = sanitizeString(item.role);
+                                const categoryValue = sanitizeString(item.category);
+                                if (roleValue) availableRoles.add(roleValue);
+                                if (categoryValue) availableCategories.add(categoryValue);
+                            });
+                        }
+                    });
+                }
+                updateSuggestionPanels();
+            } catch (error) {
+                console.warn('⚠️ Rol/kategori önerileri alınamadı:', error.message);
+            }
+        }
+
+        function updateSuggestionPanels() {
+            const roleValues = ensureSorted(Array.from(availableRoles));
+            const categoryValues = ensureSorted(Array.from(availableCategories));
+
+            rolesDatalist.innerHTML = roleValues.map(value => `<option value="${value}"></option>`).join('');
+            categoriesDatalist.innerHTML = categoryValues.map(value => `<option value="${value}"></option>`).join('');
+
+            if (roleValues.length || categoryValues.length) {
+                suggestionsPanel.hidden = false;
+                roleSuggestions.innerHTML = roleValues.slice(0, 40).map(value => `<span>${value}</span>`).join('');
+                categorySuggestions.innerHTML = categoryValues.slice(0, 40).map(value => `<span>${value}</span>`).join('');
+            }
+        }
+
+        function attachActionHandlers() {
+            saveSettingsButton.addEventListener('click', async () => {
+                if (isSaving) return;
+                const token = githubTokenInput.value.trim();
+                if (!token) {
+                    showStatus('Kaydetmek için bir GitHub token gerekli.', 'error');
+                    return;
+                }
+                const payload = collectPayloadFromForm();
+                console.log('🔵 AYARLAR KAYDEDİLİYOR:');
+                console.log('   📊 Badge Visibility:', payload.badgeVisibility);
+                console.log('   🎯 Filter Criteria:', payload.filterCriteria);
+                console.log('   📝 Tam Payload:', payload);
+                try {
+                    setSavingState(true);
+                    saveSettingsButton.textContent = 'Kaydediliyor...';
+                    showStatus('GitHub üzerinde güncelleniyor...', 'info');
+                    
+                    // 1. GitHub'a kaydet
+                    const result = await saveSettingsToGitHub(payload, token);
+                    console.log('✅ GitHub\'a başarıyla kaydedildi!');
+                    console.log('   🏷️ Rozet Ayarları:', payload.badgeVisibility);
+                    
+                    // Rozet ayarlarının durumunu göster
+                    const enabledBadges = Object.entries(payload.badgeVisibility)
+                        .filter(([key, value]) => value)
+                        .map(([key]) => key);
+                    const disabledBadges = Object.entries(payload.badgeVisibility)
+                        .filter(([key, value]) => !value)
+                        .map(([key]) => key);
+                    
+                    console.log('   ✅ Aktif Rozetler:', enabledBadges);
+                    console.log('   ❌ Kapalı Rozetler:', disabledBadges);
+                    persistToken(token);
+                    settingsSha = result.content?.sha || settingsSha;
+                    appSettings = payload;
+                    
+                    // ✅ GitHub'a kaydedildi - local indirme yok
+                    showStatus('Ayarlar GitHub\'a kaydedildi.', 'success');
+                    
+                } catch (error) {
+                    console.error('❌ Ayarlar kaydedilemedi:', error);
+                    showStatus(error.message || 'Ayarlar kaydedilemedi.', 'error');
+                } finally {
+                    setSavingState(false);
+                    saveSettingsButton.textContent = 'Kaydet';
+                }
+            });
+
+            reloadButton.addEventListener('click', () => {
+                if (isSaving) return;
+                loadSettingsFromGitHub();
+            });
+
+            clearTokenButton.addEventListener('click', () => {
+                persistToken('');
+                githubTokenInput.value = '';
+                showStatus('Token yerel depolamadan temizlendi.', 'info');
+            });
+
+            // Template Upload Functionality
+            uploadTemplatesButton.addEventListener('click', async () => {
+                const file = templateFileInput.files[0];
+                if (!file) {
+                    showStatus('❌ Lütfen bir JSON dosyası seçin.', 'error');
+                    return;
+                }
+
+                if (!file.name.endsWith('.json')) {
+                    showStatus('❌ Lütfen sadece .json dosyası yükleyin.', 'error');
+                    return;
+                }
+
+                try {
+                    uploadTemplatesButton.disabled = true;
+                    uploadTemplatesButton.textContent = '⏳ Şablonlar yükleniyor...';
+                    showStatus('📥 Şablonlar okunuyor...', 'info');
+
+                    // Read file as text with UTF-8 encoding
+                    const fileContent = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = () => reject(new Error('Dosya okunamadı'));
+                        reader.readAsText(file, 'UTF-8');
+                    });
+
+                    // Parse JSON
+                    const parsedData = JSON.parse(fileContent);
+                    
+                    // Handle different JSON structures
+                    let newTemplates;
+                    if (Array.isArray(parsedData)) {
+                        // Direct array of templates
+                        newTemplates = parsedData;
+                    } else if (parsedData.templates && Array.isArray(parsedData.templates)) {
+                        // Object with templates array (exported format)
+                        newTemplates = parsedData.templates;
+                    } else {
+                        throw new Error('JSON dosyası bir şablon dizisi veya templates özelliği içeren obje olmalıdır');
+                    }
+
+                    showStatus('🔄 Mevcut şablonlar GitHub\'dan alınıyor...', 'info');
+
+                    // Get existing templates from GitHub (INDEX ONLY - NEW SYSTEM)
+                    const token = githubTokenInput.value.trim();
+                    if (!token) {
+                        throw new Error('GitHub token bulunamadı. Lütfen token girin.');
+                    }
+
+                    const templatesResponse = await fetch(
+                        'https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/templates/index.json',
+                        {
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        }
+                    );
+
+                    if (!templatesResponse.ok) {
+                        throw new Error('Mevcut şablon index\'i GitHub\'dan alınamadı');
+                    }
+
+                    const templatesData = await templatesResponse.json();
+                    // Properly decode UTF-8 content to preserve Turkish characters
+                    const existingContent = decodeURIComponent(escape(atob(templatesData.content)));
+                    const existingData = JSON.parse(existingContent);
+                    
+                    // Handle different JSON structures for existing templates
+                    let existingTemplates;
+                    if (Array.isArray(existingData)) {
+                        existingTemplates = existingData;
+                    } else if (existingData && typeof existingData === 'object' && existingData.templates && Array.isArray(existingData.templates)) {
+                        existingTemplates = existingData.templates;
+                    } else {
+                        console.warn('⚠️ GitHub\'dan alınan veri beklenmedik formatta, boş liste kullanılıyor');
+                        existingTemplates = [];
+                    }
+
+                    console.log(`📊 Mevcut şablon sayısı: ${existingTemplates.length}`);
+                    
+                    // Fix Turkish characters in existing templates if they are corrupted
+                    function fixTurkishInObject(obj) {
+                        if (typeof obj === 'string') {
+                            return fixTurkishChars(obj);
+                        } else if (Array.isArray(obj)) {
+                            return obj.map(item => fixTurkishInObject(item));
+                        } else if (obj && typeof obj === 'object') {
+                            const fixed = {};
+                            for (const [key, value] of Object.entries(obj)) {
+                                fixed[fixTurkishChars(key)] = fixTurkishInObject(value);
+                            }
+                            return fixed;
+                        }
+                        return obj;
+                    }
+                    
+                    // Check and fix existing templates for Turkish character corruption
+                    let fixedExistingTemplates = false;
+                    existingTemplates = existingTemplates.map(template => {
+                        const originalName = template.name || '';
+                        const fixedTemplate = fixTurkishInObject(template);
+                        
+                        // Check if template name contains corrupted Turkish characters
+                        if (originalName.includes('Ã') || originalName.includes('Ä') || originalName.includes('Å')) {
+                            console.log(`🔧 Türkçe karakter düzeltmesi: "${originalName}" → "${fixedTemplate.name}"`);
+                            fixedExistingTemplates = true;
+                        }
+                        
+                        return fixedTemplate;
+                    });
+                    
+                    if (fixedExistingTemplates) {
+                        console.log('✅ Mevcut şablonlarda Türkçe karakter düzeltmeleri yapıldı');
+                    }
+
+                    // Helper function to normalize Turkish text for comparison
+                    function normalizeTurkishText(text) {
+                        if (!text || typeof text !== 'string') return '';
+                        return fixTurkishChars(text)
+                            .toLowerCase()
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                    }
+
+                    // Helper function to generate detailed content hash for duplicate detection
+                    function getTemplateContentHash(template) {
+                        if (!template.ogunler || !Array.isArray(template.ogunler)) {
+                            console.warn('⚠️ Şablon öğün bilgisi eksik:', template.name || 'İsimsiz şablon');
+                            return '';
+                        }
+                        
+                        // Create detailed hash based on meal structure including all yemek properties
+                        const contentData = template.ogunler.map(ogun => ({
+                            ogunAdi: normalizeTurkishText(ogun.ogunAdi || ''),
+                            yemekler: (ogun.yemekler || []).map(yemek => {
+                                // Normalize food name for comparison - use multiple possible fields
+                                const foodName = normalizeTurkishText(
+                                    yemek.foodName || yemek.originalText || yemek.name || ''
+                                );
+                                
+                                return {
+                                    foodName: foodName,
+                                    originalText: normalizeTurkishText(yemek.originalText || ''),
+                                    calories: Math.round(parseFloat(yemek.calories) || 0),
+                                    protein: Math.round(parseFloat(yemek.protein) || 0),
+                                    carbs: Math.round(parseFloat(yemek.carbs) || 0),
+                                    fat: Math.round(parseFloat(yemek.fat) || 0),
+                                    // Include eşleşen yemek info if available
+                                    eslesenYemekName: yemek.eslesenYemek ? 
+                                        normalizeTurkishText(yemek.eslesenYemek.name || '') : '',
+                                    // Include any additional identifying fields
+                                    portion: yemek.portion || '',
+                                    unit: normalizeTurkishText(yemek.unit || '')
+                                };
+                            }).sort((a, b) => a.foodName.localeCompare(b.foodName))
+                        })).sort((a, b) => a.ogunAdi.localeCompare(b.ogunAdi));
+                        
+                        const hashString = JSON.stringify(contentData);
+                        console.log(`🔍 "${template.name}" için hash oluşturuldu (${hashString.length} karakter)`);
+                        return hashString;
+                    }
+                    
+                    // Enhanced function to check if templates have identical meal content
+                    function hasIdenticalMealContent(template1, template2) {
+                        if (!template1 || !template2) return false;
+                        
+                        const hash1 = getTemplateContentHash(template1);
+                        const hash2 = getTemplateContentHash(template2);
+                        
+                        // If either hash is empty, consider them different
+                        if (!hash1 || !hash2) {
+                            console.log(`⚠️ Hash boş: "${template1.name}" (${hash1 ? 'OK' : 'BOŞ'}) vs "${template2.name}" (${hash2 ? 'OK' : 'BOŞ'})`);
+                            return false;
+                        }
+                        
+                        // If hashes are identical, content is the same
+                        if (hash1 === hash2) {
+                            console.log(`🔍 İçerik eşleşmesi bulundu: "${template1.name}" ve "${template2.name}" aynı yemek içeriğine sahip`);
+                            return true;
+                        }
+                        
+                        return false;
+                    }
+
+                    // Function to check meal content difference (even one different line should allow addition)
+                    function hasDifferentMealContent(newTemplate, existingTemplates) {
+                        const newHash = getTemplateContentHash(newTemplate);
+                        if (!newHash) return true; // If can't generate hash, assume different
+                        
+                        for (const existing of existingTemplates) {
+                            const existingHash = getTemplateContentHash(existing);
+                            if (existingHash && newHash === existingHash) {
+                                console.log(`❌ Aynı içerik tespit edildi: "${newTemplate.name}" = "${existing.name}"`);
+                                return false; // Found identical content
+                            }
+                        }
+                        
+                        console.log(`✅ Benzersiz içerik: "${newTemplate.name}" eklemeye uygun`);
+                        return true; // No identical content found
+                    }
+
+                    // Ensure existingTemplates is properly initialized as array
+                    if (!Array.isArray(existingTemplates)) {
+                        console.error('❌ existingTemplates array değil, boş array kullanılıyor');
+                        existingTemplates = [];
+                    }
+
+                    // Merge templates (skip duplicates by ID and content)
+                    const existingIds = new Set();
+                    const templatesAdded = [];
+                    const templatesSkipped = [];
+                    const templatesSkippedByContent = [];
+                    
+                    // Safely extract existing IDs
+                    existingTemplates.forEach(t => {
+                        if (t && t.id) {
+                            existingIds.add(t.id);
+                        }
+                    });
+
+                    console.log(`📊 İşlem öncesi durum:`);
+                    console.log(`   - Mevcut şablon sayısı: ${existingTemplates.length}`);
+                    console.log(`   - Yüklenecek şablon sayısı: ${newTemplates.length}`);
+                    console.log(`   - Mevcut ID'ler: [${Array.from(existingIds).join(', ')}]`);
+
+                    newTemplates.forEach((template, templateIndex) => {
+                        if (!template || typeof template !== 'object') {
+                            console.warn(`⚠️ ${templateIndex + 1}. şablon geçersiz:`, template);
+                            return;
+                        }
+
+                        if (!template.id) {
+                            console.warn(`⚠️ ${templateIndex + 1}. şablon ID olmadan atlandı:`, template.name || 'İsimsiz');
+                            return;
+                        }
+                        
+                        console.log(`\n🔍 ${templateIndex + 1}/${newTemplates.length} - Şablon kontrol ediliyor: "${template.name}" (ID: ${template.id})`);
+                        
+                        // First check: ID already exists
+                        if (existingIds.has(template.id)) {
+                            console.log(`⚠️ Aynı ID'li şablon zaten mevcut: ${template.id}`);
+                            templatesSkipped.push({
+                                id: template.id, 
+                                name: template.name || 'İsimsiz', 
+                                reason: 'ID zaten mevcut'
+                            });
+                            return;
+                        }
+                        
+                        // Second check: Content already exists (even one different meal line should allow addition)
+                        if (!hasDifferentMealContent(template, existingTemplates)) {
+                            const duplicateTemplate = existingTemplates.find(t => 
+                                getTemplateContentHash(t) === getTemplateContentHash(template)
+                            );
+                            console.log(`⚠️ Aynı yemek içeriği mevcut: "${template.name}"`);
+                            if (duplicateTemplate) {
+                                console.log(`   Mevcut şablon: "${duplicateTemplate.name}" (ID: ${duplicateTemplate.id})`);
+                            }
+                            templatesSkippedByContent.push({
+                                id: template.id, 
+                                name: template.name || 'İsimsiz', 
+                                reason: 'Aynı yemek içeriği mevcut',
+                                duplicateOf: duplicateTemplate?.name || 'Bilinmeyen'
+                            });
+                            return;
+                        }
+                        
+                        // Template can be added - generate new menu number
+                        console.log(`✅ Yeni şablon ekleniyor: "${template.name}"`);
+                        
+                        const existingMenuNumbers = existingTemplates
+                            .map(t => {
+                                if (!t || !t.name) return 0;
+                                const match = String(t.name).match(/^(\d+)\./);
+                                return match ? parseInt(match[1]) : 0;
+                            })
+                            .filter(num => num > 0);
+                        
+                        const nextMenuNumber = existingMenuNumbers.length > 0 
+                            ? Math.max(...existingMenuNumbers) + 1 
+                            : existingTemplates.length + 1;
+                        
+                            // Generate clean menu name format
+                            const templateName = template.name || `Şablon ${template.id}`;
+                            
+                            // Extract any existing menu number or create new one
+                            let cleanMenuName;
+                            const existingMenuMatch = templateName.match(/^(\d+)\./);
+                            
+                            if (existingMenuMatch) {
+                                // Already has menu number, keep it but clean the name
+                                cleanMenuName = `Menü ${existingMenuMatch[1]}`;
+                            } else {
+                                // No menu number, create new clean name
+                                cleanMenuName = `Menü ${nextMenuNumber}`;
+                            }
+                            
+                            const oldName = template.name;
+                            template.name = cleanMenuName;
+                            console.log(`📝 Şablon adı düzenlendi: "${oldName}" → "${template.name}"`);
+                            
+                            // Also update the display name if it exists
+                            if (template.displayName) {
+                                template.displayName = cleanMenuName;
+                            }                        // Deep clean template data and preserve Turkish characters
+                        const cleanedTemplate = JSON.parse(JSON.stringify(template));
+                        
+                        // Recursively fix Turkish characters in the entire template
+                        function fixTurkishInObject(obj) {
+                            if (typeof obj === 'string') {
+                                return fixTurkishChars(obj);
+                            } else if (Array.isArray(obj)) {
+                                return obj.map(item => fixTurkishInObject(item));
+                            } else if (obj && typeof obj === 'object') {
+                                const fixed = {};
+                                for (const [key, value] of Object.entries(obj)) {
+                                    fixed[fixTurkishChars(key)] = fixTurkishInObject(value);
+                                }
+                                return fixed;
+                            }
+                            return obj;
+                        }
+                        
+                        const turkishFixedTemplate = fixTurkishInObject(cleanedTemplate);
+                        
+                        existingTemplates.push(turkishFixedTemplate);
+                        templatesAdded.push({
+                            id: turkishFixedTemplate.id, 
+                            name: turkishFixedTemplate.name,
+                            menuNumber: nextMenuNumber
+                        });
+                        existingIds.add(turkishFixedTemplate.id);
+                    });
+
+                    console.log(`\n📊 İşlem sonucu özeti:`);
+                    console.log(`   - Toplam şablon sayısı: ${existingTemplates.length}`);
+                    console.log(`   - Eklenen: ${templatesAdded.length}`);
+                    console.log(`   - ID'ye göre atlanan: ${templatesSkipped.length}`);
+                    console.log(`   - İçeriğe göre atlanan: ${templatesSkippedByContent.length}`);
+
+                    showStatus('💾 Birleştirilmiş şablonlar GitHub\'a kaydediliyor...', 'info');
+
+                    // Preserve original JSON structure with metadata - maintain Turkish character integrity
+                    const mergedData = {
+                        version: existingData.version || "1.0",
+                        exportDate: new Date().toISOString(),
+                        totalCount: existingTemplates.length,
+                        templates: existingTemplates,
+                        lastUpdate: {
+                            date: new Date().toISOString(),
+                            addedCount: templatesAdded.length,
+                            skippedCount: templatesSkipped.length + templatesSkippedByContent.length,
+                            description: `${templatesAdded.length} yeni şablon eklendi, ${templatesSkipped.length + templatesSkippedByContent.length} duplicate atlandı`
+                        }
+                    };
+
+                    // Ensure proper UTF-8 encoding for Turkish characters
+                    const mergedContent = JSON.stringify(mergedData, null, 2);
+                    
+                    // Properly encode UTF-8 content for GitHub API to preserve Turkish characters
+                    const encodedContent = btoa(unescape(encodeURIComponent(mergedContent)));
+                    
+                    console.log('📝 JSON içeriği UTF-8 ile kodlandı, Türkçe karakterler korundu');
+
+                    const updateResponse = await fetch(
+                        'https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/templates/index.json',
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/vnd.github.v3+json'
+                            },
+                            body: JSON.stringify({
+                                message: `📥 Şablon index güncelleme (Türkçe karakter korundu): ${templatesAdded.length} yeni menü, ${templatesSkipped.length + templatesSkippedByContent.length} duplicate atlandı`,
+                                content: encodedContent,
+                                sha: templatesData.sha
+                            })
+                        }
+                    );
+
+                    if (!updateResponse.ok) {
+                        throw new Error('Şablon index\'i GitHub\'a kaydedilemedi');
+                    }
+
+                    // Show detailed success message
+                    let message = '✅ Şablon yükleme işlemi başarıyla tamamlandı!\\n\\n📊 ÖZET:\\n';
+                    message += `� Toplam mevcut şablon sayısı: ${existingTemplates.length}\n`;
+                    message += `�📥 ${templatesAdded.length} yeni şablon eklendi\n`;
+                    
+                    if (templatesSkipped.length > 0) {
+                        message += `⏭️ ${templatesSkipped.length} şablon (aynı ID) atlandı\n`;
+                    }
+                    
+                    if (templatesSkippedByContent.length > 0) {
+                        message += `🔄 ${templatesSkippedByContent.length} şablon (aynı yemek içeriği) atlandı\n`;
+                    }
+                    
+                    message += `\n🎯 Karşılaştırma kriteri: Öğün adları ve yemek satırlarının tam eşleşmesi\n`;
+                    message += `📝 Yeni şablonlar otomatik menü numarası aldı`;
+                    
+                    // Show details in console for debugging
+                    if (templatesAdded.length > 0) {
+                        console.log('📥 Eklenen şablonlar:', templatesAdded.map(t => t.name));
+                    }
+                    if (templatesSkipped.length > 0) {
+                        console.log('⏭️ ID\'ye göre atlanan şablonlar:', templatesSkipped.map(t => t.name));
+                    }
+                    if (templatesSkippedByContent.length > 0) {
+                        console.log('🔄 İçerik benzerlişine göre atlanan şablonlar:', templatesSkippedByContent.map(t => t.name));
+                    }
+
+                    showStatus(message.replace(/\n/g, '<br>'), 'success');
+                    
+                    // Clear file input
+                    templateFileInput.value = '';
+
+                } catch (error) {
+                    console.error('❌ Şablon yükleme hatası:', error);
+                    showStatus(`❌ Hata: ${error.message}`, 'error');
+                } finally {
+                    uploadTemplatesButton.disabled = false;
+                    uploadTemplatesButton.textContent = '📥 Şablonları Yükle ve Birleştir';
+                }
+            });
+        }
+
+        // init and addLogoutButton already defined in <head>
+
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            const isGitHubPages = /\.github\.io$/i.test(window.location.hostname);
+            if (isSecureOrigin && !isGitHubPages) {
+                const CACHE_NAME = 'admin-settings-v1';
+                const manifest = {
+                    "short_name": "Yönetici Ayarları",
+                    "name": "Yönetici Ayarları Paneli",
+                    "start_url": ".",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+                const swURL = URL.createObjectURL(swBlob);
+
+                navigator.serviceWorker.register(swURL)
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(err => console.log('ServiceWorker registration failed:', err));
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
+        (function preventZoom() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, { passive: false });
+        })();
+    </script>
+    
+    <!-- Page initialization - runs after body is parsed -->
+    <script>
+        // Use setTimeout to ensure DOM is fully parsed
+        setTimeout(async () => {
+            console.info('[Settings] Script running at end of body (after timeout)');
+            console.info('[Settings] .settings-wrapper check:', document.querySelector('.settings-wrapper'));
+            const relogin = new URLSearchParams(location.search).get('relogin') === '1';
+            
+            if (window.AdminAuth && typeof AdminAuth.protectPage === 'function') {
+                console.info('[Settings] Calling AdminAuth.protectPage');
+                try {
+                    await AdminAuth.protectPage({ 
+                        forcePrompt: relogin,
+                        afterLogin: () => {
+                            console.info('[Settings] afterLogin callback fired');
+                        }
+                    });
+                    console.info('[Settings] Auth successful, session:', AdminAuth.getSession());
+                } catch(err) {
+                    console.error('[Settings] protectPage error:', err);
+                    return;
+                }
+            }
+            
+            console.info('[Settings] DOM is ready, .settings-wrapper:', document.querySelector('.settings-wrapper'));
+            
+            // Call page functions
+            if (typeof window.addLogoutButton === 'function') {
+                window.addLogoutButton();
+            }
+            
+            if (typeof window.init === 'function') {
+                window.init();
+            }
+        }, 10);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('✅ Service Worker kayıtlı:', reg.scope))
+                .catch(err => console.error('❌ Service Worker hatası:', err));
+        }
+    </script>
+</body>
+</html>
