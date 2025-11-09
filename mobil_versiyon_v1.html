@@ -4334,8 +4334,16 @@
         
         // Admin butonunu göster/gizle (localStorage'dan kontrol)
         window.checkAdminStatus = function() {
+            // 🎯 IFRAME KONTROLÜ: Eğer iframe içindeyse parent'tan oku
+            const storage = (window.parent !== window) ? window.parent.localStorage : localStorage;
+            const isInIframe = window.parent !== window;
+            
+            if (isInIframe) {
+                console.log('🖼️ IFRAME içinde çalışıyor - parent localStorage kullanılıyor');
+            }
+            
             // 🔑 DOĞRU KEY: patient_session (auth.js ile aynı)
-            const sessionRaw = localStorage.getItem('patient_session');
+            const sessionRaw = storage.getItem('patient_session');
             console.log('📦 RAW patient_session:', sessionRaw);
             
             let isAdmin = false;
@@ -4364,7 +4372,8 @@
                         console.log(' Admin yetkili kullanıcı tespit edildi:', session.username || session.fullName || 'Admin');
                     }
                     
-                    console.log('🔍 Admin Status (lipodem_session):', {
+                    console.log('🔍 Admin Status:', {
+                        isInIframe: isInIframe,
                         session: session,
                         role: session.role,
                         userRole: session.userRole,
@@ -4372,7 +4381,7 @@
                         finalIsAdmin: isAdmin
                     });
                 } catch (e) {
-                    console.warn('⚠️ lipodem_session parse hatası:', e);
+                    console.warn('⚠️ patient_session parse hatası:', e);
                 }
             }
             
