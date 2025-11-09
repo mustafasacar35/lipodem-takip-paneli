@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v18-PWA'; // ✅ V18 - PWA Cache (OneSignal ayrı)
+const CACHE_NAME = 'lipodem-takip-v19-NO-PUSH'; // ✅ V19 - Push handler kaldırıldı (OneSignal için)
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -33,7 +33,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v18 PWA kuruluyor...');
+  console.log('🔧 Service Worker v19 (PWA Cache Only - Push -> OneSignal) kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -99,70 +99,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 🔔 Push Notification Event - Background bildirimler için
-self.addEventListener('push', (event) => {
-  console.log('📬 Push notification alındı:', event);
-  
-  let notificationData = {
-    title: 'Yeni Mesaj',
-    body: 'Yeni bir mesajınız var',
-    icon: '/logo.png',
-    badge: '/logo.png',
-    vibrate: [200, 100, 200, 100, 200]
-  };
-
-  // Parse push data if available
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      notificationData = {
-        title: data.title || notificationData.title,
-        body: data.body || data.message || notificationData.body,
-        icon: data.icon || notificationData.icon,
-        badge: data.badge || notificationData.badge,
-        vibrate: data.vibrate || notificationData.vibrate,
-        tag: data.tag || 'default',
-        data: data
-      };
-    } catch (error) {
-      console.error('Push data parse hatası:', error);
-    }
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      vibrate: notificationData.vibrate,
-      tag: notificationData.tag,
-      data: notificationData.data,
-      requireInteraction: false
-    })
-  );
-});
-
-// 🖱️ Notification Click Event - Bildirimine tıklandığında
-self.addEventListener('notificationclick', (event) => {
-  console.log('🖱️ Bildirime tıklandı:', event);
-  event.notification.close();
-
-  // Get the URL from notification data or default to root
-  const urlToOpen = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Check if there's already a window open
-        for (let client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // If not, open a new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
-  );
-});
+// ⚠️ Push ve Notification event'leri KALDIRILDI
+// OneSignalSDKWorker.js bunları yönetecek
+// Bu SW sadece PWA cache için kullanılıyor
