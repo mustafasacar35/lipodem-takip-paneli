@@ -60,6 +60,8 @@ function updateHeaderWithUsername() {
 
 // Supabase başlat
 async function initializeAdminChat() {
+    console.log('🚀🚀🚀 INIT ADMIN CHAT - VERSION 2.0 🚀🚀🚀');
+    
     // Admin kontrolü - admin_auth.js halledecek
     const isAuthenticated = await checkAdminAuth();
     if (!isAuthenticated) {
@@ -96,6 +98,7 @@ async function initializeAdminChat() {
 async function initializeOneSignal() {
     try {
         console.log('🔔 OneSignal v16 yapılandırması başlatılıyor...');
+        console.log('🔍 DEBUG: OneSignal init VERSION 3.0');
         
         // OneSignal SDK'nın yüklenmesini bekle
         let attempts = 0;
@@ -130,6 +133,7 @@ async function initializeOneSignal() {
         // Push subscription oluştur (ARKA PLAN BİLDİRİMLERİ İÇİN)
         console.log('🔄 Push subscription kontrol ediliyor...');
         const subscriptionState = await OneSignal.User.PushSubscription.optedIn;
+        console.log('🔍 DEBUG: Subscription state:', subscriptionState);
         
         if (!subscriptionState) {
             console.log('📬 Push subscription oluşturuluyor...');
@@ -141,15 +145,20 @@ async function initializeOneSignal() {
         
         // Player ID al (Admin'i tanımlamak için)
         const playerId = await OneSignal.User.PushSubscription.id;
+        console.log('🔍 DEBUG: Player ID:', playerId);
+        
         if (playerId) {
             console.log('✅ OneSignal Player ID:', playerId);
             
             // Admin tag ekle (sadece adminlere bildirim göndermek için)
             await OneSignal.User.addTag('user_type', 'admin');
             await OneSignal.User.addTag('admin_username', currentAdmin.username);
+            console.log('✅ Admin tags eklendi');
             
             // Local storage'a kaydet
             localStorage.setItem('onesignal_player_id', playerId);
+        } else {
+            console.error('❌ Player ID alınamadı! Push subscription çalışmıyor olabilir.');
         }
         
         // OneSignal mesaj listener'ı ekle (foreground notifications)
