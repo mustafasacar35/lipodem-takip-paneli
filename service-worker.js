@@ -1,12 +1,12 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme
-const CACHE_NAME = 'lipodem-takip-v9'; // ✅ Versiyon artırıldı - mobil_versiyon_v1.html eklendi
+const CACHE_NAME = 'lipodem-takip-v10'; // ✅ Versiyon artırıldı - olmayan dosyalar kaldırıldı
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
   '/login.html',
   '/patient_nutrition.html',
   '/patient_dashboard.html',
-  '/mobil_versiyon_v1.html', // ✅ YENİ: Mobil yemek bulucu
+  '/mobil_versiyon_v1.html', // ✅ Mobil yemek bulucu
   '/admin_settings.html',
   '/admin_patients.html',
   '/admin_chat.html',
@@ -21,18 +21,13 @@ const urlsToCache = [
   '/ios-install-prompt.js',
   '/onesignal_config.js',
   '/manifest.json',
-  '/manifest-admin-settings.json',
-  '/manifest-admin-patients.json',
-  '/manifest-admin-chat.json',
-  '/logo.png',
-  '/logo2.png',
-  '/logo3.png',
-  '/logo4.png'
+  '/logo.png'
+  // logo2.png, logo3.png, logo4.png yok - kaldırıldı
 ];
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v9 kuruluyor...');
+  console.log('🔧 Service Worker v10 kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
