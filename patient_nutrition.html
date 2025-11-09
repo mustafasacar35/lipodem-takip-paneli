@@ -96,6 +96,10 @@
                 if (patientId) {
                     console.log('👤 Hasta ID:', patientId);
                     
+                    // CRITICAL: External User ID set et (bildirim almak için)
+                    await OneSignal.login(patientId);
+                    console.log('✅ OneSignal login (External ID set):', patientId);
+                    
                     // User tag ekle (admin değil, hasta)
                     await OneSignal.User.addTag('user_type', 'patient');
                     await OneSignal.User.addTag('patient_id', patientId);
