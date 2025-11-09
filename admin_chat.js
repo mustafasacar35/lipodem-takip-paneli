@@ -1051,18 +1051,19 @@ async function sendNotificationToPatient(patientId, message) {
         // Mesajı kısalt
         const shortMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
         
+        // Localhost kontrolü - CORS hatası önleme
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (isLocalhost) {
+            console.log('⚠️ Localhost - Bildirim atlanıyor (CORS hatası önleme)');
+            console.log('📱 Production\'da otomatik çalışacak');
+            return; // Localhost'ta bildirim gönderme
+        }
+        
         console.log('🔔 Hastaya bildirim gönderiliyor (serverless):', patientName);
         
-        // Localhost kontrolü - Vercel production URL kullan
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const apiUrl = isLocalhost 
-            ? 'https://lipodem-takip-paneli-4qin.vercel.app/api/send-notification'
-            : '/api/send-notification';
-        
-        console.log('🌐 API URL:', apiUrl);
-        
-        // Sunucu üzerinden güvenli gönderim
-        const resp = await fetch(apiUrl, {
+        // Sunucu üzerinden güvenli gönderim (sadece production)
+        const resp = await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
