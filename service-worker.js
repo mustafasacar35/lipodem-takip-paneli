@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v16-BUGFIX-PATIENTS'; // ✅ V16 - Hasta listesi yükleme fix
+const CACHE_NAME = 'lipodem-takip-v17-FORCE-REFRESH'; // ✅ V17 - Zorla tarayıcı cache temizleme
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -33,7 +33,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v16 BUGFIX-PATIENTS kuruluyor...');
+  console.log('🔧 Service Worker v17 FORCE-REFRESH kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
