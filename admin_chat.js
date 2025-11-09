@@ -511,11 +511,34 @@ function selectPatient(patientId) {
     document.querySelectorAll('.patient-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.target.closest('.patient-item').classList.add('active');
+    
+    // Event target kontrolü (mobilde çağrıldığında event olmayabilir)
+    if (event && event.target) {
+        event.target.closest('.patient-item').classList.add('active');
+    } else {
+        // Event yoksa ID'ye göre bul
+        const patientItem = document.querySelector(`[onclick*="${patientId}"]`);
+        if (patientItem) {
+            patientItem.classList.add('active');
+        }
+    }
     
     // Chat alanını göster
     document.getElementById('noSelection').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
+    
+    // MOBİL: Patient list tamamen gizle, chat area göster
+    if (window.innerWidth <= 768) {
+        const patientListContainer = document.getElementById('patientListContainer');
+        const chatArea = document.querySelector('.chat-area');
+        
+        if (patientListContainer) {
+            patientListContainer.classList.add('hidden');
+        }
+        if (chatArea) {
+            chatArea.classList.remove('hidden');
+        }
+    }
     
     // Hasta bilgilerini göster
     const patient = allPatients.find(p => p.id === patientId);

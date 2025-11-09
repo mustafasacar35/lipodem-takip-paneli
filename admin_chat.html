@@ -588,6 +588,35 @@
                 cursor: pointer;
             }
             
+            /* MAIN CONTAINER - Mobilde full stack */
+            .main-container {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            
+            /* PATIENT LIST - Accordion Başta Kapalı */
+            .patient-list {
+                width: 100%;
+                max-width: 100%;
+                position: relative;
+                z-index: 100;
+                background: #f5f7fa;
+                border-bottom: 1px solid #e0e0e0;
+                transition: all 0.3s ease;
+            }
+            
+            .patient-list-accordion-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 600;
+                user-select: none;
+            }
+            
             /* DRAWER MENU */
             .drawer-overlay {
                 position: fixed;
@@ -667,10 +696,6 @@
             .drawer-nav-btn.active:hover {
                 background: #5568d3;
             }
-            
-            .container {
-                flex-direction: column;
-            }
 
             .patient-list {
                 width: 100%;
@@ -713,8 +738,9 @@
                 max-height: 0;
             }
 
+            /* Mobilde chat açıkken patient list tamamen gizle */
             .patient-list.hidden {
-                transform: translateX(-100%);
+                display: none;
             }
 
             .chat-area {
@@ -726,6 +752,52 @@
 
             .chat-area.hidden {
                 display: none;
+            }
+            
+            /* Chat Header Mobil - Kompakt */
+            .chat-header {
+                padding: 10px 12px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .chat-header h2 {
+                font-size: 16px;
+                color: white;
+                margin: 0;
+            }
+            
+            .chat-header .patient-id {
+                font-size: 11px;
+                color: rgba(255,255,255,0.8);
+            }
+            
+            .close-chat-btn {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                font-size: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            /* Broadcast button mobilde gizle */
+            .chat-header .broadcast-btn {
+                display: none;
+            }
+            
+            /* Close button mobilde göster */
+            .close-chat-btn {
+                display: flex !important;
             }
 
             .message-bubble {
@@ -767,8 +839,9 @@
             }
 
             .chat-messages {
-                max-height: calc(100vh - 280px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                max-height: calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
                 padding: 10px;
+                flex: 1;
             }
 
             /* Mobil için geri butonu */
@@ -798,6 +871,11 @@
 
         /* Desktop için geri butonu gizle */
         .back-to-patients {
+            display: none;
+        }
+        
+        /* Desktop için close button gizle */
+        .close-chat-btn {
             display: none;
         }
         
@@ -890,7 +968,7 @@
     <!-- Main Container -->
     <div class="main-container">
         <!-- Hasta Listesi -->
-        <div class="patient-list" id="patientListContainer">
+        <div class="patient-list collapsed" id="patientListContainer">
             <!-- Accordion Toggle (Sadece Mobil) -->
             <div class="patient-list-accordion-toggle" onclick="togglePatientList()">
                 <span>👥 Hastalar (<span id="patientCount">0</span>)</span>
@@ -925,14 +1003,17 @@
             </div>
 
             <div id="chatContainer" style="display: none; flex: 1; flex-direction: column;">
-                <!-- Mobil geri butonu -->
+                <!-- Mobil geri butonu (DESKTOP İÇİN GİZLİ) -->
                 <button class="back-to-patients" onclick="backToPatients()">←</button>
                 
                 <div class="chat-header">
-                    <div>
+                    <div style="flex: 1; min-width: 0;">
                         <h2 id="chatPatientName">Hasta Adı</h2>
                         <span class="patient-id" id="chatPatientId">ID: patient_xxx</span>
                     </div>
+                    <button class="close-chat-btn" onclick="closeChatMobile()" title="Kapat">
+                        ✕
+                    </button>
                     <button class="broadcast-btn" onclick="showBroadcastModal()">
                         📢 Toplu Bildirim
                     </button>
@@ -1035,10 +1116,37 @@
                 selectPatient(patientId);
             }
             
-            // Mobilde listeyi kapat
+            // Mobilde hem listeyi kapat hem chat alanını göster
             if (window.innerWidth <= 768) {
-                const container = document.getElementById('patientListContainer');
-                container.classList.add('collapsed');
+                const patientListContainer = document.getElementById('patientListContainer');
+                const chatArea = document.querySelector('.chat-area');
+                
+                // Patient list tamamen gizle
+                patientListContainer.classList.add('hidden');
+                
+                // Chat area göster
+                chatArea.classList.remove('hidden');
+            }
+        }
+        
+        // Mobilde chat'i kapat, hasta listesine dön
+        function closeChatMobile() {
+            if (window.innerWidth <= 768) {
+                const patientListContainer = document.getElementById('patientListContainer');
+                const chatArea = document.querySelector('.chat-area');
+                const noSelection = document.getElementById('noSelection');
+                const chatContainer = document.getElementById('chatContainer');
+                
+                // Chat gizle
+                chatContainer.style.display = 'none';
+                noSelection.style.display = 'flex';
+                
+                // Patient list göster
+                patientListContainer.classList.remove('hidden');
+                patientListContainer.classList.remove('collapsed'); // Listeyi aç
+                
+                // Chat area gizle
+                chatArea.classList.add('hidden');
             }
         }
         
