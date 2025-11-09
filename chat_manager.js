@@ -421,14 +421,67 @@ function showError(message) {
     alert(message); // Basit alert, isterseniz toast notification yapabiliriz
 }
 
+// 🔊 Bildirim sesi çal (Web Audio API ile)
+function playNotificationSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800; // 800Hz
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+        console.error('🔇 Bildirim sesi çalınamadı:', error);
+    }
+}
+
 function showNotification(title, body) {
     // Browser notification (izin verilmişse)
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, {
+        const notification = new Notification(title, {
             body: body,
-            icon: './logo.png',
-            badge: './logo.png'
+            icon: '/logo.png',
+            badge: '/logo.png',
+            vibrate: [200, 100, 200, 100, 200], // 5-pulse vibration pattern
+            tag: 'new-message',
+            requireInteraction: false, // Auto-close after a few seconds
+            data: {
+                url: window.location.href
+            }
         });
+
+        // Click handler - Focus window and open chat
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+            
+            // Open chat widget if closed
+            const chatWidget = document.getElementById('chatWidget');
+            const minimizedChat = document.getElementById('minimizedChat');
+            if (chatWidget && minimizedChat) {
+                if (chatWidget.style.display === 'none') {
+                    chatWidget.style.display = 'flex';
+                    minimizedChat.style.display = 'none';
+                }
+            }
+        };
+
+        // Play notification sound
+        playNotificationSound();
+
+        // Vibrate if supported
+        if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200, 100, 200]);
+        }
     }
 }
 

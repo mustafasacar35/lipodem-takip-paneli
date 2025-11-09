@@ -169,6 +169,124 @@ async function initializeOneSignal() {
         
     } catch (error) {
         console.error('❌ OneSignal başlatma hatası:', error);
+        
+        // FALLBACK: Native Notification API kullan
+        console.log('🔄 Fallback: Native bildirim sistemi devreye alınıyor...');
+        await initNativeNotifications();
+    }
+}
+
+// Native Notification Fallback (OneSignal çalışmazsa)
+async function initNativeNotifications() {
+    try {
+        if (!('Notification' in window)) {
+            console.warn('⚠️ Bu tarayıcı bildirimleri desteklemiyor');
+            return;
+        }
+        
+        // İzin durumunu kontrol et
+        if (Notification.permission === 'default') {
+            console.log('🔔 Native bildirim izni isteniyor...');
+            const permission = await Notification.requestPermission();
+            console.log('📝 İzin sonucu:', permission);
+        }
+        
+        if (Notification.permission === 'granted') {
+            console.log('✅ Native bildirimler aktif');
+            
+            // Test bildirimi
+            new Notification('💬 Lipodem Takip', {
+                body: 'Bildirimler başarıyla aktif edildi!',
+                icon: '/logo.png',
+                badge: '/logo.png',
+                vibrate: [200, 100, 200],
+                tag: 'test-notification'
+            });
+        }
+    } catch (error) {
+        console.error('❌ Native bildirim hatası:', error);
+    }
+}
+
+// Yeni mesaj bildirimi göster
+function showNewMessageNotification(message) {
+    // İzin kontrolü
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        console.warn('⚠️ Bildirim izni yok');
+        return;
+    }
+    
+    // Muted kontrolü
+    if (mutedPatients.includes(message.sender_id)) {
+        console.log('🔕 Bu hasta sessize alınmış, bildirim gösterilmiyor');
+        return;
+    }
+    
+    // Hasta adını bul
+    const patient = allPatients.find(p => p.id === message.sender_id);
+    const patientName = patient ? patient.name : 'Hasta';
+    
+    // Bildirim oluştur
+    const notification = new Notification(`💬 ${patientName}`, {
+        body: message.message || 'Yeni mesaj',
+        icon: '/logo.png',
+        badge: '/logo.png',
+        vibrate: [200, 100, 200, 100, 200], // Vibrate pattern
+        tag: `message-${message.id}`,
+        requireInteraction: false, // 5 saniye sonra otomatik kapansın
+        data: {
+            patientId: message.sender_id,
+            messageId: message.id,
+            url: window.location.origin + '/admin_chat.html'
+        },
+        actions: [ // Android/Desktop'ta butonlar
+            { action: 'open', title: 'Aç' },
+            { action: 'close', title: 'Kapat' }
+        ]
+    });
+    
+    // Bildirime tıklayınca
+    notification.onclick = function(event) {
+        event.preventDefault();
+        
+        // Pencereyi focus et
+        window.focus();
+        
+        // İlgili hastayı seç
+        if (message.sender_id) {
+            selectPatient(message.sender_id);
+        }
+        
+        // Bildirimi kapat
+        notification.close();
+    };
+    
+    // Ses çal (opsiyonel)
+    playNotificationSound();
+}
+
+// Bildirim sesi (opsiyonel)
+function playNotificationSound() {
+    try {
+        // HTML5 Audio API ile basit bir "ping" sesi
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800; // Frekans (Hz)
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+        // Ses çalmazsa sessiz devam et
+        console.warn('Ses çalınamadı:', error);
     }
 }
 
@@ -771,6 +889,11 @@ function subscribeToMessages() {
                 const messageElement = createMessageElement(payload.new);
                 document.getElementById('chatMessages').appendChild(messageElement);
                 scrollToBottom();
+                
+                // ✅ BİLDİRİM GÖSTER (Sayfa arka plandaysa veya kapalıysa)
+                if (document.hidden || !document.hasFocus()) {
+                    showNewMessageNotification(payload.new);
+                }
                 
                 // Badge güncelle (PWA ikon sayısı)
                 if (window.badgeManager && document.hidden) {
