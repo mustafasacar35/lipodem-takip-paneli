@@ -4353,6 +4353,13 @@
                              session.userRole === 'admin' || 
                              session.userRole === 'ADMIN';
                     
+                    // 🔧 DEBUG MODE: URL'de ?admin=true varsa admin yetkisi ver
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('admin') === 'true') {
+                        isAdmin = true;
+                        console.log('🔧 DEBUG MODE: Admin yetkisi URL parametresi ile aktif edildi');
+                    }
+                    
                     if (isAdmin) {
                         console.log(' Admin yetkili kullanıcı tespit edildi:', session.username || session.fullName || 'Admin');
                     }
