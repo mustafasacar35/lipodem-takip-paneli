@@ -584,7 +584,7 @@ async function sendNotificationToAdmin(patientId, message) {
         if (!resp.ok) {
             console.error('❌ Admin bildirim gönderilemedi:', result);
         } else {
-            console.log('✅ Admin bildirim gönderildi:', result.id, '- Alıcı sayısı:', result.recipients);
+            console.log('✅ Admin bildirim gönderildi:', result.id, '- Alıcı sayısı:', result.recipients || 'bilinmiyor');
         }
         
     } catch (error) {
