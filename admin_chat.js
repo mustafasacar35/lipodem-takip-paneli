@@ -176,13 +176,15 @@ async function initializeOneSignal() {
         
         // Badge sayısını sıfırla (admin chat açıldığında)
         try {
-            await OneSignal.User.PushSubscription.optIn();
-            console.log('🔄 Badge sıfırlanıyor...');
-            // iOS badge sıfırlama
-            if (OneSignal.User && OneSignal.User.PushSubscription) {
-                await OneSignal.User.PushSubscription.optIn();
+            // Navigator Badge API ile PWA badge sıfırla
+            if (window.badgeManager) {
+                await window.badgeManager.clear();
+                console.log('🔄 PWA Badge temizlendi (Navigator API - init)');
             }
-            console.log('✅ Badge sıfırlandı');
+            
+            // OneSignal iOS badge sıfırlama
+            await OneSignal.User.PushSubscription.optIn();
+            console.log('✅ OneSignal badge sıfırlandı (init)');
         } catch (badgeError) {
             console.warn('⚠️ Badge sıfırlama hatası:', badgeError);
         }
@@ -1003,6 +1005,12 @@ async function markAsRead() {
             .eq('sender_id', selectedPatientId)
             .eq('receiver_type', 'admin')
             .eq('is_read', false);
+        
+        // Badge Manager ile PWA badge sıfırla (Navigator API)
+        if (window.badgeManager) {
+            await window.badgeManager.clear();
+            console.log('🔄 PWA Badge temizlendi (Navigator API)');
+        }
         
         // OneSignal badge sıfırla (mesaj okunduğunda)
         if (typeof OneSignal !== 'undefined') {
