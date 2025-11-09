@@ -1,5 +1,5 @@
-// Service Worker - PWA için offline çalışma ve hızlı yükleme
-const CACHE_NAME = 'lipodem-takip-v11'; // ✅ Versiyon artırıldı - ZORLA YENİLEME
+// Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
+const CACHE_NAME = 'lipodem-takip-v12-FORCE-UPDATE'; // ✅ V12 - GitHub Pages cache bypass
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',
@@ -27,7 +27,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v11 kuruluyor...');
+  console.log('🔧 Service Worker v12 FORCE UPDATE kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {

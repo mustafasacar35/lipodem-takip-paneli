@@ -14716,11 +14716,11 @@
         // Service Worker ve PWA Kurulumu  
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                // GitHub Pages için relative path
-                const swPath = './service-worker.js';
+                // GitHub Pages için relative path + cache bypass
+                const swPath = './service-worker.js?v=' + Date.now();
                 navigator.serviceWorker.register(swPath)
                     .then(function(registration) {
-                        console.log('✅ Service Worker kaydedildi:', registration.scope);
+                        console.log('✅ Service Worker v12 kaydedildi:', registration.scope);
                         
                         // iOS Safe Area kontrolü
                         const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top');

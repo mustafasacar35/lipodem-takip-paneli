@@ -523,8 +523,10 @@
                 // ServiceWorker için ana service-worker.js dosyasını kullan (async wrapper)
                 (async () => {
                     try {
-                        const registration = await navigator.serviceWorker.register('./service-worker.js');
-                        console.log('✅ ServiceWorker registered:', registration.scope);
+                        // Cache bypass için timestamp ekle
+                        const swPath = './service-worker.js?v=' + Date.now();
+                        const registration = await navigator.serviceWorker.register(swPath);
+                        console.log('✅ ServiceWorker v12 registered:', registration.scope);
                     } catch (err) {
                         console.log('⚠️ ServiceWorker registration failed:', err);
                     }
