@@ -934,6 +934,10 @@
                         <span style="font-size: 14px; color: white; font-weight: 600;">Bildirimler</span>
                         <input type="checkbox" id="notificationToggle" checked onchange="toggleNotifications()" style="width: 40px; height: 20px; cursor: pointer;">
                     </label>
+                    <!-- 🧪 TEST BUTONU -->
+                    <button onclick="testNotification()" style="background: rgba(255,193,7,0.9); color: #333; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        🧪 Test Bildirim
+                    </button>
                     <button onclick="window.location.href='admin_chat_settings.html'" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
                         ⚙️ Ayarlar
                     </button>
@@ -1144,9 +1148,64 @@
                 // Patient list göster
                 patientListContainer.classList.remove('hidden');
                 patientListContainer.classList.remove('collapsed'); // Listeyi aç
-                
-                // Chat area gizle
                 chatArea.classList.add('hidden');
+            }
+        }
+        
+        // 🧪 TEST NOTIFICATION FUNCTION
+        async function testNotification() {
+            console.log('🧪 Test bildirimi tetikleniyor...');
+            
+            // İzin kontrolü
+            if (!('Notification' in window)) {
+                alert('❌ Bu tarayıcı bildirimleri desteklemiyor!');
+                return;
+            }
+            
+            console.log('📱 Notification.permission:', Notification.permission);
+            
+            if (Notification.permission === 'default') {
+                console.log('🔔 İzin isteniyor...');
+                const permission = await Notification.requestPermission();
+                console.log('📝 İzin sonucu:', permission);
+                
+                if (permission !== 'granted') {
+                    alert('❌ Bildirim izni reddedildi!');
+                    return;
+                }
+            }
+            
+            if (Notification.permission !== 'granted') {
+                alert('❌ Bildirim izni yok! Tarayıcı ayarlarından izin verin.');
+                return;
+            }
+            
+            try {
+                // Test bildirimi oluştur
+                const notification = new Notification('🧪 Test Bildirimi', {
+                    body: 'Bildirimler başarıyla çalışıyor! ✅',
+                    icon: '/logo.png',
+                    badge: '/logo.png',
+                    vibrate: [200, 100, 200, 100, 200],
+                    tag: 'test-notification',
+                    requireInteraction: false
+                });
+                
+                console.log('✅ Test bildirimi oluşturuldu:', notification);
+                
+                // Ses çal
+                playNotificationSound();
+                
+                // Titreşim
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([200, 100, 200, 100, 200]);
+                }
+                
+                alert('✅ Test bildirimi gönderildi! Kontrol edin.');
+                
+            } catch (error) {
+                console.error('❌ Test bildirimi hatası:', error);
+                alert('❌ Hata: ' + error.message);
             }
         }
         
