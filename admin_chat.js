@@ -90,8 +90,11 @@ async function initializeAdminChat() {
 // ====================================
 // ONESIGNAL BAŞLATMA (BİLDİRİM İÇİN)
 // ====================================
+// OneSignal v16 - HTML'de OneSignalDeferred ile init ediliyor
 async function initializeOneSignal() {
     try {
+        console.log('🔔 OneSignal v16 yapılandırması başlatılıyor...');
+        
         // OneSignal SDK'nın yüklenmesini bekle
         let attempts = 0;
         const maxAttempts = 20;
@@ -104,42 +107,12 @@ async function initializeOneSignal() {
         
         // OneSignal yüklü mü kontrol et
         if (typeof OneSignal === 'undefined') {
-            console.warn('⚠️ OneSignal SDK yüklenemedi (timeout)');
+            console.warn('⚠️ OneSignal SDK yüklenemedi (timeout), fallback aktif');
+            await initNativeNotifications();
             return;
         }
         
-        // Config kontrol
-        if (!window.ONESIGNAL_CONFIG || !window.ONESIGNAL_CONFIG.appId) {
-            console.error('❌ OneSignal config eksik! onesignal_config.js dosyasını kontrol edin.');
-            return;
-        }
-        
-        console.log('🔔 OneSignal başlatılıyor...');
-        
-        // OneSignal başlat
-        await OneSignal.init({
-            appId: window.ONESIGNAL_CONFIG.appId,
-            safari_web_id: window.ONESIGNAL_CONFIG.safariWebId,
-            
-            // İzin isteme ayarları
-            allowLocalhostAsSecureOrigin: true, // Localhost için
-            
-            // Service Worker yolu (localhost için)
-            serviceWorkerParam: { scope: '/' },
-            serviceWorkerPath: 'OneSignalSDKWorker.js',
-            
-            // Bildirim ayarları
-            notifyButton: {
-                enable: false // Kendi UI'ımızı kullanacağız
-            },
-            
-            // Sayfa odaktayken bildirim gösterme
-            notificationClickHandlerMatch: 'origin',
-            notificationClickHandlerAction: 'focus',
-            
-            // Prompt ayarları
-            promptOptions: window.ONESIGNAL_CONFIG.notificationSettings.promptOptions
-        });
+        console.log('✅ OneSignal SDK yüklendi');
         
         // Bildirim izni durumunu kontrol et
         const permission = await OneSignal.Notifications.permission;
@@ -165,10 +138,10 @@ async function initializeOneSignal() {
             localStorage.setItem('onesignal_player_id', playerId);
         }
         
-        console.log('✅ OneSignal başarıyla başlatıldı');
+        console.log('✅ OneSignal başarıyla yapılandırıldı');
         
     } catch (error) {
-        console.error('❌ OneSignal başlatma hatası:', error);
+        console.error('❌ OneSignal yapılandırma hatası:', error);
         
         // FALLBACK: Native Notification API kullan
         console.log('🔄 Fallback: Native bildirim sistemi devreye alınıyor...');
