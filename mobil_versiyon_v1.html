@@ -4416,8 +4416,14 @@
         };
         
         // 🚀 HEMEN BUTONU EKLE (DOMContentLoaded beklemeden)
-        (function() {
+        (function addAdminButton() {
             console.log('🔧 Admin butonu ekleniyor (HEMEN)...');
+            
+            // Zaten varsa ekleme
+            if (document.getElementById('adminEditButton')) {
+                console.log('⚠️ Admin butonu zaten var, tekrar eklenmedi');
+                return;
+            }
             
             // Butonu oluştur
             const adminBtn = document.createElement('button');
@@ -4434,17 +4440,26 @@
             adminBtn.innerHTML = '✏️';
             adminBtn.style.display = 'none';
             
-            // Body hazır değilse bekle
-            if (document.body) {
-                document.body.appendChild(adminBtn);
-                console.log('✅ Admin butonu DOM\'a eklendi (ANINDA):', adminBtn);
-            } else {
-                // Body henüz yok, DOMContentLoaded'da ekle
-                document.addEventListener('DOMContentLoaded', function() {
+            // Body'yi interval ile kontrol et (garanti eklemek için)
+            const addButtonInterval = setInterval(function() {
+                if (document.body) {
+                    clearInterval(addButtonInterval);
                     document.body.appendChild(adminBtn);
-                    console.log('✅ Admin butonu DOM\'a eklendi (DOMContentLoaded):', adminBtn);
-                });
-            }
+                    console.log('✅ Admin butonu DOM\'a eklendi:', adminBtn);
+                    
+                    // Hemen admin kontrolü yap
+                    setTimeout(checkAdminStatus, 50);
+                }
+            }, 10); // Her 10ms kontrol et
+            
+            // 1 saniye sonra hala eklenemediyse zorla ekle
+            setTimeout(function() {
+                if (!document.getElementById('adminEditButton') && document.body) {
+                    document.body.appendChild(adminBtn);
+                    console.log('✅ Admin butonu DOM\'a eklendi (FALLBACK):', adminBtn);
+                    checkAdminStatus();
+                }
+            }, 1000);
         })();
         
         // Sayfa yüklendiğinde admin kontrolü yap (birden fazla event ile garanti)
