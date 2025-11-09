@@ -33,7 +33,7 @@ const urlsToCache = [
 
 // Service Worker kurulumu
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v15 PUSH-NOTIFICATIONS kuruluyor...');
+  console.log('🔧 Service Worker v16 BUGFIX-PATIENTS kuruluyor...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
