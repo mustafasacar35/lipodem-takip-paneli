@@ -11353,6 +11353,28 @@
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(initAdminUI, 500);
         });
+        
+        // ✅ Bildirim izni için prompt (ilk açılışta)
+        window.addEventListener('DOMContentLoaded', () => {
+            // 2 saniye bekle (sayfa tamamen yüklensin)
+            setTimeout(async () => {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    try {
+                        console.log('🔔 Bildirim izni isteniyor (patient)...');
+                        const permission = await Notification.requestPermission();
+                        console.log('📝 Bildirim izni sonucu:', permission);
+                        
+                        if (permission === 'granted') {
+                            console.log('✅ Bildirim izni verildi! OneSignal push subscription oluşturulacak.');
+                        } else {
+                            console.log('❌ Bildirim izni reddedildi veya ertelendi.');
+                        }
+                    } catch (error) {
+                        console.error('❌ Bildirim izni hatası:', error);
+                    }
+                }
+            }, 2000);
+        });
     
     </script>
     <script>

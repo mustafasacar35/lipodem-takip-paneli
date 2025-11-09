@@ -76,8 +76,10 @@ async function initializeAdminChat() {
     
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Hastaları yükle
-    loadPatients();
+    // ✅ Hastaları yükle (AWAIT ile bekle - hasta isimleri yüklensin)
+    console.log('📋 Hastalar yükleniyor...');
+    await loadPatients();
+    console.log('✅ Hastalar yüklendi, toplam:', allPatients.length);
     
     console.log('Admin chat başlatıldı');
     
