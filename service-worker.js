@@ -1,5 +1,5 @@
 // Service Worker - PWA için offline çalışma ve hızlı yükleme - CACHE KILLER 2025
-const CACHE_NAME = 'lipodem-takip-v15-PUSH-NOTIFICATIONS'; // ✅ V15 - Push notification support eklendi
+const CACHE_NAME = 'lipodem-takip-v16-BUGFIX-PATIENTS'; // ✅ V16 - Hasta listesi yükleme fix
 const BASE_PATH = ''; // ✅ Root path - manifest.json ile uyumlu
 const urlsToCache = [
   '/entry.html',

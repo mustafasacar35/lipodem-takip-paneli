@@ -538,12 +538,6 @@ window.addEventListener('beforeunload', () => {
 // ====================================
 async function sendNotificationToAdmin(patientId, message) {
     try {
-        // Config kontrol
-        if (!window.ONESIGNAL_CONFIG || !window.ONESIGNAL_CONFIG.restApiKey) {
-            console.warn('⚠️ OneSignal config eksik, bildirim gönderilemiyor');
-            return;
-        }
-        
         // Hasta adını al
         let patientName = `Hasta #${patientId}`;
         try {
@@ -563,59 +557,38 @@ async function sendNotificationToAdmin(patientId, message) {
             console.log('Hasta adı alınamadı:', e);
         }
         
-        // Mesajı kısalt (uzunsa)
-        const shortMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+        // Localhost kontrolü - CORS hatası önleme
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
-        console.log('🔔 Admin\'e bildirim gönderiliyor...');
+        if (isLocalhost) {
+            console.log('⚠️ Localhost - Admin bildirim atlanıyor (CORS hatası önleme)');
+            console.log('📱 Production\'da otomatik çalışacak');
+            return;
+        }
         
-        // OneSignal REST API ile bildirim gönder
-        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+        console.log('🔔 Admin\'e bildirim gönderiliyor (serverless)...');
+        
+        // Vercel Serverless Function üzerinden güvenli gönderim
+        const resp = await fetch('/api/send-admin-notification', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${window.ONESIGNAL_CONFIG.restApiKey}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                app_id: window.ONESIGNAL_CONFIG.appId,
-                
-                // Sadece "admin" tag'ine sahip kullanıcılara gönder
-                included_segments: ['All'],
-                filters: [
-                    { field: 'tag', key: 'user_type', relation: '=', value: 'admin' }
-                ],
-                
-                // Bildirim içeriği
-                headings: { en: '💬 Yeni Hasta Mesajı' },
-                contents: { en: `${patientName}: ${shortMessage}` },
-                
-                // Tıklayınca nereye gitsin
-                url: `${window.location.origin}/admin_chat.html`,
-                
-                // Ses ve badge
-                ios_sound: 'default',
-                android_sound: 'default',
-                ios_badgeType: 'Increase',
-                ios_badgeCount: 1,
-                
-                // Data (bildirime tıklayınca kullanılabilir)
-                data: {
-                    patient_id: patientId,
-                    patient_name: patientName,
-                    message_preview: shortMessage
-                }
+                patientId,
+                patientName,
+                message
             })
         });
         
-        const result = await response.json();
+        const result = await resp.json();
         
-        if (result.errors) {
-            console.error('❌ OneSignal bildirim hatası:', result.errors);
+        if (!resp.ok) {
+            console.error('❌ Admin bildirim gönderilemedi:', result);
         } else {
-            console.log('✅ Bildirim gönderildi:', result.id, '- Alıcı sayısı:', result.recipients);
+            console.log('✅ Admin bildirim gönderildi:', result.id, '- Alıcı sayısı:', result.recipients);
         }
         
     } catch (error) {
-        console.error('❌ Bildirim gönderme hatası:', error);
+        console.error('❌ Admin bildirim gönderme hatası:', error);
     }
 }
 
