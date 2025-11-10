@@ -6020,10 +6020,14 @@
                     console.log('✅ Hasta bilgileri GitHub\'dan yüklendi:', patientData);
                     
                     // 🔐 isAdmin alanını currentPatient'a ekle (window'a da senkronize et)
+                    // ÖNEMLİ: Her durumda set et (önceki kullanıcıdan kalan değeri temizle)
+                    currentPatient.isAdmin = patientData.isAdmin === true;
+                    window.currentPatient.isAdmin = patientData.isAdmin === true;
+                    
                     if (patientData.isAdmin === true) {
-                        currentPatient.isAdmin = true;
-                        window.currentPatient.isAdmin = true;
                         console.log('🔑 Hasta dosyasında admin yetkisi bulundu');
+                    } else {
+                        console.log('👤 Hasta dosyasında admin yetkisi YOK (isAdmin: false)');
                     }
                     
                     // Weeks verisini yükle
@@ -6043,6 +6047,16 @@
                         patientData = JSON.parse(cachedData);
                         console.log('⚠️ GitHub erişilemiyor, localStorage kullanıldı:', patientData);
                         
+                        // 🔐 isAdmin alanını currentPatient'a ekle (localStorage'dan yüklerken de)
+                        currentPatient.isAdmin = patientData.isAdmin === true;
+                        window.currentPatient.isAdmin = patientData.isAdmin === true;
+                        
+                        if (patientData.isAdmin === true) {
+                            console.log('🔑 localStorage: Admin yetkisi bulundu');
+                        } else {
+                            console.log('👤 localStorage: Admin yetkisi YOK');
+                        }
+                        
                         // Weeks verisini yükle
                         if (patientData.weeks && Array.isArray(patientData.weeks)) {
                             // Eski formatı yeni formata dönüştür
@@ -6056,6 +6070,10 @@
                         console.warn('⚠️ Hasta dosyası bulunamadı, varsayılan değerler kullanılacak');
                         patientData = { personalInfo: { weight: 70, height: 170, age: 35, activity: 3, activityLevel: 3 } };
                         weeks = undefined;
+                        
+                        // 🔐 Varsayılan: Admin yetkisi YOK
+                        currentPatient.isAdmin = false;
+                        window.currentPatient.isAdmin = false;
                     }
                 }
                 
