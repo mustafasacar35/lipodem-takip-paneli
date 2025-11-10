@@ -231,12 +231,22 @@ const TemplateManager = {
 
             // Direct JSON parse - raw.githubusercontent.com returns JSON directly (with proper UTF-8!)
             const template = await response.json();
+            
+            // 🔍 DEBUG: Template yapısını kontrol et
+            console.log('[TemplateManager] Template loaded:', {
+                filename,
+                id: template.id,
+                name: template.name,
+                hasOgunler: !!template.ogunler,
+                ogunlerCount: template.ogunler?.length,
+                keys: Object.keys(template).slice(0, 10) // İlk 10 key
+            });
 
             // Cache in memory and localStorage
             this.templateCache.set(filename, template);
             localStorage.setItem(cacheKey, JSON.stringify(template));
 
-            console.log('[TemplateManager] Template loaded from GitHub:', filename);
+            console.log('[TemplateManager] Template cached:', filename);
             return template;
 
         } catch (error) {

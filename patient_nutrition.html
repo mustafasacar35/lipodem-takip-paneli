@@ -8493,12 +8493,16 @@
             let fullTemplates = templates;
             if (typeof TemplateManager !== 'undefined' && templates.length > 0 && templates[0].filename && !templates[0].ogunler) {
                 console.log('⏳ Modal için tüm şablonlar yükleniyor (lazy loading)...');
+                console.log('📦 İlk template metadata:', templates[0]);
                 const filenames = templates.map(t => t.filename);
+                console.log('📁 Yüklenecek dosyalar:', filenames.slice(0, 3)); // İlk 3 dosya
                 
                 try {
                     fullTemplates = await TemplateManager.loadTemplates(filenames);
                     console.log('✅ Modal için', fullTemplates.length, 'şablon yüklendi');
-                    console.log('🔍 İlk yüklenen şablon:', fullTemplates[0]);
+                    console.log('🔍 İlk yüklenen şablon FULL DATA:', fullTemplates[0]);
+                    console.log('🔍 İlk şablonun keys:', Object.keys(fullTemplates[0]));
+                    console.log('🔍 İlk şablonun ogunler:', fullTemplates[0].ogunler || fullTemplates[0].meals || fullTemplates[0].günler);
                 } catch (error) {
                     console.error('❌ Şablonlar yüklenirken hata:', error);
                     // Fallback: metadata ile devam et
@@ -8506,6 +8510,13 @@
                 }
             } else {
                 console.log('ℹ️ Lazy loading atlandı - şablonlar zaten tam yüklü veya TemplateManager yok');
+                if (templates.length > 0) {
+                    console.log('🔍 İlk şablonun durumu:', {
+                        hasFilename: !!templates[0].filename,
+                        hasOgunler: !!templates[0].ogunler,
+                        keys: Object.keys(templates[0])
+                    });
+                }
             }
             
             // Sıralama ok işaretlerini belirle
