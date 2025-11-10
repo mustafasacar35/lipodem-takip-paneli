@@ -37,27 +37,9 @@ export default async function handler(req, res) {
       headings: { en: '💬 Yeni Hasta Mesajı' },
       contents: { en: `${displayName}: ${shortMessage}` },
       
-      // 🔥 Admin'e gönderilen bildirim buraya yönlendir
       url: 'https://lipodem-takip-paneli.vercel.app/admin_chat.html',
-      
-      // 🔊 SES AYARLARI
       ios_sound: 'default',
       android_sound: 'default',
-      
-      // 🔔 ANDROID ÖNCELİK AYARLARI (Heads-up notification için)
-      priority: 10,                    // Maksimum öncelik
-      android_channel_id: '58468708-c70f-4392-a1cc-ddccb882c4c8',  // OneSignal Önemli Bildirimler kanalı
-      
-      // 📱 ANDROID VİBRASYON ve GÖRÜNÜRLÜK
-      android_visibility: 1,           // Lock screen'de göster
-      android_accent_color: 'FF667EEA', // Bildirim rengi (mavi-mor gradient)
-      android_led_color: 'FF667EEA',   // LED rengi
-      
-      // 🎯 İOS AYARLARI
-      ios_badgeType: 'Increase',
-      ios_badgeCount: 1,
-      ios_interruption_level: 'time-sensitive',  // iOS 15+ Banner'da kalıcı göster
-      ios_relevance_score: 1.0,  // Notification Summary'de üstte göster
       
       // Data
       data: {
