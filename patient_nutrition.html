@@ -161,13 +161,15 @@
                     console.log('🏷️ Hasta tag eklendi:', patientId, patientName);
                 }
                 
-                // Player ID al (debug için)
-                const playerId = await OneSignal.User.PushSubscription.id;
-                console.log('🆔 OneSignal Player ID:', playerId);
+                // Subscription ID al (OneSignal v16 - Player ID yerine)
+                const subscriptionId = OneSignal.User.PushSubscription.id;
+                const token = OneSignal.User.PushSubscription.token;
+                console.log('🆔 OneSignal Subscription ID:', subscriptionId || 'Henüz oluşmadı');
+                console.log('🔑 Push Token:', token ? 'Mevcut' : 'Yok');
                 
                 // Foreground notification handler
                 OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-                    console.log('� Foreground bildirim alındı (uygulama açık):', event);
+                    console.log('📬 Foreground bildirim alındı (uygulama açık):', event);
                     event.preventDefault();
                     event.notification.display();
                 });

@@ -143,12 +143,15 @@ async function initializeOneSignal() {
             console.log('✅ Push subscription zaten aktif');
         }
         
-        // Player ID al (Admin'i tanımlamak için)
-        const playerId = await OneSignal.User.PushSubscription.id;
-        console.log('🔍 DEBUG: Player ID:', playerId);
+        // Subscription ID al (OneSignal v16 - Player ID yerine)
+        const subscriptionId = OneSignal.User.PushSubscription.id;
+        const token = OneSignal.User.PushSubscription.token;
         
-        if (playerId) {
-            console.log('✅ OneSignal Player ID:', playerId);
+        console.log('🔍 DEBUG: Subscription ID:', subscriptionId);
+        console.log('🔍 DEBUG: Token:', token ? 'Var' : 'Yok');
+        
+        if (subscriptionId || token) {
+            console.log('✅ OneSignal abone oldu - ID:', subscriptionId || 'Token mevcut');
             
             // Admin tag ekle (sadece adminlere bildirim göndermek için)
             await OneSignal.User.addTag('user_type', 'admin');
@@ -156,9 +159,11 @@ async function initializeOneSignal() {
             console.log('✅ Admin tags eklendi');
             
             // Local storage'a kaydet
-            localStorage.setItem('onesignal_player_id', playerId);
+            if (subscriptionId) {
+                localStorage.setItem('onesignal_subscription_id', subscriptionId);
+            }
         } else {
-            console.error('❌ Player ID alınamadı! Push subscription çalışmıyor olabilir.');
+            console.warn('⚠️ Subscription ID henüz oluşmadı - bildirim izni verilmemiş olabilir.');
         }
         
         // OneSignal mesaj listener'ı ekle (foreground notifications)
