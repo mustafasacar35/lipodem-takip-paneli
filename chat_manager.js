@@ -402,7 +402,12 @@ async function markMessagesAsRead() {
 // Yardımcı fonksiyonlar
 function scrollToBottom() {
     const container = document.getElementById('chatMessages');
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        // Smooth scroll için setTimeout
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 100);
+    }
 }
 
 function formatMessageTime(timestamp) {

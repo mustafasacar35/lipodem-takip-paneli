@@ -1132,7 +1132,19 @@ async function sendBroadcastMessage(message) {
         
         if (error) throw error;
         
-        alert(`✅ Mesaj ${allPatients.length} hastaya gönderildi!`);
+        // 🔔 HER HASTAYA BİLDİRİM GÖNDER
+        console.log(`📢 ${allPatients.length} hastaya toplu bildirim gönderiliyor...`);
+        
+        for (const patient of allPatients) {
+            try {
+                await sendNotificationToPatient(patient.id, `📢 DUYURU: ${message}`);
+                console.log(`✅ Bildirim gönderildi: ${patient.name} (ID: ${patient.id})`);
+            } catch (notifError) {
+                console.error(`❌ Bildirim gönderilemedi (${patient.name}):`, notifError);
+            }
+        }
+        
+        alert(`✅ Mesaj ve bildirim ${allPatients.length} hastaya gönderildi!`);
         
     } catch (error) {
         console.error('Toplu mesaj gönderilemedi:', error);
@@ -1285,7 +1297,12 @@ function escapeHtml(text) {
 
 function scrollToBottom() {
     const container = document.getElementById('chatMessages');
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        // Smooth scroll için setTimeout
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 100);
+    }
 }
 
 // Mobil geri butonu
