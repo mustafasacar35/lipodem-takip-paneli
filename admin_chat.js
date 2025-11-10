@@ -372,18 +372,14 @@ async function loadPatients() {
     }
 }
 
-// Tüm hastaları index.json'dan yükle + GitHub API ile tara (eksik olanları bul)
+// Tüm hastaları index.json'dan yükle (GitHub API kaldırıldı - rate limit sorunu)
 async function loadAllPatientsFromIndex() {
     try {
         // 1️⃣ index.json'dan hastaları yükle (CACHE BYPASS)
         const response = await fetch('./hastalar/index.json?t=' + Date.now(), {
-            cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            }
+            cache: 'no-store'
         });
+        
         if (!response.ok) {
             throw new Error('index.json yüklenemedi');
         }
@@ -393,40 +389,40 @@ async function loadAllPatientsFromIndex() {
         
         console.log(`📋 index.json'da ${indexPatients.length} hasta bulundu`);
         
-        // 2️⃣ GitHub API ile hastalar klasörünü tara (eksikleri bul)
-        let githubPatients = [];
-        try {
-            const REPO_OWNER = 'mustafasacar35';
-            const REPO_NAME = 'lipodem-takip-paneli';
-            const BRANCH = 'main';
-            
-            const githubResp = await fetch(
-                `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/hastalar?ref=${BRANCH}`
-            );
-            
-            if (githubResp.ok) {
-                const files = await githubResp.json();
+        // 2️⃣ Supabase'den mesajı olan hastaları da ekle
+        let supabasePatientIds = new Set();
+        
+        if (supabaseClient) {
+            try {
+                const { data: messages } = await supabaseClient
+                    .from('messages')
+                    .select('sender_id, receiver_id, sender_type, receiver_type');
                 
-                // patient_*.json dosyalarını filtrele
-                githubPatients = files
-                    .filter(f => f.name.startsWith('patient_') && f.name.endsWith('.json'))
-                    .map(f => f.name.replace('.json', ''));
-                
-                console.log(`🔍 GitHub'da ${githubPatients.length} hasta dosyası bulundu`);
+                if (messages) {
+                    messages.forEach(msg => {
+                        if (msg.sender_type === 'patient') {
+                            supabasePatientIds.add(msg.sender_id);
+                        }
+                        if (msg.receiver_type === 'patient') {
+                            supabasePatientIds.add(msg.receiver_id);
+                        }
+                    });
+                    console.log(`� Supabase'de ${supabasePatientIds.size} hasta mesajı bulundu`);
+                }
+            } catch (err) {
+                console.warn('⚠️ Supabase hasta listesi alınamadı:', err);
             }
-        } catch (githubErr) {
-            console.warn('⚠️ GitHub API hatası (CORS olabilir), index.json kullanılacak:', githubErr);
         }
         
-        // 3️⃣ İki listeyi birleştir (index.json + GitHub'dan eksikler)
+        // 3️⃣ index.json + Supabase hastalarını birleştir
         const indexPatientIds = new Set(indexPatients.map(p => p.id));
-        const missingPatients = githubPatients.filter(id => !indexPatientIds.has(id));
+        const missingPatients = [...supabasePatientIds].filter(id => !indexPatientIds.has(id));
         
         if (missingPatients.length > 0) {
-            console.log(`⚠️ index.json'da EKSIK hastalar bulundu:`, missingPatients);
+            console.log(`⚠️ index.json'da EKSIK hastalar bulundu (Supabase'den):`, missingPatients);
         }
         
-        // 4️⃣ Tüm hasta listesini oluştur (index.json + eksikler)
+        // 4️⃣ Tüm hasta listesini oluştur
         const allPatientIds = [...indexPatients.map(p => p.id), ...missingPatients];
         
         // Her hasta için isim yükle
@@ -446,7 +442,7 @@ async function loadAllPatientsFromIndex() {
         
         allPatients = await Promise.all(patientPromises);
         
-        console.log(`✅ Toplam ${allPatients.length} hasta yüklendi (index: ${indexPatients.length}, eksik: ${missingPatients.length})`);
+        console.log(`✅ Toplam ${allPatients.length} hasta yüklendi (index: ${indexPatients.length}, Supabase'den eklenen: ${missingPatients.length})`);
         
     } catch (error) {
         console.warn('index.json yüklenemedi, mesajlardan yüklenecek:', error);
