@@ -44,6 +44,8 @@ export default async function handler(req, res) {
       // 🎯 İOS AYARLARI
       ios_badgeType: 'Increase',
       ios_badgeCount: 1,
+      ios_interruption_level: 'time-sensitive',  // iOS 15+ Banner'da kalıcı göster
+      ios_relevance_score: 1.0,  // Notification Summary'de üstte göster
       
       data: {
         type: 'chat_message',
