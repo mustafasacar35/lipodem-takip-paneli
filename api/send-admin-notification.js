@@ -37,6 +37,9 @@ export default async function handler(req, res) {
       headings: { en: '💬 Yeni Hasta Mesajı' },
       contents: { en: `${displayName}: ${shortMessage}` },
       
+      // 🔥 Admin'e gönderilen bildirim buraya yönlendir
+      url: 'https://lipodem-takip-paneli.vercel.app/admin_chat.html',
+      
       // Ses ve badge
       ios_sound: 'default',
       android_sound: 'default',
@@ -48,8 +51,7 @@ export default async function handler(req, res) {
         type: 'patient_message',
         patient_id: patientId,
         patient_name: displayName,
-        message_preview: shortMessage,
-        url: '/admin_chat.html'
+        message_preview: shortMessage
       }
     };
 

@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       channel_for_external_user_ids: 'push',
       headings: { en: title || '💬 Yeni Mesaj' },
       contents: { en: String(message).slice(0, 200) },
+      url: 'https://lipodem-takip-paneli.vercel.app/patient_nutrition.html', // 🔥 Hastaya gönderilen bildirim buraya yönlendir
       ios_sound: 'default',
       android_sound: 'default',
       data: {
