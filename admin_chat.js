@@ -375,8 +375,15 @@ async function loadPatients() {
 // Tüm hastaları index.json'dan yükle + GitHub API ile tara (eksik olanları bul)
 async function loadAllPatientsFromIndex() {
     try {
-        // 1️⃣ index.json'dan hastaları yükle
-        const response = await fetch('./hastalar/index.json?t=' + Date.now());
+        // 1️⃣ index.json'dan hastaları yükle (CACHE BYPASS)
+        const response = await fetch('./hastalar/index.json?t=' + Date.now(), {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
         if (!response.ok) {
             throw new Error('index.json yüklenemedi');
         }
@@ -604,8 +611,14 @@ async function loadPatientsManually() {
 // Hasta dosyasından gerçek ismi yükle
 async function loadPatientName(patientId) {
     try {
-        // Hasta dosyasını yükle
-        const response = await fetch(`./hastalar/${patientId}.json?t=` + Date.now());
+        // Hasta dosyasını yükle (CACHE BYPASS)
+        const response = await fetch(`./hastalar/${patientId}.json?t=` + Date.now(), {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
         
         if (!response.ok) {
             throw new Error('Hasta dosyası bulunamadı');
