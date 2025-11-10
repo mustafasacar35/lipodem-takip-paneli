@@ -1229,10 +1229,31 @@
             try {
                 let patientId;
                 let passwordHash;
+                let existingPatientData = null;
                 
                 if (editingPatientId) {
-                    // Editing existing patient
+                    // Editing existing patient - MEVCUT VERİLERİ YÜKLE
                     patientId = editingPatientId;
+                    
+                    // 🔥 GitHub'dan mevcut hasta verisini çek (settings, weeks vs. korumak için)
+                    try {
+                        const patientFileUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/hastalar/${patientId}.json`;
+                        const patientFileResp = await fetch(patientFileUrl, {
+                            headers: {
+                                'Authorization': `token ${CONFIG.token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        });
+                        
+                        if (patientFileResp.ok) {
+                            const patientFileData = await patientFileResp.json();
+                            const decodedContent = decodeURIComponent(escape(atob(patientFileData.content)));
+                            existingPatientData = JSON.parse(decodedContent);
+                            console.log('✅ Mevcut hasta verisi yüklendi:', existingPatientData);
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Mevcut hasta verisi yüklenemedi, yeni veri oluşturulacak:', err);
+                    }
                     
                     // If password changed, hash it
                     if (password) {
@@ -1274,8 +1295,12 @@
                     });
                 }
                 
-                // Create patient detail object
+                // 🔥 Create patient detail object - MEVCUT VERİLERİ KORU
                 const patientDetail = {
+                    // Önce mevcut verileri yükle (settings, weeks vs.)
+                    ...(existingPatientData || {}),
+                    
+                    // Sonra güncellenenleri üzerine yaz
                     id: patientId,
                     username: username,
                     passwordHash: passwordHash,
@@ -1296,10 +1321,30 @@
                     notes: notes,
                     progressLog: progressLog,
                     createdAt: editingPatientId ?
-                        patients.find(p => p.id === patientId).createdAt :
+                        (existingPatientData?.createdAt || patients.find(p => p.id === patientId)?.createdAt || new Date().toISOString()) :
                         new Date().toISOString(),
                     updatedAt: new Date().toISOString()
-                };                // Save to GitHub
+                };
+                
+                // 🔥 ÖNEMLİ: Eğer settings mevcut veride varsa, sadece personalInfo'yu güncelle, diğer ayarlara dokunma
+                if (existingPatientData?.settings) {
+                    patientDetail.settings = {
+                        ...existingPatientData.settings,
+                        personalInfo: {
+                            name: name,
+                            surname: surname,
+                            age: age,
+                            gender: gender,
+                            weight: weight,
+                            height: height,
+                            activity: activity
+                        }
+                    };
+                }
+                
+                console.log('💾 Kaydedilecek hasta verisi:', patientDetail);
+
+                // Save to GitHub
                 await saveToGitHub(`hastalar/${patientId}.json`, patientDetail);
                 await saveToGitHub('hastalar/index.json', {
                     version: '1.0',
