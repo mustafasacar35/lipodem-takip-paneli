@@ -1123,7 +1123,7 @@ async function sendBroadcastMessage(message) {
             sender_type: 'admin',
             receiver_id: patient.id,
             receiver_type: 'patient',
-            message: `📢 DUYURU: ${message}`
+            message: message
         }));
         
         const { error } = await supabaseClient
@@ -1137,7 +1137,7 @@ async function sendBroadcastMessage(message) {
         
         for (const patient of allPatients) {
             try {
-                await sendNotificationToPatient(patient.id, `📢 DUYURU: ${message}`);
+                await sendNotificationToPatient(patient.id, message);
                 console.log(`✅ Bildirim gönderildi: ${patient.name} (ID: ${patient.id})`);
             } catch (notifError) {
                 console.error(`❌ Bildirim gönderilemedi (${patient.name}):`, notifError);

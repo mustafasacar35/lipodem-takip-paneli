@@ -227,10 +227,10 @@ function createMessageElement(msg) {
     if (!isSent) {
         // Eğer sender_admin varsa göster
         if (msg.sender_admin) {
-            senderName = `👨‍⚕️ ${msg.sender_admin === 'admin' ? 'Dr. Mustafa SACAR' : 
-                                   msg.sender_admin === 'admin2' ? 'Dyt. Merve' : 'Yönetici'}`;
+            senderName = `🏥 ${msg.sender_admin === 'admin' ? 'Lipödem Merkezi' : 
+                                   msg.sender_admin === 'admin2' ? 'Lipödem Merkezi' : 'Lipödem Merkezi'}`;
         } else {
-            senderName = '👨‍⚕️ Yönetici';
+            senderName = '🏥 Lipödem Merkezi';
         }
     }
     
