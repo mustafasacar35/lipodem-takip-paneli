@@ -1149,9 +1149,10 @@ function getInitials(name) {
 }
 
 function formatTime(timestamp) {
-    // Sadece saat:dakika (tarih yok)
+    // Türkiye saatine çevir (UTC+3)
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('tr-TR', { 
+    const localDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+    return localDate.toLocaleTimeString('tr-TR', { 
         hour: '2-digit', 
         minute: '2-digit' 
     });
