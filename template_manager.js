@@ -157,7 +157,15 @@ const TemplateManager = {
                 // Normal fetch: Use raw.githubusercontent.com (faster, but cached)
                 const rawUrl = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.indexPath}?t=${Date.now()}`;
                 
-                const response = await fetch(rawUrl);
+                // 🔥 CACHE BYPASS: Vercel ve CDN'ler için fetch options ekle
+                const response = await fetch(rawUrl, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -217,7 +225,15 @@ const TemplateManager = {
             console.log('[TemplateManager] Fetching template from GitHub:', filename);
             const url = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.templatePath}${filename}?t=${Date.now()}`;
             
-            const response = await fetch(url);
+            // 🔥 CACHE BYPASS: Vercel ve CDN'ler için fetch options ekle
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
 
             if (!response.ok) {
                 throw new Error(`Failed to load template ${filename}: ${response.status} ${response.statusText}`);

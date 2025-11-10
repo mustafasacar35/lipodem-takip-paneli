@@ -8482,6 +8482,13 @@
             const tableContainer = document.getElementById('dayTemplateTable');
             const isAdmin = window.isUserAdmin();
             
+            console.log('🔍 renderTemplateTable başlatıldı:', {
+                templateCount: templates.length,
+                firstTemplate: templates[0],
+                hasOgunler: templates[0]?.ogunler ? 'VAR' : 'YOK',
+                hasFilename: templates[0]?.filename ? 'VAR' : 'YOK'
+            });
+            
             // 🚀 LAZY LOADING: Eğer şablonlar sadece metadata ise, full data yükle
             let fullTemplates = templates;
             if (typeof TemplateManager !== 'undefined' && templates.length > 0 && templates[0].filename && !templates[0].ogunler) {
@@ -8491,11 +8498,14 @@
                 try {
                     fullTemplates = await TemplateManager.loadTemplates(filenames);
                     console.log('✅ Modal için', fullTemplates.length, 'şablon yüklendi');
+                    console.log('🔍 İlk yüklenen şablon:', fullTemplates[0]);
                 } catch (error) {
                     console.error('❌ Şablonlar yüklenirken hata:', error);
                     // Fallback: metadata ile devam et
                     fullTemplates = templates;
                 }
+            } else {
+                console.log('ℹ️ Lazy loading atlandı - şablonlar zaten tam yüklü veya TemplateManager yok');
             }
             
             // Sıralama ok işaretlerini belirle
@@ -8541,6 +8551,15 @@
                         return `<strong>${mealDisplayName}:</strong> ${foodNames}`;
                     }).join('<br>');
                     mealsHTML = mealsList;
+                } else {
+                    // DEBUG: Neden öğün yok?
+                    console.warn('⚠️ Şablonda öğün bulunamadı:', {
+                        templateId: template.id,
+                        templateName: template.name,
+                        hasOgunler: !!template.ogunler,
+                        ogunlerLength: template.ogunler?.length,
+                        templateKeys: Object.keys(template)
+                    });
                 }
                 
                 // Row classes
