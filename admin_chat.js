@@ -372,26 +372,65 @@ async function loadPatients() {
     }
 }
 
-// Tüm hastaları index.json'dan yükle
+// Tüm hastaları index.json'dan yükle + GitHub API ile tara (eksik olanları bul)
 async function loadAllPatientsFromIndex() {
     try {
-        const response = await fetch('./hastalar/index.json');
+        // 1️⃣ index.json'dan hastaları yükle
+        const response = await fetch('./hastalar/index.json?t=' + Date.now());
         if (!response.ok) {
             throw new Error('index.json yüklenemedi');
         }
         
         const data = await response.json();
-        const patients = data.patients || [];
+        const indexPatients = data.patients || [];
         
-        console.log(`📋 ${patients.length} hasta bulundu`);
+        console.log(`📋 index.json'da ${indexPatients.length} hasta bulundu`);
+        
+        // 2️⃣ GitHub API ile hastalar klasörünü tara (eksikleri bul)
+        let githubPatients = [];
+        try {
+            const REPO_OWNER = 'mustafasacar35';
+            const REPO_NAME = 'lipodem-takip-paneli';
+            const BRANCH = 'main';
+            
+            const githubResp = await fetch(
+                `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/hastalar?ref=${BRANCH}`
+            );
+            
+            if (githubResp.ok) {
+                const files = await githubResp.json();
+                
+                // patient_*.json dosyalarını filtrele
+                githubPatients = files
+                    .filter(f => f.name.startsWith('patient_') && f.name.endsWith('.json'))
+                    .map(f => f.name.replace('.json', ''));
+                
+                console.log(`🔍 GitHub'da ${githubPatients.length} hasta dosyası bulundu`);
+            }
+        } catch (githubErr) {
+            console.warn('⚠️ GitHub API hatası (CORS olabilir), index.json kullanılacak:', githubErr);
+        }
+        
+        // 3️⃣ İki listeyi birleştir (index.json + GitHub'dan eksikler)
+        const indexPatientIds = new Set(indexPatients.map(p => p.id));
+        const missingPatients = githubPatients.filter(id => !indexPatientIds.has(id));
+        
+        if (missingPatients.length > 0) {
+            console.log(`⚠️ index.json'da EKSIK hastalar bulundu:`, missingPatients);
+        }
+        
+        // 4️⃣ Tüm hasta listesini oluştur (index.json + eksikler)
+        const allPatientIds = [...indexPatients.map(p => p.id), ...missingPatients];
         
         // Her hasta için isim yükle
-        const patientPromises = patients.map(async (p) => {
-            const patientData = await loadPatientName(p.id);
+        const patientPromises = allPatientIds.map(async (patientId) => {
+            const patientData = await loadPatientName(patientId);
+            const indexData = indexPatients.find(p => p.id === patientId);
+            
             return {
-                id: p.id,
+                id: patientId,
                 name: patientData.name,
-                username: p.username || '',
+                username: indexData?.username || patientData.username || '',
                 lastMessage: '',
                 lastMessageTime: null,
                 unreadCount: 0
@@ -399,6 +438,8 @@ async function loadAllPatientsFromIndex() {
         });
         
         allPatients = await Promise.all(patientPromises);
+        
+        console.log(`✅ Toplam ${allPatients.length} hasta yüklendi (index: ${indexPatients.length}, eksik: ${missingPatients.length})`);
         
     } catch (error) {
         console.warn('index.json yüklenemedi, mesajlardan yüklenecek:', error);
@@ -564,7 +605,7 @@ async function loadPatientsManually() {
 async function loadPatientName(patientId) {
     try {
         // Hasta dosyasını yükle
-        const response = await fetch(`./hastalar/${patientId}.json`);
+        const response = await fetch(`./hastalar/${patientId}.json?t=` + Date.now());
         
         if (!response.ok) {
             throw new Error('Hasta dosyası bulunamadı');
@@ -577,18 +618,21 @@ async function loadPatientName(patientId) {
         const surname = data.personalInfo?.surname || data.surname || '';
         const fullName = `${name} ${surname}`.trim();
         
+        // Username'i de al
+        const username = data.username || '';
+        
         if (fullName) {
-            console.log(`✅ Hasta ismi yüklendi: ${patientId} -> ${fullName}`);
-            return { name: fullName };
+            console.log(`✅ Hasta ismi yüklendi: ${patientId} -> ${fullName} (${username})`);
+            return { name: fullName, username: username };
         }
         
         // Eğer dosyada isim yoksa ID'den oluştur
-        return { name: formatPatientName(patientId) };
+        return { name: formatPatientName(patientId), username: username };
         
     } catch (error) {
         console.warn(`⚠️ Hasta ismi yüklenemedi (${patientId}):`, error.message);
         // Hata durumunda ID'den isim oluştur
-        return { name: formatPatientName(patientId) };
+        return { name: formatPatientName(patientId), username: '' };
     }
 }
 
