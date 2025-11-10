@@ -27,8 +27,24 @@ export default async function handler(req, res) {
       headings: { en: title || '💬 Yeni Mesaj' },
       contents: { en: String(message).slice(0, 200) },
       url: 'https://lipodem-takip-paneli.vercel.app/patient_nutrition.html', // 🔥 Hastaya gönderilen bildirim buraya yönlendir
+      
+      // 🔊 SES AYARLARI
       ios_sound: 'default',
       android_sound: 'default',
+      
+      // 🔔 ANDROID ÖNCELİK AYARLARI (Heads-up notification için)
+      priority: 10,                    // Maksimum öncelik
+      android_channel_id: '58468708-c70f-4392-a1cc-ddccb882c4c8',  // OneSignal Önemli Bildirimler kanalı
+      
+      // 📱 ANDROID VİBRASYON ve GÖRÜNÜRLÜK
+      android_visibility: 1,           // Lock screen'de göster
+      android_accent_color: 'FF667EEA', // Bildirim rengi (mavi-mor gradient)
+      android_led_color: 'FF667EEA',   // LED rengi
+      
+      // 🎯 İOS AYARLARI
+      ios_badgeType: 'Increase',
+      ios_badgeCount: 1,
+      
       data: {
         type: 'chat_message',
         patient_id: patientId,
