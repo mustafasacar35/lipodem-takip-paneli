@@ -45,14 +45,21 @@
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
         // OneSignal v16 - Hasta bildirimleri için gelişmiş yapılandırma
+        // 🔥 DOMAIN BAZLI APP ID SEÇİMİ (GitHub Pages vs Vercel)
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        const ONESIGNAL_APP_ID = isGitHubPages 
+            ? "45686db4-9813-42ef-939d-1402fe1622f7"  // ✅ GitHub Pages App ID
+            : "109f129c-cd73-4708-ba9a-b3c8103c52dc"; // ✅ Vercel App ID
+        
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
             console.log('🔔 OneSignal v16 yapılandırması başlatılıyor (HASTA)...');
             console.log('🔍 DEBUG: OneSignal init VERSION 2.0 (PATIENT + AUTO PROMPT)');
+            console.log('🔔 OneSignal App ID:', ONESIGNAL_APP_ID, '(Domain:', window.location.hostname + ')');
             
             try {
                 await OneSignal.init({
-                    appId: "109f129c-cd73-4708-ba9a-b3c8103c52dc",
+                    appId: ONESIGNAL_APP_ID,
                     allowLocalhostAsSecureOrigin: true,
                     serviceWorkerPath: 'OneSignalSDKWorker.js',
                     serviceWorkerParam: { scope: '/' }
