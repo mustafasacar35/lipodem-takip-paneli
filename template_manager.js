@@ -157,14 +157,9 @@ const TemplateManager = {
                 // Normal fetch: Use raw.githubusercontent.com (faster, but cached)
                 const rawUrl = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.indexPath}?t=${Date.now()}`;
                 
-                // 🔥 CACHE BYPASS: Vercel ve CDN'ler için fetch options ekle
+                // 🔥 CACHE BYPASS: Sadece cache:'no-store' kullan (CORS preflight engellemek için header yok)
                 const response = await fetch(rawUrl, {
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
+                    cache: 'no-store'
                 });
 
                 if (!response.ok) {
@@ -225,14 +220,9 @@ const TemplateManager = {
             console.log('[TemplateManager] Fetching template from GitHub:', filename);
             const url = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.templatePath}${filename}?t=${Date.now()}`;
             
-            // 🔥 CACHE BYPASS: Vercel ve CDN'ler için fetch options ekle
+            // 🔥 CACHE BYPASS: Sadece cache:'no-store' kullan (CORS preflight engellemek için header yok)
             const response = await fetch(url, {
-                cache: 'no-store',
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
+                cache: 'no-store'
             });
 
             if (!response.ok) {
