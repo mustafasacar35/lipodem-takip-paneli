@@ -865,6 +865,9 @@ function displayMessages(messages) {
         const messageDiv = createMessageElement(msg);
         container.appendChild(messageDiv);
     });
+    
+    // Mesajlar eklendikten sonra scroll'u en alta indir
+    scrollToBottom();
 }
 
 // Tarih başlığı oluştur (WhatsApp tarzı)
