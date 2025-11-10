@@ -3452,30 +3452,41 @@
                 btn.style.display = isAdmin ? 'inline-block' : 'none';
             });
             
-            // 📊 Veritabanı kontrol butonunu oluştur (yoksa)
+            // 📊 Veritabanı kontrol butonu yönetimi
+            const existingDbCheckBtn = document.getElementById('btnDatabaseCheck');
+            
             if (isAdmin) {
-                const headerRight = document.querySelector('.header-right');
-                if (headerRight && !document.getElementById('btnDatabaseCheck')) {
-                    const dbCheckBtn = document.createElement('button');
-                    dbCheckBtn.id = 'btnDatabaseCheck';
-                    dbCheckBtn.className = 'btn-header admin-only';
-                    dbCheckBtn.onclick = openDatabaseCheckModal;
-                    dbCheckBtn.title = 'Veritabanı Kontrolü - Tüm yemekleri kontrol et';
-                    dbCheckBtn.innerHTML = '📊';
-                    dbCheckBtn.style.background = 'rgba(255, 193, 7, 0.2)';
-                    dbCheckBtn.style.borderColor = 'rgba(255, 193, 7, 0.5)';
-                    
-                    // Ayarlar butonundan önce ekle
-                    const settingsBtn = Array.from(headerRight.children).find(btn => 
-                        btn.getAttribute('onclick')?.includes('openSettings')
-                    );
-                    if (settingsBtn) {
-                        headerRight.insertBefore(dbCheckBtn, settingsBtn);
-                    } else {
-                        headerRight.appendChild(dbCheckBtn);
+                // Admin ise: Buton yoksa oluştur
+                if (!existingDbCheckBtn) {
+                    const headerRight = document.querySelector('.header-right');
+                    if (headerRight) {
+                        const dbCheckBtn = document.createElement('button');
+                        dbCheckBtn.id = 'btnDatabaseCheck';
+                        dbCheckBtn.className = 'btn-header admin-only';
+                        dbCheckBtn.onclick = openDatabaseCheckModal;
+                        dbCheckBtn.title = 'Veritabanı Kontrolü - Tüm yemekleri kontrol et';
+                        dbCheckBtn.innerHTML = '📊';
+                        dbCheckBtn.style.background = 'rgba(255, 193, 7, 0.2)';
+                        dbCheckBtn.style.borderColor = 'rgba(255, 193, 7, 0.5)';
+                        
+                        // Ayarlar butonundan önce ekle
+                        const settingsBtn = Array.from(headerRight.children).find(btn => 
+                            btn.getAttribute('onclick')?.includes('openSettings')
+                        );
+                        if (settingsBtn) {
+                            headerRight.insertBefore(dbCheckBtn, settingsBtn);
+                        } else {
+                            headerRight.appendChild(dbCheckBtn);
+                        }
+                        
+                        console.log('📊 Veritabanı kontrol butonu eklendi');
                     }
-                    
-                    console.log('📊 Veritabanı kontrol butonu eklendi');
+                }
+            } else {
+                // Admin değilse: Buton varsa SİL (gizleme değil, tamamen kaldır)
+                if (existingDbCheckBtn) {
+                    existingDbCheckBtn.remove();
+                    console.log('🔒 Veritabanı kontrol butonu kaldırıldı (admin yetkisi yok)');
                 }
             }
             
