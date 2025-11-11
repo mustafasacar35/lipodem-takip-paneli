@@ -166,6 +166,37 @@
         .admin-edit-button:active {
             transform: scale(0.95);
         }
+
+        /* 🚫 Yasak Listesi Butonu (Admin için) */
+        .blacklist-button {
+            position: fixed;
+            bottom: 20px;
+            left: 86px; /* Admin edit butonunun yanı */
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%);
+            color: white;
+            border: none;
+            padding: 14px 18px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+            z-index: 99998 !important;
+            transition: all 0.3s;
+            width: 56px;
+            height: 56px;
+            display: none; /* Varsayılan olarak gizli */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .blacklist-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(255, 107, 53, 0.6);
+        }
+
+        .blacklist-button:active {
+            transform: scale(0.95);
+        }
         
         /* Modal açıkken search ve ikonları gizle */
         body.modal-open .search-box {
@@ -1374,6 +1405,77 @@
         </div>
     </div>
 
+    <!-- 🚫 YASAK LİSTESİ YÖNETİM MODALI -->
+    <div id="blacklistModal" class="modal" style="display: none; position: fixed; z-index: 10003; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85);">
+        <div class="modal-content" style="background-color: #fff; margin: 1% auto; padding: 0; border-radius: 12px; width: 96%; max-width: 1100px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 96vh; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%); color: white; padding: 16px 24px; border-radius: 12px 12px 0 0; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 20px;">🚫 Alternatif Yasak Listesi Yönetimi</h3>
+                <button onclick="closeBlacklistModal()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; font-size: 20px; cursor: pointer; border-radius: 6px; transition: all 0.2s;">✖</button>
+            </div>
+            
+            <!-- Body - Scrollable -->
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+                <!-- Manuel Ekleme Bölümü -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 24px;">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">➕ Yeni Yasak Ekle</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <!-- Sol: Hedef Yemek -->
+                        <div style="background: white; padding: 16px; border-radius: 8px; border: 2px solid #dee2e6;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #495057;">🎯 Hedef Yemek:</label>
+                            <input type="text" id="blacklistMainFood" placeholder="Yemek ara... (ör: Izgara Tavuk)" 
+                                style="width: 100%; padding: 10px; border: 2px solid #ced4da; border-radius: 6px; font-size: 14px; box-sizing: border-box;" 
+                                autocomplete="off">
+                            <div id="blacklistMainFoodDropdown" style="position: relative; background: white; border: 2px solid #667eea; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; display: none; margin-top: -2px; z-index: 1000;"></div>
+                            <div id="selectedMainFood" style="margin-top: 8px; padding: 8px; background: #e7f3ff; border-radius: 6px; display: none;">
+                                <span style="font-weight: 600; color: #0066cc;"></span>
+                                <button onclick="clearMainFood()" style="float: right; background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">✖</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Sağ: Yasaklanacak Alternatifler -->
+                        <div style="background: white; padding: 16px; border-radius: 8px; border: 2px solid #dee2e6;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #495057;">🚫 Yasaklanacak Alternatifler:</label>
+                            <input type="text" id="blacklistAlternatives" placeholder="Alternatif ara... (ör: Tavuk Sote)" 
+                                style="width: 100%; padding: 10px; border: 2px solid #ced4da; border-radius: 6px; font-size: 14px; box-sizing: border-box;" 
+                                autocomplete="off">
+                            <div id="blacklistAlternativesDropdown" style="position: relative; background: white; border: 2px solid #667eea; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; display: none; margin-top: -2px; z-index: 1000;"></div>
+                            <div id="selectedAlternatives" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Çift Yönlü Ekleme -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #495057;">
+                            <input type="checkbox" id="bidirectionalBan" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>🔄 <strong>Çift Yönlü Yasaklama:</strong> Her iki yemek için de karşılıklı yasak ekle</span>
+                        </label>
+                        <div style="margin-left: 26px; margin-top: 4px; font-size: 12px; color: #6c757d;">
+                            Örnek: "Izgara Tavuk" için "Tavuk Sote" yasaklanırsa, "Tavuk Sote" için de "Izgara Tavuk" yasaklanır.
+                        </div>
+                    </div>
+
+                    <!-- Kaydet Butonu -->
+                    <button onclick="addToBlacklist()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 12px 24px; font-size: 15px; cursor: pointer; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 8px rgba(40,167,69,0.3); transition: all 0.3s;">
+                        ✅ Yasak Listesine Ekle
+                    </button>
+                </div>
+
+                <!-- Mevcut Yasaklar Listesi -->
+                <div style="background: #fff; border: 2px solid #dee2e6; border-radius: 10px; padding: 20px;">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333; display: flex; justify-content: space-between; align-items: center;">
+                        <span>📋 Mevcut Yasaklar (<span id="blacklistCount">0</span>)</span>
+                        <input type="text" id="searchBlacklist" placeholder="🔍 Ara..." style="padding: 6px 12px; border: 2px solid #ced4da; border-radius: 6px; font-size: 13px; width: 250px;">
+                    </h4>
+                    <div id="currentBlacklistItems" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Dinamik olarak doldurulacak -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ✏️ YEMEK DÜZENLEME MODALI (patient_nutrition.html'den) -->
     <div id="templateFoodEditModal" class="modal" style="display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
         <div class="modal-content" style="background-color: #fff; margin: 2% auto; padding: 0; border-radius: 12px; width: 95%; max-width: 900px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-height: 95vh; display: flex; flex-direction: column;">
@@ -1614,6 +1716,11 @@
         var currentAlternatives = [];
         var currentIndex = 0;
         var foodDatabase = [];
+        
+        // ==================== YASAK LİSTESİ GLOBAL DEĞİŞKENLERİ ====================
+        var alternativeBlacklist = []; // GitHub'dan yüklenecek yasak listesi
+        var blacklistVersion = '1.0';
+        var selectedFoodsForBan = []; // Toplu yasaklama için seçili yemekler
         
         (function() {
             let lastTouchEnd = 0;
@@ -2799,6 +2906,476 @@
                 applySettings();
             }
 
+            // ==================== YASAK LİSTESİ YÜKLEME FONKSİYONU ====================
+            async function loadBlacklist() {
+                try {
+                    console.log('🚫 Yasak listesi yükleniyor...');
+                    const timestamp = new Date().getTime();
+                    const blacklistUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/data/alternative_blacklist.json?t=${timestamp}`;
+                    
+                    const response = await fetch(blacklistUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        alternativeBlacklist = data.blacklist || [];
+                        blacklistVersion = data.version || '1.0';
+                        
+                        // localStorage'a da kaydet (offline için)
+                        localStorage.setItem('alternative_blacklist_cache', JSON.stringify(data));
+                        
+                        console.log(`✅ Yasak listesi yüklendi (${alternativeBlacklist.length} kural, v${blacklistVersion})`);
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Yasak listesi GitHub\'dan yüklenemedi, cache kullanılıyor:', error.message);
+                    
+                    // Fallback: localStorage'dan yükle
+                    const cached = localStorage.getItem('alternative_blacklist_cache');
+                    if (cached) {
+                        try {
+                            const data = JSON.parse(cached);
+                            alternativeBlacklist = data.blacklist || [];
+                            blacklistVersion = data.version || '1.0';
+                            console.log(`📦 Yasak listesi cache'den yüklendi (${alternativeBlacklist.length} kural)`);
+                        } catch (e) {
+                            console.error('❌ Cache parse hatası:', e);
+                            alternativeBlacklist = [];
+                        }
+                    } else {
+                        console.log('ℹ️ Henüz yasak listesi yok, boş başlatıldı');
+                        alternativeBlacklist = [];
+                    }
+                }
+            }
+
+            // ==================== YASAK LİSTESİ MODAL FONKSİYONLARI ====================
+            
+            let selectedMainFoodForBan = null;
+            let selectedAlternativesForBan = [];
+            
+            // Modal aç/kapat
+            window.openBlacklistModal = function() {
+                document.getElementById('blacklistModal').style.display = 'block';
+                document.body.classList.add('modal-open');
+                refreshBlacklistDisplay();
+                setupBlacklistSearch();
+            };
+            
+            window.closeBlacklistModal = function() {
+                document.getElementById('blacklistModal').style.display = 'none';
+                document.body.classList.remove('modal-open');
+                clearBlacklistForm();
+            };
+            
+            // Form temizle
+            function clearBlacklistForm() {
+                selectedMainFoodForBan = null;
+                selectedAlternativesForBan = [];
+                document.getElementById('blacklistMainFood').value = '';
+                document.getElementById('blacklistAlternatives').value = '';
+                document.getElementById('selectedMainFood').style.display = 'none';
+                document.getElementById('selectedAlternatives').innerHTML = '';
+                document.getElementById('blacklistMainFoodDropdown').style.display = 'none';
+                document.getElementById('blacklistAlternativesDropdown').style.display = 'none';
+                document.getElementById('bidirectionalBan').checked = false;
+            }
+            
+            window.clearMainFood = function() {
+                selectedMainFoodForBan = null;
+                document.getElementById('selectedMainFood').style.display = 'none';
+                document.getElementById('blacklistMainFood').value = '';
+            };
+            
+            // Akıllı search kurulumu
+            function setupBlacklistSearch() {
+                const mainInput = document.getElementById('blacklistMainFood');
+                const mainDropdown = document.getElementById('blacklistMainFoodDropdown');
+                const altInput = document.getElementById('blacklistAlternatives');
+                const altDropdown = document.getElementById('blacklistAlternativesDropdown');
+                
+                // Hedef yemek search
+                mainInput.addEventListener('input', (e) => {
+                    const query = e.target.value.trim().toLowerCase();
+                    if (query.length < 2) {
+                        mainDropdown.style.display = 'none';
+                        return;
+                    }
+                    
+                    const matches = foodDatabase.filter(food => 
+                        normalizeText(food.name).includes(normalizeText(query))
+                    ).slice(0, 10);
+                    
+                    if (matches.length > 0) {
+                        mainDropdown.innerHTML = matches.map(food => `
+                            <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;" 
+                                 onclick="selectMainFoodForBan('${food.name.replace(/'/g, "\\'")}')">
+                                <div style="font-weight: 600;">${food.name}</div>
+                                <div style="font-size: 11px; color: #666;">
+                                    🔥 ${Math.round(food.calories || 0)} kcal • 
+                                    🍞 ${Math.round(food.carbs || 0)}g • 
+                                    🥩 ${Math.round(food.protein || 0)}g • 
+                                    🥑 ${Math.round(food.fat || 0)}g
+                                </div>
+                            </div>
+                        `).join('');
+                        mainDropdown.style.display = 'block';
+                    } else {
+                        mainDropdown.style.display = 'none';
+                    }
+                });
+                
+                // Alternatif search
+                altInput.addEventListener('input', (e) => {
+                    const query = e.target.value.trim().toLowerCase();
+                    if (query.length < 2) {
+                        altDropdown.style.display = 'none';
+                        return;
+                    }
+                    
+                    const matches = foodDatabase.filter(food => 
+                        normalizeText(food.name).includes(normalizeText(query)) &&
+                        !selectedAlternativesForBan.includes(food.name)
+                    ).slice(0, 10);
+                    
+                    if (matches.length > 0) {
+                        altDropdown.innerHTML = matches.map(food => `
+                            <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;" 
+                                 onclick="addAlternativeForBan('${food.name.replace(/'/g, "\\'")}')">
+                                <div style="font-weight: 600;">${food.name}</div>
+                                <div style="font-size: 11px; color: #666;">
+                                    🔥 ${Math.round(food.calories || 0)} kcal • 
+                                    🍞 ${Math.round(food.carbs || 0)}g • 
+                                    🥩 ${Math.round(food.protein || 0)}g • 
+                                    🥑 ${Math.round(food.fat || 0)}g
+                                </div>
+                            </div>
+                        `).join('');
+                        altDropdown.style.display = 'block';
+                    } else {
+                        altDropdown.style.display = 'none';
+                    }
+                });
+                
+                // Arama listesi filtreleme
+                const searchInput = document.getElementById('searchBlacklist');
+                searchInput.addEventListener('input', (e) => {
+                    refreshBlacklistDisplay(e.target.value.toLowerCase());
+                });
+            }
+            
+            window.selectMainFoodForBan = function(foodName) {
+                selectedMainFoodForBan = foodName;
+                document.getElementById('blacklistMainFood').value = '';
+                document.getElementById('blacklistMainFoodDropdown').style.display = 'none';
+                
+                const container = document.getElementById('selectedMainFood');
+                container.querySelector('span').textContent = foodName;
+                container.style.display = 'block';
+            };
+            
+            window.addAlternativeForBan = function(foodName) {
+                if (!selectedAlternativesForBan.includes(foodName)) {
+                    selectedAlternativesForBan.push(foodName);
+                    updateAlternativesDisplay();
+                }
+                document.getElementById('blacklistAlternatives').value = '';
+                document.getElementById('blacklistAlternativesDropdown').style.display = 'none';
+            };
+            
+            window.removeAlternativeForBan = function(foodName) {
+                selectedAlternativesForBan = selectedAlternativesForBan.filter(f => f !== foodName);
+                updateAlternativesDisplay();
+            };
+            
+            function updateAlternativesDisplay() {
+                const container = document.getElementById('selectedAlternatives');
+                container.innerHTML = selectedAlternativesForBan.map(name => `
+                    <span style="background: #ff6b6b; color: white; padding: 6px 12px; border-radius: 16px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+                        ${name}
+                        <button onclick="removeAlternativeForBan('${name.replace(/'/g, "\\'")}')" 
+                                style="background: rgba(255,255,255,0.3); border: none; color: white; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">✖</button>
+                    </span>
+                `).join('');
+            }
+            
+            // Yasak listesine ekle
+            window.addToBlacklist = async function() {
+                if (!selectedMainFoodForBan) {
+                    alert('⚠️ Lütfen hedef yemeği seçin!');
+                    return;
+                }
+                
+                if (selectedAlternativesForBan.length === 0) {
+                    alert('⚠️ Lütfen en az bir alternatif seçin!');
+                    return;
+                }
+                
+                const isBidirectional = document.getElementById('bidirectionalBan').checked;
+                
+                try {
+                    const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+                    const username = session.username || 'admin';
+                    
+                    // Mevcut blacklist'i kopyala
+                    const updatedBlacklist = [...alternativeBlacklist];
+                    
+                    // Ana yemek için yasak ekle/güncelle
+                    let mainEntry = updatedBlacklist.find(item => item.mainFood === selectedMainFoodForBan);
+                    if (mainEntry) {
+                        // Var olan entry'yi güncelle - yeni yasakları ekle (tekrar olmaması için Set kullan)
+                        const combined = new Set([...mainEntry.bannedAlternatives, ...selectedAlternativesForBan]);
+                        mainEntry.bannedAlternatives = Array.from(combined);
+                        mainEntry.lastUpdated = new Date().toISOString();
+                        mainEntry.lastUpdatedBy = username;
+                    } else {
+                        // Yeni entry oluştur
+                        updatedBlacklist.push({
+                            id: `bl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            mainFood: selectedMainFoodForBan,
+                            bannedAlternatives: [...selectedAlternativesForBan],
+                            addedBy: username,
+                            addedDate: new Date().toISOString().split('T')[0],
+                            lastUpdated: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Çift yönlü ise
+                    if (isBidirectional) {
+                        selectedAlternativesForBan.forEach(altFood => {
+                            let altEntry = updatedBlacklist.find(item => item.mainFood === altFood);
+                            if (altEntry) {
+                                const combined = new Set([...altEntry.bannedAlternatives, selectedMainFoodForBan]);
+                                altEntry.bannedAlternatives = Array.from(combined);
+                                altEntry.lastUpdated = new Date().toISOString();
+                                altEntry.lastUpdatedBy = username;
+                            } else {
+                                updatedBlacklist.push({
+                                    id: `bl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                    mainFood: altFood,
+                                    bannedAlternatives: [selectedMainFoodForBan],
+                                    addedBy: username,
+                                    addedDate: new Date().toISOString().split('T')[0],
+                                    lastUpdated: new Date().toISOString(),
+                                    bidirectional: true
+                                });
+                            }
+                        });
+                    }
+                    
+                    // GitHub'a kaydet
+                    const blacklistData = {
+                        version: blacklistVersion,
+                        lastUpdated: new Date().toISOString(),
+                        blacklist: updatedBlacklist
+                    };
+                    
+                    await saveBlacklistToGitHub(blacklistData);
+                    
+                    // Global değişkeni güncelle
+                    alternativeBlacklist = updatedBlacklist;
+                    
+                    alert(`✅ Yasak listesi güncellendi!\n\n${selectedMainFoodForBan} için ${selectedAlternativesForBan.length} alternatif yasaklandı.${isBidirectional ? '\n(Çift yönlü)' : ''}`);
+                    
+                    clearBlacklistForm();
+                    refreshBlacklistDisplay();
+                    
+                    // Eğer halihazırda alternatif gösteriliyorsa yenile
+                    if (originalSelectedFood) {
+                        findAlternatives(originalSelectedFood);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Yasak listesi kaydetme hatası:', error);
+                    alert('❌ Yasak listesi kaydedilemedi!\n\n' + error.message);
+                }
+            };
+            
+            // GitHub'a kaydet
+            async function saveBlacklistToGitHub(data) {
+                const jsonContent = JSON.stringify(data, null, 2);
+                const filePath = 'data/alternative_blacklist.json';
+                const commitMessage = `Yasak listesi güncellendi - ${new Date().toISOString()}`;
+                
+                await updateGithubFile(filePath, jsonContent, commitMessage);
+                
+                console.log('✅ Yasak listesi GitHub\'a kaydedildi');
+            }
+            
+            // Yasak listesini göster
+            function refreshBlacklistDisplay(searchQuery = '') {
+                const container = document.getElementById('currentBlacklistItems');
+                const countEl = document.getElementById('blacklistCount');
+                
+                let filtered = alternativeBlacklist;
+                
+                if (searchQuery) {
+                    filtered = alternativeBlacklist.filter(item => 
+                        normalizeText(item.mainFood).includes(normalizeText(searchQuery)) ||
+                        item.bannedAlternatives.some(alt => normalizeText(alt).includes(normalizeText(searchQuery)))
+                    );
+                }
+                
+                countEl.textContent = filtered.length;
+                
+                if (filtered.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Henüz yasak kuralı yok</div>';
+                    return;
+                }
+                
+                container.innerHTML = filtered.map(item => `
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #ff6b6b;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; font-size: 15px; color: #333; margin-bottom: 4px;">
+                                    📋 ${item.mainFood}
+                                </div>
+                                <div style="font-size: 12px; color: #6c757d;">
+                                    Ekleyen: ${item.addedBy || 'admin'} • ${item.addedDate || 'Tarih yok'}
+                                    ${item.bidirectional ? ' • <span style="color: #0066cc;">🔄 Çift Yönlü</span>' : ''}
+                                </div>
+                            </div>
+                            <button onclick="deleteBlacklistEntry('${item.mainFood.replace(/'/g, "\\'")}', '${item.id}')" 
+                                    style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                🗑️ Sil
+                            </button>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                            ${item.bannedAlternatives.map(alt => `
+                                <span style="background: white; border: 2px solid #ff6b6b; color: #ff6b6b; padding: 4px 10px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                    🚫 ${alt}
+                                    <button onclick="removeSingleBan('${item.mainFood.replace(/'/g, "\\'")}', '${alt.replace(/'/g, "\\'")}', '${item.id}')" 
+                                            style="background: rgba(255,107,107,0.2); border: none; color: #ff6b6b; border-radius: 50%; width: 16px; height: 16px; cursor: pointer; font-size: 11px; padding: 0;">✖</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // Tek bir yasağı kaldır
+            window.removeSingleBan = async function(mainFood, bannedFood, entryId) {
+                if (!confirm(`"${mainFood}" için "${bannedFood}" yasağını kaldırmak istediğinizden emin misiniz?`)) {
+                    return;
+                }
+                
+                try {
+                    const entry = alternativeBlacklist.find(item => item.mainFood === mainFood);
+                    if (!entry) return;
+                    
+                    entry.bannedAlternatives = entry.bannedAlternatives.filter(f => f !== bannedFood);
+                    
+                    // Eğer boş kaldıysa entry'yi sil
+                    if (entry.bannedAlternatives.length === 0) {
+                        alternativeBlacklist = alternativeBlacklist.filter(item => item.mainFood !== mainFood);
+                    }
+                    
+                    await saveBlacklistToGitHub({
+                        version: blacklistVersion,
+                        lastUpdated: new Date().toISOString(),
+                        blacklist: alternativeBlacklist
+                    });
+                    
+                    refreshBlacklistDisplay();
+                    
+                    // Eğer halihazırda alternatif gösteriliyorsa yenile
+                    if (originalSelectedFood) {
+                        findAlternatives(originalSelectedFood);
+                    }
+                    
+                } catch (error) {
+                    alert('❌ Yasak kaldırılamadı: ' + error.message);
+                }
+            };
+            
+            // Tüm entry'yi sil
+            window.deleteBlacklistEntry = async function(mainFood, entryId) {
+                const entry = alternativeBlacklist.find(item => item.mainFood === mainFood);
+                if (!entry) return;
+                
+                const count = entry.bannedAlternatives.length;
+                
+                if (!confirm(`"${mainFood}" için tüm yasakları kaldırmak istediğinizden emin misiniz?\n\n(${count} adet yasak silinecek)`)) {
+                    return;
+                }
+                
+                try {
+                    alternativeBlacklist = alternativeBlacklist.filter(item => item.mainFood !== mainFood);
+                    
+                    await saveBlacklistToGitHub({
+                        version: blacklistVersion,
+                        lastUpdated: new Date().toISOString(),
+                        blacklist: alternativeBlacklist
+                    });
+                    
+                    refreshBlacklistDisplay();
+                    
+                    // Eğer halihazırda alternatif gösteriliyorsa yenile
+                    if (originalSelectedFood) {
+                        findAlternatives(originalSelectedFood);
+                    }
+                    
+                } catch (error) {
+                    alert('❌ Yasak silinemedi: ' + error.message);
+                }
+            };
+
+            // Hızlı yasaklama (alternatif kartından)
+            window.banAlternativeQuick = async function(foodName) {
+                if (!originalSelectedFood) {
+                    alert('⚠️ Hedef yemek bulunamadı!');
+                    return;
+                }
+                
+                const mainFood = originalSelectedFood.name;
+                
+                if (!confirm(`"${foodName}" yemeğini "${mainFood}" için alternatif olmaktan çıkarmak istediğinizden emin misiniz?`)) {
+                    return;
+                }
+                
+                try {
+                    const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+                    const username = session.username || 'admin';
+                    
+                    const updatedBlacklist = [...alternativeBlacklist];
+                    
+                    let entry = updatedBlacklist.find(item => item.mainFood === mainFood);
+                    if (entry) {
+                        if (!entry.bannedAlternatives.includes(foodName)) {
+                            entry.bannedAlternatives.push(foodName);
+                            entry.lastUpdated = new Date().toISOString();
+                            entry.lastUpdatedBy = username;
+                        }
+                    } else {
+                        updatedBlacklist.push({
+                            id: `bl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            mainFood: mainFood,
+                            bannedAlternatives: [foodName],
+                            addedBy: username,
+                            addedDate: new Date().toISOString().split('T')[0],
+                            lastUpdated: new Date().toISOString()
+                        });
+                    }
+                    
+                    await saveBlacklistToGitHub({
+                        version: blacklistVersion,
+                        lastUpdated: new Date().toISOString(),
+                        blacklist: updatedBlacklist
+                    });
+                    
+                    alternativeBlacklist = updatedBlacklist;
+                    
+                    alert(`✅ "${foodName}" yasaklandı!`);
+                    
+                    // Alternatifleri yenile
+                    findAlternatives(originalSelectedFood);
+                    
+                } catch (error) {
+                    console.error('❌ Hızlı yasaklama hatası:', error);
+                    alert('❌ Yasaklama başarısız: ' + error.message);
+                }
+            };
+
             function findTarifKartlari(yemekAdi) {
                 if (!tarifKartlari.length) return [];
                 
@@ -3257,6 +3834,34 @@
 
                 console.log('✅ İlk filtrelemeden sonra alternatif sayısı:', alternatives.length);
 
+                // 🚫 YASAK LİSTESİ FİLTRESİ - Yasaklı alternatifleri çıkar
+                if (alternativeBlacklist && alternativeBlacklist.length > 0) {
+                    const beforeBlacklist = alternatives.length;
+                    
+                    alternatives = alternatives.filter(food => {
+                        // Bu yemek için yasak kuralı var mı?
+                        const blacklistEntry = alternativeBlacklist.find(
+                            item => item.mainFood === refFood.name
+                        );
+                        
+                        if (blacklistEntry && blacklistEntry.bannedAlternatives) {
+                            // Bu alternatif yasaklı mı?
+                            const isBanned = blacklistEntry.bannedAlternatives.includes(food.name);
+                            if (isBanned) {
+                                console.log(`🚫 Yasaklı alternatif filtrelendi: ${food.name} (${refFood.name} için yasaklı)`);
+                            }
+                            return !isBanned; // Yasaklı değilse geç
+                        }
+                        
+                        return true; // Yasak kuralı yoksa göster
+                    });
+                    
+                    const filtered = beforeBlacklist - alternatives.length;
+                    if (filtered > 0) {
+                        console.log(`🚫 ${filtered} adet yasaklı alternatif çıkarıldı`);
+                    }
+                }
+
                 if (appSettings.enableTagFilter && selectedTagKeywords.size > 0 && !shouldSkipTagFilter(refFood)) {
                     const filteredByTags = alternatives.filter(food => {
                         if (shouldSkipTagFilter(food)) return true;
@@ -3370,6 +3975,12 @@
                             const tarifKartlari = findTarifKartlari(food.name);
                             const tarifBadges = tarifKartlari.map((tarif, index) => `<span class="meta-tag" onclick="event.stopPropagation(); openModal('${tarif.download_url}');" style="cursor: pointer; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">📖 ${tarifKartlari.length > 1 ? `Tarif ${index+1}` : 'Tarif'} 👆</span>`).join('');
                             const dietType = food.keto ? 'Keto' : food.lowcarb ? 'LowCarb' : '';
+                            
+                            // Admin için yasakla butonu
+                            const session = JSON.parse(localStorage.getItem('patient_session') || '{}');
+                            const isAdmin = session.isAdmin === true || session.role === 'admin' || session.role === 'ADMIN';
+                            const banButton = isAdmin ? `<span class="meta-tag admin-ban-btn" onclick="event.stopPropagation(); banAlternativeQuick('${food.name.replace(/'/g, "\\'")}');" style="cursor: pointer; background: linear-gradient(135deg, #FF6B35 0%, #C92A2A 100%); color: white;">🚫 Yasakla</span>` : '';
+                            
                             return `
                                 <tr class="food-card-row" data-food-name="${food.name.replace(/"/g, '&quot;')}" onclick="selectFood(this.dataset.foodName)" style="cursor: pointer;">
                                     <td colspan="100%">
@@ -3401,6 +4012,7 @@
                                                 ${food.mealType ? `<span class="meta-tag">${food.mealType}</span>` : ''}
                                                 ${dietType ? `<span class="meta-tag">${dietType}</span>` : ''}
                                                 ${tarifBadges}
+                                                ${banButton}
                                             </div>
                                         </div>
                                     </td>
@@ -3500,6 +4112,7 @@
             await loadSettings();
             updatePlaceholder();
             await loadFoodData();
+            await loadBlacklist(); // Yasak listesini yükle
             
             // � Sayfa yüklendiğinde butonları güncelle
             updateScoreButtons();
@@ -4425,6 +5038,13 @@
             } else {
                 console.warn('⚠️ adminEditButton elementi bulunamadı!');
             }
+
+            // 🚫 Yasak listesi butonunu da kontrol et
+            const blacklistButton = document.getElementById('blacklistButton');
+            if (blacklistButton) {
+                blacklistButton.style.display = isAdmin ? 'flex' : 'none';
+                console.log('✅ Yasak listesi butonu durumu:', isAdmin ? '🟢 GÖSTER' : '🔴 GİZLE');
+            }
         };
         
         // 🚀 HEMEN BUTONU EKLE (DOMContentLoaded beklemeden)
@@ -4469,6 +5089,51 @@
                 if (!document.getElementById('adminEditButton') && document.body) {
                     document.body.appendChild(adminBtn);
                     console.log('✅ Admin butonu DOM\'a eklendi (FALLBACK):', adminBtn);
+                    checkAdminStatus();
+                }
+            }, 1000);
+        })();
+
+        // 🚫 YASAK LİSTESİ BUTONU EKLE
+        (function addBlacklistButton() {
+            console.log('🔧 Yasak listesi butonu ekleniyor...');
+            
+            // Zaten varsa ekleme
+            if (document.getElementById('blacklistButton')) {
+                console.log('⚠️ Yasak listesi butonu zaten var');
+                return;
+            }
+            
+            // Butonu oluştur
+            const blacklistBtn = document.createElement('button');
+            blacklistBtn.id = 'blacklistButton';
+            blacklistBtn.className = 'blacklist-button';
+            blacklistBtn.onclick = function() {
+                if (typeof openBlacklistModal === 'function') {
+                    openBlacklistModal();
+                } else {
+                    console.error('❌ openBlacklistModal fonksiyonu tanımlı değil');
+                }
+            };
+            blacklistBtn.title = 'Yasak Listesi Yönetimi';
+            blacklistBtn.innerHTML = '🚫';
+            blacklistBtn.style.display = 'none';
+            
+            // Body'yi interval ile kontrol et
+            const addBlacklistInterval = setInterval(function() {
+                if (document.body) {
+                    clearInterval(addBlacklistInterval);
+                    document.body.appendChild(blacklistBtn);
+                    console.log('✅ Yasak listesi butonu DOM\'a eklendi:', blacklistBtn);
+                    setTimeout(checkAdminStatus, 60);
+                }
+            }, 10);
+            
+            // Fallback
+            setTimeout(function() {
+                if (!document.getElementById('blacklistButton') && document.body) {
+                    document.body.appendChild(blacklistBtn);
+                    console.log('✅ Yasak listesi butonu DOM\'a eklendi (FALLBACK)');
                     checkAdminStatus();
                 }
             }, 1000);
