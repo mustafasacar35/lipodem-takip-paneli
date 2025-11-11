@@ -2994,21 +2994,65 @@
                 const altInput = document.getElementById('blacklistAlternatives');
                 const altDropdown = document.getElementById('blacklistAlternativesDropdown');
                 
+                // 🔍 Akıllı search fonksiyonu (çoklu kelime desteği)
+                function smartFoodSearch(query, excludeList = []) {
+                    if (query.length < 2) return [];
+                    
+                    // Sorguyu kelimelere ayır ve normalize et
+                    const queryWords = query.toLowerCase()
+                        .split(/\s+/)
+                        .map(w => normalizeText(w))
+                        .filter(w => w.length > 0);
+                    
+                    if (queryWords.length === 0) return [];
+                    
+                    // Tüm kelimeleri içeren yemekleri bul
+                    const matches = foodDatabase.filter(food => {
+                        // Exclude listesinde varsa atlat
+                        if (excludeList.includes(food.name)) return false;
+                        
+                        const normalizedName = normalizeText(food.name);
+                        
+                        // TÜM kelimeler yemek adında geçmeli
+                        return queryWords.every(word => normalizedName.includes(word));
+                    });
+                    
+                    // Önce tam eşleşmeleri, sonra kısmi eşleşmeleri sırala
+                    return matches.sort((a, b) => {
+                        const aName = normalizeText(a.name);
+                        const bName = normalizeText(b.name);
+                        const fullQuery = normalizeText(query);
+                        
+                        // Tam eşleşme kontrolü
+                        if (aName === fullQuery) return -1;
+                        if (bName === fullQuery) return 1;
+                        
+                        // Başlangıç eşleşmesi kontrolü
+                        const aStarts = aName.startsWith(fullQuery);
+                        const bStarts = bName.startsWith(fullQuery);
+                        if (aStarts && !bStarts) return -1;
+                        if (!aStarts && bStarts) return 1;
+                        
+                        // Alfabetik sıralama
+                        return aName.localeCompare(bName, 'tr');
+                    }).slice(0, 10);
+                }
+                
                 // Hedef yemek search
                 mainInput.addEventListener('input', (e) => {
-                    const query = e.target.value.trim().toLowerCase();
+                    const query = e.target.value.trim();
                     if (query.length < 2) {
                         mainDropdown.style.display = 'none';
                         return;
                     }
                     
-                    const matches = foodDatabase.filter(food => 
-                        normalizeText(food.name).includes(normalizeText(query))
-                    ).slice(0, 10);
+                    const matches = smartFoodSearch(query);
                     
                     if (matches.length > 0) {
                         mainDropdown.innerHTML = matches.map(food => `
                             <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;" 
+                                 onmouseover="this.style.background='#f0f0f0'" 
+                                 onmouseout="this.style.background='white'"
                                  onclick="selectMainFoodForBan('${food.name.replace(/'/g, "\\'")}')">
                                 <div style="font-weight: 600;">${food.name}</div>
                                 <div style="font-size: 11px; color: #666;">
@@ -3021,26 +3065,26 @@
                         `).join('');
                         mainDropdown.style.display = 'block';
                     } else {
-                        mainDropdown.style.display = 'none';
+                        mainDropdown.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">Sonuç bulunamadı</div>';
+                        mainDropdown.style.display = 'block';
                     }
                 });
                 
                 // Alternatif search
                 altInput.addEventListener('input', (e) => {
-                    const query = e.target.value.trim().toLowerCase();
+                    const query = e.target.value.trim();
                     if (query.length < 2) {
                         altDropdown.style.display = 'none';
                         return;
                     }
                     
-                    const matches = foodDatabase.filter(food => 
-                        normalizeText(food.name).includes(normalizeText(query)) &&
-                        !selectedAlternativesForBan.includes(food.name)
-                    ).slice(0, 10);
+                    const matches = smartFoodSearch(query, selectedAlternativesForBan);
                     
                     if (matches.length > 0) {
                         altDropdown.innerHTML = matches.map(food => `
                             <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;" 
+                                 onmouseover="this.style.background='#f0f0f0'" 
+                                 onmouseout="this.style.background='white'"
                                  onclick="addAlternativeForBan('${food.name.replace(/'/g, "\\'")}')">
                                 <div style="font-weight: 600;">${food.name}</div>
                                 <div style="font-size: 11px; color: #666;">
@@ -3053,7 +3097,8 @@
                         `).join('');
                         altDropdown.style.display = 'block';
                     } else {
-                        altDropdown.style.display = 'none';
+                        altDropdown.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">Sonuç bulunamadı</div>';
+                        altDropdown.style.display = 'block';
                     }
                 });
                 
