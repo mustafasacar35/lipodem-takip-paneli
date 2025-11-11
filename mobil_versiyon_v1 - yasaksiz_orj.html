@@ -3197,48 +3197,9 @@
                 const filePath = 'data/alternative_blacklist.json';
                 const commitMessage = `Yasak listesi güncellendi - ${new Date().toISOString()}`;
                 
-                // İki yöntem dene: 1. Vercel API, 2. Direkt GitHub API
-                
-                try {
-                    // YÖNTEM 1: Vercel API ile kaydet (token gerektirmez)
-                    console.log('🔄 Vercel API ile kaydediliyor...');
-                    
-                    const vercelResponse = await fetch('https://lipodem-takip-paneli.vercel.app/api/update-blacklist', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            blacklistData: data,
-                            commitMessage: commitMessage
-                        })
-                    });
-                    
-                    if (vercelResponse.ok) {
-                        const result = await vercelResponse.json();
-                        if (result.success) {
-                            console.log('✅ Yasak listesi Vercel API ile kaydedildi');
-                            return;
-                        }
-                    }
-                    
-                    // Vercel başarısız oldu, GitHub API dene
-                    console.warn('⚠️ Vercel API başarısız, GitHub API deneniyor...');
-                    
-                } catch (vercelError) {
-                    console.warn('⚠️ Vercel API hatası:', vercelError.message);
-                }
-                
-                // YÖNTEM 2: Direkt GitHub API (token gerektirir)
-                const token = localStorage.getItem('github_token');
-                
-                if (!token) {
-                    throw new Error('GitHub token bulunamadı! Vercel API de çalışmadı.\n\nLütfen Admin Settings sayfasından GitHub token girin veya Vercel API\'nin çalıştığından emin olun.');
-                }
-                
-                console.log('🔄 GitHub API ile kaydediliyor...');
                 await updateGithubFile(filePath, jsonContent, commitMessage);
-                console.log('✅ Yasak listesi GitHub API ile kaydedildi');
+                
+                console.log('✅ Yasak listesi GitHub\'a kaydedildi');
             }
             
             // Yasak listesini göster
@@ -4798,12 +4759,12 @@
             
             const newNotes = document.getElementById('editFoodNotes').value.trim();
             
-            // Token kontrolü - artık opsiyonel (Vercel API varsa gerekmez)
-            // const token = localStorage.getItem('github_token');
-            // if (!token) {
-            //     alert('❌ GitHub token bulunamadı!\n\nDeğişiklikler kaybolacak.\n\nAdmin Settings sayfasından GitHub token girin.');
-            //     return;
-            // }
+            // Token kontrolü
+            const token = localStorage.getItem('github_token');
+            if (!token) {
+                alert('❌ GitHub token bulunamadı!\n\nDeğişiklikler kaybolacak.\n\nAdmin Settings sayfasından GitHub token girin.');
+                return;
+            }
             
             // Güncellenmiş yemek objesi
             const updatedFood = {
@@ -4960,47 +4921,6 @@
          * food_list.json'u GitHub'a kaydet
          */
         async function saveFoodListToGithub(updatedDatabase, commitMessage) {
-            // İki yöntem dene: 1. Vercel API, 2. Direkt GitHub API
-            
-            try {
-                // YÖNTEM 1: Vercel API ile kaydet (token gerektirmez)
-                console.log('🔄 Vercel API ile kaydediliyor...');
-                
-                const vercelResponse = await fetch('https://lipodem-takip-paneli.vercel.app/api/update-food-list', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        foodDatabase: updatedDatabase,
-                        commitMessage: commitMessage
-                    })
-                });
-                
-                if (vercelResponse.ok) {
-                    const result = await vercelResponse.json();
-                    if (result.success) {
-                        console.log('✅ Yemek listesi Vercel API ile kaydedildi');
-                        return;
-                    }
-                }
-                
-                // Vercel başarısız oldu, GitHub API dene
-                console.warn('⚠️ Vercel API başarısız, GitHub API deneniyor...');
-                
-            } catch (vercelError) {
-                console.warn('⚠️ Vercel API hatası:', vercelError.message);
-            }
-            
-            // YÖNTEM 2: Direkt GitHub API (token gerektirir)
-            const token = localStorage.getItem('github_token');
-            
-            if (!token) {
-                throw new Error('GitHub token bulunamadı! Vercel API de çalışmadı.\n\nLütfen Admin Settings sayfasından GitHub token girin veya Vercel API\'nin çalıştığından emin olun.');
-            }
-            
-            console.log('🔄 GitHub API ile kaydediliyor...');
-            
             // Kategorilere göre grupla
             const categories = {};
             
@@ -5028,7 +4948,7 @@
             // GitHub'a kaydet
             await updateGithubFile('food_list.json', jsonContent, commitMessage);
             
-            console.log(`✅ GitHub API ile başarıyla kaydedildi: food_list.json`);
+            console.log(`✅ GitHub'a başarıyla kaydedildi: food_list.json`);
         }
         
         // ============================================================
