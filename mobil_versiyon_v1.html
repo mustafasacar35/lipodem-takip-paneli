@@ -2001,6 +2001,62 @@
 
         // ==================== HASTA AYARLARI FONKSİYONLARI BİTİŞ ====================
 
+        // 🔍 Makro Uyumluluk Kontrolü Fonksiyonu
+        function checkMacroCompatibility(foundFood, renderMacros, threshold = 30) {
+            if (!renderMacros || !foundFood) return true; // Render makrosu yoksa uyumlu say
+            
+            // Tüm makrolar 0 ise uyumlu say (render'da makro bilgisi yok demektir)
+            if (renderMacros.calories === 0 && renderMacros.protein === 0 && 
+                renderMacros.carbs === 0 && renderMacros.fat === 0) {
+                return true;
+            }
+            
+            let totalDiff = 0;
+            let count = 0;
+            
+            // Kalori farkı (%)
+            if (renderMacros.calories > 0) {
+                const diff = Math.abs(foundFood.calories - renderMacros.calories);
+                const percentDiff = (diff / renderMacros.calories) * 100;
+                totalDiff += percentDiff;
+                count++;
+            }
+            
+            // Protein farkı (%)
+            if (renderMacros.protein > 0) {
+                const diff = Math.abs(foundFood.protein - renderMacros.protein);
+                const percentDiff = (diff / renderMacros.protein) * 100;
+                totalDiff += percentDiff;
+                count++;
+            }
+            
+            // Karbonhidrat farkı (%)
+            if (renderMacros.carbs > 0) {
+                const diff = Math.abs(foundFood.carbs - renderMacros.carbs);
+                const percentDiff = (diff / renderMacros.carbs) * 100;
+                totalDiff += percentDiff;
+                count++;
+            }
+            
+            // Yağ farkı (%)
+            if (renderMacros.fat > 0) {
+                const diff = Math.abs(foundFood.fat - renderMacros.fat);
+                const percentDiff = (diff / renderMacros.fat) * 100;
+                totalDiff += percentDiff;
+                count++;
+            }
+            
+            const avgDiff = count > 0 ? totalDiff / count : 0;
+            const isCompatible = avgDiff <= threshold;
+            
+            console.log(`🔍 Makro uyumluluk kontrolü: ${foundFood.name}`);
+            console.log(`   Render makroları:`, renderMacros);
+            console.log(`   Bulunan makroları: Cal:${foundFood.calories}, P:${foundFood.protein}, C:${foundFood.carbs}, F:${foundFood.fat}`);
+            console.log(`   Ortalama fark: %${avgDiff.toFixed(1)} | Uyumlu: ${isCompatible ? '✅' : '❌'}`);
+            
+            return isCompatible;
+        }
+
         // PWA Install Prompt - Otomatik Yükleme Önerisi
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -3768,6 +3824,14 @@
                 const filterCrit = appSettings.filterCriteria || {};
                 const tagsParts = [];
                 
+                // 🔴 VERİTABANINDA YOK ROZETİ - En başta göster (admin kullanıcılar için)
+                if (food.notInDatabase && currentUser && currentUser.role === 'admin') {
+                    tagsParts.push('<span class="info-tag" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; font-weight: bold; animation: pulse 2s infinite;">⚠️ Veritabanında Yok</span>');
+                    if (food.originalSearchName) {
+                        console.log(`🔴 UYARI: "${food.originalSearchName}" yemeği food_list.json'da bulunamadı!`);
+                    }
+                }
+                
                 // Role rozeti - SADECE opsiyonel ve visible ise göster
                 if (food.role && filterCrit.role?.visible === true && filterCrit.role?.mode === 'optional') {
                     const roleDisplay = getRoleDisplayName(food.role);
@@ -4285,13 +4349,50 @@
                     }
                     
                     if (foundFood) {
-                        console.log(`✅ Yemek bulundu, alternatifler aranıyor: "${foundFood.name}"`);
+                        console.log(`✅ Yemek bulundu: "${foundFood.name}"`);
                         
-                        // Mor kartta aranan yemeği göster
-                        showSelectedFood(foundFood);
+                        // 🔍 MAKRO UYUMLULUK KONTROLÜ (renderMacros varsa)
+                        const isCompatible = checkMacroCompatibility(foundFood, window.renderMacros);
                         
-                        // Alternatifleri bul ve yeşil kartta ilkini göster
-                        findAlternatives(foundFood);
+                        if (!isCompatible) {
+                            console.warn(`⚠️ Bulunan yemek makro olarak uyumsuz! Render makroları kullanılacak.`);
+                            
+                            // Render makrolarıyla pseudoFood oluştur
+                            const useMacros = window.renderMacros || {
+                                calories: foundFood.calories,
+                                protein: foundFood.protein,
+                                carbs: foundFood.carbs,
+                                fat: foundFood.fat
+                            };
+                            
+                            const pseudoFood = {
+                                name: decodedFood, // Orijinal yemek adı (render'daki)
+                                category: foundFood.category, // Bulunan yemeğin kategorisi
+                                calories: useMacros.calories,
+                                protein: useMacros.protein,
+                                carbs: useMacros.carbs,
+                                fat: useMacros.fat,
+                                notInDatabase: true, // ⚠️ Kırmızı rozet için flag
+                                originalSearchName: decodedFood
+                            };
+                            
+                            console.log('📊 PseudoFood oluşturuldu (makro uyumsuzluğu):', pseudoFood);
+                            
+                            // Mor kartta pseudoFood göster
+                            showSelectedFood(pseudoFood);
+                            
+                            // ALTERNATİFLER: Bulunan yemeğin alternatiflerini bul (ama kategoriye göre)
+                            findAlternatives(foundFood);
+                        } else {
+                            // Makro uyumlu, normal şekilde devam et
+                            console.log(`✅ Makro uyumlu, alternatifler aranıyor: "${foundFood.name}"`);
+                            
+                            // Mor kartta aranan yemeği göster
+                            showSelectedFood(foundFood);
+                            
+                            // Alternatifleri bul ve yeşil kartta ilkini göster
+                            findAlternatives(foundFood);
+                        }
                     } else {
                         console.warn(`⚠️ Yemek veritabanında bulunamadı: "${cleanedFood}" (orijinal: "${decodedFood}")`);
                         
@@ -4352,7 +4453,9 @@
                                     protein: useMacros.protein,
                                     carbs: useMacros.carbs,
                                     fat: useMacros.fat,
-                                    isDatabaseMapping: true
+                                    isDatabaseMapping: true,
+                                    notInDatabase: true, // ⚠️ Kırmızı rozet için flag
+                                    originalSearchName: decodedFood
                                 };
                                 
                                 console.log('📊 Mor kartta gösterilecek makrolar (DB eşleştirmesi):', useMacros);
@@ -4468,7 +4571,9 @@
                                         protein: useMacros.protein, // Renderdaki protein
                                         carbs: useMacros.carbs, // Renderdaki karb
                                         fat: useMacros.fat, // Renderdaki yağ
-                                        isManualMapping: true
+                                        isManualMapping: true,
+                                        notInDatabase: true, // ⚠️ Kırmızı rozet için flag
+                                        originalSearchName: decodedFood
                                     };
                                     
                                     console.log('📊 Mor kartta gösterilecek makrolar:', useMacros);
@@ -4483,14 +4588,23 @@
                                     console.warn('⚠️ Tarif kartı için veritabanında eşleşen yemek bulunamadı:', tarifBaseName);
                                     
                                     // Sahte food objesi oluştur (veritabanında olmadığı için)
-                                    const pseudoFood = {
-                                        name: decodedFood,
-                                        category: 'unknown',
+                                    const useMacros = window.renderMacros || {
                                         calories: 0,
                                         protein: 0,
                                         carbs: 0,
-                                        fat: 0,
-                                        isManualMapping: true
+                                        fat: 0
+                                    };
+                                    
+                                    const pseudoFood = {
+                                        name: decodedFood,
+                                        category: 'unknown',
+                                        calories: useMacros.calories,
+                                        protein: useMacros.protein,
+                                        carbs: useMacros.carbs,
+                                        fat: useMacros.fat,
+                                        isManualMapping: true,
+                                        notInDatabase: true, // ⚠️ Kırmızı rozet için flag
+                                        originalSearchName: decodedFood
                                     };
                                     
                                     // Mor kartta göster
