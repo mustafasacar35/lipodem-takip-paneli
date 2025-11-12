@@ -256,16 +256,30 @@ const TemplateManager = {
     },
 
     /**
-     * Load multiple templates in parallel
+     * Load multiple templates in parallel with batching (prevents rate limiting)
      * Returns: Array of template objects in same order as filenames
+     * @param {number} batchSize - Number of templates to load simultaneously (default: 50)
      */
-    async loadTemplates(filenames, token) {
+    async loadTemplates(filenames, token, batchSize = 100) {
         try {
-            console.log('[TemplateManager] Loading', filenames.length, 'templates in parallel...');
-            const promises = filenames.map(filename => this.loadTemplate(filename, token));
-            const templates = await Promise.all(promises);
-            console.log('[TemplateManager] Loaded', templates.length, 'templates successfully');
-            return templates;
+            console.log('[TemplateManager] Loading', filenames.length, 'templates in batches of', batchSize, '...');
+            
+            const allTemplates = [];
+            
+            // Split into batches to prevent rate limiting and browser connection limits
+            for (let i = 0; i < filenames.length; i += batchSize) {
+                const batch = filenames.slice(i, i + batchSize);
+                console.log(`[TemplateManager] Loading batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(filenames.length / batchSize)} (${batch.length} templates)...`);
+                
+                const promises = batch.map(filename => this.loadTemplate(filename, token));
+                const batchTemplates = await Promise.all(promises);
+                allTemplates.push(...batchTemplates);
+                
+                console.log(`[TemplateManager] Batch ${Math.floor(i / batchSize) + 1} completed (${allTemplates.length}/${filenames.length} total)`);
+            }
+            
+            console.log('[TemplateManager] ✅ All', allTemplates.length, 'templates loaded successfully');
+            return allTemplates;
         } catch (error) {
             console.error('[TemplateManager] Error loading multiple templates:', error);
             throw error;

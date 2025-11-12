@@ -27,13 +27,13 @@
     <title>Beslenme Planım - Lipodem Takip</title>
     
     <!-- Authentication System -->
-    <script src="auth.js"></script>
+    <script src="./auth.js"></script>
     
     <!-- Template Manager for Lazy Loading -->
-    <script src="template_manager.js"></script>
+    <script src="./template_manager.js"></script>
     
     <!-- Nutrition Data Manager -->
-    <script src="nutrition_data_manager.js"></script>
+    <script src="./nutrition_data_manager.js"></script>
     
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6333,28 +6333,31 @@
                 // Check if TemplateManager is loaded
                 if (typeof TemplateManager === 'undefined') {
                     console.error('❌ TemplateManager tanımlı değil! template_manager.js yüklenmemiş olabilir.');
+                    console.error('🔍 Script yolu kontrol: ./template_manager.js (relative path)');
+                    console.error('⚠️ UYARI: Fallback sistem sadece 198 şablon içerir (999 yerine)!');
                     console.log('🔄 Fallback: Eski sisteme geçiliyor (gun-sablonlari-2025-10-25.json)...');
                     
-                    // FALLBACK: Load old single file system
+                    // FALLBACK: Load old single file system (198 templates with FULL DATA)
                     const dayResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json?t=' + Date.now());
                     const dayData = await dayResponse.json();
                     dayTemplates = dayData.templates || [];
                     
-                    console.log('✅ Eski sistemden yüklendi:', dayTemplates.length, 'şablon');
+                    console.log('✅ Eski sistemden yüklendi:', dayTemplates.length, 'şablon (FULL DATA - ogunler dahil)');
+                    console.warn('⚠️ Sadece', dayTemplates.length, 'şablon yüklendi. 999 şablon için template_manager.js gerekli!');
                 } else {
                     // Load day template INDEX only (not full templates)
                     // This loads ~7 KB instead of 281 KB!
                     const dayTemplateIndex = await TemplateManager.loadIndex();
                     
                     // Store metadata in dayTemplates for filtering
-                    // Full templates will be loaded on-demand in generateAutoWeekPlan()
+                    // Full templates will be loaded on-demand in loadDayTemplates()
                     dayTemplates = dayTemplateIndex.templates || [];
                     
                     // 🔍 DEBUG: Şablon yükleme detayları
                     console.log('📊 Index\'ten yüklenen şablon sayısı:', dayTemplateIndex.totalCount);
                     console.log('📋 Metadata array uzunluğu:', dayTemplates.length);
-                    console.log('🆔 Şablon ID\'leri:', dayTemplates.map(t => `${t.id}: ${t.name}`));
                     console.log('💾 Index boyutu: ~7 KB (önceden: 281 KB)');
+                    console.log('� Full data lazy loading ile modal açılınca yüklenecek');
                 }
                 // Load meal templates from GitHub (NOT CHANGED - different system)
                 const mealResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/ogun-sablonlari-2025-09-25-2025-10-25%20(1).json');
