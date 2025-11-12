@@ -45,22 +45,26 @@
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
         // OneSignal v16 - Hasta bildirimleri için gelişmiş yapılandırma
-        // 🔥 DOMAIN BAZLI APP ID SEÇİMİ (GitHub Pages vs Vercel)
+        // 🔥 DOMAIN BAZLI APP ID SEÇİMİ (GitHub Pages vs Vercel vs Localhost)
         const isGitHubPages = window.location.hostname.includes('github.io');
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        // Localhost için de Vercel App ID kullan (allowLocalhostAsSecureOrigin ile)
         const ONESIGNAL_APP_ID = isGitHubPages 
             ? "45686db4-9813-42ef-939d-1402fe1622f7"  // ✅ GitHub Pages App ID
-            : "109f129c-cd73-4708-ba9a-b3c8103c52dc"; // ✅ Vercel App ID
+            : "109f129c-cd73-4708-ba9a-b3c8103c52dc"; // ✅ Vercel App ID (localhost için de)
         
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
             console.log('🔔 OneSignal v16 yapılandırması başlatılıyor (HASTA)...');
-            console.log('🔍 DEBUG: OneSignal init VERSION 2.0 (PATIENT + AUTO PROMPT)');
+            console.log('🔍 DEBUG: OneSignal init VERSION 3.0 (LOCALHOST + PATIENT + AUTO PROMPT)');
             console.log('🔔 OneSignal App ID:', ONESIGNAL_APP_ID, '(Domain:', window.location.hostname + ')');
+            console.log('🌐 Localhost mode:', isLocalhost);
             
             try {
                 await OneSignal.init({
                     appId: ONESIGNAL_APP_ID,
-                    allowLocalhostAsSecureOrigin: true,
+                    allowLocalhostAsSecureOrigin: true, // ✅ Localhost için kritik
                     serviceWorkerPath: 'OneSignalSDKWorker.js',
                     serviceWorkerParam: { scope: '/' },
                     
@@ -3484,16 +3488,24 @@
                             });
                             resolve();
                         } else {
-                            reject(new Error('GH_ADMINS tanımlı değil'));
+                            console.warn('⚠️ GH_ADMINS tanımlı değil - fallback kullanılıyor');
+                            window.GH_ADMINS = { admins: [], patientAdmins: [] };
+                            resolve(); // Reject yerine resolve
                         }
                     };
-                    script.onerror = () => reject(new Error('admins.js yüklenemedi'));
+                    script.onerror = (error) => {
+                        console.warn('⚠️ admins.js yüklenemedi:', error);
+                        // Hata durumunda varsayılan değer
+                        window.GH_ADMINS = { admins: [], patientAdmins: [] };
+                        resolve(); // Reject yerine resolve - uygulama açılsın
+                    };
                     document.head.appendChild(script);
                 });
             } catch (error) {
-                console.warn('⚠️ admins.js yüklenemedi:', error);
+                console.warn('⚠️ admins.js yükleme hatası:', error);
                 // Varsayılan değer
                 window.GH_ADMINS = { admins: [], patientAdmins: [] };
+                return Promise.resolve(); // Hata durumunda bile devam et
             }
         }
         
@@ -3786,40 +3798,22 @@
                 return true; // Veritabanı yüklenmemişse uyarma
             }
             
-            // findFoodInDatabase ile kontrol et - tüm eşleştirme stratejilerini kullanır
-            // (manuel eşleştirme, parantez temizleme, miktar temizleme, fuzzy matching)
-            const matchedFood = findFoodInDatabase(foodName, 0);
+            // ⚠️ SADECE GERÇEK VERİTABANI KONTROLÜ - Eşleştirme dosyalarını KULLANMA!
+            // SADECE TAM EŞLEŞME - Parantez temizleme veya yaklaşık eşleşme yapma!
+            // Çünkü "ketojenik tost (2 ince dilim...)" ile "Ketojenik Tost (Haşhaş Ezmesi...)" FARKLI yemeklerdir!
             
-            if (matchedFood) {
-                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU: "${matchedFood.name}"`);
-                return true;
+            const normalized = normalizeText(foodName);
+            
+            // SADECE tam eşleşme kontrolü
+            const found = foodData.some(food => normalizeText(food.name) === normalized);
+            
+            if (found) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (tam eşleşme)`);
             } else {
                 console.log(`❌ isFoodInDatabase: "${foodName}" → BULUNAMADI`);
             }
             
-            // Fallback: Eski mantık (geriye dönük uyumluluk)
-            const normalized = normalizeText(foodName);
-            
-            // 1. Tam eşleşme
-            if (foodData.some(food => normalizeText(food.name) === normalized)) {
-                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (tam eşleşme fallback)`);
-                return true;
-            }
-            
-            // 2. Parantez temizle ve tekrar dene
-            const cleanedFoodName = foodName.replace(/\s*\([^)]*\)/g, '').trim();
-            const normalizedCleaned = normalizeText(cleanedFoodName);
-            
-            const foundInCleaned = foodData.some(food => {
-                const cleanedDbFood = food.name.replace(/\s*\([^)]*\)/g, '').trim();
-                return normalizeText(cleanedDbFood) === normalizedCleaned;
-            });
-            
-            if (foundInCleaned) {
-                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (parantez temizleme fallback)`);
-            }
-            
-            return foundInCleaned;
+            return found;
         }
         
         /**
@@ -8426,9 +8420,27 @@
                     }
                 });
             }
+            
+            // 🚀 LAZY LOADING: dayTemplates sadece metadata ise, full data yükle
+            let templatesForFiltering = dayTemplates;
+            if (typeof TemplateManager !== 'undefined' && dayTemplates.length > 0 && !dayTemplates[0].ogunler) {
+                console.log('⏳ Filtreleme için şablonlar yükleniyor (full data)...');
+                try {
+                    const filenames = dayTemplates.map(t => t.filename);
+                    templatesForFiltering = await TemplateManager.loadTemplates(filenames);
+                    console.log('✅ Filtreleme için', templatesForFiltering.length, 'şablon yüklendi');
+                    
+                    // ÖNEMLI: Global dayTemplates'i de güncelle (sonraki çağrılarda tekrar yüklemesin)
+                    dayTemplates = templatesForFiltering;
+                } catch (error) {
+                    console.error('❌ Şablonlar yüklenirken hata:', error);
+                    // Fallback: metadata ile devam et (disliked foods filtresi çalışmayacak)
+                    templatesForFiltering = dayTemplates;
+                }
+            }
 
             // Filter templates based on settings
-            filteredTemplates = dayTemplates.filter(template => {
+            filteredTemplates = templatesForFiltering.filter(template => {
                 // Diyet türü filtresi - YENİ: Modal'daki dropdown'dan al
                 const selectedDietType = document.getElementById('templateDietTypeFilter')?.value;
                 
@@ -8574,18 +8586,19 @@
             
             // 🚀 LAZY LOADING: Eğer şablonlar sadece metadata ise, full data yükle
             let fullTemplates = templates;
-            if (typeof TemplateManager !== 'undefined' && templates.length > 0 && templates[0].filename && !templates[0].ogunler) {
+            
+            // KOŞUL SADELE: Eğer ilk şablonda ogunler yoksa, yükle!
+            if (typeof TemplateManager !== 'undefined' && templates.length > 0 && !templates[0].ogunler) {
                 console.log('⏳ Modal için tüm şablonlar yükleniyor (lazy loading)...');
                 console.log('📦 İlk template metadata:', templates[0]);
                 const filenames = templates.map(t => t.filename);
-                console.log('📁 Yüklenecek dosyalar:', filenames.slice(0, 3)); // İlk 3 dosya
+                console.log('📁 Yüklenecek dosyalar:', filenames.length, 'dosya (ilk 3:', filenames.slice(0, 3), ')');
                 
                 try {
                     fullTemplates = await TemplateManager.loadTemplates(filenames);
                     console.log('✅ Modal için', fullTemplates.length, 'şablon yüklendi');
                     console.log('🔍 İlk yüklenen şablon FULL DATA:', fullTemplates[0]);
-                    console.log('🔍 İlk şablonun keys:', Object.keys(fullTemplates[0]));
-                    console.log('🔍 İlk şablonun ogunler:', fullTemplates[0].ogunler || fullTemplates[0].meals || fullTemplates[0].günler);
+                    console.log('🔍 İlk şablonun ogunler:', fullTemplates[0].ogunler ? `${fullTemplates[0].ogunler.length} öğün` : 'YOK');
                 } catch (error) {
                     console.error('❌ Şablonlar yüklenirken hata:', error);
                     // Fallback: metadata ile devam et
@@ -8597,7 +8610,7 @@
                     console.log('🔍 İlk şablonun durumu:', {
                         hasFilename: !!templates[0].filename,
                         hasOgunler: !!templates[0].ogunler,
-                        keys: Object.keys(templates[0])
+                        ogunlerCount: templates[0].ogunler?.length || 0
                     });
                 }
             }
