@@ -4276,30 +4276,61 @@
                 if (searchInput) {
                     const decodedFood = decodeURIComponent(initialFood);
                     
-                    // Parantez içi miktar bilgisini temizle (ör: "tahin ekmeği (1 dilim)" → "tahin ekmeği")
-                    const cleanedFood = decodedFood.replace(/\s*\([^)]*\)\s*/g, '').trim();
-                    
                     searchInput.value = decodedFood; // Arama kutusunda orijinali göster
                     console.log(`🔍 URL'den yemek yüklendi: "${decodedFood}"`);
-                    console.log(`🧹 Temizlenmiş arama: "${cleanedFood}"`);
                     
                     // Arama kutusuna focus ver
                     setTimeout(() => searchInput.focus(), 100);
                     
                     // Tüm eşleşmeleri topla ve en iyisini seç
-                    const cleanedLower = cleanedFood.toLowerCase();
                     const decodedLower = decodedFood.toLowerCase();
                     
-                    // 1️⃣ Önce TAM eşleşme dene (hem orijinal hem temizlenmiş ile)
+                    // Normalize fonksiyonu (boşlukları ve özel karakterleri temizle)
+                    const normalizeForMatch = (str) => {
+                        return str.toLowerCase()
+                            .replace(/\s+/g, ' ')  // Çoklu boşlukları tek boşluğa indir
+                            .replace(/\s*([+,])\s*/g, '$1')  // +, ve , etrafındaki boşlukları temizle
+                            .trim();
+                    };
+                    
+                    const decodedNormalized = normalizeForMatch(decodedFood);
+                    
+                    console.log('🔍 Arama detayları:', {
+                        original: decodedFood,
+                        normalized: decodedNormalized,
+                        length: decodedFood.length
+                    });
+                    
+                    // 1️⃣ Önce TAM eşleşme dene (exact match)
                     let foundFood = foodDatabase.find(f => 
-                        f.name.toLowerCase() === decodedLower || 
-                        f.name.toLowerCase() === cleanedLower
+                        f.name.toLowerCase() === decodedLower
                     );
-                    console.log('1️⃣ Tam eşleşme:', foundFood ? foundFood.name : 'yok');
+                    console.log('1️⃣ Tam eşleşme (exact):', foundFood ? foundFood.name : 'yok');
+                    
+                    // 1️⃣-B Bulamazsa normalize edilmiş eşleşme dene
+                    if (!foundFood) {
+                        foundFood = foodDatabase.find(f => {
+                            const normalized = normalizeForMatch(f.name);
+                            const isMatch = normalized === decodedNormalized;
+                            
+                            // Debug: İlk 5 yeşillik yemeği logla
+                            if (f.name.toLowerCase().includes('yeşillik') && Math.random() < 0.2) {
+                                console.log('🔍 Normalize karşılaştırma:', {
+                                    dbName: f.name,
+                                    dbNormalized: normalized,
+                                    searchNormalized: decodedNormalized,
+                                    match: isMatch
+                                });
+                            }
+                            
+                            return isMatch;
+                        });
+                        console.log('1️⃣-B Normalize eşleşme:', foundFood ? foundFood.name : 'yok');
+                    }
                     
                     // 2️⃣ Bulamazsa BAŞTAN eşleşme dene ve EN KISA olanı seç
                     if (!foundFood) {
-                        const startsWithMatches = foodDatabase.filter(f => f.name.toLowerCase().startsWith(cleanedLower));
+                        const startsWithMatches = foodDatabase.filter(f => f.name.toLowerCase().startsWith(decodedLower));
                         if (startsWithMatches.length > 0) {
                             // Önce uzunluğa göre sırala, eşitlerde alfabetik
                             startsWithMatches.sort((a, b) => {
@@ -4316,7 +4347,7 @@
                     
                     // 3️⃣ Bulamazsa KELİME sınırında eşleşme dene (whole word)
                     if (!foundFood) {
-                        const wordRegex = new RegExp(`\\b${cleanedFood.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                        const wordRegex = new RegExp(`\\b${decodedFood.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
                         const wordMatches = foodDatabase.filter(f => wordRegex.test(f.name));
                         if (wordMatches.length > 0) {
                             // Önce uzunluğa göre sırala
@@ -4334,7 +4365,7 @@
                     
                     // 4️⃣ Son çare: İÇERME eşleşmesi (ama en kısa olanı seç)
                     if (!foundFood) {
-                        const includesMatches = foodDatabase.filter(f => f.name.toLowerCase().includes(cleanedLower));
+                        const includesMatches = foodDatabase.filter(f => f.name.toLowerCase().includes(decodedLower));
                         if (includesMatches.length > 0) {
                             includesMatches.sort((a, b) => {
                                 const lenDiff = a.name.length - b.name.length;
@@ -4394,10 +4425,10 @@
                             findAlternatives(foundFood);
                         }
                     } else {
-                        console.warn(`⚠️ Yemek veritabanında bulunamadı: "${cleanedFood}" (orijinal: "${decodedFood}")`);
+                        console.warn(`⚠️ Yemek veritabanında bulunamadı: "${decodedFood}"`);
                         
                         // 🔍 1. ÖNCELİK: YEMEK VERİTABANI EŞLEŞTİRMESİ KONTROLÜ
-                        const normalizedSearch = cleanedFood.toLowerCase()
+                        const normalizedSearch = decodedFood.toLowerCase()
                             .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                             .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
                             .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
