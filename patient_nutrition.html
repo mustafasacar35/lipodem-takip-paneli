@@ -3781,23 +3781,45 @@
          * İyileştirilmiş: Parantez içi miktar farklarını göz ardı eder
          */
         function isFoodInDatabase(foodName) {
-            if (!foodData || foodData.length === 0) return true; // Veritabanı yüklenmemişse uyarma
+            if (!foodData || foodData.length === 0) {
+                console.warn('⚠️ isFoodInDatabase: foodData yüklenmemiş');
+                return true; // Veritabanı yüklenmemişse uyarma
+            }
             
+            // findFoodInDatabase ile kontrol et - tüm eşleştirme stratejilerini kullanır
+            // (manuel eşleştirme, parantez temizleme, miktar temizleme, fuzzy matching)
+            const matchedFood = findFoodInDatabase(foodName, 0);
+            
+            if (matchedFood) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU: "${matchedFood.name}"`);
+                return true;
+            } else {
+                console.log(`❌ isFoodInDatabase: "${foodName}" → BULUNAMADI`);
+            }
+            
+            // Fallback: Eski mantık (geriye dönük uyumluluk)
             const normalized = normalizeText(foodName);
             
             // 1. Tam eşleşme
             if (foodData.some(food => normalizeText(food.name) === normalized)) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (tam eşleşme fallback)`);
                 return true;
             }
             
-            // 2. Parantez temizle ve tekrar dene (ör: "yarım avokado" vs "Avokado (yarım)")
+            // 2. Parantez temizle ve tekrar dene
             const cleanedFoodName = foodName.replace(/\s*\([^)]*\)/g, '').trim();
             const normalizedCleaned = normalizeText(cleanedFoodName);
             
-            return foodData.some(food => {
+            const foundInCleaned = foodData.some(food => {
                 const cleanedDbFood = food.name.replace(/\s*\([^)]*\)/g, '').trim();
                 return normalizeText(cleanedDbFood) === normalizedCleaned;
             });
+            
+            if (foundInCleaned) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (parantez temizleme fallback)`);
+            }
+            
+            return foundInCleaned;
         }
         
         /**
@@ -7535,6 +7557,17 @@
                             
                             // Veritabanı kontrolü - Eşleştirme yoksa ve food_list.json'da da yoksa uyar (sadece admin'e)
                             const isNotInDatabase = !isFoodInDatabase(food.foodName || food.name || '');
+                            
+                            // DEBUG LOG
+                            if (isNotInDatabase) {
+                                console.log('🔴 Veritabanında YOK:', {
+                                    foodName: food.foodName || food.name,
+                                    isAdmin: isAdmin,
+                                    dbMapping: !!dbMapping,
+                                    rozetGorunecekMi: (isNotInDatabase && !dbMapping && isAdmin)
+                                });
+                            }
+                            
                             const foodNameEscaped = (food.foodName || food.name || '').replace(/'/g, "\\'");
                             const foodJsonData = JSON.stringify({
                                 protein: protein,

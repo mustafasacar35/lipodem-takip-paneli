@@ -3785,7 +3785,38 @@
             });
 
             window.selectFoodFromDropdown = function(foodName) {
-                const food = foodDatabase.find(f => f.name === foodName);
+                // Normalize fonksiyonu - URL parameter search ile aynı
+                const normalizeForMatch = (str) => {
+                    return str.toLowerCase()
+                        .replace(/\s+/g, ' ')  // Çoklu boşlukları tek boşluğa indir
+                        .replace(/\s*([+,])\s*/g, '$1')  // +, ve , etrafındaki boşlukları temizle
+                        .trim();
+                };
+                
+                // Önce exact match dene
+                let food = foodDatabase.find(f => f.name === foodName);
+                
+                // Exact match bulunamazsa normalized match dene
+                if (!food) {
+                    const normalizedSearch = normalizeForMatch(foodName);
+                    food = foodDatabase.find(f => normalizeForMatch(f.name) === normalizedSearch);
+                    
+                    if (food) {
+                        console.log('✅ Normalized match bulundu:', {
+                            aranan: foodName,
+                            bulunan: food.name,
+                            normalizedAranan: normalizedSearch,
+                            normalizedBulunan: normalizeForMatch(food.name)
+                        });
+                    } else {
+                        console.log('❌ Yemek bulunamadı:', {
+                            aranan: foodName,
+                            normalized: normalizedSearch,
+                            dbdekiToplamYemek: foodDatabase.length
+                        });
+                    }
+                }
+                
                 if (food) {
                     selectedFood = food;
                     searchInput.value = food.name;
