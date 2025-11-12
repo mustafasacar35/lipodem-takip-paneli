@@ -3781,23 +3781,45 @@
          * İyileştirilmiş: Parantez içi miktar farklarını göz ardı eder
          */
         function isFoodInDatabase(foodName) {
-            if (!foodData || foodData.length === 0) return true; // Veritabanı yüklenmemişse uyarma
+            if (!foodData || foodData.length === 0) {
+                console.warn('⚠️ isFoodInDatabase: foodData yüklenmemiş');
+                return true; // Veritabanı yüklenmemişse uyarma
+            }
             
+            // findFoodInDatabase ile kontrol et - tüm eşleştirme stratejilerini kullanır
+            // (manuel eşleştirme, parantez temizleme, miktar temizleme, fuzzy matching)
+            const matchedFood = findFoodInDatabase(foodName, 0);
+            
+            if (matchedFood) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU: "${matchedFood.name}"`);
+                return true;
+            } else {
+                console.log(`❌ isFoodInDatabase: "${foodName}" → BULUNAMADI`);
+            }
+            
+            // Fallback: Eski mantık (geriye dönük uyumluluk)
             const normalized = normalizeText(foodName);
             
             // 1. Tam eşleşme
             if (foodData.some(food => normalizeText(food.name) === normalized)) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (tam eşleşme fallback)`);
                 return true;
             }
             
-            // 2. Parantez temizle ve tekrar dene (ör: "yarım avokado" vs "Avokado (yarım)")
+            // 2. Parantez temizle ve tekrar dene
             const cleanedFoodName = foodName.replace(/\s*\([^)]*\)/g, '').trim();
             const normalizedCleaned = normalizeText(cleanedFoodName);
             
-            return foodData.some(food => {
+            const foundInCleaned = foodData.some(food => {
                 const cleanedDbFood = food.name.replace(/\s*\([^)]*\)/g, '').trim();
                 return normalizeText(cleanedDbFood) === normalizedCleaned;
             });
+            
+            if (foundInCleaned) {
+                console.log(`✅ isFoodInDatabase: "${foodName}" → BULUNDU (parantez temizleme fallback)`);
+            }
+            
+            return foundInCleaned;
         }
         
         /**
@@ -7535,6 +7557,17 @@
                             
                             // Veritabanı kontrolü - Eşleştirme yoksa ve food_list.json'da da yoksa uyar (sadece admin'e)
                             const isNotInDatabase = !isFoodInDatabase(food.foodName || food.name || '');
+                            
+                            // DEBUG LOG
+                            if (isNotInDatabase) {
+                                console.log('🔴 Veritabanında YOK:', {
+                                    foodName: food.foodName || food.name,
+                                    isAdmin: isAdmin,
+                                    dbMapping: !!dbMapping,
+                                    rozetGorunecekMi: (isNotInDatabase && !dbMapping && isAdmin)
+                                });
+                            }
+                            
                             const foodNameEscaped = (food.foodName || food.name || '').replace(/'/g, "\\'");
                             const foodJsonData = JSON.stringify({
                                 protein: protein,
@@ -15309,27 +15342,45 @@ async function loadAllTemplatesForDatabaseCheck() {
             }
         }
         
-        // Fallback: GitHub'dan doğrudan yükle
-        console.log('📥 Fallback: GitHub\'dan doğrudan yükleniyor...');
-        const url = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json?t=' + Date.now();
+        // Fallback: GitHub'dan templates/index.json'ı yükle ve tüm şablonları çek
+        console.log('📥 Fallback: GitHub\'dan templates klasörü yükleniyor...');
         
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        // 1️⃣ Önce index.json'ı yükle (metadata)
+        const indexUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/templates/index.json?t=' + Date.now();
+        const indexResponse = await fetch(indexUrl);
+        if (!indexResponse.ok) {
+            throw new Error(`Index.json yüklenemedi: HTTP ${indexResponse.status}`);
         }
         
-        const data = await response.json();
+        const indexData = await indexResponse.json();
+        const templateMetadata = indexData.templates || [];
+        console.log(`✅ ${templateMetadata.length} şablon metadata yüklendi`);
         
-        // Wrapper formatını kontrol et
-        if (data.templates && Array.isArray(data.templates)) {
-            window.allTemplateArchive = data.templates;
-            console.log(`✅ Şablon arşivi yüklendi: ${data.templates.length} şablon`);
-        } else if (Array.isArray(data)) {
-            window.allTemplateArchive = data;
-            console.log(`✅ Şablon arşivi yüklendi: ${data.length} şablon`);
-        } else {
-            throw new Error('Geçersiz şablon formatı');
-        }
+        // 2️⃣ Her bir şablon dosyasını yükle
+        const templatePromises = templateMetadata.map(async (meta) => {
+            if (!meta.filename) return null;
+            
+            const templateUrl = `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/templates/${meta.filename}?t=${Date.now()}`;
+            try {
+                const response = await fetch(templateUrl);
+                if (!response.ok) {
+                    console.warn(`⚠️ ${meta.filename} yüklenemedi`);
+                    return null;
+                }
+                const templateData = await response.json();
+                return {
+                    ...templateData,
+                    metadata: meta // Metadata'yı da ekle
+                };
+            } catch (error) {
+                console.warn(`⚠️ ${meta.filename} parse hatası:`, error);
+                return null;
+            }
+        });
+        
+        const allTemplates = await Promise.all(templatePromises);
+        window.allTemplateArchive = allTemplates.filter(t => t !== null);
+        console.log(`✅ ${window.allTemplateArchive.length} şablon tam verisi yüklendi`);
         
     } catch (error) {
         console.error('❌ Şablon arşivi yüklenemedi:', error);
