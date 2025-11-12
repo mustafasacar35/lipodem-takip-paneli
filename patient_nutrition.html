@@ -8424,19 +8424,42 @@
             // 🚀 LAZY LOADING: dayTemplates sadece metadata ise, full data yükle
             let templatesForFiltering = dayTemplates;
             if (typeof TemplateManager !== 'undefined' && dayTemplates.length > 0 && !dayTemplates[0].ogunler) {
-                console.log('⏳ Filtreleme için şablonlar yükleniyor (full data)...');
+                console.log('⏳ loadDayTemplates: Filtreleme için şablonlar yükleniyor (full data)...');
+                console.log('📊 dayTemplates durumu:', {
+                    count: dayTemplates.length,
+                    firstTemplate: dayTemplates[0],
+                    hasFilename: !!dayTemplates[0].filename,
+                    hasOgunler: !!dayTemplates[0].ogunler,
+                    keys: Object.keys(dayTemplates[0])
+                });
+                
                 try {
-                    const filenames = dayTemplates.map(t => t.filename);
-                    templatesForFiltering = await TemplateManager.loadTemplates(filenames);
-                    console.log('✅ Filtreleme için', templatesForFiltering.length, 'şablon yüklendi');
+                    const filenames = dayTemplates.map(t => t.filename).filter(f => f); // undefined filenames'i filtrele
+                    console.log('📁 Yüklenecek dosyalar:', filenames.length, '/', dayTemplates.length);
                     
-                    // ÖNEMLI: Global dayTemplates'i de güncelle (sonraki çağrılarda tekrar yüklemesin)
-                    dayTemplates = templatesForFiltering;
+                    if (filenames.length === 0) {
+                        console.error('❌ Filename bulunamadı! dayTemplates metadata içermiyor.');
+                        templatesForFiltering = dayTemplates; // Metadata ile devam et
+                    } else {
+                        templatesForFiltering = await TemplateManager.loadTemplates(filenames);
+                        console.log('✅ loadDayTemplates:', templatesForFiltering.length, 'şablon yüklendi');
+                        console.log('🔍 İlk yüklenen şablon:', templatesForFiltering[0]);
+                        console.log('🔍 İlk şablonun ogunler:', templatesForFiltering[0].ogunler ? `${templatesForFiltering[0].ogunler.length} öğün` : 'YOK');
+                        
+                        // ÖNEMLI: Global dayTemplates'i de güncelle (sonraki çağrılarda tekrar yüklemesin)
+                        dayTemplates = templatesForFiltering;
+                        console.log('✅ Global dayTemplates güncellendi');
+                    }
                 } catch (error) {
-                    console.error('❌ Şablonlar yüklenirken hata:', error);
+                    console.error('❌ loadDayTemplates: Şablonlar yüklenirken hata:', error);
                     // Fallback: metadata ile devam et (disliked foods filtresi çalışmayacak)
                     templatesForFiltering = dayTemplates;
                 }
+            } else {
+                console.log('ℹ️ loadDayTemplates: Lazy loading atlandı -', 
+                    dayTemplates.length === 0 ? 'şablon yok' :
+                    dayTemplates[0].ogunler ? 'şablonlar zaten tam yüklü' :
+                    'TemplateManager yok');
             }
 
             // Filter templates based on settings
@@ -8581,38 +8604,35 @@
                 templateCount: templates.length,
                 firstTemplate: templates[0],
                 hasOgunler: templates[0]?.ogunler ? 'VAR' : 'YOK',
-                hasFilename: templates[0]?.filename ? 'VAR' : 'YOK'
+                hasFilename: templates[0]?.filename ? 'VAR' : 'YOK',
+                firstTemplateKeys: templates[0] ? Object.keys(templates[0]) : []
             });
             
-            // 🚀 LAZY LOADING: Eğer şablonlar sadece metadata ise, full data yükle
+            // 🚀 CRITICAL: loadDayTemplates zaten full data yükledi, burada tekrar yüklemeye gerek yok!
+            // Ama bazı durumlarda (admin edit modal vb.) buraya metadata gelebilir, o yüzden koşullu yükleme yapıyoruz
             let fullTemplates = templates;
             
-            // KOŞUL SADELE: Eğer ilk şablonda ogunler yoksa, yükle!
-            if (typeof TemplateManager !== 'undefined' && templates.length > 0 && !templates[0].ogunler) {
-                console.log('⏳ Modal için tüm şablonlar yükleniyor (lazy loading)...');
+            // Sadece metadata varsa yükle (loadDayTemplates atlanmışsa)
+            if (typeof TemplateManager !== 'undefined' && templates.length > 0 && !templates[0].ogunler && templates[0].filename) {
+                console.log('⏳ renderTemplateTable: Full data yükleniyor (loadDayTemplates atlanmış)...');
                 console.log('📦 İlk template metadata:', templates[0]);
                 const filenames = templates.map(t => t.filename);
                 console.log('📁 Yüklenecek dosyalar:', filenames.length, 'dosya (ilk 3:', filenames.slice(0, 3), ')');
                 
                 try {
                     fullTemplates = await TemplateManager.loadTemplates(filenames);
-                    console.log('✅ Modal için', fullTemplates.length, 'şablon yüklendi');
+                    console.log('✅ renderTemplateTable:', fullTemplates.length, 'şablon yüklendi');
                     console.log('🔍 İlk yüklenen şablon FULL DATA:', fullTemplates[0]);
                     console.log('🔍 İlk şablonun ogunler:', fullTemplates[0].ogunler ? `${fullTemplates[0].ogunler.length} öğün` : 'YOK');
                 } catch (error) {
-                    console.error('❌ Şablonlar yüklenirken hata:', error);
+                    console.error('❌ renderTemplateTable: Şablonlar yüklenirken hata:', error);
                     // Fallback: metadata ile devam et
                     fullTemplates = templates;
                 }
+            } else if (templates.length > 0 && templates[0].ogunler) {
+                console.log('✅ renderTemplateTable: Şablonlar zaten tam yüklü (loadDayTemplates başarılı)');
             } else {
-                console.log('ℹ️ Lazy loading atlandı - şablonlar zaten tam yüklü veya TemplateManager yok');
-                if (templates.length > 0) {
-                    console.log('🔍 İlk şablonun durumu:', {
-                        hasFilename: !!templates[0].filename,
-                        hasOgunler: !!templates[0].ogunler,
-                        ogunlerCount: templates[0].ogunler?.length || 0
-                    });
-                }
+                console.warn('⚠️ renderTemplateTable: TemplateManager yok veya şablonlar boş');
             }
             
             // Sıralama ok işaretlerini belirle
