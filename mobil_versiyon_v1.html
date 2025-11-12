@@ -3856,7 +3856,8 @@
                 const tagsParts = [];
                 
                 // 🔴 VERİTABANINDA YOK ROZETİ - En başta göster (admin kullanıcılar için)
-                if (food.notInDatabase && currentUser && currentUser.role === 'admin') {
+                const isAdmin = window.checkAdminStatus ? window.checkAdminStatus().isAdmin : false;
+                if (food.notInDatabase && isAdmin) {
                     tagsParts.push('<span class="info-tag" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; font-weight: bold; animation: pulse 2s infinite;">⚠️ Veritabanında Yok</span>');
                     if (food.originalSearchName) {
                         console.log(`🔴 UYARI: "${food.originalSearchName}" yemeği food_list.json'da bulunamadı!`);
