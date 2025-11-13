@@ -265,20 +265,38 @@ const TemplateManager = {
             console.log('[TemplateManager] Loading', filenames.length, 'templates in batches of', batchSize, '...');
             
             const allTemplates = [];
+            const failedTemplates = [];
             
             // Split into batches to prevent rate limiting and browser connection limits
             for (let i = 0; i < filenames.length; i += batchSize) {
                 const batch = filenames.slice(i, i + batchSize);
                 console.log(`[TemplateManager] Loading batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(filenames.length / batchSize)} (${batch.length} templates)...`);
                 
-                const promises = batch.map(filename => this.loadTemplate(filename, token));
-                const batchTemplates = await Promise.all(promises);
-                allTemplates.push(...batchTemplates);
+                // Load templates with error handling - don't fail entire batch on single error
+                const promises = batch.map(async filename => {
+                    try {
+                        return await this.loadTemplate(filename, token);
+                    } catch (error) {
+                        console.warn(`[TemplateManager] Skipping failed template: ${filename} (${error.message})`);
+                        failedTemplates.push(filename);
+                        return null; // Return null for failed templates
+                    }
+                });
                 
-                console.log(`[TemplateManager] Batch ${Math.floor(i / batchSize) + 1} completed (${allTemplates.length}/${filenames.length} total)`);
+                const batchTemplates = await Promise.all(promises);
+                
+                // Filter out null values (failed templates)
+                const successfulTemplates = batchTemplates.filter(t => t !== null);
+                allTemplates.push(...successfulTemplates);
+                
+                console.log(`[TemplateManager] Batch ${Math.floor(i / batchSize) + 1} completed (${allTemplates.length}/${filenames.length} total, ${failedTemplates.length} failed)`);
             }
             
-            console.log('[TemplateManager] ✅ All', allTemplates.length, 'templates loaded successfully');
+            if (failedTemplates.length > 0) {
+                console.warn(`[TemplateManager] ⚠️ ${failedTemplates.length} templates could not be loaded:`, failedTemplates.slice(0, 10));
+            }
+            
+            console.log('[TemplateManager] ✅ Loaded', allTemplates.length, 'templates successfully');
             return allTemplates;
         } catch (error) {
             console.error('[TemplateManager] Error loading multiple templates:', error);

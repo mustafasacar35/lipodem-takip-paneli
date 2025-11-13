@@ -8426,43 +8426,69 @@
             
             // 🚀 LAZY LOADING: dayTemplates sadece metadata ise, full data yükle
             let templatesForFiltering = dayTemplates;
-            if (typeof TemplateManager !== 'undefined' && dayTemplates.length > 0 && !dayTemplates[0].ogunler) {
-                console.log('⏳ loadDayTemplates: Filtreleme için şablonlar yükleniyor (full data)...');
-                console.log('📊 dayTemplates durumu:', {
-                    count: dayTemplates.length,
-                    firstTemplate: dayTemplates[0],
-                    hasFilename: !!dayTemplates[0].filename,
-                    hasOgunler: !!dayTemplates[0].ogunler,
-                    keys: Object.keys(dayTemplates[0])
-                });
+            
+            // Önce dayTemplates'in içeriğini kontrol et
+            const needsFullData = dayTemplates.length > 0 && !dayTemplates[0].ogunler;
+            
+            console.log('loadDayTemplates baslat ildi:', {
+                dayTemplatesCount: dayTemplates.length,
+                hasTemplateManager: typeof TemplateManager !== 'undefined',
+                needsFullData: needsFullData,
+                firstTemplateHasOgunler: dayTemplates[0]?.ogunler ? 'VAR' : 'YOK',
+                firstTemplateHasFilename: dayTemplates[0]?.filename ? 'VAR' : 'YOK'
+            });
+            
+            if (needsFullData) {
+                console.log('⏳ Tam veri yüklemesi gerekiyor...');
                 
-                try {
-                    const filenames = dayTemplates.map(t => t.filename).filter(f => f); // undefined filenames'i filtrele
-                    console.log('📁 Yüklenecek dosyalar:', filenames.length, '/', dayTemplates.length);
-                    
-                    if (filenames.length === 0) {
-                        console.error('❌ Filename bulunamadı! dayTemplates metadata içermiyor.');
-                        templatesForFiltering = dayTemplates; // Metadata ile devam et
-                    } else {
-                        templatesForFiltering = await TemplateManager.loadTemplates(filenames);
-                        console.log('✅ loadDayTemplates:', templatesForFiltering.length, 'şablon yüklendi');
-                        console.log('🔍 İlk yüklenen şablon:', templatesForFiltering[0]);
-                        console.log('🔍 İlk şablonun ogunler:', templatesForFiltering[0].ogunler ? `${templatesForFiltering[0].ogunler.length} öğün` : 'YOK');
+                // ÖNCE: TemplateManager ile dene
+                if (typeof TemplateManager !== 'undefined') {
+                    console.log('TemplateManager mevcut, index-based loading kullaniliyor');
+                    try {
+                        const filenames = dayTemplates.map(t => t.filename).filter(f => f);
+                        console.log('Yuklenecek dosya sayisi:', filenames.length, '/', dayTemplates.length);
+                        console.log('Ilk 5 filename:', filenames.slice(0, 5));
                         
-                        // ÖNEMLI: Global dayTemplates'i de güncelle (sonraki çağrılarda tekrar yüklemesin)
-                        dayTemplates = templatesForFiltering;
-                        console.log('✅ Global dayTemplates güncellendi');
+                        if (filenames.length > 0) {
+                            console.log('TemplateManager.loadTemplates baslatiliyor...');
+                            templatesForFiltering = await TemplateManager.loadTemplates(filenames);
+                            console.log('TemplateManager basarili:', templatesForFiltering.length, 'sablon yuklendi');
+                            
+                            // Kontrol: Gercekten ogun bilgisi var mi?
+                            const hasOgunler = templatesForFiltering.length > 0 && templatesForFiltering[0]?.ogunler && templatesForFiltering[0].ogunler.length > 0;
+                            console.log('Yukleme sonucu:', {
+                                count: templatesForFiltering.length,
+                                firstHasOgunler: hasOgunler ? 'VAR' : 'YOK',
+                                ogunlerCount: templatesForFiltering[0]?.ogunler?.length || 0
+                            });
+                            
+                            if (!hasOgunler && templatesForFiltering.length === 0) {
+                                console.error('Hicbir sablon yuklenemedi!');
+                                throw new Error('Hicbir sablon yuklenemedi');
+                            }
+                            
+                            if (!hasOgunler && templatesForFiltering.length > 0) {
+                                console.error('Yuklenen sablonlarda ogun bilgisi eksik!');
+                                throw new Error('Yuklenen sablonlarda ogun bilgisi yok');
+                            }
+                            
+                            // Global dayTemplates'i guncelle
+                            dayTemplates = templatesForFiltering;
+                            console.log('Global dayTemplates guncellendi:', dayTemplates.length, 'sablon');
+                        } else {
+                            throw new Error('Filename listesi bos');
+                        }
+                    } catch (error) {
+                        console.error('❌ TemplateManager hatası:', error);
+                        console.log('� Fallback: gun-sablonlari-2025-10-25.json yüklenecek');
+                        templatesForFiltering = templatesForFiltering || [];
                     }
-                } catch (error) {
-                    console.error('❌ loadDayTemplates: Şablonlar yüklenirken hata:', error);
-                    // Fallback: metadata ile devam et (disliked foods filtresi çalışmayacak)
-                    templatesForFiltering = dayTemplates;
                 }
             } else {
-                console.log('ℹ️ loadDayTemplates: Lazy loading atlandı -', 
+                console.log('ℹ️ loadDayTemplates: Tam veri yüklemeye gerek yok -', 
                     dayTemplates.length === 0 ? 'şablon yok' :
-                    dayTemplates[0].ogunler ? 'şablonlar zaten tam yüklü' :
-                    'TemplateManager yok');
+                    dayTemplates[0]?.ogunler ? 'şablonlar zaten tam veri içeriyor' :
+                    'bilinmeyen durum');
             }
 
             // Filter templates based on settings
@@ -8611,31 +8637,50 @@
                 firstTemplateKeys: templates[0] ? Object.keys(templates[0]) : []
             });
             
-            // 🚀 CRITICAL: loadDayTemplates zaten full data yükledi, burada tekrar yüklemeye gerek yok!
-            // Ama bazı durumlarda (admin edit modal vb.) buraya metadata gelebilir, o yüzden koşullu yükleme yapıyoruz
+            // 🚀 CRITICAL: Şablonlarda ogunler yoksa tam veri yükle
             let fullTemplates = templates;
+            const needsFullData = templates.length > 0 && !templates[0].ogunler;
             
-            // Sadece metadata varsa yükle (loadDayTemplates atlanmışsa)
-            if (typeof TemplateManager !== 'undefined' && templates.length > 0 && !templates[0].ogunler && templates[0].filename) {
-                console.log('⏳ renderTemplateTable: Full data yükleniyor (loadDayTemplates atlanmış)...');
-                console.log('📦 İlk template metadata:', templates[0]);
-                const filenames = templates.map(t => t.filename);
-                console.log('📁 Yüklenecek dosyalar:', filenames.length, 'dosya (ilk 3:', filenames.slice(0, 3), ')');
+            if (needsFullData) {
+                console.log('⏳ renderTemplateTable: Öğün bilgisi yok, tam veri yüklenecek...');
                 
-                try {
-                    fullTemplates = await TemplateManager.loadTemplates(filenames);
-                    console.log('✅ renderTemplateTable:', fullTemplates.length, 'şablon yüklendi');
-                    console.log('🔍 İlk yüklenen şablon FULL DATA:', fullTemplates[0]);
-                    console.log('🔍 İlk şablonun ogunler:', fullTemplates[0].ogunler ? `${fullTemplates[0].ogunler.length} öğün` : 'YOK');
-                } catch (error) {
-                    console.error('❌ renderTemplateTable: Şablonlar yüklenirken hata:', error);
-                    // Fallback: metadata ile devam et
-                    fullTemplates = templates;
+                // ÖNCE: TemplateManager ile dene
+                if (typeof TemplateManager !== 'undefined' && templates[0]?.filename) {
+                    console.log('✅ TemplateManager kullanılacak');
+                    const filenames = templates.map(t => t.filename).filter(f => f);
+                    console.log('📁 Yüklenecek dosyalar:', filenames.length, 'dosya');
+                    
+                    try {
+                        fullTemplates = await TemplateManager.loadTemplates(filenames);
+                        console.log('✅ TemplateManager ile yüklendi:', fullTemplates.length, 'şablon');
+                        console.log('🔍 İlk şablonun ogunler:', fullTemplates[0]?.ogunler ? `${fullTemplates[0].ogunler.length} öğün` : 'YOK');
+                    } catch (error) {
+                        console.error('❌ TemplateManager hatası:', error);
+                        fullTemplates = null; // Fallback için null yap
+                    }
                 }
-            } else if (templates.length > 0 && templates[0].ogunler) {
-                console.log('✅ renderTemplateTable: Şablonlar zaten tam yüklü (loadDayTemplates başarılı)');
+                
+                // FALLBACK: TemplateManager başarısız olduysa veya yoksa
+                if (!fullTemplates || fullTemplates.length === 0 || !fullTemplates[0].ogunler) {
+                    console.log('🔄 FALLBACK: gun-sablonlari-2025-10-25.json yüklenecek');
+                    try {
+                        const fallbackResponse = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/gun-sablonlari-2025-10-25.json?t=' + Date.now());
+                        const fallbackData = await fallbackResponse.json();
+                        const allTemplates = fallbackData.templates || [];
+                        
+                        // Sadece istenen template ID'leri bul
+                        const requestedIds = new Set(templates.map(t => t.id));
+                        fullTemplates = allTemplates.filter(t => requestedIds.has(t.id));
+                        
+                        console.log('✅ FALLBACK başarılı:', fullTemplates.length, 'şablon bulundu');
+                        console.log('🔍 İlk şablonun ogunler:', fullTemplates[0]?.ogunler ? `${fullTemplates[0].ogunler.length} öğün` : 'YOK');
+                    } catch (fallbackError) {
+                        console.error('❌ FALLBACK hatası:', fallbackError);
+                        fullTemplates = templates; // Metadata ile devam et
+                    }
+                }
             } else {
-                console.warn('⚠️ renderTemplateTable: TemplateManager yok veya şablonlar boş');
+                console.log('✅ renderTemplateTable: Şablonlar zaten tam veri içeriyor veya şablon yok');
             }
             
             // Sıralama ok işaretlerini belirle
@@ -8669,9 +8714,19 @@
                 
                 // Yemek listesini oluştur (öğünlere göre)
                 let mealsHTML = '';
-                if (template.ogunler && template.ogunler.length > 0) {
+                if (template.ogunler && Array.isArray(template.ogunler) && template.ogunler.length > 0) {
                     const mealsList = template.ogunler.map((ogun, ogunIndex) => {
-                        const foodNames = ogun.yemekler ? ogun.yemekler.map(y => y.foodName || y.originalText || '?').join(', ') : '';
+                        // Yemek listesini oluştur
+                        let foodNames = '';
+                        if (ogun.yemekler && Array.isArray(ogun.yemekler) && ogun.yemekler.length > 0) {
+                            foodNames = ogun.yemekler.map(y => {
+                                // Yemek adını bul (foodName, name, originalText sırasıyla)
+                                return y.foodName || y.name || y.originalText || '?';
+                            }).join(', ');
+                        } else {
+                            foodNames = '(Yemek bilgisi yok)';
+                        }
+                        
                         // Öğün adını al (ogunAdi veya mealName)
                         let mealDisplayName = ogun.ogunAdi || ogun.mealName || 'Öğün';
                         
@@ -8682,13 +8737,17 @@
                     }).join('<br>');
                     mealsHTML = mealsList;
                 } else {
-                    // DEBUG: Neden öğün yok?
+                    // Öğün bilgisi yok - daha detaylı hata mesajı
+                    mealsHTML = '<em style="color: #999;">Öğün bilgisi yüklenemedi</em>';
                     console.warn('⚠️ Şablonda öğün bulunamadı:', {
                         templateId: template.id,
                         templateName: template.name,
                         hasOgunler: !!template.ogunler,
+                        ogunlerType: typeof template.ogunler,
+                        ogunlerIsArray: Array.isArray(template.ogunler),
                         ogunlerLength: template.ogunler?.length,
-                        templateKeys: Object.keys(template)
+                        templateKeys: Object.keys(template),
+                        fullTemplate: template
                     });
                 }
                 
