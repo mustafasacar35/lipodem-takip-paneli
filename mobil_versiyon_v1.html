@@ -3856,7 +3856,8 @@
                 const tagsParts = [];
                 
                 // 🔴 VERİTABANINDA YOK ROZETİ - En başta göster (admin kullanıcılar için)
-                const isAdmin = window.checkAdminStatus ? window.checkAdminStatus().isAdmin : false;
+                const adminStatus = window.checkAdminStatus ? window.checkAdminStatus() : null;
+                const isAdmin = adminStatus && adminStatus.isAdmin ? true : false;
                 if (food.notInDatabase && isAdmin) {
                     tagsParts.push('<span class="info-tag" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; font-weight: bold; animation: pulse 2s infinite;">⚠️ Veritabanında Yok</span>');
                     if (food.originalSearchName) {
@@ -3947,6 +3948,7 @@
                 console.log('📊 Referans role:', refFood.role, '| category:', refFood.category, '| mealType:', refFood.mealType);
                 console.log('⚙️ matchCriteria:', JSON.stringify(matchCriteria));
                 console.log('🔍 Selector Mode:', selectorMode ? 'AKTIF (sadece role filtresi)' : 'KAPALI (tüm filtreler)');
+                console.log('🔍 onlyMacroSimilarity:', refFood.onlyMacroSimilarity ? 'AKTIF (sadece makro benzerliği)' : 'KAPALI');
                 
                 originalSelectedFood = refFood;
                 currentIndex = 0;
@@ -3958,6 +3960,12 @@
 
                 let alternatives = foodDatabase.filter(food => {
                     if (food.name === refFood.name) return false;
+                    
+                    // 🔥 ÖZEL DURUM: Sadece makro benzerliği (veritabanında olmayan yemekler için)
+                    if (refFood.onlyMacroSimilarity) {
+                        console.log('🔥 Sadece makro benzerliği modu - Tüm filtreler devre dışı');
+                        return true; // Hiçbir filtre uygulanmaz, tüm yemekler dahil
+                    }
                     
                     // 🚫 Selector modda: Öğünde mevcut kategorileri hariç tut
                     if (selectorMode && window.excludedCategories && window.excludedCategories.length > 0) {
@@ -4681,17 +4689,42 @@
                             }
                         } else {
                             console.warn('❌ Manuel eşleştirme de bulunamadı');
-                            // Kullanıcıya bilgi göster
-                            const morKart = document.querySelector('.selected-food-card');
-                            if (morKart) {
-                                morKart.innerHTML = `
-                                    <div style="text-align: center; padding: 20px;">
-                                        <h3 style="color: #dc3545; margin-bottom: 10px;">⚠️ Yemek Bulunamadı</h3>
-                                        <p style="color: #666; margin-bottom: 10px;">"${decodedFood}"</p>
-                                        <p style="font-size: 14px; color: #888;">Bu yemek veritabanında bulunmuyor. Lütfen admin panelinden ekleyin veya manuel eşleştirme yapın.</p>
-                                    </div>
-                                `;
+                            
+                            // 🔥 VERİTABANINDA YOK AMA URL'DEN MAKRO VAR
+                            // URL'deki macros parametresini kullan
+                            const urlMacros = urlParams.get('macros');
+                            let useMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+                            
+                            if (urlMacros) {
+                                try {
+                                    useMacros = JSON.parse(decodeURIComponent(urlMacros));
+                                    console.log('✅ URL\'den makrolar alındı:', useMacros);
+                                } catch (e) {
+                                    console.warn('⚠️ URL makroları parse edilemedi:', e);
+                                }
                             }
+                            
+                            // Pseudo food objesi oluştur (sadece makro benzerliği için)
+                            const pseudoFood = {
+                                name: decodedFood,
+                                category: 'unknown',
+                                calories: useMacros.calories,
+                                protein: useMacros.protein,
+                                carbs: useMacros.carbs,
+                                fat: useMacros.fat,
+                                notInDatabase: true, // ⚠️ Kırmızı rozet
+                                onlyMacroSimilarity: true, // 🔍 Sadece makro benzerliği
+                                originalSearchName: decodedFood
+                            };
+                            
+                            console.log('📊 Pseudo food oluşturuldu (sadece makro benzerliği):', pseudoFood);
+                            
+                            // Mor kartta göster
+                            showSelectedFood(pseudoFood);
+                            
+                            // SADECE MAKRO BENZERLİĞİNE GÖRE ALTERNATİF BUL
+                            // Kategori, rol vs. kriterleri yok sayılacak
+                            findAlternatives(pseudoFood);
                         }
                     }
                 } else {
