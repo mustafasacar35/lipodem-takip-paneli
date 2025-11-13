@@ -201,21 +201,9 @@ const TemplateManager = {
                 return this.templateCache.get(filename);
             }
 
-            // Check localStorage cache
-            const cacheKey = `${this.config.cacheKey}_${filename}`;
-            const cachedTemplate = localStorage.getItem(cacheKey);
-            if (cachedTemplate) {
-                try {
-                    const parsed = JSON.parse(cachedTemplate);
-                    this.templateCache.set(filename, parsed);
-                    console.log('[TemplateManager] Template loaded from localStorage:', filename);
-                    return parsed;
-                } catch (e) {
-                    console.warn('[TemplateManager] Failed to parse cached template:', filename, e);
-                    localStorage.removeItem(cacheKey);
-                }
-            }
-
+            // 🔥 CACHE DISABLED: localStorage quota exceeded with 1000+ templates
+            // Now only using in-memory cache (Map) to avoid quota errors
+            
             // Fetch from GitHub - Use raw.githubusercontent.com for public repos (no rate limit!)
             console.log('[TemplateManager] Fetching template from GitHub:', filename);
             const url = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.templatePath}${filename}?t=${Date.now()}`;
@@ -242,11 +230,10 @@ const TemplateManager = {
                 keys: Object.keys(template).slice(0, 10) // İlk 10 key
             });
 
-            // Cache in memory and localStorage
+            // Cache ONLY in memory (not localStorage - quota exceeded!)
             this.templateCache.set(filename, template);
-            localStorage.setItem(cacheKey, JSON.stringify(template));
 
-            console.log('[TemplateManager] Template cached:', filename);
+            console.log('[TemplateManager] Template cached in memory:', filename);
             return template;
 
         } catch (error) {
