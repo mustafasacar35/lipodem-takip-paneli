@@ -250,13 +250,10 @@ const PatientAuth = {
                 const patientDetails = await this.loadPatientDetails(patient.id);
                 if (patientDetails) {
                     const detailsKey = `patientDetails_${patient.id}`;
-                    // Eğer localde zaten hasta detayları (kullanıcı tarafından düzenlenmiş olabilir) varsa, uzaktaki dosya ile yerel değişiklikleri otomatik olarak üzerine yazmıyoruz.
-                    if (!localStorage.getItem(detailsKey)) {
-                        localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
-                        console.log('✅ Hasta detayları localStorage\'a kaydedildi');
-                    } else {
-                        console.log('ℹ️ Local hasta detayları mevcut; remote detaylar üzerine yazılmadı');
-                    }
+                    // Her login'de GitHub'dan gelen güncel data'yı localStorage'a kaydet
+                    // (maxDevices, devices[], securityAlerts[] gibi alanlar admin tarafından güncellenebilir)
+                    localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
+                    console.log('✅ Hasta detayları localStorage\'a güncellendi (GitHub source)');
                     
                     // alternativeCount varsa logla
                     if (patientDetails.alternativeCount) {
