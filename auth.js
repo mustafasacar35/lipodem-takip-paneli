@@ -119,6 +119,75 @@ const PatientAuth = {
             if (passwordHash !== remoteHash && passwordHash !== localHash) {
                 return { success: false, error: 'Kullanıcı adı veya şifre hatalı' };
             }
+
+            // 🖥️ CİHAZ KONTROLÜ - Şifre doğru ama cihaz limiti var mı?
+            let deviceCheckResult = null;
+            let currentDeviceInfo = null;
+            let ipInfo = null;
+
+            try {
+                if (window.DeviceManager) {
+                    // Mevcut cihaz bilgisini al
+                    currentDeviceInfo = await window.DeviceManager.getDeviceInfo();
+                    console.log('🖥️ Cihaz bilgisi alındı:', currentDeviceInfo.deviceName);
+
+                    // IP bilgisini al (şüpheli aktivite kontrolü için)
+                    if (window.IPLogger) {
+                        ipInfo = await window.IPLogger.getIPInfo();
+                    }
+
+                    // Hasta detaylarını yükle (cihaz limiti için gerekli)
+                    const patientDetails = await this.loadPatientDetails(patient.id);
+                    if (patientDetails) {
+                        // localStorage'a kaydet (cihaz kontrolü için gerekli)
+                        const detailsKey = `patientDetails_${patient.id}`;
+                        if (!localStorage.getItem(detailsKey)) {
+                            localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
+                        }
+                    }
+
+                    // Cihaz limiti kontrolü
+                    deviceCheckResult = await window.DeviceManager.checkDeviceLimit(patient.id, currentDeviceInfo);
+
+                    if (!deviceCheckResult.allowed) {
+                        // ❌ CİHAZ LİMİTİ AŞILDI - GİRİŞ ENGELLENDİ
+                        console.warn(`❌ Cihaz limiti aşıldı: ${deviceCheckResult.currentDevices}/${deviceCheckResult.maxDevices}`);
+
+                        // IP logu kaydet (status: blocked)
+                        if (window.IPLogger && ipInfo) {
+                            await window.IPLogger.logLogin(patient.id, currentDeviceInfo.deviceId, ipInfo, 'blocked');
+                        }
+
+                        // Admin'e bildirim gönder
+                        if (window.AdminNotifier) {
+                            await window.AdminNotifier.sendDeviceLimitAlert({
+                                patientId: patient.id,
+                                username: username,
+                                deviceId: currentDeviceInfo.deviceId,
+                                deviceInfo: `${currentDeviceInfo.deviceName} / ${currentDeviceInfo.browser}`,
+                                currentDevices: deviceCheckResult.currentDevices,
+                                maxDevices: deviceCheckResult.maxDevices,
+                                ipInfo: ipInfo
+                            });
+                        }
+
+                        return { 
+                            success: false, 
+                            error: deviceCheckResult.reason,
+                            errorType: 'device_limit_exceeded'
+                        };
+                    }
+
+                    // ✅ Cihaz limiti uygun, yeni cihazsa kaydet
+                    if (deviceCheckResult.isNewDevice) {
+                        await window.DeviceManager.registerDevice(patient.id, currentDeviceInfo, ipInfo);
+                        console.log(`✅ Yeni cihaz kaydedildi: ${currentDeviceInfo.deviceName}`);
+                    }
+                }
+            } catch (deviceError) {
+                console.warn('⚠️ Cihaz kontrolü hatası (giriş devam edecek):', deviceError);
+                // Cihaz kontrol hatası girişi engellemez
+            }
             
             // Hasta detaylarını yükle (isAdmin için gerekli)
             let isAdminUser = false;
@@ -148,7 +217,35 @@ const PatientAuth = {
             // Session'ı kaydet
             localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(sessionData));
 
-            // 🆕 Hasta detaylarını yükle ve localStorage'a kaydet
+            // � IP LOG: Login başarılı - IP ve konum bilgisini kaydet
+            try {
+                if (window.IPLogger) {
+                    const ipInfo = await window.IPLogger.getIPInfo();
+                    const deviceId = localStorage.getItem('device_id') || 'unknown';
+                    await window.IPLogger.logLogin(patient.id, deviceId, ipInfo, 'success');
+                    
+                    // Şüpheli aktivite kontrolü
+                    const suspiciousCheck = await window.IPLogger.checkSuspiciousActivity(patient.id, ipInfo);
+                    if (suspiciousCheck.suspicious) {
+                        console.warn('⚠️ ŞÜPHELİ AKTİVİTE:', suspiciousCheck.reason);
+                        // Admin'e bildirim gönder (opsiyonel)
+                        if (window.AdminNotifier) {
+                            window.AdminNotifier.sendSecurityAlert({
+                                patientId: patient.id,
+                                username: username,
+                                reason: suspiciousCheck.reason,
+                                severity: suspiciousCheck.severity,
+                                ipInfo: ipInfo
+                            });
+                        }
+                    }
+                }
+            } catch (ipError) {
+                console.warn('⚠️ IP log kaydı başarısız:', ipError);
+                // IP log hatası login'i engellemez
+            }
+
+            // �🆕 Hasta detaylarını yükle ve localStorage'a kaydet
             try {
                 const patientDetails = await this.loadPatientDetails(patient.id);
                 if (patientDetails) {

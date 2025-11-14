@@ -888,6 +888,12 @@
                     </div>
 
                     <div class="form-group">
+                        <label>🖥️ Cihaz Limiti <span class="required">*</span></label>
+                        <input type="number" id="patientMaxDevices" min="1" max="10" value="1" required>
+                        <span class="hint">Bu hastaya kaç farklı cihazdan giriş izni verilsin (Varsayılan: 1)</span>
+                    </div>
+
+                    <div class="form-group">
                         <label>Alternatif Yemek Sayısı</label>
                         <input type="number" id="patientAlternativeCount" min="1" max="20" placeholder="Boş bırakılırsa admin ayarı kullanılır">
                         <span class="hint">Bu hastaya gösterilecek alternatif yemek sayısı (boş bırakılabilir)</span>
@@ -1057,6 +1063,7 @@
                 document.getElementById('patientUsername').value = patient.username;
                 document.getElementById('patientPassword').value = '';
                 document.getElementById('patientSessionDays').value = patient.sessionDays;
+                document.getElementById('patientMaxDevices').value = patient.maxDevices || 1; // Varsayılan 1
                 document.getElementById('patientAlternativeCount').value = patient.alternativeCount || '';
                 document.getElementById('patientStatus').value = patient.status;
                 document.getElementById('patientIsAdmin').checked = patient.isAdmin || false;
@@ -1216,6 +1223,7 @@
             const username = document.getElementById('patientUsername').value.trim();
             const password = document.getElementById('patientPassword').value;
             const sessionDays = parseInt(document.getElementById('patientSessionDays').value);
+            const maxDevices = parseInt(document.getElementById('patientMaxDevices').value) || 1; // Varsayılan 1
             const alternativeCountInput = document.getElementById('patientAlternativeCount').value.trim();
             const alternativeCount = alternativeCountInput ? parseInt(alternativeCountInput) : null;
             const status = document.getElementById('patientStatus').value;
@@ -1274,6 +1282,7 @@
                             username: username,
                             passwordHash: passwordHash,
                             sessionDays: sessionDays,
+                            maxDevices: maxDevices, // 🖥️ Cihaz limiti
                             status: status
                         };
                     }
@@ -1288,6 +1297,7 @@
                         username: username,
                         passwordHash: passwordHash,
                         sessionDays: sessionDays,
+                        maxDevices: maxDevices, // 🖥️ Cihaz limiti
                         status: status,
                         name: name,
                         surname: surname,
@@ -1305,6 +1315,7 @@
                     username: username,
                     passwordHash: passwordHash,
                     sessionDays: sessionDays,
+                    maxDevices: maxDevices, // 🖥️ Cihaz limiti
                     alternativeCount: alternativeCount,
                     status: status,
                     isAdmin: document.getElementById('patientIsAdmin').checked,
@@ -1320,6 +1331,12 @@
                     },
                     notes: notes,
                     progressLog: progressLog,
+                    
+                    // 🖥️ Cihaz yönetimi (mevcut cihazları koru)
+                    devices: existingPatientData?.devices || [],
+                    ipLogs: existingPatientData?.ipLogs || [],
+                    securityAlerts: existingPatientData?.securityAlerts || [],
+                    
                     createdAt: editingPatientId ?
                         (existingPatientData?.createdAt || patients.find(p => p.id === patientId)?.createdAt || new Date().toISOString()) :
                         new Date().toISOString(),

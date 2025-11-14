@@ -24,6 +24,10 @@
     <!-- Badge Manager (PWA mesaj sayısı) -->
     <script src="./badge_manager.js"></script>
     
+    <!-- IP Logger & Admin Notifier -->
+    <script src="./ip-logger.js"></script>
+    <script src="./admin-notifier.js"></script>
+    
     <!-- OneSignal Config -->
     <script src="./onesignal_config.js"></script>
     
@@ -965,9 +969,169 @@
         .patient-list-content {
             max-height: none;
         }
+
+        /* Security Alerts Modal */
+        .security-alerts-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .security-alerts-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .security-alerts-header {
+            background: linear-gradient(135deg, #ff5722 0%, #f44336 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .security-alerts-header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .security-alerts-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .security-alerts-body {
+            padding: 20px;
+        }
+
+        .security-alert-item {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .security-alert-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .security-alert-item.high {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .security-alert-item.medium {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+
+        .security-alert-item.low {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+
+        .security-alert-item.read {
+            opacity: 0.6;
+            background: #f5f5f5;
+        }
+
+        .security-alert-header-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .security-alert-type {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .security-alert-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .security-alert-details {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .security-alert-ip {
+            font-size: 12px;
+            color: #666;
+            background: rgba(0,0,0,0.05);
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .security-alerts-empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .mark-all-read-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .mark-all-read-btn:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
+    <!-- Security Alerts Modal -->
+    <div class="security-alerts-modal" id="securityAlertsModal">
+        <div class="security-alerts-content">
+            <div class="security-alerts-header">
+                <h2>🚨 Güvenlik Uyarıları</h2>
+                <button class="security-alerts-close" onclick="toggleSecurityAlerts()">×</button>
+            </div>
+            <div class="security-alerts-body">
+                <button class="mark-all-read-btn" onclick="markAllAlertsRead()">✅ Tümünü Okundu İşaretle</button>
+                <div id="securityAlertsList">
+                    <!-- Alerts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Drawer Overlay (Mobil) -->
     <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
     
@@ -1005,6 +1169,11 @@
                     <p>Hasta mesajlarını görüntüleyin ve yanıtlayın</p>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Güvenlik Uyarıları Butonu -->
+                    <button onclick="toggleSecurityAlerts()" style="background: rgba(255,87,34,0.9); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: 600; position: relative;">
+                        🚨 Güvenlik
+                        <span id="securityAlertBadge" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; display: none; align-items: center; justify-content: center; font-weight: bold;"></span>
+                    </button>
                     <!-- Bildirim Toggle -->
                     <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 5px; cursor: pointer;">
                         <span id="notificationIcon">🔔</span>
@@ -1301,6 +1470,126 @@
                 window.location.reload();
             }
         }
+
+        // 🚨 GÜVENLİK UYARILARI FONKSİYONLARI
+        function toggleSecurityAlerts() {
+            const modal = document.getElementById('securityAlertsModal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+                loadSecurityAlerts();
+            }
+        }
+
+        function loadSecurityAlerts() {
+            if (!window.AdminNotifier) {
+                console.warn('⚠️ AdminNotifier yüklenmedi');
+                return;
+            }
+
+            const alerts = window.AdminNotifier.getAlerts();
+            const alertsList = document.getElementById('securityAlertsList');
+
+            if (alerts.length === 0) {
+                alertsList.innerHTML = `
+                    <div class="security-alerts-empty">
+                        <h3>✅ Güvenlik Uyarısı Yok</h3>
+                        <p>Şu anda herhangi bir güvenlik uyarısı bulunmuyor.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Uyarıları tarihe göre sırala (en yeni önce)
+            alerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            alertsList.innerHTML = alerts.map(alert => {
+                const date = new Date(alert.timestamp);
+                const timeStr = date.toLocaleString('tr-TR');
+                const isRead = alert.read || false;
+                const severityClass = alert.severity || 'medium';
+
+                let alertIcon = '⚠️';
+                let alertTitle = 'Güvenlik Uyarısı';
+
+                if (alert.type === 'security_alert') {
+                    alertIcon = '🚨';
+                    alertTitle = 'Şüpheli Aktivite';
+                } else if (alert.reason && alert.reason.includes('Cihaz limiti')) {
+                    alertIcon = '🚫';
+                    alertTitle = 'Cihaz Limiti Aşıldı';
+                }
+
+                return `
+                    <div class="security-alert-item ${severityClass} ${isRead ? 'read' : ''}" data-timestamp="${alert.timestamp}">
+                        <div class="security-alert-header-item">
+                            <span class="security-alert-type">${alertIcon} ${alertTitle}</span>
+                            <span class="security-alert-time">${timeStr}</span>
+                        </div>
+                        <div class="security-alert-details">
+                            <strong>Hasta:</strong> ${alert.username || alert.patientId}<br>
+                            <strong>Sebep:</strong> ${alert.reason}
+                        </div>
+                        ${alert.ipInfo ? `
+                            <div class="security-alert-ip">
+                                📍 IP: ${alert.ipInfo.ip} - ${alert.ipInfo.city}, ${alert.ipInfo.country}
+                            </div>
+                        ` : ''}
+                        ${alert.deviceInfo ? `
+                            <div class="security-alert-ip">
+                                🖥️ Cihaz: ${alert.deviceInfo}
+                            </div>
+                        ` : ''}
+                        ${!isRead ? `
+                            <button onclick="markAlertRead('${alert.timestamp}')" style="margin-top: 10px; background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                ✅ Okundu İşaretle
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            // Badge güncelle
+            updateSecurityBadge();
+        }
+
+        function markAlertRead(timestamp) {
+            if (window.AdminNotifier) {
+                window.AdminNotifier.markAsRead(timestamp);
+                loadSecurityAlerts(); // Refresh list
+            }
+        }
+
+        function markAllAlertsRead() {
+            if (window.AdminNotifier) {
+                window.AdminNotifier.markAllAsRead();
+                loadSecurityAlerts(); // Refresh list
+            }
+        }
+
+        function updateSecurityBadge() {
+            if (!window.AdminNotifier) return;
+
+            const unreadCount = window.AdminNotifier.getUnreadCount();
+            const badge = document.getElementById('securityAlertBadge');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Sayfa yüklendiğinde badge'i güncelle
+        window.addEventListener('DOMContentLoaded', () => {
+            updateSecurityBadge();
+            // Her 30 saniyede bir badge'i kontrol et
+            setInterval(updateSecurityBadge, 30000);
+        });
         
         // requireAdminAuth - sayfa yüklenince otomatik çağrılır (auto-guard tarafından)
         // Manuel çağrı gerekmez, admin_auth.js auto-guard sistemi halledecek
