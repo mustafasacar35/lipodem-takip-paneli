@@ -278,6 +278,31 @@ const DeviceManager = {
             patientDetails.devices.push(deviceRecord);
             localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
 
+            // 🆕 GitHub'a da yaz (API endpoint üzerinden)
+            try {
+                const response = await fetch('/api/update-devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patientId,
+                        deviceId: deviceRecord.deviceId,
+                        fingerprint: deviceRecord.fingerprint,
+                        deviceInfo: deviceRecord.deviceInfo,
+                        ipInfo: deviceRecord.ipInfo
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`✅ Cihaz GitHub'a kaydedildi: ${deviceRecord.deviceInfo.name} (Toplam: ${result.deviceCount})`);
+                } else {
+                    console.warn('⚠️ GitHub kaydı başarısız (localStorage\'da kaydedildi)');
+                }
+            } catch (apiError) {
+                console.warn('⚠️ GitHub API hatası:', apiError.message);
+                // API hatası cihaz kaydını engellemez
+            }
+
             console.log(`✅ Yeni cihaz kaydedildi: ${deviceRecord.deviceInfo.name}`);
             return true;
 
