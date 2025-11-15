@@ -5978,6 +5978,27 @@
                 console.log('👑 Admin yetkili kullanıcı tespit edildi:', currentPatient.username);
             }
 
+            // 🔒 Cihaz geçerliliğini kontrol et (DeviceManager varsa)
+            if (typeof DeviceManager !== 'undefined' && DeviceManager.checkDeviceValidity) {
+                try {
+                    const currentDeviceId = await DeviceManager.getDeviceId();
+                    const isDeviceValid = await DeviceManager.checkDeviceValidity(currentPatient.id, currentDeviceId);
+                    
+                    if (!isDeviceValid) {
+                        console.error('🚫 Cihaz geçersiz - Admin tarafından resetlenmiş');
+                        // Logout ve login sayfasına yönlendir
+                        PatientAuth.logout();
+                        alert('⚠️ Cihaz erişimi iptal edildi.\n\nAdmin tarafından cihaz bilgileriniz sıfırlanmış.\nLütfen tekrar giriş yapın.');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    console.log('✅ Cihaz geçerliliği doğrulandı');
+                } catch (error) {
+                    console.error('❌ Cihaz geçerlilik kontrolü hatası:', error);
+                    // Hata durumunda devam et (kullanıcıyı logout etme)
+                }
+            }
+
             // Header'ı hemen güncelle (loadPatientData detaylı bilgi yüklenince tekrar güncelleyecek)
             document.getElementById('headerPatientName').textContent = currentPatient.name;
 

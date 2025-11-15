@@ -360,6 +360,49 @@ const DeviceManager = {
             console.error('Cihaz silinemedi:', error);
             return false;
         }
+    },
+
+    /**
+     * GitHub'dan hasta cihazlarını kontrol et ve mevcut cihazın geçerliliğini doğrula
+     * @param {string} patientId - Hasta ID
+     * @param {string} currentDeviceId - Mevcut cihaz ID
+     * @returns {Promise<boolean>} - Cihaz geçerli mi?
+     */
+    async checkDeviceValidity(patientId, currentDeviceId) {
+        try {
+            // GitHub'dan hasta JSON'ını çek
+            const response = await fetch(
+                `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${patientId}.json`
+            );
+
+            if (!response.ok) {
+                console.warn('⚠️ Hasta JSON yüklenemedi, cihaz kontrolü yapılamadı');
+                return true; // Network hatası varsa kullanıcıyı logout etme
+            }
+
+            const patientData = await response.json();
+
+            // Devices array yoksa veya boşsa - cihaz sıfırlanmış demektir
+            if (!patientData.devices || patientData.devices.length === 0) {
+                console.warn('🚫 Cihaz listesi boş - Admin tarafından resetlenmiş');
+                return false;
+            }
+
+            // Mevcut cihaz listede var mı kontrol et
+            const deviceExists = patientData.devices.some(d => d.deviceId === currentDeviceId);
+
+            if (!deviceExists) {
+                console.warn('🚫 Bu cihaz artık kayıtlı değil - Admin tarafından kaldırılmış');
+                return false;
+            }
+
+            console.log('✅ Cihaz geçerli ve kayıtlı');
+            return true;
+
+        } catch (error) {
+            console.error('❌ Cihaz geçerlilik kontrolü hatası:', error);
+            return true; // Hata durumunda kullanıcıyı logout etme
+        }
     }
 };
 

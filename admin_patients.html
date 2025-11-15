@@ -146,6 +146,15 @@
             background: #c82333;
         }
 
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
         .btn-sm {
             padding: 6px 12px;
             font-size: 12px;
@@ -1004,6 +1013,9 @@
                             <button class="btn btn-primary btn-sm" onclick="editPatient('${patient.id}')">
                                 ✏️ Düzenle
                             </button>
+                            <button class="btn btn-warning btn-sm" onclick="resetDevices('${patient.id}', '${patient.name} ${patient.surname}')" title="Hastanın tüm cihaz kayıtlarını sıfırla">
+                                🔄 Cihaz Resetle
+                            </button>
                             <button class="btn btn-danger btn-sm" onclick="deletePatient('${patient.id}')">
                                 🗑️ Sil
                             </button>
@@ -1119,6 +1131,38 @@
             } catch (error) {
                 console.error('Error deleting patient:', error);
                 showError('Hasta silinirken hata oluştu: ' + error.message);
+            }
+        }
+
+        // Reset devices for a patient
+        async function resetDevices(patientId, patientName) {
+            if (!confirm(`${patientName} için tüm cihaz kayıtlarını sıfırlamak istediğinizden emin misiniz?\n\nBu işlem sonrasında:\n- Hasta sadece 1 yeni cihazdan giriş yapabilecek\n- Eski cihazlarda otomatik logout olacak`)) {
+                return;
+            }
+
+            try {
+                showInfo('Cihaz bilgileri sıfırlanıyor...');
+
+                const response = await fetch('/api/reset-devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patientId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('API yanıt vermedi');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess(`✅ Cihaz bilgileri sıfırlandı!\n${result.oldDeviceCount} cihaz kaydı silindi.\nHasta artık yeni bir cihazdan giriş yapabilir.`);
+                } else {
+                    throw new Error(result.message || 'Bilinmeyen hata');
+                }
+            } catch (error) {
+                console.error('Reset devices error:', error);
+                showError('Cihaz sıfırlama hatası: ' + error.message);
             }
         }
 
