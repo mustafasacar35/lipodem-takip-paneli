@@ -1503,6 +1503,26 @@
             }, 6000);
         }
 
+        // Show info message
+        function showInfo(message) {
+            // errorAlert'i mavi bilgi mesajı olarak kullan
+            const alert = document.getElementById('errorAlert');
+            alert.innerHTML = `ℹ️ ${message}`;
+            alert.style.background = '#0dcaf0';
+            alert.classList.add('show');
+            
+            // Scroll to top to see the message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+                // Rengi geri al
+                setTimeout(() => {
+                    alert.style.background = '';
+                }, 300);
+            }, 6000);
+        }
+
         // PWA Service Worker ve Manifest Kaydı
         if ('serviceWorker' in navigator) {
             const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
