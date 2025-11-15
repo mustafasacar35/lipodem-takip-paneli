@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="PWA Test">
+    <meta name="application-name" content="PWA Test">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    
+    <title>PWA Test - iOS Kurulum</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .info-box {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-box h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        
+        .info-box p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 10px 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+        }
+        
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 2px solid #FF9800;
+        }
+        
+        .status.info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 2px solid #2196F3;
+        }
+        
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        
+        #deviceInfo {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📱</div>
+        <h1>PWA Kurulum Testi</h1>
+        
+        <div class="info-box">
+            <h2>Durum Kontrolü</h2>
+            <div id="statusInfo">
+                <p>Kontrol ediliyor...</p>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h2>Ne Beklenmeli?</h2>
+            <p><strong>iOS/Safari:</strong> 2 saniye sonra altta popup gösterilecek</p>
+            <p><strong>Android/Chrome:</strong> Tarayıcı otomatik "Yükle" önerisi gösterecek</p>
+            <p><strong>Masaüstü:</strong> Chrome adres çubuğunda yükleme ikonu gösterilecek</p>
+        </div>
+        
+        <div class="info-box">
+            <h2>Test Butonları</h2>
+            <button onclick="resetPrompt()">🔄 Popup'ı Sıfırla</button>
+            <button onclick="checkStatus()">✅ Durumu Kontrol Et</button>
+            <button onclick="goToPatientDashboard()">➡️ Hasta Paneline Git</button>
+        </div>
+        
+        <div id="deviceInfo" class="info-box"></div>
+    </div>
+
+    <!-- iOS Install Prompt -->
+    <script src="ios-install-prompt.js"></script>
+    
+    <!-- Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+                    .catch(err => console.log('❌ Service Worker registration failed:', err));
+            });
+        }
+        
+        // Durum kontrolü
+        function checkStatus() {
+            const statusDiv = document.getElementById('statusInfo');
+            let html = '';
+            
+            // iOS kontrolü
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS/.test(navigator.userAgent);
+            const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
+            
+            // Service Worker kontrolü
+            const hasServiceWorker = 'serviceWorker' in navigator;
+            
+            // Prompt kontrolü
+            const promptSeen = localStorage.getItem('ios-install-prompt-seen') === 'true';
+            
+            html += `<div class="status ${isIOS ? 'success' : 'info'}">${isIOS ? '✅' : 'ℹ️'} ${isIOS ? 'iOS Cihaz' : 'iOS Değil'}</div>`;
+            html += `<div class="status ${isSafari ? 'success' : 'warning'}">${isSafari ? '✅' : '⚠️'} ${isSafari ? 'Safari' : 'Safari Değil'}</div>`;
+            html += `<div class="status ${isStandalone ? 'success' : 'info'}">${isStandalone ? '✅' : 'ℹ️'} ${isStandalone ? 'Ana Ekrana Eklenmiş' : 'Henüz Eklenmemiş'}</div>`;
+            html += `<div class="status ${hasServiceWorker ? 'success' : 'warning'}">${hasServiceWorker ? '✅' : '❌'} Service Worker ${hasServiceWorker ? 'Destekleniyor' : 'Desteklenmiyor'}</div>`;
+            html += `<div class="status ${!promptSeen ? 'success' : 'info'}">${!promptSeen ? '✅' : 'ℹ️'} Popup ${!promptSeen ? 'Gösterilecek' : 'Zaten Gösterilmiş'}</div>`;
+            
+            statusDiv.innerHTML = html;
+        }
+        
+        // Cihaz bilgisi
+        function showDeviceInfo() {
+            const deviceDiv = document.getElementById('deviceInfo');
+            deviceDiv.innerHTML = `
+                <h3>Cihaz Bilgileri</h3>
+                <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                <p><strong>Platform:</strong> ${navigator.platform}</p>
+                <p><strong>Online:</strong> ${navigator.onLine ? 'Evet' : 'Hayır'}</p>
+            `;
+        }
+        
+        // Prompt'u sıfırla
+        function resetPrompt() {
+            localStorage.removeItem('ios-install-prompt-seen');
+            alert('✅ Popup sıfırlandı! Sayfayı yenileyin.');
+        }
+        
+        // Hasta paneline git
+        function goToPatientDashboard() {
+            window.location.href = 'patient_dashboard.html';
+        }
+        
+        // Sayfa yüklendiğinde
+        window.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            showDeviceInfo();
+            
+            // 5 saniye sonra tekrar kontrol et
+            setTimeout(checkStatus, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Admin Mesajlaşma - Lipodem Takip</title>
+    
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Admin Chat">
+    <meta name="application-name" content="Admin Chat">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest-admin-chat.json">
+    <link rel="apple-touch-icon" href="/logo4.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💬</text></svg>">
+    
+    <!-- Admin Auth System -->
+    <script src="./admin_auth.js"></script>
+    
+    <!-- Badge Manager (PWA mesaj sayısı) -->
+    <script src="./badge_manager.js"></script>
+    
+    <!-- IP Logger & Admin Notifier -->
+    <script src="./ip-logger.js"></script>
+    <script src="./admin-notifier.js"></script>
+    
+    <!-- OneSignal Config -->
+    <script src="./onesignal_config.js"></script>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- OneSignal SDK v16 - Yeni Versiyon -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        // 🔥 DOMAIN BAZLI APP ID SEÇİMİ (GitHub Pages vs Vercel)
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        const ONESIGNAL_APP_ID = isGitHubPages 
+            ? "45686db4-9813-42ef-939d-1402fe1622f7"  // ✅ GitHub Pages App ID
+            : "109f129c-cd73-4708-ba9a-b3c8103c52dc"; // ✅ Vercel App ID
+        
+        console.log('🔔 OneSignal App ID:', ONESIGNAL_APP_ID, '(Domain:', window.location.hostname + ')');
+        
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: ONESIGNAL_APP_ID,
+                serviceWorkerPath: 'OneSignalSDKWorker.js',
+                serviceWorkerParam: { scope: '/' },
+                
+                // Türkçe bildirim prompt mesajları
+                promptOptions: {
+                    slidedown: {
+                        enabled: true,
+                        actionMessage: "Hasta mesajlarından haberdar olmak ister misiniz?",
+                        acceptButtonText: "Bildirimleri Aç",
+                        cancelButtonText: "Sonra"
+                    },
+                    native: {
+                        enabled: true,
+                        autoPrompt: false
+                    },
+                    customlink: {
+                        enabled: true,
+                        style: "button",
+                        size: "medium",
+                        color: {
+                            button: '#667eea',
+                            text: '#ffffff'
+                        },
+                        text: {
+                            subscribe: "Bildirimleri Aç",
+                            unsubscribe: "Bildirimleri Kapat",
+                            explanation: "Hasta mesajlarından haberdar olun"
+                        },
+                        unsubscribeEnabled: true
+                    }
+                },
+                
+                // Hoş geldiniz bildirimi
+                welcomeNotification: {
+                    disable: false,
+                    title: "Lipödem Merkezi - Admin Panel",
+                    message: "Abone olduğunuz için teşekkürler! Artık hasta mesajlarından haberdar olacaksınız. 🎉"
+                },
+                
+                // Notification clicked event için Türkçe mesajlar
+                notifyButton: {
+                    enable: false
+                }
+            });
+        });
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .header-mobile {
+            display: none;
+        }
+        
+        .header-desktop {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .admin-nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .admin-nav-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .admin-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .admin-nav-btn.active {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Hasta Listesi */
+        .patient-list {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .patient-list-header {
+            padding: 15px;
+            background: #f5f7fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .patient-list-header h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .patients {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .patient-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+
+        .patient-item:hover {
+            background: #f5f7fa;
+        }
+
+        .patient-item.active {
+            background: #e8eaf6;
+            border-left: 3px solid #667eea;
+        }
+        
+        .online-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+            flex-shrink: 0;
+            border: 2px solid white;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+        }
+        
+        .online-status.online {
+            background: #25D366;
+            animation: pulse-online 2s infinite;
+        }
+        
+        @keyframes pulse-online {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .patient-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .patient-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .patient-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .patient-last-message {
+            font-size: 12px;
+            color: #999;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unread-badge {
+            background: #f44336;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        /* Mute Button */
+        .mute-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        
+        .mute-btn:hover {
+            opacity: 1;
+        }
+        
+        .mute-btn.muted {
+            opacity: 1;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        #chatContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Flex child için önemli */
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: #f5f7fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .chat-header .patient-id {
+            font-size: 12px;
+            color: #999;
+            font-weight: normal;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+            background: #f5f7fa;
+            min-height: 0; /* Flex child için önemli - scroll çalışması için */
+            scroll-behavior: smooth;
+        }
+
+        /* Scroll bar özelleştirme */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.sent {
+            align-items: flex-end;
+        }
+
+        .message.received {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 60%;
+            padding: 12px 16px;
+            padding-bottom: 20px; /* Saat için alan */
+            border-radius: 15px;
+            word-wrap: break-word;
+            position: relative;
+            text-align: left; /* Mesaj sola yaslı */
+        }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.received .message-bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Mesaj silme butonu */
+        .delete-message-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .delete-message-btn:hover {
+            transform: scale(1.1);
+            background: #ee5a6f;
+        }
+
+        .message:hover .delete-message-btn {
+            display: flex;
+        }
+
+        /* Tarih ayırıcı (WhatsApp tarzı) */
+        .date-separator {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .date-separator::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .date-separator span {
+            background: #f5f7fa;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Mesaj içeriği ve zaman (WhatsApp tarzı) */
+        .message-bubble {
+            position: relative;
+            padding-bottom: 20px !important; /* Zaman için yer */
+        }
+
+        .message-content {
+            display: inline;
+            word-wrap: break-word;
+        }
+
+        .message-time-inline {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 10px;
+            color: rgba(0,0,0,0.45);
+            white-space: nowrap;
+        }
+
+        .message.sent .message-time-inline {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .message-time {
+            display: none; /* Artık kullanmıyoruz */
+        }
+
+        .chat-input {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        #adminEmojiButton {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        #adminEmojiButton:hover {
+            transform: scale(1.1);
+        }
+
+        .chat-input input {
+            flex: 1;
+            border: 1px solid #e0e0e0;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+
+        .chat-input button:not(#adminEmojiButton) {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .chat-input button:not(#adminEmojiButton):hover {
+            transform: translateY(-2px);
+        }
+
+        .no-selection {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 18px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        /* Toplu Bildirim Butonu */
+        .broadcast-btn {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .broadcast-btn:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+
+        /* Desktop'ta drawer ve overlay gizli (sadece mobil için) */
+        .drawer-overlay,
+        .drawer-menu {
+            display: none;
+        }
+
+        /* Responsive */
+        /* Mobil için responsive tasarım */
+        @media (max-width: 768px) {
+            /* HEADER KOMPAKT */
+            .header {
+                padding: 8px 12px;
+                min-height: 50px;
+            }
+            
+            .header-desktop {
+                display: none !important;
+            }
+            
+            .header-mobile {
+                display: flex !important;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+            }
+            
+            .hamburger-menu {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                font-size: 24px;
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+            
+            .mobile-title {
+                flex: 1;
+                font-size: 16px;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .mobile-logout {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                font-size: 20px;
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            
+            /* MAIN CONTAINER - Mobilde full stack */
+            .main-container {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            
+            /* PATIENT LIST - Accordion Başta Kapalı */
+            .patient-list {
+                width: 100%;
+                max-width: 100%;
+                position: relative;
+                z-index: 100;
+                background: #f5f7fa;
+                border-bottom: 1px solid #e0e0e0;
+                transition: all 0.3s ease;
+            }
+            
+            .patient-list-accordion-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 600;
+                user-select: none;
+            }
+            
+            /* DRAWER MENU */
+            .drawer-overlay {
+                display: block; /* Mobilde aktif */
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 9998;
+            }
+            
+            .drawer-overlay:not(.active) {
+                display: none;
+            }
+            
+            .drawer-overlay.active {
+                display: block;
+            }
+            
+            .drawer-menu {
+                display: flex; /* Mobilde aktif */
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100vh;
+                background: white;
+                z-index: 9999;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+                padding-top: env(safe-area-inset-top);
+            }
+            
+            .drawer-menu.active {
+                left: 0;
+            }
+            
+            .drawer-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                font-weight: 600;
+                font-size: 18px;
+            }
+            
+            .drawer-nav {
+                flex: 1;
+                padding: 10px;
+                overflow-y: auto;
+            }
+            
+            .drawer-nav-btn {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 15px;
+                margin-bottom: 8px;
+                background: #f5f7fa;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 15px;
+                font-weight: 500;
+                color: #333;
+                text-decoration: none;
+                width: 100%;
+                text-align: left;
+            }
+            
+            .drawer-nav-btn.active {
+                background: #667eea;
+                color: white;
+            }
+            
+            .drawer-nav-btn:hover {
+                background: #e8eaf6;
+            }
+            
+            .drawer-nav-btn.active:hover {
+                background: #5568d3;
+            }
+
+            .patient-list {
+                width: 100%;
+                max-width: 100%;
+                position: relative;
+                z-index: 100;
+                background: #f5f7fa;
+                border-bottom: 1px solid #e0e0e0;
+                transition: all 0.3s ease;
+            }
+            
+            .patient-list-accordion-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 600;
+                user-select: none;
+            }
+            
+            .patient-list-accordion-toggle .arrow {
+                font-size: 18px;
+                transition: transform 0.3s ease;
+            }
+            
+            .patient-list.collapsed .arrow {
+                transform: rotate(-90deg);
+            }
+            
+            .patient-list-content {
+                max-height: 300px;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+            
+            .patient-list.collapsed .patient-list-content {
+                max-height: 0;
+            }
+
+            /* Mobilde chat açıkken patient list tamamen gizle */
+            .patient-list.hidden {
+                display: none;
+            }
+
+            .chat-area {
+                width: 100%;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .chat-area.hidden {
+                display: none;
+            }
+            
+            /* Chat Header Mobil - Kompakt */
+            .chat-header {
+                padding: 10px 12px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .chat-header h2 {
+                font-size: 16px;
+                color: white;
+                margin: 0;
+            }
+            
+            .chat-header .patient-id {
+                font-size: 11px;
+                color: rgba(255,255,255,0.8);
+            }
+            
+            .close-chat-btn {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                font-size: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            /* Broadcast button mobilde gizle */
+            .chat-header .broadcast-btn {
+                display: none;
+            }
+            
+            /* Close button mobilde göster */
+            .close-chat-btn {
+                display: flex !important;
+            }
+
+            .message-bubble {
+                max-width: 70%;
+                font-size: 15px;
+            }
+
+            .chat-input {
+                padding: 8px 10px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom));
+                gap: 6px;
+            }
+            
+            .chat-input button {
+                padding: 0;
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                border-radius: 50%;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            #adminEmojiButton {
+                font-size: 22px !important;
+                padding: 0 !important;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .chat-input input {
+                padding: 10px 15px;
+                font-size: 16px; /* iOS zoom engellemek için min 16px */
+            }
+
+            .chat-messages {
+                max-height: calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                padding: 10px;
+                flex: 1;
+            }
+
+            /* Mobil için geri butonu */
+            .back-to-patients {
+                display: block;
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background: rgba(255,255,255,0.9);
+                border: none;
+                padding: 8px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 20px;
+                z-index: 10;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .header p {
+                font-size: 12px;
+            }
+        }
+
+        /* Desktop için geri butonu gizle */
+        .back-to-patients {
+            display: none;
+        }
+        
+        /* Desktop için close button gizle */
+        .close-chat-btn {
+            display: none;
+        }
+        
+        /* Desktop için accordion toggle gizle */
+        .patient-list-accordion-toggle {
+            display: none;
+        }
+        
+        /* Desktop için patient-list-content varsayılan açık */
+        .patient-list-content {
+            max-height: none;
+        }
+
+        /* Security Alerts Modal */
+        .security-alerts-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .security-alerts-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .security-alerts-header {
+            background: linear-gradient(135deg, #ff5722 0%, #f44336 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .security-alerts-header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .security-alerts-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .security-alerts-body {
+            padding: 20px;
+        }
+
+        .security-alert-item {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .security-alert-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .security-alert-item.high {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .security-alert-item.medium {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+
+        .security-alert-item.low {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+
+        .security-alert-item.read {
+            opacity: 0.6;
+            background: #f5f5f5;
+        }
+
+        .security-alert-header-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .security-alert-type {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .security-alert-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .security-alert-details {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .security-alert-ip {
+            font-size: 12px;
+            color: #666;
+            background: rgba(0,0,0,0.05);
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .security-alerts-empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .mark-all-read-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .mark-all-read-btn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <!-- Security Alerts Modal -->
+    <div class="security-alerts-modal" id="securityAlertsModal">
+        <div class="security-alerts-content">
+            <div class="security-alerts-header">
+                <h2>🚨 Güvenlik Uyarıları</h2>
+                <button class="security-alerts-close" onclick="toggleSecurityAlerts()">×</button>
+            </div>
+            <div class="security-alerts-body">
+                <button class="mark-all-read-btn" onclick="markAllAlertsRead()">✅ Tümünü Okundu İşaretle</button>
+                <div id="securityAlertsList">
+                    <!-- Alerts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drawer Overlay (Mobil) -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    
+    <!-- Drawer Menu (Mobil) -->
+    <div class="drawer-menu" id="drawerMenu">
+        <div class="drawer-header">
+            💬 Admin Panel
+        </div>
+        <div class="drawer-nav">
+            <a href="admin_settings.html" class="drawer-nav-btn">
+                ⚙️ Ayarlar
+            </a>
+            <a href="admin_patients.html" class="drawer-nav-btn">
+                👥 Hasta Listesi
+            </a>
+            <a href="admin_chat.html" class="drawer-nav-btn active">
+                💬 Sohbet Yönetimi
+            </a>
+            <a href="admin_chat_settings.html" class="drawer-nav-btn">
+                ⚙️ Chat Ayarları
+            </a>
+            <button onclick="logoutAdmin()" class="drawer-nav-btn" style="margin-top: 20px; background: #f44336; color: white;">
+                🚪 Çıkış Yap
+            </button>
+        </div>
+    </div>
+    
+    <!-- Header -->
+    <div class="header">
+        <!-- DESKTOP HEADER -->
+        <div class="header-desktop">
+            <div class="header-top">
+                <div>
+                    <h1>💬 Admin Mesajlaşma Paneli</h1>
+                    <p>Hasta mesajlarını görüntüleyin ve yanıtlayın</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Güvenlik Uyarıları Butonu -->
+                    <button onclick="toggleSecurityAlerts()" style="background: rgba(255,87,34,0.9); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: 600; position: relative;">
+                        🚨 Güvenlik
+                        <span id="securityAlertBadge" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; display: none; align-items: center; justify-content: center; font-weight: bold;"></span>
+                    </button>
+                    <!-- Bildirim Toggle -->
+                    <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                        <span id="notificationIcon">🔔</span>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">Bildirimler</span>
+                        <input type="checkbox" id="notificationToggle" checked onchange="toggleNotifications()" style="width: 40px; height: 20px; cursor: pointer;">
+                    </label>
+                    <!-- 🧪 TEST BUTONU -->
+                    <button onclick="testNotification()" style="background: rgba(255,193,7,0.9); color: #333; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        🧪 Test Bildirim
+                    </button>
+                    <button onclick="window.location.href='admin_chat_settings.html'" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        ⚙️ Chat Ayarları
+                    </button>
+                    <button onclick="logoutAdmin()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                        🚪 Çıkış
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Admin Navigasyon Butonları -->
+            <div class="admin-nav-buttons">
+                <a href="admin_settings.html" class="admin-nav-btn">
+                    ⚙️ Ayarlar
+                </a>
+                <a href="admin_patients.html" class="admin-nav-btn">
+                    👥 Hasta Listesi
+                </a>
+                <a href="admin_chat.html" class="admin-nav-btn active">
+                    💬 Sohbet Yönetimi
+                </a>
+                <a href="admin_chat_settings.html" class="admin-nav-btn">
+                    ⚙️ Chat Ayarları
+                </a>
+            </div>
+        </div>
+        
+        <!-- MOBILE HEADER -->
+        <div class="header-mobile">
+            <button class="hamburger-menu" onclick="openDrawer()">☰</button>
+            <div class="mobile-title">💬 Sohbet</div>
+            <button class="mobile-logout" onclick="logoutAdmin()">🚪</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Hasta Listesi -->
+        <div class="patient-list" id="patientListContainer">
+            <!-- Accordion Toggle (Sadece Mobil) -->
+            <div class="patient-list-accordion-toggle" onclick="togglePatientList()">
+                <span>👥 Hastalar (<span id="patientCount">0</span>)</span>
+                <span class="arrow">▼</span>
+            </div>
+            
+            <!-- Accordion Content -->
+            <div class="patient-list-content">
+                <div class="patient-list-header">
+                    <input 
+                        type="text" 
+                        class="search-box" 
+                        placeholder="Hasta ara..." 
+                        oninput="filterPatients(this.value)"
+                    >
+                </div>
+                <div class="patients" id="patientList">
+                    <div class="loading">Hastalar yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <div class="no-selection" id="noSelection">
+                <div>
+                    ☝️ Yukarıdan hastalar listesini açın<br>
+                    <button class="broadcast-btn" onclick="showBroadcastModal()" style="margin-top: 20px;">
+                        📢 Toplu Bildirim Gönder
+                    </button>
+                </div>
+            </div>
+
+            <div id="chatContainer" style="display: none;">
+                <!-- Mobil geri butonu (DESKTOP İÇİN GİZLİ) -->
+                <button class="back-to-patients" onclick="backToPatients()">←</button>
+                
+                <div class="chat-header">
+                    <div style="flex: 1; min-width: 0;">
+                        <h2 id="chatPatientName">Hasta Adı</h2>
+                        <span class="patient-id" id="chatPatientId">ID: patient_xxx</span>
+                    </div>
+                    <button class="close-chat-btn" onclick="closeChatMobile()" title="Kapat">
+                        ✕
+                    </button>
+                    <button class="broadcast-btn" onclick="showBroadcastModal()">
+                        📢 Toplu Bildirim
+                    </button>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="loading">Mesajlar yükleniyor...</div>
+                </div>
+
+                <div class="chat-input">
+                    <button id="adminEmojiButton" onclick="toggleAdminEmojiPicker()" title="Emoji Ekle">
+                        😊
+                    </button>
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Mesajınızı yazın..."
+                        onkeypress="if(event.key==='Enter') sendMessage()"
+                    >
+                    <button onclick="sendMessage()" title="Gönder">📤</button>
+                </div>
+                
+                <!-- Admin Emoji Picker -->
+                <div id="adminEmojiPicker" style="display: none; position: absolute; bottom: 70px; left: 20px; background: white; border: 1px solid #ddd; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); max-width: 300px; z-index: 1000;">
+                    <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px;">
+                        <button onclick="insertAdminEmoji('😊')" style="border: none; background: none; font-size: 24px; cursor: pointer;">😊</button>
+                        <button onclick="insertAdminEmoji('😂')" style="border: none; background: none; font-size: 24px; cursor: pointer;">😂</button>
+                        <button onclick="insertAdminEmoji('❤️')" style="border: none; background: none; font-size: 24px; cursor: pointer;">❤️</button>
+                        <button onclick="insertAdminEmoji('👍')" style="border: none; background: none; font-size: 24px; cursor: pointer;">👍</button>
+                        <button onclick="insertAdminEmoji('🙏')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🙏</button>
+                        <button onclick="insertAdminEmoji('😍')" style="border: none; background: none; font-size: 24px; cursor: pointer;">😍</button>
+                        <button onclick="insertAdminEmoji('😢')" style="border: none; background: none; font-size: 24px; cursor: pointer;">😢</button>
+                        <button onclick="insertAdminEmoji('💪')" style="border: none; background: none; font-size: 24px; cursor: pointer;">💪</button>
+                        <button onclick="insertAdminEmoji('🎉')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🎉</button>
+                        <button onclick="insertAdminEmoji('✨')" style="border: none; background: none; font-size: 24px; cursor: pointer;">✨</button>
+                        <button onclick="insertAdminEmoji('🌟')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🌟</button>
+                        <button onclick="insertAdminEmoji('💯')" style="border: none; background: none; font-size: 24px; cursor: pointer;">💯</button>
+                        <button onclick="insertAdminEmoji('🔥')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🔥</button>
+                        <button onclick="insertAdminEmoji('🤔')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🤔</button>
+                        <button onclick="insertAdminEmoji('👏')" style="border: none; background: none; font-size: 24px; cursor: pointer;">👏</button>
+                        <button onclick="insertAdminEmoji('🙌')" style="border: none; background: none; font-size: 24px; cursor: pointer;">🙌</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Admin Emoji Picker Toggle
+        function toggleAdminEmojiPicker() {
+            const picker = document.getElementById('adminEmojiPicker');
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Admin Emoji Ekle
+        function insertAdminEmoji(emoji) {
+            const input = document.getElementById('messageInput');
+            input.value += emoji;
+            input.focus();
+            document.getElementById('adminEmojiPicker').style.display = 'none';
+        }
+
+        // Dışarı tıklayınca kapat
+        document.addEventListener('click', function(e) {
+            const picker = document.getElementById('adminEmojiPicker');
+            const emojiBtn = document.getElementById('adminEmojiButton');
+            if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
+                picker.style.display = 'none';
+            }
+        });
+    </script>
+
+    <script src="admin_chat.js"></script>
+    
+    <!-- Admin Auth Check & Global Functions -->
+    <script>
+        // ===== DRAWER MENU FONKSİYONLARI =====
+        function openDrawer() {
+            document.getElementById('drawerMenu').classList.add('active');
+            document.getElementById('drawerOverlay').classList.add('active');
+        }
+        
+        function closeDrawer() {
+            document.getElementById('drawerMenu').classList.remove('active');
+            document.getElementById('drawerOverlay').classList.remove('active');
+        }
+        
+        // ===== HASTA LİSTESİ ACCORDION (MOBİL) =====
+        function togglePatientList() {
+            // Sadece mobilde çalışsın (768px altı)
+            if (window.innerWidth <= 768) {
+                const container = document.getElementById('patientListContainer');
+                container.classList.toggle('collapsed');
+            }
+        }
+        
+        // Hasta seçilince mobilde listeyi kapat
+        function selectPatientAndClose(patientId) {
+            if (typeof selectPatient === 'function') {
+                selectPatient(patientId);
+            }
+            
+            // Mobilde hem listeyi kapat hem chat alanını göster
+            if (window.innerWidth <= 768) {
+                const patientListContainer = document.getElementById('patientListContainer');
+                const chatArea = document.querySelector('.chat-area');
+                
+                // Patient list tamamen gizle
+                patientListContainer.classList.add('hidden');
+                
+                // Chat area göster
+                chatArea.classList.remove('hidden');
+            }
+        }
+        
+        // Mobilde chat'i kapat, hasta listesine dön
+        function closeChatMobile() {
+            if (window.innerWidth <= 768) {
+                const patientListContainer = document.getElementById('patientListContainer');
+                const chatArea = document.querySelector('.chat-area');
+                const noSelection = document.getElementById('noSelection');
+                const chatContainer = document.getElementById('chatContainer');
+                
+                // Chat gizle
+                chatContainer.style.display = 'none';
+                noSelection.style.display = 'flex';
+                
+                // Patient list göster
+                patientListContainer.classList.remove('hidden');
+                patientListContainer.classList.remove('collapsed'); // Listeyi aç
+                chatArea.classList.add('hidden');
+            }
+        }
+        
+        // 🧪 TEST NOTIFICATION FUNCTION
+        async function testNotification() {
+            console.log('🧪 Test bildirimi tetikleniyor...');
+            
+            // İzin kontrolü
+            if (!('Notification' in window)) {
+                alert('❌ Bu tarayıcı bildirimleri desteklemiyor!');
+                return;
+            }
+            
+            console.log('📱 Notification.permission:', Notification.permission);
+            
+            if (Notification.permission === 'default') {
+                console.log('🔔 İzin isteniyor...');
+                const permission = await Notification.requestPermission();
+                console.log('📝 İzin sonucu:', permission);
+                
+                if (permission !== 'granted') {
+                    alert('❌ Bildirim izni reddedildi!');
+                    return;
+                }
+            }
+            
+            if (Notification.permission !== 'granted') {
+                alert('❌ Bildirim izni yok! Tarayıcı ayarlarından izin verin.');
+                return;
+            }
+            
+            try {
+                // Test bildirimi oluştur
+                const notification = new Notification('🧪 Test Bildirimi', {
+                    body: 'Bildirimler başarıyla çalışıyor! ✅',
+                    icon: '/logo.png',
+                    badge: '/logo.png',
+                    vibrate: [200, 100, 200, 100, 200],
+                    tag: 'test-notification',
+                    requireInteraction: false
+                });
+                
+                console.log('✅ Test bildirimi oluşturuldu:', notification);
+                
+                // Ses çal
+                playNotificationSound();
+                
+                // Titreşim
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([200, 100, 200, 100, 200]);
+                }
+                
+                alert('✅ Test bildirimi gönderildi! Kontrol edin.');
+                
+            } catch (error) {
+                console.error('❌ Test bildirimi hatası:', error);
+                alert('❌ Hata: ' + error.message);
+            }
+        }
+        
+        // Global logout fonksiyonu - header'daki buton için
+        function logoutAdmin() {
+            if (typeof AdminAuth !== 'undefined' && typeof AdminAuth.logoutAdmin === 'function') {
+                AdminAuth.logoutAdmin();
+            } else {
+                console.error('❌ AdminAuth.logoutAdmin bulunamadı!');
+                // Fallback: sessionStorage temizle ve yenile
+                sessionStorage.clear();
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+
+        // 🚨 GÜVENLİK UYARILARI FONKSİYONLARI
+        function toggleSecurityAlerts() {
+            const modal = document.getElementById('securityAlertsModal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+                loadSecurityAlerts();
+            }
+        }
+
+        function loadSecurityAlerts() {
+            if (!window.AdminNotifier) {
+                console.warn('⚠️ AdminNotifier yüklenmedi');
+                return;
+            }
+
+            const alerts = window.AdminNotifier.getAlerts();
+            const alertsList = document.getElementById('securityAlertsList');
+
+            if (alerts.length === 0) {
+                alertsList.innerHTML = `
+                    <div class="security-alerts-empty">
+                        <h3>✅ Güvenlik Uyarısı Yok</h3>
+                        <p>Şu anda herhangi bir güvenlik uyarısı bulunmuyor.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Uyarıları tarihe göre sırala (en yeni önce)
+            alerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            alertsList.innerHTML = alerts.map(alert => {
+                const date = new Date(alert.timestamp);
+                const timeStr = date.toLocaleString('tr-TR');
+                const isRead = alert.read || false;
+                const severityClass = alert.severity || 'medium';
+
+                let alertIcon = '⚠️';
+                let alertTitle = 'Güvenlik Uyarısı';
+
+                if (alert.type === 'security_alert') {
+                    alertIcon = '🚨';
+                    alertTitle = 'Şüpheli Aktivite';
+                } else if (alert.reason && alert.reason.includes('Cihaz limiti')) {
+                    alertIcon = '🚫';
+                    alertTitle = 'Cihaz Limiti Aşıldı';
+                }
+
+                return `
+                    <div class="security-alert-item ${severityClass} ${isRead ? 'read' : ''}" data-timestamp="${alert.timestamp}">
+                        <div class="security-alert-header-item">
+                            <span class="security-alert-type">${alertIcon} ${alertTitle}</span>
+                            <span class="security-alert-time">${timeStr}</span>
+                        </div>
+                        <div class="security-alert-details">
+                            <strong>Hasta:</strong> ${alert.username || alert.patientId}<br>
+                            <strong>Sebep:</strong> ${alert.reason}
+                        </div>
+                        ${alert.ipInfo ? `
+                            <div class="security-alert-ip">
+                                📍 IP: ${alert.ipInfo.ip} - ${alert.ipInfo.city}, ${alert.ipInfo.country}
+                            </div>
+                        ` : ''}
+                        ${alert.deviceInfo ? `
+                            <div class="security-alert-ip">
+                                🖥️ Cihaz: ${alert.deviceInfo}
+                            </div>
+                        ` : ''}
+                        ${!isRead ? `
+                            <button onclick="markAlertRead('${alert.timestamp}')" style="margin-top: 10px; background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                ✅ Okundu İşaretle
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            // Badge güncelle
+            updateSecurityBadge();
+        }
+
+        function markAlertRead(timestamp) {
+            if (window.AdminNotifier) {
+                window.AdminNotifier.markAsRead(timestamp);
+                loadSecurityAlerts(); // Refresh list
+            }
+        }
+
+        function markAllAlertsRead() {
+            if (window.AdminNotifier) {
+                window.AdminNotifier.markAllAsRead();
+                loadSecurityAlerts(); // Refresh list
+            }
+        }
+
+        function updateSecurityBadge() {
+            if (!window.AdminNotifier) return;
+
+            const unreadCount = window.AdminNotifier.getUnreadCount();
+            const badge = document.getElementById('securityAlertBadge');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Sayfa yüklendiğinde badge'i güncelle
+        window.addEventListener('DOMContentLoaded', () => {
+            updateSecurityBadge();
+            // Her 30 saniyede bir badge'i kontrol et
+            setInterval(updateSecurityBadge, 30000);
+        });
+        
+        // requireAdminAuth - sayfa yüklenince otomatik çağrılır (auto-guard tarafından)
+        // Manuel çağrı gerekmez, admin_auth.js auto-guard sistemi halledecek
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('✅ Service Worker kayıtlı:', reg.scope))
+                .catch(err => console.error('❌ Service Worker hatası:', err));
+        }
+    </script>
+</body>
+</html>

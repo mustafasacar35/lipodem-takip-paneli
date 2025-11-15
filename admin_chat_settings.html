@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Chat Ayarları - Admin Panel</title>
+    
+    <!-- Favicon (SVG olarak inline) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⚙️</text></svg>">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f5f7fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            color: #666;
+        }
+
+        .nav-tab:hover {
+            background: #e8eaf6;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .admin-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .admin-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .admin-card h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .success-message {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 15px;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            transition: background 0.3s;
+        }
+
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="admin_chat.html" class="back-link">← Geri Dön</a>
+            <h1>⚙️ Chat Ayarları</h1>
+            <p>Admin profilleri ve chat ayarlarını yönetin</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('admins')">👥 Admin Profilleri</button>
+            <button class="nav-tab" onclick="switchTab('chat')">💬 Chat Ayarları</button>
+            <button class="nav-tab" onclick="switchTab('display')">🎨 Görünüm</button>
+        </div>
+
+        <!-- ADMIN PROFİLLERİ TAB -->
+        <div id="tab-admins" class="tab-content active">
+            <div class="success-message" id="successAdmins">✅ Admin profilleri kaydedildi!</div>
+            
+            <div class="section">
+                <div class="section-title">Admin Kullanıcıları</div>
+                <div id="adminList" class="admin-list"></div>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-primary" onclick="saveAdmins()">💾 Kaydet</button>
+                <button class="btn btn-secondary" onclick="loadAdmins()">🔄 Yenile</button>
+            </div>
+        </div>
+
+        <!-- CHAT AYARLARI TAB -->
+        <div id="tab-chat" class="tab-content">
+            <div class="success-message" id="successChat">✅ Chat ayarları kaydedildi!</div>
+            
+            <!-- GitHub Bilgilendirme -->
+            <div style="background: #e8f5e9; border-left: 4px solid #4CAF50; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                <div style="display: flex; align-items: start; gap: 10px;">
+                    <div style="font-size: 24px;">💾</div>
+                    <div>
+                        <strong style="color: #2E7D32; display: block; margin-bottom: 5px;">GitHub'a Otomatik Kayıt Sistemi</strong>
+                        <p style="margin: 0; color: #555; font-size: 14px; line-height: 1.6;">
+                            Chat ayarlarınız her admin için ayrı JSON dosyası olarak GitHub'a kaydedilir.
+                            <br><br>
+                            ✅ <strong>Dosya:</strong> <code>settings/chat_admin_<span id="currentAdminUsername">USERNAME</span>.json</code>
+                            <br>
+                            ✅ <strong>Yedekleme:</strong> GitHub'da versiyon kontrolü
+                            <br>
+                            ✅ <strong>Senkronizasyon:</strong> Farklı cihazlarda aynı ayarlar
+                            <br>
+                            ⚙️ <strong>GitHub Token:</strong> Admin Profilleri tab'ında ayarlayın
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sessize Alınan Hastalar -->
+            <div class="section">
+                <div class="section-title">🔕 Sessize Alınan Hastalar</div>
+                <div id="mutedPatientsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 5px; padding: 10px;">
+                    <p style="text-align: center; color: #999;">Yükleniyor...</p>
+                </div>
+                <button class="btn btn-secondary" onclick="clearMutedPatients()" style="margin-top: 10px;">
+                    🔔 Tümünü Temizle
+                </button>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Bildirim Ayarları</div>
+                
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="enableNotifications" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="enableNotifications">Bildirimleri Etkinleştir</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="notificationSound" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="notificationSound">Bildirim Sesi</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Mesaj Ayarları</div>
+                
+                <div class="form-group">
+                    <label>Maksimum Mesaj Uzunluğu</label>
+                    <input type="number" id="maxMessageLength" value="500">
+                    <small>Karakter sayısı limiti</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Mesaj Saklama Süresi (Gün)</label>
+                    <input type="number" id="messageRetentionDays" value="90">
+                    <small>Otomatik silme için gün sayısı (0 = sınırsız)</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="enableEmoji" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="enableEmoji">Emoji Desteği</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Admin Ayarları</div>
+                
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="allowBroadcast" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="allowBroadcast">Toplu Bildirim Gönderimini Etkinleştir</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Maksimum Toplu Gönderim Sayısı</label>
+                    <input type="number" id="maxBroadcastRecipients" value="100">
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-primary" onclick="saveChatSettingsToGitHub()">💾 GitHub'a Kaydet</button>
+                <button class="btn btn-secondary" onclick="loadChatSettingsFromGitHub()">🔄 GitHub'dan Yükle</button>
+                <button class="btn btn-secondary" onclick="exportChatSettingsLocal()">📥 JSON İndir</button>
+            </div>
+        </div>
+
+        <!-- GÖRÜNÜM TAB -->
+        <div id="tab-display" class="tab-content">
+            <div class="success-message" id="successDisplay">✅ Görünüm ayarları kaydedildi!</div>
+            
+            <div class="section">
+                <div class="section-title">Görünüm Ayarları</div>
+                
+                <div class="form-group">
+                    <label>Tema</label>
+                    <select id="theme">
+                        <option value="default">Varsayılan</option>
+                        <option value="dark">Koyu Tema</option>
+                        <option value="light">Açık Tema</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Yazı Boyutu</label>
+                    <select id="fontSize">
+                        <option value="small">Küçük</option>
+                        <option value="medium">Orta</option>
+                        <option value="large">Büyük</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="showTimestamps" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="showTimestamps">Zaman Damgalarını Göster</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="showReadReceipts">
+                            <span class="slider"></span>
+                        </label>
+                        <label for="showReadReceipts">Okundu Bilgisini Göster</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-primary" onclick="saveDisplaySettings()">💾 Kaydet</button>
+                <button class="btn btn-secondary" onclick="loadDisplaySettings()">🔄 Yenile</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings/admins.js"></script>
+    <script>
+        // Global değişkenler
+        let currentAdminUsername = '';
+        let githubToken = '';
+        let githubRepo = '';
+        let githubOwner = '';
+
+        // Sayfa yüklendiğinde
+        window.addEventListener('DOMContentLoaded', () => {
+            // Admin kullanıcı adını al
+            const adminSession = JSON.parse(sessionStorage.getItem('admin_session') || '{}');
+            currentAdminUsername = adminSession.username || 'admin';
+            document.getElementById('currentAdminUsername').textContent = currentAdminUsername;
+
+            // GitHub bilgilerini localStorage'dan yükle
+            loadGitHubConfig();
+
+            loadAdmins();
+            loadChatSettingsFromGitHub();
+            loadDisplaySettings();
+            loadMutedPatients();
+        });
+
+        // GitHub config yükle
+        function loadGitHubConfig() {
+            githubToken = localStorage.getItem('github_token') || '';
+            githubRepo = localStorage.getItem('github_repo') || 'lipodem-takip-paneli';
+            githubOwner = localStorage.getItem('github_owner') || 'mustafasacar35';
+        }
+
+        // Sessize alınan hastaları göster
+        function loadMutedPatients() {
+            const mutedPatients = JSON.parse(localStorage.getItem('mutedPatients') || '[]');
+            const container = document.getElementById('mutedPatientsList');
+            
+            if (mutedPatients.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999;">Sessize alınan hasta yok</p>';
+                return;
+            }
+
+            container.innerHTML = mutedPatients.map(patientId => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f5f5f5; border-radius: 5px; margin-bottom: 5px;">
+                    <span>${patientId}</span>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="unmutePatient('${patientId}')">
+                        🔔 Kaldır
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Hastayı sessize almaktan çıkar
+        function unmutePatient(patientId) {
+            let mutedPatients = JSON.parse(localStorage.getItem('mutedPatients') || '[]');
+            mutedPatients = mutedPatients.filter(id => id !== patientId);
+            localStorage.setItem('mutedPatients', JSON.stringify(mutedPatients));
+            loadMutedPatients();
+            saveChatSettingsToGitHub(); // GitHub'a da kaydet
+        }
+
+        // Tümünü temizle
+        function clearMutedPatients() {
+            if (confirm('Tüm sessize alınan hastaları temizlemek istediğinizden emin misiniz?')) {
+                localStorage.setItem('mutedPatients', JSON.stringify([]));
+                loadMutedPatients();
+                saveChatSettingsToGitHub();
+                alert('✅ Tüm sessize alınanlar temizlendi!');
+            }
+        }
+
+        // Chat ayarlarını GitHub'a kaydet
+        async function saveChatSettingsToGitHub() {
+            if (!githubToken) {
+                alert('⚠️ GitHub token ayarlanmamış!\n\nAdmin Profilleri tab\'ından GitHub ayarlarını yapın.');
+                return;
+            }
+
+            const settings = {
+                version: 1,
+                adminUsername: currentAdminUsername,
+                updatedAt: new Date().toISOString(),
+                mutedPatients: JSON.parse(localStorage.getItem('mutedPatients') || '[]'),
+                allNotificationsMuted: localStorage.getItem('allNotificationsMuted') === 'true',
+                soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+                chatSettings: {
+                    enableNotifications: document.getElementById('enableNotifications').checked,
+                    notificationSound: document.getElementById('notificationSound').checked,
+                    maxMessageLength: parseInt(document.getElementById('maxMessageLength').value),
+                    messageRetentionDays: parseInt(document.getElementById('messageRetentionDays').value),
+                    enableEmoji: document.getElementById('enableEmoji').checked
+                },
+                adminSettings: {
+                    allowBroadcast: document.getElementById('allowBroadcast').checked,
+                    maxBroadcastRecipients: parseInt(document.getElementById('maxBroadcastRecipients').value)
+                },
+                displaySettings: {
+                    theme: document.getElementById('theme').value,
+                    fontSize: document.getElementById('fontSize').value,
+                    showTimestamps: document.getElementById('showTimestamps').checked,
+                    showReadReceipts: document.getElementById('showReadReceipts').checked
+                }
+            };
+
+            const fileName = `settings/chat_admin_${currentAdminUsername}.json`;
+            const content = JSON.stringify(settings, null, 2);
+
+            try {
+                // GitHub'da dosya var mı kontrol et
+                let sha = null;
+                const checkUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/contents/${fileName}`;
+                
+                try {
+                    const checkRes = await fetch(checkUrl, {
+                        headers: { 'Authorization': `token ${githubToken}` }
+                    });
+                    if (checkRes.ok) {
+                        const data = await checkRes.json();
+                        sha = data.sha;
+                    }
+                } catch (e) {
+                    console.log('Dosya yok, yeni oluşturulacak');
+                }
+
+                // Dosyayı GitHub'a yükle
+                const uploadUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/contents/${fileName}`;
+                const uploadData = {
+                    message: `Update chat settings for ${currentAdminUsername}`,
+                    content: btoa(unescape(encodeURIComponent(content))),
+                    branch: 'main'
+                };
+
+                if (sha) {
+                    uploadData.sha = sha; // Güncelleme için gerekli
+                }
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${githubToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(uploadData)
+                });
+
+                if (uploadRes.ok) {
+                    showSuccess('successChat');
+                    console.log('✅ Chat ayarları GitHub\'a kaydedildi:', fileName);
+                } else {
+                    const error = await uploadRes.json();
+                    console.error('GitHub upload hatası:', error);
+                    alert('❌ GitHub\'a yükleme başarısız!\n\n' + (error.message || 'Bilinmeyen hata'));
+                }
+            } catch (error) {
+                console.error('GitHub kayıt hatası:', error);
+                alert('❌ Bağlantı hatası: ' + error.message);
+            }
+        }
+
+        // Chat ayarlarını GitHub'dan yükle
+        async function loadChatSettingsFromGitHub() {
+            const fileName = `settings/chat_admin_${currentAdminUsername}.json`;
+            
+            try {
+                const url = `https://api.github.com/repos/${githubOwner}/${githubRepo}/contents/${fileName}`;
+                const response = await fetch(url, {
+                    headers: githubToken ? { 'Authorization': `token ${githubToken}` } : {}
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const content = decodeURIComponent(escape(atob(data.content)));
+                    const settings = JSON.parse(content);
+
+                    // localStorage'a kaydet
+                    localStorage.setItem('mutedPatients', JSON.stringify(settings.mutedPatients || []));
+                    localStorage.setItem('allNotificationsMuted', settings.allNotificationsMuted || 'false');
+                    localStorage.setItem('soundEnabled', settings.soundEnabled !== false ? 'true' : 'false');
+
+                    // Form alanlarını doldur
+                    document.getElementById('enableNotifications').checked = settings.chatSettings?.enableNotifications !== false;
+                    document.getElementById('notificationSound').checked = settings.chatSettings?.notificationSound !== false;
+                    document.getElementById('maxMessageLength').value = settings.chatSettings?.maxMessageLength || 500;
+                    document.getElementById('messageRetentionDays').value = settings.chatSettings?.messageRetentionDays || 90;
+                    document.getElementById('enableEmoji').checked = settings.chatSettings?.enableEmoji !== false;
+                    document.getElementById('allowBroadcast').checked = settings.adminSettings?.allowBroadcast !== false;
+                    document.getElementById('maxBroadcastRecipients').value = settings.adminSettings?.maxBroadcastRecipients || 100;
+
+                    // Görünüm ayarları
+                    document.getElementById('theme').value = settings.displaySettings?.theme || 'default';
+                    document.getElementById('fontSize').value = settings.displaySettings?.fontSize || 'medium';
+                    document.getElementById('showTimestamps').checked = settings.displaySettings?.showTimestamps !== false;
+                    document.getElementById('showReadReceipts').checked = settings.displaySettings?.showReadReceipts !== false;
+
+                    loadMutedPatients();
+                    console.log('✅ Chat ayarları GitHub\'dan yüklendi');
+                } else if (response.status === 404) {
+                    console.log('ℹ️ GitHub\'da ayar dosyası bulunamadı, varsayılan oluşturuluyor...');
+                    
+                    // İlk kez kullanıyorsa varsayılan dosya oluştur
+                    if (githubToken && confirm('GitHub\'da chat ayarları dosyanız yok.\n\nVarsayılan ayarlarla yeni dosya oluşturulsun mu?')) {
+                        await createDefaultChatSettings();
+                    }
+                } else {
+                    console.log('⚠️ GitHub yükleme hatası:', response.status);
+                }
+            } catch (error) {
+                console.error('GitHub yükleme hatası:', error);
+            }
+        }
+
+        // Varsayılan chat ayarları dosyası oluştur
+        async function createDefaultChatSettings() {
+            const defaultSettings = {
+                version: 1,
+                adminUsername: currentAdminUsername,
+                updatedAt: new Date().toISOString(),
+                mutedPatients: [],
+                allNotificationsMuted: false,
+                soundEnabled: true,
+                chatSettings: {
+                    enableNotifications: true,
+                    notificationSound: true,
+                    maxMessageLength: 500,
+                    messageRetentionDays: 90,
+                    enableEmoji: true
+                },
+                adminSettings: {
+                    allowBroadcast: true,
+                    maxBroadcastRecipients: 100
+                },
+                displaySettings: {
+                    theme: 'default',
+                    fontSize: 'medium',
+                    showTimestamps: true,
+                    showReadReceipts: true
+                }
+            };
+
+            const fileName = `settings/chat_admin_${currentAdminUsername}.json`;
+            const content = JSON.stringify(defaultSettings, null, 2);
+
+            try {
+                const uploadUrl = `https://api.github.com/repos/${githubOwner}/${githubRepo}/contents/${fileName}`;
+                const uploadData = {
+                    message: `Create default chat settings for ${currentAdminUsername}`,
+                    content: btoa(unescape(encodeURIComponent(content))),
+                    branch: 'main'
+                };
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${githubToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(uploadData)
+                });
+
+                if (uploadRes.ok) {
+                    console.log('✅ Varsayılan chat ayarları oluşturuldu:', fileName);
+                    alert('✅ Varsayılan ayarlar GitHub\'a kaydedildi!\n\nArtık dilediğiniz gibi değiştirebilirsiniz.');
+                    
+                    // Yeni oluşturulan ayarları yükle
+                    await loadChatSettingsFromGitHub();
+                } else {
+                    const error = await uploadRes.json();
+                    console.error('Varsayılan dosya oluşturma hatası:', error);
+                    alert('❌ Varsayılan dosya oluşturulamadı!\n\n' + (error.message || 'Bilinmeyen hata'));
+                }
+            } catch (error) {
+                console.error('Oluşturma hatası:', error);
+                alert('❌ Bağlantı hatası: ' + error.message);
+            }
+        }
+
+        // JSON'u lokal olarak indir
+        function exportChatSettingsLocal() {
+            const settings = {
+                version: 1,
+                adminUsername: currentAdminUsername,
+                updatedAt: new Date().toISOString(),
+                mutedPatients: JSON.parse(localStorage.getItem('mutedPatients') || '[]'),
+                allNotificationsMuted: localStorage.getItem('allNotificationsMuted') === 'true',
+                soundEnabled: localStorage.getItem('soundEnabled') !== 'false'
+            };
+
+            downloadJSON(`chat_admin_${currentAdminUsername}.json`, JSON.stringify(settings, null, 2));
+        }
+
+        // Tab değiştirme
+        function switchTab(tabName) {
+            // Tüm tab'ları gizle
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Seçili tab'ı göster
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // JSON dosyasını indir
+        function downloadJSON(filename, content) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert(`✅ ${filename} indirildi!`);
+        }
+
+        // Başarı mesajı göster
+        function showSuccess(elementId) {
+            const msg = document.getElementById(elementId);
+            msg.classList.add('show');
+            setTimeout(() => {
+                msg.classList.remove('show');
+            }, 3000);
+        }
+
+        // Admin listesini yükle
+        function loadAdmins() {
+            const adminList = document.getElementById('adminList');
+            adminList.innerHTML = '';
+
+            if (!window.GH_ADMINS || !window.GH_ADMINS.admins) {
+                adminList.innerHTML = '<p>Admin verisi yüklenemedi.</p>';
+                return;
+            }
+
+            window.GH_ADMINS.admins.forEach((admin, index) => {
+                const card = document.createElement('div');
+                card.className = 'admin-card';
+                card.innerHTML = `
+                    <h3>Admin #${index + 1}</h3>
+                    <div class="form-group">
+                        <label>Kullanıcı Adı</label>
+                        <input type="text" value="${admin.username}" readonly style="background: #f0f0f0;">
+                        <small>Kullanıcı adı değiştirilemez</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Görünen İsim</label>
+                        <input type="text" id="displayName_${index}" value="${admin.displayName || admin.username}">
+                        <small>Hastalara gösterilecek isim (örn: Dr. Mustafa SAÇAR)</small>
+                    </div>
+                `;
+                adminList.appendChild(card);
+            });
+
+            // GitHub config formu ekle (ilk kez)
+            if (!document.getElementById('githubConfigSection')) {
+                adminList.insertAdjacentHTML('beforebegin', `
+                    <div id="githubConfigSection" class="section">
+                        <div class="section-title">🔑 GitHub Ayarları</div>
+                        <div class="form-group">
+                            <label>GitHub Token</label>
+                            <input type="password" id="githubTokenInput" value="${githubToken}" placeholder="ghp_...">
+                            <small>Personal Access Token (repo yetkisi ile)</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Repository Owner</label>
+                            <input type="text" id="githubOwnerInput" value="${githubOwner}" placeholder="mustafasacar35">
+                        </div>
+                        <div class="form-group">
+                            <label>Repository Name</label>
+                            <input type="text" id="githubRepoInput" value="${githubRepo}" placeholder="lipodem-takip-paneli">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveGitHubConfig()">💾 GitHub Ayarlarını Kaydet</button>
+                    </div>
+                `);
+            }
+        }
+
+        // GitHub config kaydet
+        function saveGitHubConfig() {
+            githubToken = document.getElementById('githubTokenInput').value.trim();
+            githubOwner = document.getElementById('githubOwnerInput').value.trim();
+            githubRepo = document.getElementById('githubRepoInput').value.trim();
+
+            localStorage.setItem('github_token', githubToken);
+            localStorage.setItem('github_owner', githubOwner);
+            localStorage.setItem('github_repo', githubRepo);
+
+            alert('✅ GitHub ayarları kaydedildi!');
+        }
+
+        // Admin bilgilerini kaydet
+        function saveAdmins() {
+            if (!window.GH_ADMINS || !window.GH_ADMINS.admins) {
+                alert('❌ Admin verisi yüklenemedi!');
+                return;
+            }
+
+            // Görünen isimleri güncelle
+            window.GH_ADMINS.admins.forEach((admin, index) => {
+                const displayNameInput = document.getElementById(`displayName_${index}`);
+                if (displayNameInput) {
+                    admin.displayName = displayNameInput.value.trim() || admin.username;
+                }
+            });
+
+            window.GH_ADMINS.updatedAt = new Date().toISOString();
+            const jsonData = JSON.stringify(window.GH_ADMINS, null, 2);
+            
+            downloadJSON('admins.js', `window.GH_ADMINS = ${jsonData};`);
+            showSuccess('successAdmins');
+        }
+
+        // Görünüm ayarlarını kaydet
+        function saveDisplaySettings() {
+            saveChatSettingsToGitHub();
+        }
+
+        function loadDisplaySettings() {
+            // loadChatSettingsFromGitHub zaten yükleyecek
+        }
+
+        // Admin listesini yükle
+        function loadAdmins() {
+            const adminList = document.getElementById('adminList');
+            adminList.innerHTML = '';
+
+            if (!window.GH_ADMINS || !window.GH_ADMINS.admins) {
+                adminList.innerHTML = '<p>Admin verisi yüklenemedi.</p>';
+                return;
+            }
+
+            window.GH_ADMINS.admins.forEach((admin, index) => {
+                const card = document.createElement('div');
+                card.className = 'admin-card';
+                card.innerHTML = `
+                    <h3>Admin #${index + 1}</h3>
+                    <div class="form-group">
+                        <label>Kullanıcı Adı</label>
+                        <input type="text" value="${admin.username}" readonly style="background: #f0f0f0;">
+                        <small>Kullanıcı adı değiştirilemez</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Görünen İsim</label>
+                        <input type="text" id="displayName_${index}" value="${admin.displayName || admin.username}">
+                        <small>Hastalara gösterilecek isim (örn: Dr. Mustafa SAÇAR)</small>
+                    </div>
+                `;
+                adminList.appendChild(card);
+            });
+
+            // GitHub config formu ekle (ilk kez)
+            if (!document.getElementById('githubConfigSection')) {
+                adminList.insertAdjacentHTML('beforebegin', `
+                    <div id="githubConfigSection" class="section">
+                        <div class="section-title">🔑 GitHub Ayarları</div>
+                        <div class="form-group">
+                            <label>GitHub Token</label>
+                            <input type="password" id="githubTokenInput" value="${githubToken}" placeholder="ghp_...">
+                            <small>Personal Access Token (repo yetkisi ile)</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Repository Owner</label>
+                            <input type="text" id="githubOwnerInput" value="${githubOwner}" placeholder="mustafasacar35">
+                        </div>
+                        <div class="form-group">
+                            <label>Repository Name</label>
+                            <input type="text" id="githubRepoInput" value="${githubRepo}" placeholder="lipodem-takip-paneli">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveGitHubConfig()">💾 GitHub Ayarlarını Kaydet</button>
+                    </div>
+                `);
+            }
+        }
+
+        // GitHub config kaydet
+        function saveGitHubConfig() {
+            githubToken = document.getElementById('githubTokenInput').value.trim();
+            githubOwner = document.getElementById('githubOwnerInput').value.trim();
+            githubRepo = document.getElementById('githubRepoInput').value.trim();
+
+            localStorage.setItem('github_token', githubToken);
+            localStorage.setItem('github_owner', githubOwner);
+            localStorage.setItem('github_repo', githubRepo);
+
+            alert('✅ GitHub ayarları kaydedildi!');
+        }
+
+        // Admin bilgilerini kaydet
+        function saveAdmins() {
+            if (!window.GH_ADMINS || !window.GH_ADMINS.admins) {
+                alert('❌ Admin verisi yüklenemedi!');
+                return;
+            }
+
+            // Görünen isimleri güncelle
+            window.GH_ADMINS.admins.forEach((admin, index) => {
+                const displayNameInput = document.getElementById(`displayName_${index}`);
+                if (displayNameInput) {
+                    admin.displayName = displayNameInput.value.trim() || admin.username;
+                }
+            });
+
+            window.GH_ADMINS.updatedAt = new Date().toISOString();
+            const jsonData = JSON.stringify(window.GH_ADMINS, null, 2);
+            
+            downloadJSON('admins.js', `window.GH_ADMINS = ${jsonData};`);
+            showSuccess('successAdmins');
+        }
+
+        // Görünüm ayarlarını kaydet
+        function saveDisplaySettings() {
+            saveChatSettingsToGitHub();
+        }
+
+        function loadDisplaySettings() {
+            // loadChatSettingsFromGitHub zaten yükleyecek
+        }
+    </script>
+</body>
+</html>

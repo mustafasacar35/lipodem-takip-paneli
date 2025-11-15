@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Hasta Girişi">
+    <meta name="application-name" content="Hasta Girişi">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link id="manifestLink" rel="manifest">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    <!-- / PWA ve Mobil Uygulama Meta Etiketleri -->
+
+    <title>Hasta Girişi - Lipodem Takip Paneli</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-area h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .logo-area p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        .input-wrapper input.error {
+            border-color: #e74c3c;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102,126,234,0.6);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            border-left: 4px solid #28a745;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading-spinner.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .demo-info strong {
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .demo-info code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d63384;
+            font-family: 'Courier New', monospace;
+        }
+
+        .admin-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .admin-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .admin-link a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .logo-area h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-area">
+            <h1>🩺 Lipodem Takip</h1>
+            <p>Hasta Giriş Paneli</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Kullanıcı adınızı girin"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Şifrenizi girin"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="rememberMe" name="rememberMe">
+                <label for="rememberMe">Beni Hatırla</label>
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                Giriş Yap
+            </button>
+        </form>
+
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Giriş yapılıyor...</p>
+        </div>
+
+        <div class="admin-link">
+            <a href="admin_patients.html">👨‍⚕️ Yönetici Girişi</a>
+        </div>
+    </div>
+
+    <!-- Auth Library -->
+    <script src="auth.js"></script>
+    <script src="device-manager.js"></script>
+    <script src="ip-logger.js"></script>
+    <script src="admin-notifier.js"></script>
+
+    <script>
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const session = PatientAuth.checkSession();
+            if (session) {
+                // Already logged in, redirect to nutrition page (direkt)
+                showSuccess('Zaten giriş yapmışsınız. Yönlendiriliyorsunuz...');
+                setTimeout(() => {
+                    window.location.href = 'patient_nutrition.html';
+                }, 1000);
+            }
+        });
+
+        // Form elements
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const rememberMeCheckbox = document.getElementById('rememberMe');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        // Form submission
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const rememberMe = rememberMeCheckbox.checked;
+
+            // Validate inputs
+            if (!username || !password) {
+                showError('Lütfen kullanıcı adı ve şifrenizi girin.');
+                return;
+            }
+
+            // Show loading
+            setLoading(true);
+            hideMessages();
+
+            try {
+                // Attempt login
+                const result = await PatientAuth.login(username, password, rememberMe);
+
+                if (result.success) {
+                    // Login successful
+                    showSuccess(`Hoş geldiniz, ${result.patient.name}! Yönlendiriliyorsunuz...`);
+                    
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'patient_nutrition.html';
+                    }, 1500);
+                } else {
+                    // Login failed
+                    let errorMessage = result.error || 'Giriş başarısız. Lütfen tekrar deneyin.';
+                    
+                    // 🖥️ Cihaz limiti aşıldıysa özel mesaj göster
+                    if (result.errorType === 'device_limit_exceeded') {
+                        errorMessage = `🚫 ${result.error}\n\nYöneticinizle iletişime geçin.`;
+                    }
+                    
+                    showError(errorMessage);
+                    setLoading(false);
+                    
+                    // Shake inputs
+                    usernameInput.classList.add('error');
+                    passwordInput.classList.add('error');
+                    
+                    setTimeout(() => {
+                        usernameInput.classList.remove('error');
+                        passwordInput.classList.remove('error');
+                    }, 500);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+                setLoading(false);
+            }
+        });
+
+        // Helper functions
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            successMessage.classList.remove('show');
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.add('show');
+            errorMessage.classList.remove('show');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Giriş yapılıyor...';
+                loginForm.style.display = 'none';
+                loadingSpinner.classList.add('show');
+            } else {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Giriş Yap';
+                loginForm.style.display = 'block';
+                loadingSpinner.classList.remove('show');
+            }
+        }
+
+        // Enter key support
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                passwordInput.focus();
+            }
+        });
+
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            if (isSecureOrigin) {
+                const CACHE_NAME = 'login-v1';
+                const manifest = {
+                    "short_name": "Hasta Girişi",
+                    "name": "Hasta Giriş Paneli",
+                    "start_url": "/lipodem-takip-paneli/login.html",
+                    "scope": "/lipodem-takip-paneli/",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "/lipodem-takip-paneli/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "/lipodem-takip-paneli/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                // ServiceWorker için ana service-worker.js dosyasını kullan (async wrapper)
+                (async () => {
+                    try {
+                        // Cache bypass için timestamp ekle
+                        const swPath = './service-worker.js?v=' + Date.now();
+                        const registration = await navigator.serviceWorker.register(swPath);
+                        console.log('✅ ServiceWorker v12 registered:', registration.scope);
+                    } catch (err) {
+                        console.log('⚠️ ServiceWorker registration failed:', err);
+                    }
+                })();
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
+        (function preventZoom() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, { passive: false });
+        })();
+
+        // PWA Install Prompt - Otomatik Yükleme Önerisi
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            setTimeout(() => {
+                showInstallPrompt();
+            }, 2000);
+        });
+
+        function showInstallPrompt() {
+            if (!deferredPrompt) return;
+            
+            const installBtn = confirm('📱 Hasta Takip Uygulamasını telefonunuza yüklemek ister misiniz?\n\n✓ Ana ekranınıza eklenecek\n✓ Uygulama gibi çalışacak\n✓ Daha hızlı erişim');
+            
+            if (installBtn) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Kullanıcı uygulamayı yükledi');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ Uygulama başarıyla yüklendi!');
+            deferredPrompt = null;
+        });
+    </script>
+</body>
+</html>

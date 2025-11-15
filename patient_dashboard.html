@@ -1,0 +1,352 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA ve Mobil Uygulama Meta Etiketleri -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Hasta Paneli">
+    <meta name="application-name" content="Hasta Paneli">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link id="manifestLink" rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png">
+    <!-- / PWA ve Mobil Uygulama Meta Etiketleri -->
+
+    <title>Hasta Paneli - Lipodem Takip</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 15px;
+            }
+
+            .patient-info h2 {
+                font-size: 16px;
+            }
+
+            .logout-btn {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Yükleniyor...</p>
+        </div>
+        <iframe 
+            id="appIframe" 
+            src="patient_nutrition.html" 
+            class="app-frame"
+            style="display: none;"
+            title="Beslenme Planım"
+        ></iframe>
+    </div>
+
+    <!-- Auth Library -->
+    <script src="auth.js"></script>
+    <!-- OneSignal Config & SDK (TOP-LEVEL for iOS Web Push) -->
+    <script src="./onesignal_config.js"></script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
+
+    <script>
+        // Check authentication and load patient data
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Require authentication
+            const session = PatientAuth.requireAuth('login.html');
+            
+            if (session) {
+                // Show iframe, hide loading
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('appIframe').style.display = 'block';
+            }
+        });
+
+        // Logout
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                PatientAuth.logout();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Refresh session periodically (every 5 minutes)
+        setInterval(() => {
+            PatientAuth.refreshSession();
+        }, 5 * 60 * 1000);
+
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            if (isSecureOrigin) {
+                const CACHE_NAME = 'patient-dashboard-v1';
+                const manifest = {
+                    "short_name": "Hasta Paneli",
+                    "name": "Hasta Paneli",
+                    "start_url": "/patient_dashboard.html",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                // GitHub Pages blob: URL desteklemiyor, ServiceWorker'ı devre dışı bırak
+                console.log('ℹ️ ServiceWorker GitHub Pages için devre dışı (blob: URL desteklenmiyor)');
+                
+                // const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+                // const swURL = URL.createObjectURL(swBlob);
+                // navigator.serviceWorker.register(swURL)
+                //     .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                //     .catch(err => console.log('ServiceWorker registration failed:', err));
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
+        (function preventZoom() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, { passive: false });
+        })();
+
+        // PWA Install Prompt - Otomatik Yükleme Önerisi
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            setTimeout(() => {
+                showInstallPrompt();
+            }, 2000);
+        });
+
+        function showInstallPrompt() {
+            if (!deferredPrompt) return;
+            
+            const installBtn = confirm('📱 Hasta Paneli uygulamasını telefonunuza yüklemek ister misiniz?\n\n✓ Ana ekranınıza eklenecek\n✓ Uygulama gibi çalışacak\n✓ Daha hızlı erişim');
+            
+            if (installBtn) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Kullanıcı uygulamayı yükledi');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ Uygulama başarıyla yüklendi!');
+            deferredPrompt = null;
+        });
+    </script>
+
+    <!-- OneSignal top-level initialization and iframe bridge -->
+    <script>
+        (async function initTopLevelOneSignal() {
+            try {
+                // Wait for SDK
+                let attempts = 0;
+                const maxAttempts = 20;
+                while (typeof OneSignal === 'undefined' && attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 500));
+                    attempts++;
+                }
+
+                if (typeof OneSignal === 'undefined') {
+                    console.warn('⚠️ OneSignal SDK top-level yüklenemedi');
+                    return;
+                }
+                if (!window.ONESIGNAL_CONFIG || !window.ONESIGNAL_CONFIG.appId) {
+                    console.warn('⚠️ OneSignal config eksik (top-level)');
+                    return;
+                }
+
+                // Initialize only once
+                if (!window.__OS_INIT_DONE) {
+                    await OneSignal.init({
+                        appId: window.ONESIGNAL_CONFIG.appId,
+                        allowLocalhostAsSecureOrigin: true,
+                        serviceWorkerParam: { scope: '/' },
+                        serviceWorkerPath: 'OneSignalSDKWorker.js',
+                        promptOptions: {
+                            slidedown: {
+                                enabled: true,
+                                autoPrompt: false,
+                                actionMessage: 'Yeni mesajlardan haberdar olmak ister misiniz?',
+                                acceptButtonText: 'İzin Ver',
+                                cancelButtonText: 'Şimdi Değil'
+                            }
+                        }
+                    });
+                    window.__OS_INIT_DONE = true;
+                    console.log('✅ OneSignal top-level init tamam');
+                }
+
+                // Bridge: handle requests coming from iframe
+                window.addEventListener('message', async (event) => {
+                    const data = event.data || {};
+                    try {
+                        if (data.type === 'onesignal:prompt') {
+                            // Trigger slidedown
+                            try {
+                                await OneSignal.Slidedown.promptPush();
+                                event.source && event.source.postMessage({ type: 'onesignal:prompt:done', ok: true }, '*');
+                            } catch (e) {
+                                console.warn('Slidedown hata, native permission deneniyor...', e);
+                                await OneSignal.Notifications.requestPermission();
+                                event.source && event.source.postMessage({ type: 'onesignal:prompt:done', ok: false, error: e?.message }, '*');
+                            }
+                        } else if (data.type === 'onesignal:login' && data.externalId) {
+                            await OneSignal.login(data.externalId);
+                            console.log('🔐 OneSignal externalId set edildi (top-level):', data.externalId);
+                        } else if (data.type === 'onesignal:ensure-init' && data.externalId) {
+                            if (!window.__OS_INIT_DONE) {
+                                // Should not happen, but ensure init
+                                await OneSignal.init({ appId: window.ONESIGNAL_CONFIG.appId });
+                                window.__OS_INIT_DONE = true;
+                            }
+                            try { await OneSignal.login(data.externalId); } catch (e) { console.warn('login hata:', e); }
+                        }
+                    } catch (err) {
+                        console.warn('Onesignal bridge error:', err);
+                    }
+                });
+            } catch (e) {
+                console.error('Top-level OneSignal init hata:', e);
+            }
+        })();
+    </script>
+
+    <!-- iOS Install Prompt Script -->
+    <script src="ios-install-prompt.js"></script>
+</body>
+</html>
+
+

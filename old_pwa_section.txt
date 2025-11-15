@@ -1,0 +1,83 @@
+﻿
+        // PWA Service Worker ve Manifest Kaydı
+        if ('serviceWorker' in navigator) {
+            const isSecureOrigin = ['https:', 'http:'].includes(window.location.protocol) || window.location.protocol === 'chrome-extension:';
+            if (isSecureOrigin) {
+                const CACHE_NAME = 'patient-dashboard-v1';
+                const manifest = {
+                    "short_name": "Hasta Paneli",
+                    "name": "Hasta Paneli",
+                    "start_url": ".",
+                    "display": "standalone",
+                    "background_color": "#667eea",
+                    "theme_color": "#764ba2",
+                    "icons": [
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "192x192",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        },
+                        {
+                            "src": "https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/logo.png",
+                            "sizes": "512x512",
+                            "type": "image/png",
+                            "purpose": "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.querySelector('#manifestLink').setAttribute('href', manifestURL);
+
+                const serviceWorkerContent = `
+                    const CACHE_NAME = '${CACHE_NAME}';
+                    const urlsToCache = ['.'];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('activate', event => {
+                        const cacheWhitelist = [CACHE_NAME];
+                        event.waitUntil(
+                            caches.keys().then(cacheNames => {
+                                return Promise.all(
+                                    cacheNames.map(cacheName => {
+                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            return caches.delete(cacheName);
+                                        }
+                                    })
+                                );
+                            })
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (response.status === 200) {
+                                            cache.put(event.request.url, response.clone());
+                                        }
+                                        return response;
+                                    })
+                                    .catch(() => cache.match(event.request));
+                            })
+                        );
+                    });
+                `;
+                const swBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+                const swURL = URL.createObjectURL(swBlob);
+
+                navigator.serviceWorker.register(swURL)
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(err => console.log('ServiceWorker registration failed:', err));
+            }
+        }
+
+        // Zoom ve dokunmatik engelleyici
