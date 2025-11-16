@@ -659,8 +659,8 @@ async function initializePatientOneSignal() {
         
         // External User ID olarak patient ID'yi set et
         try {
-            // Önce mevcut user ID'yi kontrol et
-            const currentExternalId = await OS.User.getExternalId();
+            // Önce mevcut user ID'yi kontrol et (v16: property, not function)
+            const currentExternalId = OS.User.externalId;
             
             // Eğer farklı bir user ID varsa logout yap
             if (currentExternalId && currentExternalId !== currentPatientId) {

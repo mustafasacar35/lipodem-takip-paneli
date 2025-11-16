@@ -148,15 +148,27 @@
                 }
                 
                 // Kullanıcı login bilgisi al (auth.js'den)
-                const patientId = localStorage.getItem('currentUser');
+                let patientId = localStorage.getItem('currentUser');
                 const patientName = localStorage.getItem('patientName') || 'Hasta';
                 
-                if (patientId) {
+                // currentUser JSON object ise parse et ve sadece ID'yi al
+                try {
+                    const parsed = JSON.parse(patientId);
+                    if (parsed && typeof parsed === 'object') {
+                        // Eski format temizliği - sadece patient_XXXXX ID'sini kullan
+                        patientId = null;
+                        console.warn('⚠️ currentUser JSON object formatında (eski veri), temizlendi');
+                    }
+                } catch (e) {
+                    // JSON değilse string olarak kullan (doğru format)
+                }
+                
+                if (patientId && patientId.startsWith('patient_')) {
                     console.log('👤 Hasta ID:', patientId);
                     
                     try {
-                        // Önce mevcut user ID'yi kontrol et
-                        const currentExternalId = await OneSignal.User.getExternalId();
+                        // Önce mevcut user ID'yi kontrol et (v16: property, not function)
+                        const currentExternalId = OneSignal.User.externalId;
                         
                         // Eğer farklı bir user ID varsa logout yap
                         if (currentExternalId && currentExternalId !== patientId) {
