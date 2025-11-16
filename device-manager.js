@@ -162,6 +162,7 @@ const DeviceManager = {
         try {
             // ⚠️ CRITICAL: GitHub'dan güncel veriyi çek (reset sonrası localStorage eski olabilir)
             let patientDetails = null;
+            const detailsKey = `patientDetails_${patientId}`; // ✅ Scope başında tanımla
             
             try {
                 const response = await fetch(
@@ -173,7 +174,6 @@ const DeviceManager = {
                     console.log('✅ Hasta verileri GitHub\'dan yüklendi (fresh data)');
                     
                     // localStorage'ı güncelle
-                    const detailsKey = `patientDetails_${patientId}`;
                     localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
                 }
             } catch (githubError) {
@@ -182,7 +182,6 @@ const DeviceManager = {
             
             // GitHub başarısız olduysa localStorage'dan oku
             if (!patientDetails) {
-                const detailsKey = `patientDetails_${patientId}`;
                 const patientDetailsStr = localStorage.getItem(detailsKey);
                 
                 if (!patientDetailsStr) {
