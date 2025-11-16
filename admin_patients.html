@@ -155,6 +155,15 @@
             background: #e0a800;
         }
 
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
         .btn-sm {
             padding: 6px 12px;
             font-size: 12px;
@@ -1013,6 +1022,9 @@
                             <button class="btn btn-primary btn-sm" onclick="editPatient('${patient.id}')">
                                 ✏️ Düzenle
                             </button>
+                            <button class="btn btn-info btn-sm" onclick="showPatientProgress('${patient.id}', '${patient.name} ${patient.surname}')" title="Kilo ve ölçüm ilerlemesini görüntüle">
+                                📊 İlerleme
+                            </button>
                             <button class="btn btn-warning btn-sm" onclick="resetDevices('${patient.id}', '${patient.name} ${patient.surname}')" title="Hastanın tüm cihaz kayıtlarını sıfırla">
                                 🔄 Cihaz Resetle
                             </button>
@@ -1164,6 +1176,325 @@
                 console.error('Reset devices error:', error);
                 showError('Cihaz sıfırlama hatası: ' + error.message);
             }
+        }
+
+        // Show patient progress (weight + measurements)
+        async function showPatientProgress(patientId, patientName) {
+            try {
+                showInfo('İlerleme verileri yükleniyor...');
+                
+                // GitHub'dan hasta verisini çek
+                const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/hastalar/${patientId}.json`);
+                
+                if (!response.ok) {
+                    throw new Error('Hasta verisi bulunamadı');
+                }
+                
+                const patientData = await response.json();
+                
+                // Modal açıklama
+                document.getElementById('progressPatientName').textContent = patientName;
+                document.getElementById('progressModal').style.display = 'flex';
+                
+                // Kilo grafiğini çiz
+                drawWeightProgressChart(patientData);
+                
+                // Ölçüm grafiğini çiz
+                drawMeasurementsProgressChart(patientData);
+                
+                // Projeksiyon özetini göster
+                showProjectionSummary(patientData);
+                
+            } catch (error) {
+                console.error('Progress error:', error);
+                showError('İlerleme verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        // Close progress modal
+        function closeProgressModal() {
+            document.getElementById('progressModal').style.display = 'none';
+        }
+
+        // Draw weight progress chart
+        function drawWeightProgressChart(patientData) {
+            const canvas = document.getElementById('weightChart');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 300;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Haftalık kilo verilerini topla (weekSettings'den)
+            const weekData = [];
+            
+            if (patientData.weeks && patientData.weeks.length > 0) {
+                patientData.weeks.forEach((week, index) => {
+                    if (week.weekSettings && week.weekSettings.projection && week.weekSettings.projection.weeklyPlan) {
+                        const plan = week.weekSettings.projection.weeklyPlan;
+                        plan.forEach((weekPlan, weekOffset) => {
+                            weekData.push({
+                                weekNumber: index + 1 + weekOffset,
+                                targetWeight: weekPlan.targetWeight,
+                                actualWeight: null // Gerçek ölçümlerden alınacak
+                            });
+                        });
+                    }
+                });
+            }
+            
+            // Gerçek ölçümleri ekle
+            if (patientData.measurements && patientData.measurements.length > 0) {
+                patientData.measurements.forEach(m => {
+                    const weekMatch = m.hafta.match(/(\d+)\. Hafta/);
+                    if (weekMatch && m.kilo) {
+                        const weekNum = parseInt(weekMatch[1]);
+                        const existing = weekData.find(w => w.weekNumber === weekNum);
+                        if (existing) {
+                            existing.actualWeight = parseFloat(m.kilo);
+                        } else {
+                            weekData.push({
+                                weekNumber: weekNum,
+                                targetWeight: null,
+                                actualWeight: parseFloat(m.kilo)
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Sırala
+            weekData.sort((a, b) => a.weekNumber - b.weekNumber);
+            
+            if (weekData.length === 0) {
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Henüz kilo verisi yok', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            const padding = 50;
+            const graphWidth = canvas.width - (padding * 2);
+            const graphHeight = canvas.height - (padding * 2);
+            
+            const allWeights = weekData.flatMap(w => [w.targetWeight, w.actualWeight]).filter(w => w !== null);
+            const maxWeight = Math.max(...allWeights);
+            const minWeight = Math.min(...allWeights);
+            const range = maxWeight - minWeight || 1;
+            
+            // Hedef kilo çizgisi (kesikli)
+            ctx.strokeStyle = '#dfe6e9';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            
+            weekData.forEach((data, index) => {
+                if (data.targetWeight) {
+                    const x = padding + (index / (weekData.length - 1)) * graphWidth;
+                    const y = padding + graphHeight - ((data.targetWeight - minWeight) / range) * graphHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+            });
+            
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Gerçek kilo çizgisi (kalın)
+            ctx.strokeStyle = '#6c5ce7';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            let firstActual = true;
+            weekData.forEach((data, index) => {
+                if (data.actualWeight) {
+                    const x = padding + (index / (weekData.length - 1)) * graphWidth;
+                    const y = padding + graphHeight - ((data.actualWeight - minWeight) / range) * graphHeight;
+                    
+                    if (firstActual) {
+                        ctx.moveTo(x, y);
+                        firstActual = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Noktalar
+            weekData.forEach((data, index) => {
+                const x = padding + (index / (weekData.length - 1)) * graphWidth;
+                
+                if (data.actualWeight) {
+                    const y = padding + graphHeight - ((data.actualWeight - minWeight) / range) * graphHeight;
+                    ctx.fillStyle = '#6c5ce7';
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Etiket
+                    ctx.fillStyle = '#2d3436';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(data.actualWeight.toFixed(1) + 'kg', x, y - 12);
+                }
+            });
+            
+            // Eksen başlıkları
+            ctx.fillStyle = '#2d3436';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Hafta Numarası →', canvas.width / 2, canvas.height - 10);
+            
+            ctx.save();
+            ctx.translate(15, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('← Kilo (kg)', 0, 0);
+            ctx.restore();
+        }
+
+        // Draw measurements progress chart
+        function drawMeasurementsProgressChart(patientData) {
+            const canvas = document.getElementById('measurementsChart');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 300;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!patientData.measurements || patientData.measurements.length < 2) {
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('En az 2 ölçüm gerekli', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            const measurements = [...patientData.measurements].sort((a, b) => 
+                new Date(a.tarih) - new Date(b.tarih)
+            );
+            
+            const fields = [
+                { key: 'bel', color: '#ff6b6b', label: 'Bel' },
+                { key: 'kalca', color: '#4ecdc4', label: 'Kalça' },
+                { key: 'sagUyluk', color: '#45b7d1', label: 'Sağ Uyluk' }
+            ];
+            
+            const padding = 50;
+            const graphWidth = canvas.width - (padding * 2);
+            const graphHeight = canvas.height - (padding * 2);
+            
+            // Min/max değerleri hesapla
+            const allValues = measurements.flatMap(m => fields.map(f => parseFloat(m[f.key]) || 0)).filter(v => v > 0);
+            const maxValue = Math.max(...allValues);
+            const minValue = Math.min(...allValues);
+            const range = maxValue - minValue || 1;
+            
+            // Her alan için çizgi çiz
+            fields.forEach(field => {
+                const values = measurements.map(m => parseFloat(m[field.key]) || 0).filter(v => v > 0);
+                
+                if (values.length === 0) return;
+                
+                ctx.strokeStyle = field.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                values.forEach((value, index) => {
+                    const x = padding + (index / (values.length - 1)) * graphWidth;
+                    const y = padding + graphHeight - ((value - minValue) / range) * graphHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                
+                ctx.stroke();
+                
+                // Noktalar
+                values.forEach((value, index) => {
+                    const x = padding + (index / (values.length - 1)) * graphWidth;
+                    const y = padding + graphHeight - ((value - minValue) / range) * graphHeight;
+                    
+                    ctx.fillStyle = field.color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            });
+            
+            // Gösterge
+            let legendX = padding;
+            fields.forEach(field => {
+                ctx.fillStyle = field.color;
+                ctx.fillRect(legendX, 20, 15, 15);
+                ctx.fillStyle = '#2d3436';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(field.label, legendX + 20, 32);
+                legendX += 100;
+            });
+        }
+
+        // Show projection summary
+        function showProjectionSummary(patientData) {
+            const content = document.getElementById('projectionContent');
+            
+            if (!patientData.weeks || patientData.weeks.length === 0) {
+                content.innerHTML = '<p>Henüz haftalık plan oluşturulmamış.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 12px;">';
+            
+            let totalWeeksWithProjection = 0;
+            let totalPlannedWeightLoss = 0;
+            
+            patientData.weeks.forEach((week, index) => {
+                if (week.weekSettings && week.weekSettings.projection) {
+                    const proj = week.weekSettings.projection;
+                    totalWeeksWithProjection++;
+                    
+                    if (proj.totalWeightToLose) {
+                        totalPlannedWeightLoss += proj.totalWeightToLose;
+                    }
+                    
+                    html += `
+                        <div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #f093fb;">
+                            <strong>${index + 1}. Hafta:</strong> 
+                            ${proj.startWeight}kg → ${proj.targetWeight}kg 
+                            (${proj.totalWeightToLose}kg kayıp, ${proj.estimatedWeeks} hafta)
+                            <br>
+                            <small style="color: #636e72;">
+                                Günlük kalori: ${proj.dailyCalories} kcal | Hedef: ${proj.goalPct}
+                            </small>
+                        </div>
+                    `;
+                }
+            });
+            
+            if (totalWeeksWithProjection === 0) {
+                html += '<p>Henüz projeksiyon oluşturulmamış.</p>';
+            } else {
+                html = `
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #fdcb6e;">
+                        <h5 style="margin: 0 0 8px 0; color: #e17055;">📊 Genel Özet</h5>
+                        <p style="margin: 4px 0;"><strong>Toplam planlı hafta:</strong> ${totalWeeksWithProjection}</p>
+                        <p style="margin: 4px 0;"><strong>Toplam hedeflenen kilo kaybı:</strong> ${totalPlannedWeightLoss.toFixed(1)} kg</p>
+                    </div>
+                ` + html;
+            }
+            
+            html += '</div>';
+            content.innerHTML = html;
         }
 
         // Close modal
@@ -1690,6 +2021,38 @@
             }
         }, 10);
     </script>
+    
+    <!-- İlerleme Modal -->
+    <div id="progressModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 25px; border-radius: 12px; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f093fb; padding-bottom: 15px;">
+                <h3 style="margin: 0; color: #f5576c; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">📊</span> <span id="progressPatientName"></span> - İlerleme Raporu
+                </h3>
+                <button onclick="closeProgressModal()" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                    ✖️ Kapat
+                </button>
+            </div>
+            
+            <!-- Kilo Grafiği -->
+            <div style="margin-bottom: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px;">
+                <h4 style="margin: 0 0 15px 0; color: white; font-size: 16px; font-weight: 600;">⚖️ Kilo Değişim Grafiği</h4>
+                <canvas id="weightChart" style="width: 100%; height: 300px; background: white; border-radius: 8px; padding: 10px;"></canvas>
+            </div>
+            
+            <!-- Ölçümler Grafiği -->
+            <div style="margin-bottom: 25px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px;">
+                <h4 style="margin: 0 0 15px 0; color: white; font-size: 16px; font-weight: 600;">📏 Vücut Ölçümleri Grafiği</h4>
+                <canvas id="measurementsChart" style="width: 100%; height: 300px; background: white; border-radius: 8px; padding: 10px;"></canvas>
+            </div>
+            
+            <!-- Projeksiyon Özeti -->
+            <div id="projectionSummary" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding: 20px; border-radius: 10px;">
+                <h4 style="margin: 0 0 15px 0; color: #e17055; font-size: 16px; font-weight: 600;">🎯 Hedef Projeksiyon Özeti</h4>
+                <div id="projectionContent" style="color: #d63031; font-size: 14px; line-height: 1.8;"></div>
+            </div>
+        </div>
+    </div>
     
     <!-- Service Worker Registration -->
     <script>

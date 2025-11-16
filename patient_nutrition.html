@@ -2937,12 +2937,27 @@
                 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                     <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 12px; margin-bottom: 3px;">Kilo (kg)</label>
+                        <label style="font-size: 12px; margin-bottom: 3px;">Mevcut Kilo (kg)</label>
                         <input type="number" id="autoPlanWeight" placeholder="70" step="0.1" style="padding: 7px; font-size: 13px;" oninput="updateAutoPlanCalories()">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-size: 12px; margin-bottom: 3px;">Hedef Kilo (kg)</label>
+                        <input type="number" id="autoPlanTargetWeight" placeholder="65" step="0.1" style="padding: 7px; font-size: 13px;" oninput="updateAutoPlanCalories()">
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 12px; margin-bottom: 3px;">Boy (cm)</label>
                         <input type="number" id="autoPlanHeight" placeholder="170" step="1" style="padding: 7px; font-size: 13px;" oninput="updateAutoPlanCalories()">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-size: 12px; margin-bottom: 3px;">Hedef Ayarı</label>
+                        <select id="autoPlanGoalPct" style="padding: 7px; font-size: 12px;" onchange="updateAutoPlanCalories()">
+                            <option value="-30">-30% (Sıkı Açık)</option>
+                            <option value="-20">-20% (Açık)</option>
+                            <option value="-10">-10% (Hafif Açık)</option>
+                            <option value="0" selected>0% (Sürdürme)</option>
+                            <option value="10">+10% (Hafif Fazla)</option>
+                            <option value="20">+20% (Kas Kazanımı)</option>
+                        </select>
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 12px; margin-bottom: 3px;">Aktivite</label>
@@ -2988,6 +3003,17 @@
                             <div style="font-size: 10px; color: #f57f17; font-weight: 600; text-transform: uppercase;">Yağ</div>
                             <div id="autoPlanFat" style="font-size: 14px; font-weight: 700; color: #f57f17;">0g</div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- Kilo Projeksiyonu -->
+                <div id="weightProjectionContainer" style="margin-top: 12px; padding: 12px; background: #f0f4ff; border-radius: 6px; display: none;">
+                    <h5 style="margin: 0 0 8px 0; font-size: 13px; color: #667eea;">📉 Kilo Projeksiyonu</h5>
+                    <div id="weightProjectionSummary" style="font-size: 12px; color: #555; margin-bottom: 8px; line-height: 1.5;">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                    <div id="weightProjectionList" style="font-size: 11px; color: #666; max-height: 150px; overflow-y: auto; background: white; padding: 8px; border-radius: 4px;">
+                        <!-- Haftalık detaylar -->
                     </div>
                 </div>
             </div>
@@ -7442,6 +7468,28 @@
                         <div style="color: #999; font-size: 10px;">${targetFat}</div>
                     </div>
                 </div>
+                
+                <!-- Vücut Ölçümleri Kartı -->
+                <div style="margin-top: 12px; padding: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; box-shadow: 0 2px 8px rgba(240, 147, 251, 0.3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                📏
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: white; font-size: 13px; font-weight: 600;">Vücut Ölçümleri</h4>
+                                <p id="measurementCount_${activeWeekIndex}" style="margin: 2px 0 0 0; color: rgba(255,255,255,0.9); font-size: 11px;">
+                                    ${(patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length > 0 
+                                        ? (patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length + ' kayıt' 
+                                        : 'Kayıt yok'}
+                                </p>
+                            </div>
+                        </div>
+                        <button onclick="openMeasurementsModal(${activeWeekIndex})" style="background: white; color: #f5576c; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: all 0.2s;">
+                            <span style="font-size: 14px;">📊</span> Ölçümleri Görüntüle
+                        </button>
+                    </div>
+                </div>
             `;
 
             if (week.days.length === 0) {
@@ -7992,12 +8040,30 @@
             
             console.log('🎯 Otomatik Plan - Akıllı diyet türü:', smartDietType, '(Hafta:', weekNumber, ')');
             
-            // Modal'a doldur (öncelik: aktif hafta diyet > personalInfo > varsayılan)
-            document.getElementById('autoPlanWeight').value = weightInput?.value || personalInfo.weight || 70;
-            document.getElementById('autoPlanHeight').value = heightInput?.value || personalInfo.height || 170;
-            document.getElementById('autoPlanActivity').value = activityInput?.value || personalInfo.activityLevel || settings.activityLevel || '3';
-            document.getElementById('autoPlanDietType').value = smartDietType; // Direkt hafta tabına göre diyet türü
-            document.getElementById('autoPlanDislikedFoods').value = dislikedFoodsInput?.value || (settings.dislikedFoods || []).join(', ');
+            // Hafta bazında kayıtlı ayarları kontrol et (varsa yükle)
+            const weekSettings = patientData?.weekSettings?.[weekNumber] || null;
+            
+            if (weekSettings) {
+                console.log('💾 Hafta ayarları bulundu, yükleniyor:', weekSettings);
+                // Kayıtlı ayarları kullan
+                document.getElementById('autoPlanWeight').value = weekSettings.weight || personalInfo.weight || 70;
+                document.getElementById('autoPlanTargetWeight').value = weekSettings.targetWeight || '';
+                document.getElementById('autoPlanHeight').value = weekSettings.height || personalInfo.height || 170;
+                document.getElementById('autoPlanActivity').value = weekSettings.activity || 3;
+                document.getElementById('autoPlanGoalPct').value = weekSettings.goalPct || 0;
+                document.getElementById('autoPlanDietType').value = weekSettings.dietType || smartDietType;
+                document.getElementById('autoPlanDislikedFoods').value = weekSettings.dislikedFoods?.join(', ') || '';
+            } else {
+                console.log('ℹ️ Hafta ayarları bulunamadı, varsayılan değerler kullanılıyor');
+                // Modal'a doldur (öncelik: personalInfo > varsayılan)
+                document.getElementById('autoPlanWeight').value = weightInput?.value || personalInfo.weight || 70;
+                document.getElementById('autoPlanTargetWeight').value = personalInfo.targetWeight || '';
+                document.getElementById('autoPlanHeight').value = heightInput?.value || personalInfo.height || 170;
+                document.getElementById('autoPlanActivity').value = activityInput?.value || personalInfo.activityLevel || settings.activityLevel || '3';
+                document.getElementById('autoPlanGoalPct').value = '0'; // Varsayılan: sürdürme
+                document.getElementById('autoPlanDietType').value = smartDietType;
+                document.getElementById('autoPlanDislikedFoods').value = dislikedFoodsInput?.value || (settings.dislikedFoods || []).join(', ');
+            }
             
             // Hedef kaloriyi hesapla ve göster
             updateAutoPlanCalories();
@@ -8007,26 +8073,137 @@
             document.getElementById('autoWeekPlanModal').style.display = 'flex';
         }
 
+        // Kilo Projeksiyonu Hesaplama Fonksiyonu (sabloncu.html'den uyarlandı)
+        function computeWeightLossPlan(startWeight, targetWeight, options = {}) {
+            const maxWeeks = options.maxWeeks ?? 200;
+            const tolerance = options.tolerance ?? 0.05;
+            const decimals = options.decimals ?? 2;
+            const baseRate = Math.max(0.0001, options.baseRate ?? 0.01); // %1 default haftalık kayıp
+            const round = (num) => Number.isFinite(num) ? Number(num.toFixed(decimals)) : num;
+            
+            const activityLevel = Number.isFinite(options.activityLevel) ? Math.round(options.activityLevel) : null;
+            const activityMap = { 1: 0.8, 2: 0.9, 3: 1.0, 4: 1.1, 5: 1.2 };
+            let activityMultiplier = Number.isFinite(options.activityMultiplier) 
+                ? options.activityMultiplier 
+                : (activityMap[activityLevel] ?? 1.0);
+            
+            if (!Number.isFinite(activityMultiplier) || activityMultiplier <= 0) activityMultiplier = 1.0;
+            activityMultiplier = Math.min(Math.max(activityMultiplier, 0.3), 2.5);
+            
+            const rawGoalPct = Number.isFinite(options.goalPct) ? options.goalPct : 0;
+            const goalAdjustmentFactor = 1 + (rawGoalPct / 100);
+            const safeGoalAdjustment = goalAdjustmentFactor > 0 ? goalAdjustmentFactor : 0.1;
+            
+            const result = {
+                valid: false,
+                reason: null,
+                weeks: 0,
+                plan: [],
+                totalLoss: 0,
+                finalWeight: Number.isFinite(targetWeight) ? round(targetWeight) : null,
+                reached: false,
+                meta: {
+                    baseRate,
+                    activityLevel: activityLevel ?? null,
+                    activityMultiplier,
+                    goalPct: rawGoalPct,
+                    goalAdjustment: safeGoalAdjustment,
+                    weeklyPercent: null
+                }
+            };
+            
+            if (!Number.isFinite(startWeight) || startWeight <= 0) {
+                result.reason = 'invalid-start';
+                return result;
+            }
+            if (!Number.isFinite(targetWeight) || targetWeight <= 0) {
+                result.reason = 'invalid-target';
+                return result;
+            }
+            if (targetWeight >= startWeight - tolerance) {
+                result.reason = 'no-loss';
+                result.valid = true;
+                result.finalWeight = round(startWeight);
+                result.totalLoss = 0;
+                return result;
+            }
+
+            const effectiveBaseRate = Math.min(Math.max(baseRate * activityMultiplier, 0.0005), 0.25);
+            const baseRetention = 1 - effectiveBaseRate;
+            let baseWeeksEstimate = Math.log(targetWeight / startWeight) / Math.log(baseRetention);
+            
+            if (!Number.isFinite(baseWeeksEstimate) || baseWeeksEstimate <= 0) {
+                baseWeeksEstimate = Math.abs((startWeight - targetWeight) / (startWeight * effectiveBaseRate));
+            }
+            
+            const adjustedWeeksEstimate = Math.max(baseWeeksEstimate * safeGoalAdjustment, 1);
+            let desiredWeeks = Math.min(maxWeeks, Math.max(1, Math.round(adjustedWeeksEstimate)));
+            if (desiredWeeks === 0) desiredWeeks = 1;
+            
+            if (Math.round(adjustedWeeksEstimate) > maxWeeks) {
+                result.reason = 'max-weeks';
+            }
+            
+            const retentionPerWeek = Math.pow(targetWeight / startWeight, 1 / desiredWeeks);
+            const effectiveRate = 1 - retentionPerWeek;
+            const weeklyPercent = Math.max(0, effectiveRate * 100);
+            
+            result.meta.weeklyPercent = weeklyPercent;
+
+            let prev = startWeight;
+            for (let week = 1; week <= desiredWeeks; week++) {
+                let next = prev * retentionPerWeek;
+                const remainingWeeks = desiredWeeks - week;
+                if (remainingWeeks <= 0 || next <= targetWeight + tolerance) {
+                    next = targetWeight;
+                }
+                const weeklyLoss = prev - next;
+                result.plan.push({
+                    week,
+                    weight: round(next),
+                    weeklyLoss: round(weeklyLoss),
+                    cumulativeLoss: round(startWeight - next)
+                });
+                prev = next;
+            }
+            
+            result.weeks = result.plan.length;
+            result.totalLoss = round(startWeight - prev);
+            result.finalWeight = round(prev);
+            result.valid = true;
+            
+            if (Math.abs(prev - targetWeight) <= tolerance) {
+                result.reached = true;
+            }
+            
+            return result;
+        }
+
         // Hedef kaloriyi hesapla ve göster
         function updateAutoPlanCalories() {
             const weight = parseFloat(document.getElementById('autoPlanWeight').value) || 70;
+            const targetWeight = parseFloat(document.getElementById('autoPlanTargetWeight').value) || 0;
             const height = parseFloat(document.getElementById('autoPlanHeight').value) || 170;
             const activity = parseInt(document.getElementById('autoPlanActivity').value) || 3;
             const dietType = document.getElementById('autoPlanDietType').value || 'ketojenik';
+            const goalPct = parseInt(document.getElementById('autoPlanGoalPct').value) || 0;
             
-            console.log('📊 Kalori Hesaplama:', { weight, height, activity, dietType });
+            console.log('📊 Kalori Hesaplama:', { weight, targetWeight, height, activity, dietType, goalPct });
             
             // Admin settings'teki formülü kullan
             const activityMultiplier = appSettings?.dietFormulas?.activityMultipliers?.[activity] || 1.0;
             const dietFormula = appSettings?.dietFormulas?.[dietType] || appSettings?.dietFormulas?.ketojenik;
             
-            console.log('⚙️ Formül:', { activityMultiplier, dietFormula });
+            // Hedef yüzdesi ile kalori ayarlaması (goalPct: -30 ile +20 arası)
+            const goalMultiplier = 1 + (goalPct / 100);
+            
+            console.log('⚙️ Formül:', { activityMultiplier, dietFormula, goalMultiplier });
             
             if (dietFormula) {
-                // Aktivite çarpanını da dahil et
-                const protein = Math.round(weight * dietFormula.protein * activityMultiplier);
-                const carb = Math.round(weight * dietFormula.carb * activityMultiplier);
-                const fat = Math.round(weight * dietFormula.fat * activityMultiplier);
+                // Aktivite çarpanı + hedef yüzdesi ile makro hesaplama
+                const protein = Math.round(weight * dietFormula.protein * activityMultiplier * goalMultiplier);
+                const carb = Math.round(weight * dietFormula.carb * activityMultiplier * goalMultiplier);
+                const fat = Math.round(weight * dietFormula.fat * activityMultiplier * goalMultiplier);
                 
                 // Kalori hesaplama: (P*4) + (K*4) + (Y*9)
                 const targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
@@ -8040,47 +8217,161 @@
                 document.getElementById('autoPlanFat').textContent = fat + 'g';
             } else {
                 // Fallback basit hesaplama
-                const targetCalories = Math.round(weight * 22 * activityMultiplier);
+                const targetCalories = Math.round(weight * 22 * activityMultiplier * goalMultiplier);
                 document.getElementById('autoPlanTargetCalories').textContent = targetCalories + ' kcal';
                 
                 // Makroları tahmine göre göster (ketojenik benzeri)
-                const protein = Math.round(weight * 1.5);
-                const carb = Math.round(weight * 0.5);
-                const fat = Math.round(weight * 1.8);
+                const protein = Math.round(weight * 1.5 * goalMultiplier);
+                const carb = Math.round(weight * 0.5 * goalMultiplier);
+                const fat = Math.round(weight * 1.8 * goalMultiplier);
                 
                 document.getElementById('autoPlanProtein').textContent = protein + 'g';
                 document.getElementById('autoPlanCarb').textContent = carb + 'g';
                 document.getElementById('autoPlanFat').textContent = fat + 'g';
+            }
+            
+            // Kilo Projeksiyonu Hesaplama ve Gösterme
+            const projectionContainer = document.getElementById('weightProjectionContainer');
+            const summaryEl = document.getElementById('weightProjectionSummary');
+            const listEl = document.getElementById('weightProjectionList');
+            
+            if (weight > 0 && targetWeight > 0 && targetWeight < weight) {
+                // Projeksiyon hesapla
+                const plan = computeWeightLossPlan(weight, targetWeight, {
+                    activityLevel: activity,
+                    goalPct: goalPct,
+                    maxWeeks: 52 // Maksimum 1 yıl göster
+                });
+                
+                if (plan.valid && plan.weeks > 0) {
+                    const weeksText = plan.weeks === 1 ? '1 hafta' : `${plan.weeks} hafta`;
+                    const avgWeeklyLoss = (plan.totalLoss / plan.weeks).toFixed(2);
+                    
+                    summaryEl.innerHTML = 
+                        `<strong>Başlangıç:</strong> ${weight.toFixed(1)} kg → <strong>Hedef:</strong> ${targetWeight.toFixed(1)} kg<br>` +
+                        `<strong>Tahmini Süre:</strong> ${weeksText} · <strong>Toplam Kayıp:</strong> ${plan.totalLoss.toFixed(1)} kg<br>` +
+                        `<small style="color: #888;">Haftalık Ortalama: ~${avgWeeklyLoss} kg (≈${plan.meta.weeklyPercent.toFixed(2)}%)</small>`;
+                    
+                    // İlk 10 haftayı detaylı göster
+                    const maxDisplay = Math.min(10, plan.plan.length);
+                    let listHTML = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">';
+                    
+                    for (let i = 0; i < maxDisplay; i++) {
+                        const item = plan.plan[i];
+                        const lossText = item.weeklyLoss > 0 ? `−${item.weeklyLoss.toFixed(2)} kg` : '0 kg';
+                        listHTML += `
+                            <div style="padding: 4px 6px; background: ${i % 2 === 0 ? '#f8f9fa' : 'white'}; border-radius: 3px;">
+                                <span style="font-weight: 600;">${item.week}. hafta:</span> ${item.weight.toFixed(2)} kg 
+                                <span style="color: #20c997; font-size: 10px;">(${lossText})</span>
+                            </div>
+                        `;
+                    }
+                    
+                    listHTML += '</div>';
+                    
+                    if (plan.plan.length > maxDisplay) {
+                        const last = plan.plan[plan.plan.length - 1];
+                        listHTML += `<div style="margin-top: 6px; font-size: 10px; color: #888; text-align: center;">... ${plan.plan.length}. haftada ${last.weight.toFixed(2)} kg</div>`;
+                    }
+                    
+                    listEl.innerHTML = listHTML;
+                    projectionContainer.style.display = 'block';
+                } else {
+                    projectionContainer.style.display = 'none';
+                }
+            } else {
+                projectionContainer.style.display = 'none';
             }
         }
 
         // Otomatik haftalık plan oluştur
         async function generateAutoWeekPlan() {
             const weight = parseFloat(document.getElementById('autoPlanWeight').value);
+            const targetWeight = parseFloat(document.getElementById('autoPlanTargetWeight').value) || 0;
             const height = parseFloat(document.getElementById('autoPlanHeight').value);
             const activity = parseInt(document.getElementById('autoPlanActivity').value);
             const dietType = document.getElementById('autoPlanDietType').value;
+            const goalPct = parseInt(document.getElementById('autoPlanGoalPct').value) || 0;
             const dislikedFoods = document.getElementById('autoPlanDislikedFoods').value
                 .split(',')
                 .map(f => f.trim())
                 .filter(f => f.length > 0);
             
-            // Hedef kaloriyi admin settings formülüyle hesapla
-            const activityMultiplier = appSettings?.dietFormulas?.activityMultipliers?.[activity] || 1.0;
-            const dietFormula = appSettings?.dietFormulas?.[dietType] || appSettings?.dietFormulas?.ketojenik;
+            // Hafta numarasını al
+            const weekNumber = (activeWeekIndex >= 0 && activeWeekIndex < weeks.length) 
+                ? weeks[activeWeekIndex].weekNumber 
+                : (currentWeekIndex + 1);
             
-            let targetCalories;
-            if (dietFormula) {
-                // Aktivite çarpanını da dahil et
-                const protein = weight * dietFormula.protein * activityMultiplier;
-                const carb = weight * dietFormula.carb * activityMultiplier;
-                const fat = weight * dietFormula.fat * activityMultiplier;
-                targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
-            } else {
-                targetCalories = Math.round(weight * 22 * activityMultiplier);
+            // Hafta ayarlarını kaydet (weekSettings objesi)
+            if (!patientData.weekSettings) {
+                patientData.weekSettings = {};
             }
             
-            console.log('🎯 Hedef Kalori:', targetCalories);
+            // Hedef kaloriyi admin settings formülüyle hesapla (goalPct dahil)
+            const activityMultiplier = appSettings?.dietFormulas?.activityMultipliers?.[activity] || 1.0;
+            const dietFormula = appSettings?.dietFormulas?.[dietType] || appSettings?.dietFormulas?.ketojenik;
+            const goalMultiplier = 1 + (goalPct / 100);
+            
+            let targetCalories, calculatedMacros;
+            if (dietFormula) {
+                // Aktivite çarpanı + hedef yüzdesi dahil
+                const protein = weight * dietFormula.protein * activityMultiplier * goalMultiplier;
+                const carb = weight * dietFormula.carb * activityMultiplier * goalMultiplier;
+                const fat = weight * dietFormula.fat * activityMultiplier * goalMultiplier;
+                targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
+                calculatedMacros = {
+                    protein: Math.round(protein),
+                    carb: Math.round(carb),
+                    fat: Math.round(fat)
+                };
+            } else {
+                targetCalories = Math.round(weight * 22 * activityMultiplier * goalMultiplier);
+                calculatedMacros = null;
+            }
+            
+            // Kilo projeksiyonu hesapla (varsa)
+            let weightProjection = null;
+            if (targetWeight > 0 && targetWeight < weight) {
+                const plan = computeWeightLossPlan(weight, targetWeight, {
+                    activityLevel: activity,
+                    goalPct: goalPct,
+                    maxWeeks: 52
+                });
+                if (plan.valid && plan.weeks > 0) {
+                    weightProjection = {
+                        estimatedWeeks: plan.weeks,
+                        totalLoss: plan.totalLoss,
+                        weeklyAverage: (plan.totalLoss / plan.weeks).toFixed(2),
+                        weeklyPercent: plan.meta.weeklyPercent.toFixed(2)
+                    };
+                }
+            }
+            
+            patientData.weekSettings[weekNumber] = {
+                // Kullanıcı girdileri
+                weight: weight,
+                targetWeight: targetWeight,
+                height: height,
+                activity: activity,
+                dietType: dietType,
+                goalPct: goalPct,
+                dislikedFoods: dislikedFoods,
+                
+                // Hesaplanan değerler (analiz için)
+                calculated: {
+                    targetCalories: targetCalories,
+                    macros: calculatedMacros,
+                    projection: weightProjection
+                },
+                
+                // Metadata
+                savedAt: new Date().toISOString(),
+                updatedBy: 'patient' // veya 'admin' (role'e göre)
+            };
+            
+            console.log('💾 Hafta ayarları kaydedildi:', patientData.weekSettings[weekNumber]);
+            
+            console.log('🎯 Hedef Kalori:', targetCalories, '(GoalPct:', goalPct + '%)');
             console.log('📊 Toplam Şablon:', dayTemplates.length);
             
             // 🔍 Mevcut haftada manuel eklenmiş günleri kontrol et
@@ -8417,8 +8708,16 @@
             // Sayfayı yenile
             renderWeekContent();
             
-            // Verileri kaydet
+            // Verileri kaydet (hafta ayarları dahil)
             saveWeeks();
+            
+            // Patient data'yı da kaydet (weekSettings için)
+            try {
+                await savePatientData();
+                console.log('💾 Patient data kaydedildi (weekSettings dahil)');
+            } catch (error) {
+                console.error('❌ Patient data kaydetme hatası:', error);
+            }
             
             // Bildirim göster
             showToast(`✨ ${newDays.length} günlük otomatik plan oluşturuldu! Hedef: ${targetCalories} kcal`, 'success');
@@ -15751,6 +16050,308 @@ function openAdminMatchingModalFromCheck(foodName, macros, category = '', role =
 function filterDatabaseCheck() {
     renderDatabaseCheckList();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 📏 VÜCUT ÖLÇÜMLERİ SİSTEMİ
+// ═══════════════════════════════════════════════════════════════
+
+const MEASUREMENT_FIELDS = ['kilo', 'bel', 'kalca', 'sagUyluk', 'solUyluk', 'sagBaldir', 'solBaldir'];
+let currentMeasurementWeekIndex = -1;
+
+// Ölçüm modalını aç
+function openMeasurementsModal(weekIndex) {
+    currentMeasurementWeekIndex = weekIndex;
+    const week = weeks[weekIndex];
+    
+    if (!week) {
+        showToast('❌ Hafta bulunamadı', 'error');
+        return;
+    }
+    
+    // Modal başlığını güncelle
+    document.getElementById('measurementModalWeek').textContent = `${week.weekNumber}. Hafta`;
+    
+    // Ölçümleri yükle
+    loadMeasurementsTable();
+    
+    // Modalı göster
+    document.getElementById('measurementsModal').classList.add('active');
+    document.getElementById('measurementsModal').style.display = 'flex';
+}
+
+// Ölçüm modalını kapat
+function closeMeasurementsModal() {
+    document.getElementById('measurementsModal').classList.remove('active');
+    document.getElementById('measurementsModal').style.display = 'none';
+}
+
+// Ölçümleri tabloya yükle
+function loadMeasurementsTable() {
+    if (!patientData.measurements) {
+        patientData.measurements = [];
+    }
+    
+    const week = weeks[currentMeasurementWeekIndex];
+    const tbody = document.getElementById('measurementsBody');
+    const tfoot = document.getElementById('measurementsFooter');
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+    
+    // Sıralı ölçümler
+    const sortedMeasurements = [...patientData.measurements].sort((a, b) => 
+        new Date(a.tarih) - new Date(b.tarih)
+    );
+    
+    // Tabloyu doldur
+    sortedMeasurements.forEach((measurement, index) => {
+        tbody.appendChild(createMeasurementRow(measurement, index));
+    });
+    
+    // Eğer bu hafta için ölçüm yoksa, otomatik bir satır ekle
+    const weekMeasurements = sortedMeasurements.filter(m => m.hafta === `${week.weekNumber}. Hafta`);
+    if (weekMeasurements.length === 0) {
+        addMeasurementRow();
+    }
+    
+    // Fark satırını ekle (en az 2 ölçüm varsa)
+    if (sortedMeasurements.length >= 2) {
+        tfoot.appendChild(createDifferenceRow(sortedMeasurements));
+    }
+}
+
+// Ölçüm satırı oluştur
+function createMeasurementRow(measurement, index) {
+    const tr = document.createElement('tr');
+    const week = weeks[currentMeasurementWeekIndex];
+    const isCurrentWeek = measurement.hafta === `${week.weekNumber}. Hafta`;
+    
+    tr.style.cssText = `border-bottom: 1px solid #dfe6e9; background: ${isCurrentWeek ? '#fff9e6' : 'white'};`;
+    
+    let html = `
+        <td style="padding: 8px; border-right: 1px solid #dfe6e9;">
+            <input type="date" value="${measurement.tarih}" 
+                onchange="updateMeasurement(${index}, 'tarih', this.value)" 
+                style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; font-size: 13px;">
+            <input type="text" value="${measurement.hafta || ''}" 
+                placeholder="1. Hafta" 
+                onchange="updateMeasurement(${index}, 'hafta', this.value)" 
+                style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; margin-top: 4px; font-size: 12px;">
+        </td>
+    `;
+    
+    MEASUREMENT_FIELDS.forEach(field => {
+        html += `
+            <td style="padding: 8px; text-align: center; border-right: 1px solid #dfe6e9;">
+                <input type="number" step="0.1" value="${measurement[field] || ''}" 
+                    onchange="updateMeasurement(${index}, '${field}', this.value)" 
+                    style="width: 70px; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; text-align: center; font-size: 13px;">
+            </td>
+        `;
+    });
+    
+    html += `
+        <td style="padding: 8px; text-align: center;">
+            <button onclick="deleteMeasurement(${index})" 
+                style="background: #ff6b6b; color: white; border: none; padding: 6px 10px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                🗑️
+            </button>
+        </td>
+    `;
+    
+    tr.innerHTML = html;
+    return tr;
+}
+
+// Fark satırı oluştur
+function createDifferenceRow(measurements) {
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'background: #f8f9fa; font-weight: bold; border-top: 2px solid #f093fb;';
+    
+    const first = measurements[0];
+    const last = measurements[measurements.length - 1];
+    const weekDiff = Math.round((new Date(last.tarih) - new Date(first.tarih)) / (7 * 24 * 60 * 60 * 1000));
+    
+    let html = `
+        <td style="padding: 8px; color: #f5576c; border-right: 1px solid #dfe6e9;">
+            <div>FARK</div>
+            <div style="font-size: 11px; font-weight: normal;">${weekDiff} Hafta</div>
+        </td>
+    `;
+    
+    MEASUREMENT_FIELDS.forEach(field => {
+        const diff = (last[field] || 0) - (first[field] || 0);
+        const color = diff < 0 ? '#00b894' : (diff > 0 ? '#ff6b6b' : '#999');
+        const prefix = diff > 0 ? '+' : '';
+        
+        html += `
+            <td style="padding: 8px; text-align: center; border-right: 1px solid #dfe6e9;">
+                <div style="color: ${color}; font-weight: 600;">
+                    ${prefix}${diff.toFixed(1)}
+                </div>
+            </td>
+        `;
+    });
+    
+    html += `<td></td>`;
+    tr.innerHTML = html;
+    return tr;
+}
+
+// Yeni ölçüm satırı ekle
+function addMeasurementRow() {
+    const week = weeks[currentMeasurementWeekIndex];
+    const today = new Date().toISOString().split('T')[0];
+    
+    const newMeasurement = {
+        tarih: today,
+        hafta: `${week.weekNumber}. Hafta`,
+        kilo: '',
+        bel: '',
+        kalca: '',
+        sagUyluk: '',
+        solUyluk: '',
+        sagBaldir: '',
+        solBaldir: ''
+    };
+    
+    patientData.measurements.push(newMeasurement);
+    loadMeasurementsTable();
+}
+
+// Ölçümü güncelle
+function updateMeasurement(index, field, value) {
+    if (patientData.measurements[index]) {
+        patientData.measurements[index][field] = value;
+    }
+}
+
+// Ölçümü sil
+function deleteMeasurement(index) {
+    if (confirm('Bu ölçümü silmek istediğinizden emin misiniz?')) {
+        patientData.measurements.splice(index, 1);
+        loadMeasurementsTable();
+    }
+}
+
+// Ölçümleri kaydet
+async function saveMeasurements() {
+    try {
+        await savePatientData();
+        
+        // Hafta tabındaki sayıyı güncelle
+        const week = weeks[currentMeasurementWeekIndex];
+        const weekMeasurements = patientData.measurements.filter(m => m.hafta === `${week.weekNumber}. Hafta`);
+        const countEl = document.getElementById(`measurementCount_${currentMeasurementWeekIndex}`);
+        if (countEl) {
+            countEl.textContent = weekMeasurements.length > 0 ? `${weekMeasurements.length} kayıt` : 'Kayıt yok';
+        }
+        
+        showToast('✅ Ölçümler kaydedildi', 'success');
+    } catch (error) {
+        console.error('Ölçüm kaydetme hatası:', error);
+        showToast('❌ Ölçümler kaydedilemedi', 'error');
+    }
+}
+
+// Ölçüm grafiğini göster
+function showMeasurementChart() {
+    if (!patientData.measurements || patientData.measurements.length < 2) {
+        showToast('❌ Grafik oluşturmak için en az 2 ölçüm gerekli', 'error');
+        return;
+    }
+    
+    // Grafik modalını göster
+    document.getElementById('measurementChartModal').classList.add('active');
+    document.getElementById('measurementChartModal').style.display = 'flex';
+    
+    // Grafik çiz (Chart.js ile - basit versiyon)
+    drawMeasurementChart();
+}
+
+// Grafik modalını kapat
+function closeMeasurementChart() {
+    document.getElementById('measurementChartModal').classList.remove('active');
+    document.getElementById('measurementChartModal').style.display = 'none';
+}
+
+// Grafik çiz (Chart.js olmadan basit canvas kullanımı)
+function drawMeasurementChart() {
+    const canvas = document.getElementById('measurementChart');
+    const ctx = canvas.getContext('2d');
+    
+    // Canvas boyutlarını ayarla
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 400;
+    
+    // Sıralı ölçümler
+    const sortedMeasurements = [...patientData.measurements].sort((a, b) => 
+        new Date(a.tarih) - new Date(b.tarih)
+    );
+    
+    // Temizle
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Basit kilo grafiği çiz
+    const weights = sortedMeasurements.map(m => parseFloat(m.kilo) || 0).filter(w => w > 0);
+    
+    if (weights.length === 0) {
+        ctx.fillStyle = '#999';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Kilo verisi bulunamadı', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+    
+    const maxWeight = Math.max(...weights);
+    const minWeight = Math.min(...weights);
+    const range = maxWeight - minWeight || 1;
+    
+    const padding = 40;
+    const graphWidth = canvas.width - (padding * 2);
+    const graphHeight = canvas.height - (padding * 2);
+    
+    // Çizgi çiz
+    ctx.strokeStyle = '#f5576c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    weights.forEach((weight, index) => {
+        const x = padding + (index / (weights.length - 1)) * graphWidth;
+        const y = padding + graphHeight - ((weight - minWeight) / range) * graphHeight;
+        
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    
+    ctx.stroke();
+    
+    // Noktalar çiz
+    weights.forEach((weight, index) => {
+        const x = padding + (index / (weights.length - 1)) * graphWidth;
+        const y = padding + graphHeight - ((weight - minWeight) / range) * graphHeight;
+        
+        ctx.fillStyle = '#f093fb';
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Değer etiketleri
+        ctx.fillStyle = '#333';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(weight.toFixed(1) + 'kg', x, y - 10);
+    });
+    
+    // Başlık
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Kilo Değişimi', canvas.width / 2, 20);
+}
+
 </script>
 
     <!-- 📊 Veritabanı Kontrol Modalı -->
@@ -15791,6 +16392,64 @@ function filterDatabaseCheck() {
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Vücut Ölçümleri Modalı -->
+    <div id="measurementsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📏</div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 18px;">Vücut Ölçümleri</h3>
+                        <p id="measurementModalWeek" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeMeasurementsModal()">&times;</button>
+            </div>
+            
+            <div style="padding: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button onclick="addMeasurementRow()" style="padding: 10px 16px; background: #00b894; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">➕ Yeni Satır</button>
+                    <button onclick="saveMeasurements()" style="padding: 10px 16px; background: #6c5ce7; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">💾 Kaydet</button>
+                    <button onclick="showMeasurementChart()" style="padding: 10px 16px; background: #fd79a8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">📊 Grafik</button>
+                </div>
+                
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #dfe6e9;">
+                    <table id="measurementsTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f093fb; color: white;">
+                                <th style="padding: 8px; min-width: 120px;">Tarih / Hafta</th>
+                                <th style="padding: 8px;">Kilo<br>(kg)</th>
+                                <th style="padding: 8px;">Bel<br>(cm)</th>
+                                <th style="padding: 8px;">Kalça<br>(cm)</th>
+                                <th style="padding: 8px;">Sağ Uyluk<br>(cm)</th>
+                                <th style="padding: 8px;">Sol Uyluk<br>(cm)</th>
+                                <th style="padding: 8px;">Sağ Baldır<br>(cm)</th>
+                                <th style="padding: 8px;">Sol Baldır<br>(cm)</th>
+                                <th style="padding: 8px;">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="measurementsBody"></tbody>
+                        <tfoot id="measurementsFooter"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ölçüm Grafiği Modalı -->
+    <div id="measurementChartModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
+                <h3 style="margin: 0; font-size: 18px;">📊 Vücut Ölçümleri Grafiği</h3>
+                <button class="modal-close" onclick="closeMeasurementChart()">&times;</button>
+            </div>
+            
+            <div style="padding: 20px;">
+                <canvas id="measurementChart" width="400" height="200"></canvas>
+            </div>
         </div>
     </div>
 
