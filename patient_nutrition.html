@@ -6794,8 +6794,29 @@
                 const cachedDataKey = `patient_data_${currentPatient.id}`;
                 patientData.weeks = weeks;
                 patientData.updatedAt = new Date().toISOString();
-                localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
-                console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
+                
+                // QuotaExceededError önlemek için try-catch
+                try {
+                    localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    console.log('💾 Haftalık planlar localStorage\'a kaydedildi');
+                } catch (quotaError) {
+                    console.warn('⚠️ localStorage QuotaExceeded - eski cache temizleniyor...');
+                    // Eski hasta cache'lerini temizle
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('patient_data_') && key !== cachedDataKey) {
+                            localStorage.removeItem(key);
+                            console.log('🗑️ Eski cache silindi:', key);
+                        }
+                    }
+                    // Tekrar dene
+                    try {
+                        localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                        console.log('✅ localStorage temizlendi ve tekrar kaydedildi');
+                    } catch (e2) {
+                        console.warn('⚠️ localStorage hala dolu - sadece GitHub\'a kaydediliyor');
+                    }
+                }
                 
                 // GitHub'a kaydet (API üzerinden)
                 const cleanId = String(currentPatient.id).replace(/^patient_/i, '');
@@ -8279,45 +8300,55 @@
             
             console.log('📊 Kalori Hesaplama:', { weight, targetWeight, height, activity, dietType, goalPct });
             
-            // Admin settings'teki formülü kullan
-            const activityMultiplier = appSettings?.dietFormulas?.activityMultipliers?.[activity] || 1.0;
-            const dietFormula = appSettings?.dietFormulas?.[dietType] || appSettings?.dietFormulas?.ketojenik;
+            // Admin settings'i localStorage'dan çek veya GitHub'dan yükle
+            let adminSettings = null;
+            try {
+                const settingsStr = localStorage.getItem('app_settings');
+                if (settingsStr) {
+                    adminSettings = JSON.parse(settingsStr);
+                }
+            } catch (e) {
+                console.warn('⚠️ Admin settings yüklenemedi, varsayılan formül kullanılacak');
+            }
+            
+            // Diyet formülünü admin_settings'ten al, yoksa varsayılan
+            const dietFormulas = adminSettings?.dietFormulas || {
+                ketojenik: { carb: 0.3, protein: 0.8, fat: 1.2 },
+                lowcarb: { carb: 0.6, protein: 0.8, fat: 1.0 },
+                akdeniz: { carb: 0.6, protein: 0.8, fat: 1.0 } // lowcarb ile aynı
+            };
+            
+            // Aktivite çarpanı
+            const activityMultipliers = adminSettings?.dietFormulas?.activityMultipliers || {
+                1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725, 5: 1.9
+            };
+            
+            const activityMultiplier = activityMultipliers[activity] || 1.0;
+            
+            // Diyet tipine göre formül seç (eliminasyonlu-ketojenik → ketojenik gibi)
+            const normalizedDietType = dietType.replace('eliminasyonlu_', '').replace('eliminasyonlu-', '');
+            const dietFormula = dietFormulas[normalizedDietType] || dietFormulas.ketojenik;
             
             // Hedef yüzdesi ile kalori ayarlaması (goalPct: -30 ile +20 arası)
             const goalMultiplier = 1 + (goalPct / 100);
             
             console.log('⚙️ Formül:', { activityMultiplier, dietFormula, goalMultiplier });
             
-            if (dietFormula) {
-                // Aktivite çarpanı + hedef yüzdesi ile makro hesaplama
-                const protein = Math.round(weight * dietFormula.protein * activityMultiplier * goalMultiplier);
-                const carb = Math.round(weight * dietFormula.carb * activityMultiplier * goalMultiplier);
-                const fat = Math.round(weight * dietFormula.fat * activityMultiplier * goalMultiplier);
-                
-                // Kalori hesaplama: (P*4) + (K*4) + (Y*9)
-                const targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
-                
-                console.log('🎯 Hedef:', { protein, carb, fat, targetCalories });
+            // Aktivite çarpanı + hedef yüzdesi ile makro hesaplama
+            const protein = Math.round(weight * dietFormula.protein * activityMultiplier * goalMultiplier);
+            const carb = Math.round(weight * dietFormula.carb * activityMultiplier * goalMultiplier);
+            const fat = Math.round(weight * dietFormula.fat * activityMultiplier * goalMultiplier);
+            
+            // Kalori hesaplama: (P*4) + (K*4) + (Y*9)
+            const targetCalories = Math.round((protein * 4) + (carb * 4) + (fat * 9));
+            
+            console.log('🎯 Hedef:', { protein, carb, fat, targetCalories });
                 
                 // Kalori ve makroları göster
                 document.getElementById('autoPlanTargetCalories').textContent = targetCalories + ' kcal';
                 document.getElementById('autoPlanProtein').textContent = protein + 'g';
                 document.getElementById('autoPlanCarb').textContent = carb + 'g';
                 document.getElementById('autoPlanFat').textContent = fat + 'g';
-            } else {
-                // Fallback basit hesaplama
-                const targetCalories = Math.round(weight * 22 * activityMultiplier * goalMultiplier);
-                document.getElementById('autoPlanTargetCalories').textContent = targetCalories + ' kcal';
-                
-                // Makroları tahmine göre göster (ketojenik benzeri)
-                const protein = Math.round(weight * 1.5 * goalMultiplier);
-                const carb = Math.round(weight * 0.5 * goalMultiplier);
-                const fat = Math.round(weight * 1.8 * goalMultiplier);
-                
-                document.getElementById('autoPlanProtein').textContent = protein + 'g';
-                document.getElementById('autoPlanCarb').textContent = carb + 'g';
-                document.getElementById('autoPlanFat').textContent = fat + 'g';
-            }
             
             // Kilo Projeksiyonu Hesaplama ve Gösterme
             const projectionContainer = document.getElementById('weightProjectionContainer');
