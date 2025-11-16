@@ -8593,29 +8593,29 @@
                 if (lower.includes('eliminasyonlu') && lower.includes('keto')) return 'eliminasyonlu_ketojenik';
                 if (lower.includes('keto')) return 'ketojenik';
                 
-                // Düşük karb varyantları  
-                if (lower.includes('dusuk') || lower.includes('düşük') || lower === 'lowcarb') return 'dusuk_karb';
+                // Düşük karb varyantları (dusuk_carb, dusuk_karb, lowcarb hepsi aynı)
+                if (lower.includes('dusuk') || lower.includes('düşük') || lower === 'lowcarb' || lower.includes('carb') || lower.includes('karb')) return 'dusuk_karb';
                 
                 // Akdeniz
                 if (lower.includes('akdeniz') || lower.includes('mediterranean')) return 'akdeniz';
                 
-                return dt.toLowerCase().replace(/[-_]/g, '_'); // Fallback: alt çizgiye çevir
+                return dt.toLowerCase().replace(/[-]/g, '_'); // Fallback: tire -> alt çizgi
             };
             const normalizedDietType = normalizeDietType(dietType);
             
             console.log(`🔍 Seçili diyet türü: "${dietType}" → normalize: "${normalizedDietType}"`);
             
             // Şablonları filtrele
-            // Diyet türü uyumluluk matrisi (ESNEK):
-            // - eliminasyonlu_ketojenik: ketojenik şablonları da kullanabilir (en katı versiyon)
-            // - ketojenik: ketojenik ve eliminasyonlu_ketojenik şablonları kullanabilir
-            // - dusuk_karb: ketojenik, eliminasyonlu_ketojenik ve dusuk_karb şablonları kullanabilir
-            // - akdeniz: sadece akdeniz
+            // Diyet türü uyumluluk matrisi:
+            // - eliminasyonlu_ketojenik: SADECE eliminasyonlu ketojenik şablonlar
+            // - ketojenik: SADECE ketojenik şablonlar
+            // - dusuk_karb: SADECE düşük karbonhidratlı şablonlar
+            // - akdeniz: SADECE akdeniz şablonlar
             const compatibilityMap = {
-                'eliminasyonlu_ketojenik': ['eliminasyonlu_ketojenik', 'ketojenik'], // Ketojenik şablonlar da uyumlu
-                'ketojenik': ['ketojenik', 'eliminasyonlu_ketojenik'], // Çapraz uyumlu
-                'dusuk_karb': ['dusuk_carb', 'ketojenik', 'eliminasyonlu_ketojenik'], // En esnek
-                'akdeniz': ['akdeniz']
+                'eliminasyonlu_ketojenik': ['eliminasyonlu_ketojenik'],
+                'ketojenik': ['ketojenik'],
+                'dusuk_karb': ['dusuk_karb', 'dusuk_carb', 'lowcarb'], // Çeşitli yazım varyantları
+                'akdeniz': ['akdeniz', 'mediterranean']
             };
             const allowedDietTypes = compatibilityMap[normalizedDietType] || [normalizedDietType];
             
@@ -8627,12 +8627,17 @@
                     return false;
                 }
                 
-                // Diyet tipi kontrolü - Akıllı normalizasyon ile eşleştirme
+                // Diyet tipi kontrolü - SADECE seçili diyet tipine uygun şablonlar
                 if (template.dietType) {
                     const normalizedTemplateDiet = normalizeDietType(template.dietType);
                     if (!allowedDietTypes.includes(normalizedTemplateDiet)) {
+                        console.log(`❌ Şablon atlandı: "${template.name || template.id}" (Şablon diyet: ${template.dietType} → ${normalizedTemplateDiet}, İstenen: ${allowedDietTypes.join(', ')})`);
                         return false;
                     }
+                } else {
+                    // Diyet tipi belirtilmemiş şablonları atla
+                    console.log(`⚠️ Şablon atlandı: "${template.name || template.id}" (Diyet tipi yok)`);
+                    return false;
                 }
                 
                 // İstenmeyen yemekler - sadece varsa kontrol et
@@ -8664,6 +8669,9 @@
                         if (!allowedDietTypes.includes(normalizedTemplateDiet)) {
                             return false;
                         }
+                    } else {
+                        // Diyet tipi belirtilmemiş şablonları atla
+                        return false;
                     }
                     
                     if (dislikedFoods.length > 0 && template.ogunler) {
@@ -8681,12 +8689,14 @@
                     return true;
                 });
                 
-                console.log('✅ Tüm uygun şablonlar:', availableTemplates.length);
+                console.log(`✅ Tüm uygun şablonlar (${normalizedDietType}): ${availableTemplates.length}`);
                 
                 if (availableTemplates.length === 0) {
-                    showToast('⚠️ Uygun menü bulunamadı. Lütfen filtreleri genişletin (diyet türü veya istenmeyen yemekler).', 'error');
+                    showToast(`⚠️ "${dietType}" diyet tipi için uygun menü bulunamadı. Lütfen başka bir diyet tipi seçin veya şablon arşivinde "${dietType}" şablonları ekleyin.`, 'error');
                     return;
                 }
+            } else {
+                console.log(`✅ Kullanılabilir şablon sayısı (${normalizedDietType}, son ${appSettings?.templateReuseWeeks || 4} hafta hariç): ${availableTemplates.length}`);
             }
             
             // ✨ GELİŞTİRİLMİŞ KADEMELI MUTLAK DEĞER ARTIŞLI SIRALAMA ✨
