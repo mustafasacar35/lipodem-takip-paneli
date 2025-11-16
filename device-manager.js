@@ -160,15 +160,38 @@ const DeviceManager = {
      */
     async checkDeviceLimit(patientId, currentDeviceInfo) {
         try {
-            const detailsKey = `patientDetails_${patientId}`;
-            const patientDetailsStr = localStorage.getItem(detailsKey);
+            // ⚠️ CRITICAL: GitHub'dan güncel veriyi çek (reset sonrası localStorage eski olabilir)
+            let patientDetails = null;
             
-            if (!patientDetailsStr) {
-                console.warn('⚠️ Hasta detayları bulunamadı');
-                return { allowed: true, reason: 'Hasta detayları yok, varsayılan izin' };
+            try {
+                const response = await fetch(
+                    `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/hastalar/${patientId}.json`
+                );
+                
+                if (response.ok) {
+                    patientDetails = await response.json();
+                    console.log('✅ Hasta verileri GitHub\'dan yüklendi (fresh data)');
+                    
+                    // localStorage'ı güncelle
+                    const detailsKey = `patientDetails_${patientId}`;
+                    localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
+                }
+            } catch (githubError) {
+                console.warn('⚠️ GitHub\'dan veri çekilemedi, localStorage kullanılacak:', githubError);
             }
-
-            const patientDetails = JSON.parse(patientDetailsStr);
+            
+            // GitHub başarısız olduysa localStorage'dan oku
+            if (!patientDetails) {
+                const detailsKey = `patientDetails_${patientId}`;
+                const patientDetailsStr = localStorage.getItem(detailsKey);
+                
+                if (!patientDetailsStr) {
+                    console.warn('⚠️ Hasta detayları bulunamadı');
+                    return { allowed: true, reason: 'Hasta detayları yok, varsayılan izin' };
+                }
+                
+                patientDetails = JSON.parse(patientDetailsStr);
+            }
             
             // maxDevices yoksa default 1
             const maxDevices = patientDetails.maxDevices || 1;
