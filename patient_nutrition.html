@@ -6180,7 +6180,35 @@
                         patientData.username = session.username;
                     }
                     
-                    localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    // 🧹 localStorage quota yönetimi
+                    try {
+                        localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    } catch (quotaError) {
+                        if (quotaError.name === 'QuotaExceededError') {
+                            console.warn('⚠️ localStorage dolu, eski hasta verileri temizleniyor...');
+                            // Eski hasta verilerini temizle (sadece patient_data_* anahtarları)
+                            const keysToRemove = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && key.startsWith('patient_data_') && key !== cachedDataKey) {
+                                    keysToRemove.push(key);
+                                }
+                            }
+                            keysToRemove.forEach(key => localStorage.removeItem(key));
+                            console.log(`🗑️ ${keysToRemove.length} eski hasta verisi temizlendi`);
+                            
+                            // Tekrar dene
+                            try {
+                                localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                                console.log('✅ Temizlik sonrası hasta verisi kaydedildi');
+                            } catch (retryError) {
+                                console.error('❌ Temizlik sonrası kayıt başarısız:', retryError);
+                            }
+                        } else {
+                            throw quotaError;
+                        }
+                    }
+                    
                     console.log('✅ Hasta bilgileri GitHub\'dan yüklendi:', patientData);
                     
                     // 🔐 isAdmin alanını currentPatient'a ekle (window'a da senkronize et)
@@ -8318,9 +8346,13 @@
                 akdeniz: { carb: 0.6, protein: 0.8, fat: 1.0 } // lowcarb ile aynı
             };
             
-            // Aktivite çarpanı
+            // Aktivite çarpanı (admin_settings'ten al, yoksa varsayılan)
             const activityMultipliers = adminSettings?.dietFormulas?.activityMultipliers || {
-                1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725, 5: 1.9
+                1: 0.8,  // Hareketsiz
+                2: 0.9,  // Az Aktif
+                3: 1.0,  // Orta Aktif
+                4: 1.1,  // Çok Aktif
+                5: 1.2   // Süper Aktif
             };
             
             const activityMultiplier = activityMultipliers[activity] || 1.0;

@@ -14,16 +14,16 @@ const IPLogger = {
             const ipData = await ipResponse.json();
             const ip = ipData.ip;
 
-            // ip-api.com - Ücretsiz coğrafi konum servisi (dakikada 45 istek limiti)
-            const geoResponse = await fetch(`http://ip-api.com/json/${ip}`);
+            // ipapi.co - HTTPS destekli ücretsiz coğrafi konum servisi (günde 1000 istek limiti)
+            const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
             const geoData = await geoResponse.json();
 
             return {
                 ip: ip,
-                country: geoData.country || 'Bilinmiyor',
+                country: geoData.country_name || 'Bilinmiyor',
                 city: geoData.city || 'Bilinmiyor',
-                region: geoData.regionName || 'Bilinmiyor',
-                isp: geoData.isp || 'Bilinmiyor',
+                region: geoData.region || 'Bilinmiyor',
+                isp: geoData.org || 'Bilinmiyor',
                 timezone: geoData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
                 timestamp: new Date().toISOString()
             };
