@@ -154,15 +154,28 @@
                 if (patientId) {
                     console.log('👤 Hasta ID:', patientId);
                     
-                    // CRITICAL: External User ID set et (bildirim almak için)
-                    await OneSignal.login(patientId);
-                    console.log('✅ OneSignal login (External ID set):', patientId);
-                    
-                    // User tag ekle (admin değil, hasta)
-                    await OneSignal.User.addTag('user_type', 'patient');
-                    await OneSignal.User.addTag('patient_id', patientId);
-                    await OneSignal.User.addTag('patient_name', patientName);
-                    console.log('🏷️ Hasta tag eklendi:', patientId, patientName);
+                    try {
+                        // Önce mevcut oturumu kapat (duplicate user önlemek için)
+                        try {
+                            await OneSignal.logout();
+                            console.log('🔄 OneSignal önceki oturum kapatıldı');
+                        } catch (logoutErr) {
+                            console.log('ℹ️ OneSignal logout atlandı (zaten logout)');
+                        }
+                        
+                        // CRITICAL: External User ID set et (bildirim almak için)
+                        await OneSignal.login(patientId);
+                        console.log('✅ OneSignal login (External ID set):', patientId);
+                        
+                        // User tag ekle (admin değil, hasta)
+                        await OneSignal.User.addTag('user_type', 'patient');
+                        await OneSignal.User.addTag('patient_id', patientId);
+                        await OneSignal.User.addTag('patient_name', patientName);
+                        console.log('🏷️ Hasta tag eklendi:', patientId, patientName);
+                    } catch (loginError) {
+                        console.error('❌ OneSignal login hatası:', loginError);
+                        console.error('Hata detayı:', loginError.message || loginError);
+                    }
                 }
                 
                 // Subscription ID al (OneSignal v16 - Player ID yerine)
@@ -181,6 +194,18 @@
                 
             } catch (error) {
                 console.error('❌ OneSignal init hatası (HASTA):', error);
+            }
+        });
+        
+        // Global error handler - OneSignal SessionManager hatalarını suppress et
+        window.addEventListener('unhandledrejection', function(event) {
+            // SessionManager hatalarını sessizce yakala
+            if (event.reason && event.reason.stack && 
+                (event.reason.stack.includes('SessionManager') || 
+                 event.reason.stack.includes('handleOnFocus') ||
+                 event.reason.stack.includes('handleOnBlur'))) {
+                console.log('ℹ️ OneSignal SessionManager hatası suppress edildi (zararsız)');
+                event.preventDefault();
             }
         });
         

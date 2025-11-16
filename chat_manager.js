@@ -659,6 +659,16 @@ async function initializePatientOneSignal() {
         
         // External User ID olarak patient ID'yi set et
         try {
+            // Önce mevcut oturumu kapat
+            try {
+                await OS.logout();
+                console.log('🔄 OneSignal önceki oturum kapatıldı');
+            } catch (logoutError) {
+                // Logout hatası önemli değil, devam et
+                console.log('ℹ️ OneSignal logout atlandı (zaten logout)');
+            }
+            
+            // Yeni login
             await OS.login(currentPatientId);
             console.log('✅ OneSignal login başarılı:', currentPatientId);
             
@@ -668,6 +678,10 @@ async function initializePatientOneSignal() {
             console.log('✅ Patient tags eklendi');
         } catch (e) {
             console.error('❌ OneSignal login hatası:', e);
+            // Hata detaylarını logla
+            if (e && e.message) {
+                console.error('Hata detayı:', e.message);
+            }
             // Üst pencereden login dene (özellikle iOS iframe)
             try {
                 if (window.top && window.top !== window.self) {
