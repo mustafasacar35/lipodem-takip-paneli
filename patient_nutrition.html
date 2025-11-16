@@ -155,12 +155,19 @@
                     console.log('👤 Hasta ID:', patientId);
                     
                     try {
-                        // Önce mevcut oturumu kapat (duplicate user önlemek için)
-                        try {
+                        // Önce mevcut user ID'yi kontrol et
+                        const currentExternalId = await OneSignal.User.getExternalId();
+                        
+                        // Eğer farklı bir user ID varsa logout yap
+                        if (currentExternalId && currentExternalId !== patientId) {
+                            console.log('🔄 Farklı kullanıcı tespit edildi, logout yapılıyor...', currentExternalId, '->', patientId);
                             await OneSignal.logout();
-                            console.log('🔄 OneSignal önceki oturum kapatıldı');
-                        } catch (logoutErr) {
-                            console.log('ℹ️ OneSignal logout atlandı (zaten logout)');
+                            await new Promise(resolve => setTimeout(resolve, 500)); // Logout'un tamamlanması için bekle
+                            console.log('✅ Logout tamamlandı');
+                        } else if (currentExternalId === patientId) {
+                            console.log('ℹ️ Zaten aynı kullanıcı ile login olunmuş:', patientId);
+                            // Aynı user zaten login - tekrar login yapma
+                            return;
                         }
                         
                         // CRITICAL: External User ID set et (bildirim almak için)
@@ -6815,6 +6822,51 @@
                     pendingChanges.push(currentPatient.id);
                     localStorage.setItem('pending_patient_changes', JSON.stringify(pendingChanges));
                 }
+            }
+        }
+
+        // Hasta datasını GitHub'a kaydet (measurements, weeks, vb.)
+        async function savePatientData() {
+            try {
+                // LocalStorage'a kaydet
+                const cachedDataKey = `patient_data_${currentPatient.id}`;
+                patientData.weeks = weeks;
+                patientData.updatedAt = new Date().toISOString();
+                
+                // QuotaExceededError önlemek için eski cache'i temizle
+                try {
+                    localStorage.setItem(cachedDataKey, JSON.stringify(patientData));
+                    console.log('💾 Hasta verileri localStorage\'a kaydedildi');
+                } catch (quotaError) {
+                    console.warn('⚠️ localStorage QuotaExceeded - sadece GitHub\'a kaydediliyor');
+                }
+                
+                // GitHub'a kaydet (API üzerinden)
+                const cleanId = String(currentPatient.id).replace(/^patient_/i, '');
+                const apiUrl = 'https://lipodem-takip-paneli.vercel.app/api/update-patient';
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        patientId: `patient_${cleanId}`,
+                        ...patientData // Tüm hasta datasını gönder
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('✅ Hasta verileri GitHub\'a kaydedildi');
+                    return true;
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ GitHub\'a kaydetme hatası:', errorData);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ savePatientData hatası:', error);
+                return false;
             }
         }
 
@@ -16261,6 +16313,9 @@ function deleteMeasurement(index) {
 // Ölçümleri kaydet
 async function saveMeasurements() {
     try {
+        // Önce tabloyu yenile (fark satırını göster)
+        loadMeasurementsTable();
+        
         await savePatientData();
         
         // Hafta tabındaki sayıyı güncelle

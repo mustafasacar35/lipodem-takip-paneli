@@ -659,13 +659,22 @@ async function initializePatientOneSignal() {
         
         // External User ID olarak patient ID'yi set et
         try {
-            // Önce mevcut oturumu kapat
-            try {
+            // Önce mevcut user ID'yi kontrol et
+            const currentExternalId = await OS.User.getExternalId();
+            
+            // Eğer farklı bir user ID varsa logout yap
+            if (currentExternalId && currentExternalId !== currentPatientId) {
+                console.log('🔄 Farklı kullanıcı tespit edildi, logout yapılıyor...', currentExternalId, '->', currentPatientId);
                 await OS.logout();
-                console.log('🔄 OneSignal önceki oturum kapatıldı');
-            } catch (logoutError) {
-                // Logout hatası önemli değil, devam et
-                console.log('ℹ️ OneSignal logout atlandı (zaten logout)');
+                await new Promise(resolve => setTimeout(resolve, 500)); // Logout'un tamamlanması için bekle
+                console.log('✅ Logout tamamlandı');
+            } else if (currentExternalId === currentPatientId) {
+                console.log('ℹ️ Zaten aynı kullanıcı ile login olunmuş:', currentPatientId);
+                // Aynı user zaten login - tekrar login yapma, sadece tag güncelle
+                await OS.User.addTag('user_type', 'patient');
+                await OS.User.addTag('patient_id', currentPatientId);
+                console.log('✅ Patient tags güncellendi (tekrar login yapılmadı)');
+                return;
             }
             
             // Yeni login
