@@ -8407,12 +8407,10 @@
                 
                 if (plan.valid && plan.weeks > 0) {
                     const weeksText = plan.weeks === 1 ? '1 hafta' : `${plan.weeks} hafta`;
-                    const avgWeeklyLoss = (plan.totalLoss / plan.weeks).toFixed(2);
                     
                     summaryEl.innerHTML = 
                         `<strong>Başlangıç:</strong> ${weight.toFixed(1)} kg → <strong>Hedef:</strong> ${targetWeight.toFixed(1)} kg<br>` +
-                        `<strong>Tahmini Süre:</strong> ${weeksText} · <strong>Toplam Kayıp:</strong> ${plan.totalLoss.toFixed(1)} kg<br>` +
-                        `<small style="color: #888;">Haftalık Ortalama: ~${avgWeeklyLoss} kg (≈${plan.meta.weeklyPercent.toFixed(2)}%)</small>`;
+                        `<strong>Tahmini Süre:</strong> ${weeksText} · <strong>Toplam Kayıp:</strong> ${plan.totalLoss.toFixed(1)} kg`;
                     
                     // İlk 10 haftayı detaylı göster
                     const maxDisplay = Math.min(10, plan.plan.length);
@@ -8420,11 +8418,9 @@
                     
                     for (let i = 0; i < maxDisplay; i++) {
                         const item = plan.plan[i];
-                        const lossText = item.weeklyLoss > 0 ? `−${item.weeklyLoss.toFixed(2)} kg` : '0 kg';
                         listHTML += `
                             <div style="padding: 4px 6px; background: ${i % 2 === 0 ? '#f8f9fa' : 'white'}; border-radius: 3px;">
-                                <span style="font-weight: 600;">${item.week}. hafta:</span> ${item.weight.toFixed(2)} kg 
-                                <span style="color: #20c997; font-size: 10px;">(${lossText})</span>
+                                <span style="font-weight: 600;">${item.week}. hafta:</span> ${item.weight.toFixed(1)} kg
                             </div>
                         `;
                     }
@@ -8433,7 +8429,7 @@
                     
                     if (plan.plan.length > maxDisplay) {
                         const last = plan.plan[plan.plan.length - 1];
-                        listHTML += `<div style="margin-top: 6px; font-size: 10px; color: #888; text-align: center;">... ${plan.plan.length}. haftada ${last.weight.toFixed(2)} kg</div>`;
+                        listHTML += `<div style="margin-top: 6px; font-size: 10px; color: #888; text-align: center;">... ${plan.plan.length}. haftada ${last.weight.toFixed(1)} kg</div>`;
                     }
                     
                     listEl.innerHTML = listHTML;
@@ -8448,6 +8444,9 @@
 
         // Otomatik haftalık plan oluştur
         async function generateAutoWeekPlan() {
+            // 🗓️ GÜN ADLARı (Fonksiyon genelinde kullanılacak)
+            const gunAdlari = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+            
             const weight = parseFloat(document.getElementById('autoPlanWeight').value);
             const targetWeight = parseFloat(document.getElementById('autoPlanTargetWeight').value) || 0;
             const height = parseFloat(document.getElementById('autoPlanHeight').value);
@@ -8758,55 +8757,91 @@
                 console.log(`  ${i+1}. ${t.name}: ${sign}${diff} kcal (hedef: ${targetCalories})`);
             });
             
+            // 📅 YENİ TAKVIM MANTIGI: Pazartesi-Pazar Sistemi
+            // (gunAdlari zaten fonksiyon başında tanımlı)
+            
             // Başlangıç tarihini belirle
             let startDate = new Date();
             
             if (existingDays.length > 0) {
-                // Mevcut günler var - son günden sonraki günü başlat
-                const lastDay = existingDays[existingDays.length - 1];
-                startDate = new Date(lastDay.date);
-                startDate.setDate(startDate.getDate() + 1);
-            } else if (currentWeek.startDate) {
-                // Haftanın başlangıç tarihinden başla
-                startDate = new Date(currentWeek.startDate);
-            }
-            
-            console.log('📅 Başlangıç Tarihi:', startDate.toLocaleDateString('tr-TR'));
-            console.log('📅 Gün:', ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][startDate.getDay()]);
-            console.log('📊 Mevcut haftada gün sayısı:', existingDays.length);
-            
-            // Gün sayısı hesaplama
-            const currentDayOfWeek = startDate.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-            
-            let totalDays;
-            if (existingDays.length === 0) {
-                // Hafta boş - ilk hafta kuralı
-                if (currentDayOfWeek === 1) {
-                    // Pazartesi - tam hafta
-                    totalDays = 7;
-                    console.log('✅ Pazartesi başlangıcı - 7 gün eklenecek');
+                // Mevcut günler var - ÖNCE EKSİK GÜNLERİ DOLDUR
+                // Mevcut günlerin tarihlerini map'le
+                const existingDates = new Set(existingDays.map(d => d.date));
+                
+                // Pazartesi-Pazar haftasını belirle (ilk günün tarihinden)
+                const firstDayDate = new Date(existingDays[0].date);
+                const firstDayOfWeek = firstDayDate.getDay(); // 0=Pazar, 1=Pazartesi
+                
+                // Pazartesi'ye git (geriye doğru)
+                const weekStart = new Date(firstDayDate);
+                const daysToMonday = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Pazar'daysa 6 gün geriye
+                weekStart.setDate(weekStart.getDate() - daysToMonday);
+                
+                console.log('📅 Hafta başlangıcı (Pazartesi):', weekStart.toLocaleDateString('tr-TR'));
+                
+                // Eksik günleri bul (Pazartesi-Pazar arası)
+                const missingDays = [];
+                for (let i = 0; i < 7; i++) {
+                    const checkDate = new Date(weekStart);
+                    checkDate.setDate(checkDate.getDate() + i);
+                    const dateStr = checkDate.toISOString().split('T')[0];
+                    
+                    if (!existingDates.has(dateStr)) {
+                        missingDays.push({
+                            date: dateStr,
+                            dayName: gunAdlari[checkDate.getDay()],
+                            dayIndex: i
+                        });
+                    }
+                }
+                
+                if (missingDays.length > 0) {
+                    console.log(`🔍 Eksik günler bulundu (${missingDays.length}):`, missingDays.map(d => d.dayName).join(', '));
+                    
+                    // İlk eksik günden başla
+                    startDate = new Date(missingDays[0].date);
+                    var totalDays = missingDays.length;
+                    var fillMissingDays = true; // Eksik günleri dolduruyoruz flag'i
                 } else {
-                    // Diğer günler - o haftanın kalanı + tam hafta
-                    const daysUntilMonday = currentDayOfWeek === 0 ? 1 : (8 - currentDayOfWeek);
-                    totalDays = daysUntilMonday + 7;
-                    console.log(`✅ ${['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][currentDayOfWeek]} başlangıcı - ${daysUntilMonday} + 7 = ${totalDays} gün eklenecek`);
+                    // Hafta tamam - yeni hafta başlat
+                    console.log('✅ Mevcut hafta tam (Pazartesi-Pazar), yeni hafta başlatılacak');
+                    
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekEnd.getDate() + 6); // Pazar
+                    
+                    startDate = new Date(weekEnd);
+                    startDate.setDate(startDate.getDate() + 1); // Pazartesi (yeni hafta)
+                    
+                    var totalDays = 7; // Tam yeni hafta
+                    var fillMissingDays = false;
                 }
             } else {
-                // Mevcut günler var - kullanıcı "eksik günleri tamamla" seçmiş
-                // Son günden Pazar'a kadar olan günleri ekle
-                const lastDayOfWeek = (startDate.getDay() + 6) % 7; // Cumartesi için 6
-                if (currentDayOfWeek === 0) {
-                    // Pazar'dayız, hafta tamamlandı
-                    totalDays = 0;
-                    console.log('✅ Hafta zaten tamamlanmış (Pazar)');
+                // Hafta boş - bugünden başla
+                const today = new Date();
+                const todayDayOfWeek = today.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+                
+                console.log('📅 Bugün:', today.toLocaleDateString('tr-TR'), '-', gunAdlari[todayDayOfWeek]);
+                
+                if (todayDayOfWeek === 1) {
+                    // Pazartesi - sadece 7 gün
+                    startDate = today;
+                    var totalDays = 7;
+                    console.log('✅ Pazartesi başlangıcı - 7 gün eklenecek (Pazartesi → Pazar)');
                 } else {
-                    // Pazar'a kadar kalan günler
-                    totalDays = 7 - currentDayOfWeek;
-                    console.log(`✅ Eksik günler tamamlanıyor - ${totalDays} gün eklenecek (${['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][currentDayOfWeek]} → Pazar)`);
+                    // Diğer günler - bir sonraki Pazar'a kadar + 7 gün
+                    startDate = today;
+                    
+                    // Pazar'a kadar kaç gün var?
+                    const daysUntilSunday = todayDayOfWeek === 0 ? 0 : 7 - todayDayOfWeek;
+                    var totalDays = daysUntilSunday + 7; // Bu haftanın kalanı + tam yeni hafta
+                    
+                    console.log(`✅ ${gunAdlari[todayDayOfWeek]} başlangıcı - ${daysUntilSunday} + 7 = ${totalDays} gün eklenecek (${gunAdlari[todayDayOfWeek]} → Pazar + Pazartesi → Pazar)`);
                 }
+                var fillMissingDays = false;
             }
             
             console.log('📊 Eklenecek Gün Sayısı:', totalDays);
+            console.log('📅 Başlangıç Tarihi:', startDate.toLocaleDateString('tr-TR'), '-', gunAdlari[startDate.getDay()]);
             
             if (totalDays === 0) {
                 showToast('✅ Hafta zaten tamamlanmış!', 'success');
@@ -8843,7 +8878,7 @@
             }
             
             // Günleri oluştur
-            const gunAdlari = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+            // (gunAdlari zaten fonksiyon başında tanımlı)
             const newDays = [];
             for (let i = 0; i < totalDays && i < availableTemplates.length; i++) {
                 const template = availableTemplates[i];
