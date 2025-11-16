@@ -7608,22 +7608,22 @@
                 </div>
                 
                 <!-- Vücut Ölçümleri Kartı -->
-                <div style="margin-top: 12px; padding: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; box-shadow: 0 2px 8px rgba(240, 147, 251, 0.3);">
+                <div style="margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #9b59b6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                            <div style="background: #e8daef; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                                 📏
                             </div>
                             <div>
-                                <h4 style="margin: 0; color: white; font-size: 13px; font-weight: 600;">Vücut Ölçümleri</h4>
-                                <p id="measurementCount_${activeWeekIndex}" style="margin: 2px 0 0 0; color: rgba(255,255,255,0.9); font-size: 11px;">
+                                <h4 style="margin: 0; color: #2c3e50; font-size: 13px; font-weight: 600;">Vücut Ölçümleri</h4>
+                                <p id="measurementCount_${activeWeekIndex}" style="margin: 2px 0 0 0; color: #7f8c8d; font-size: 11px;">
                                     ${(patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length > 0 
                                         ? (patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length + ' kayıt' 
                                         : 'Kayıt yok'}
                                 </p>
                             </div>
                         </div>
-                        <button onclick="openMeasurementsModal(${activeWeekIndex})" style="background: white; color: #f5576c; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <button onclick="openMeasurementsModal(${activeWeekIndex})" style="background: #9b59b6; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(155,89,182,0.2); transition: all 0.2s;">
                             <span style="font-size: 14px;">📊</span> Ölçümleri Görüntüle
                         </button>
                     </div>
@@ -8343,7 +8343,7 @@
             const dietFormulas = adminSettings?.dietFormulas || {
                 ketojenik: { carb: 0.3, protein: 0.8, fat: 1.2 },
                 lowcarb: { carb: 0.6, protein: 0.8, fat: 1.0 },
-                akdeniz: { carb: 0.6, protein: 0.8, fat: 1.0 } // lowcarb ile aynı
+                akdeniz: { carb: 0.6, protein: 0.8, fat: 1.0 }
             };
             
             // Aktivite çarpanı (admin_settings'ten al, yoksa varsayılan)
@@ -8357,9 +8357,19 @@
             
             const activityMultiplier = activityMultipliers[activity] || 1.0;
             
-            // Diyet tipine göre formül seç (eliminasyonlu-ketojenik → ketojenik gibi)
-            const normalizedDietType = dietType.replace('eliminasyonlu_', '').replace('eliminasyonlu-', '');
+            // Diyet tipine göre formül seç
+            // 1. eliminasyonlu_ veya eliminasyonlu- önekini kaldır
+            // 2. dusuk_karb → lowcarb, akdeniz → lowcarb normalize et
+            let normalizedDietType = dietType.replace('eliminasyonlu_', '').replace('eliminasyonlu-', '');
+            if (normalizedDietType === 'dusuk_karb') {
+                normalizedDietType = 'lowcarb';
+            } else if (normalizedDietType === 'akdeniz') {
+                normalizedDietType = 'lowcarb'; // Akdeniz diyeti lowcarb ile aynı formülü kullanır
+            }
+            
             const dietFormula = dietFormulas[normalizedDietType] || dietFormulas.ketojenik;
+            
+            console.log('🔍 Diyet seçimi:', { dietType, normalizedDietType, formula: dietFormula });
             
             // Hedef yüzdesi ile kalori ayarlaması (goalPct: -30 ile +20 arası)
             const goalMultiplier = 1 + (goalPct / 100);
@@ -16277,26 +16287,26 @@ function createMeasurementRow(measurement, index) {
     const week = weeks[currentMeasurementWeekIndex];
     const isCurrentWeek = measurement.hafta === `${week.weekNumber}. Hafta`;
     
-    tr.style.cssText = `border-bottom: 1px solid #dfe6e9; background: ${isCurrentWeek ? '#fff9e6' : 'white'};`;
+    tr.style.cssText = `border-bottom: 1px solid #e0e0e0; background: ${isCurrentWeek ? '#f4ecf7' : 'white'};`;
     
     let html = `
-        <td style="padding: 8px; border-right: 1px solid #dfe6e9;">
+        <td style="padding: 8px; border-right: 1px solid #e0e0e0;">
             <input type="date" value="${measurement.tarih}" 
                 onchange="updateMeasurement(${index}, 'tarih', this.value)" 
-                style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; font-size: 13px;">
+                style="width: 100%; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; font-size: 13px;">
             <input type="text" value="${measurement.hafta || ''}" 
                 placeholder="1. Hafta" 
                 onchange="updateMeasurement(${index}, 'hafta', this.value)" 
-                style="width: 100%; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; margin-top: 4px; font-size: 12px;">
+                style="width: 100%; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; margin-top: 4px; font-size: 12px;">
         </td>
     `;
     
     MEASUREMENT_FIELDS.forEach(field => {
         html += `
-            <td style="padding: 8px; text-align: center; border-right: 1px solid #dfe6e9;">
+            <td style="padding: 8px; text-align: center; border-right: 1px solid #e0e0e0;">
                 <input type="number" step="0.1" value="${measurement[field] || ''}" 
                     onchange="updateMeasurement(${index}, '${field}', this.value)" 
-                    style="width: 70px; border: 1px solid #dfe6e9; padding: 6px; border-radius: 3px; text-align: center; font-size: 13px;">
+                    style="width: 70px; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; text-align: center; font-size: 13px;">
             </td>
         `;
     });
@@ -16304,7 +16314,7 @@ function createMeasurementRow(measurement, index) {
     html += `
         <td style="padding: 8px; text-align: center;">
             <button onclick="deleteMeasurement(${index})" 
-                style="background: #ff6b6b; color: white; border: none; padding: 6px 10px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                style="background: #e74c3c; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; box-shadow: 0 2px 4px rgba(231,76,60,0.2);">
                 🗑️
             </button>
         </td>
@@ -16317,14 +16327,14 @@ function createMeasurementRow(measurement, index) {
 // Fark satırı oluştur
 function createDifferenceRow(measurements) {
     const tr = document.createElement('tr');
-    tr.style.cssText = 'background: #f8f9fa; font-weight: bold; border-top: 2px solid #f093fb;';
+    tr.style.cssText = 'background: #f8f9fa; font-weight: bold; border-top: 2px solid #9b59b6;';
     
     const first = measurements[0];
     const last = measurements[measurements.length - 1];
     const weekDiff = Math.round((new Date(last.tarih) - new Date(first.tarih)) / (7 * 24 * 60 * 60 * 1000));
     
     let html = `
-        <td style="padding: 8px; color: #f5576c; border-right: 1px solid #dfe6e9;">
+        <td style="padding: 8px; color: #9b59b6; border-right: 1px solid #dfe6e9;">
             <div>FARK</div>
             <div style="font-size: 11px; font-weight: normal;">${weekDiff} Hafta</div>
         </td>
@@ -16332,11 +16342,11 @@ function createDifferenceRow(measurements) {
     
     MEASUREMENT_FIELDS.forEach(field => {
         const diff = (last[field] || 0) - (first[field] || 0);
-        const color = diff < 0 ? '#00b894' : (diff > 0 ? '#ff6b6b' : '#999');
+        const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
         const prefix = diff > 0 ? '+' : '';
         
         html += `
-            <td style="padding: 8px; text-align: center; border-right: 1px solid #dfe6e9;">
+            <td style="padding: 8px; text-align: center; border-right: 1px solid #e0e0e0;">
                 <div style="color: ${color}; font-weight: 600;">
                     ${prefix}${diff.toFixed(1)}
                 </div>
@@ -16466,8 +16476,8 @@ function drawMeasurementChart() {
     const graphHeight = canvas.height - (padding * 2);
     
     // Çizgi çiz
-    ctx.strokeStyle = '#f5576c';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#9b59b6';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     
     weights.forEach((weight, index) => {
@@ -16488,23 +16498,42 @@ function drawMeasurementChart() {
         const x = padding + (index / (weights.length - 1)) * graphWidth;
         const y = padding + graphHeight - ((weight - minWeight) / range) * graphHeight;
         
-        ctx.fillStyle = '#f093fb';
+        ctx.fillStyle = '#8e44ad';
         ctx.beginPath();
-        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
         ctx.fill();
         
+        // Beyaz kenar ekle
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
         // Değer etiketleri
-        ctx.fillStyle = '#333';
-        ctx.font = '11px Arial';
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(weight.toFixed(1) + 'kg', x, y - 10);
+        ctx.fillText(weight.toFixed(1) + 'kg', x, y - 12);
     });
     
     // Başlık
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Kilo Değişimi', canvas.width / 2, 20);
+    ctx.fillText('Kilo Değişimi Grafiği', canvas.width / 2, 20);
+    
+    // Y ekseni çizgisi ve etiketleri
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, canvas.height - padding);
+    ctx.stroke();
+    
+    // X ekseni çizgisi
+    ctx.beginPath();
+    ctx.moveTo(padding, canvas.height - padding);
+    ctx.lineTo(canvas.width - padding, canvas.height - padding);
+    ctx.stroke();
 }
 
 </script>
@@ -16553,28 +16582,28 @@ function drawMeasurementChart() {
     <!-- Vücut Ölçümleri Modalı -->
     <div id="measurementsModal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
+            <div class="modal-header" style="background: #f8f9fa; color: #2c3e50; border-bottom: 3px solid #9b59b6;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📏</div>
+                    <div style="background: #e8daef; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📏</div>
                     <div>
-                        <h3 style="margin: 0; font-size: 18px;">Vücut Ölçümleri</h3>
-                        <p id="measurementModalWeek" style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;"></p>
+                        <h3 style="margin: 0; font-size: 18px; color: #2c3e50;">Vücut Ölçümleri</h3>
+                        <p id="measurementModalWeek" style="margin: 4px 0 0 0; font-size: 13px; color: #7f8c8d;"></p>
                     </div>
                 </div>
-                <button class="modal-close" onclick="closeMeasurementsModal()">&times;</button>
+                <button class="modal-close" onclick="closeMeasurementsModal()" style="color: #95a5a6;">&times;</button>
             </div>
             
             <div style="padding: 20px;">
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <button onclick="addMeasurementRow()" style="padding: 10px 16px; background: #00b894; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">➕ Yeni Satır</button>
-                    <button onclick="saveMeasurements()" style="padding: 10px 16px; background: #6c5ce7; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">💾 Kaydet</button>
-                    <button onclick="showMeasurementChart()" style="padding: 10px 16px; background: #fd79a8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">📊 Grafik</button>
+                    <button onclick="addMeasurementRow()" style="padding: 10px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(39,174,96,0.2);">➕ Yeni Satır</button>
+                    <button onclick="saveMeasurements()" style="padding: 10px 16px; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(52,152,219,0.2);">💾 Kaydet</button>
+                    <button onclick="showMeasurementChart()" style="padding: 10px 16px; background: #9b59b6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(155,89,182,0.2);">📊 Grafik</button>
                 </div>
                 
-                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #dfe6e9;">
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e0e0e0;">
                     <table id="measurementsTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
-                            <tr style="background: #f093fb; color: white;">
+                            <tr style="background: #9b59b6; color: white;">
                                 <th style="padding: 8px; min-width: 120px;">Tarih / Hafta</th>
                                 <th style="padding: 8px;">Kilo<br>(kg)</th>
                                 <th style="padding: 8px;">Bel<br>(cm)</th>
@@ -16597,9 +16626,9 @@ function drawMeasurementChart() {
     <!-- Ölçüm Grafiği Modalı -->
     <div id="measurementChartModal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
-                <h3 style="margin: 0; font-size: 18px;">📊 Vücut Ölçümleri Grafiği</h3>
-                <button class="modal-close" onclick="closeMeasurementChart()">&times;</button>
+            <div class="modal-header" style="background: #f8f9fa; color: #2c3e50; border-bottom: 3px solid #9b59b6;">
+                <h3 style="margin: 0; font-size: 18px; color: #2c3e50;">📊 Vücut Ölçümleri Grafiği</h3>
+                <button class="modal-close" onclick="closeMeasurementChart()" style="color: #95a5a6;">&times;</button>
             </div>
             
             <div style="padding: 20px;">

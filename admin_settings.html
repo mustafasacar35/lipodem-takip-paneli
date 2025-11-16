@@ -689,6 +689,25 @@
                     </div>
                 </div>
 
+                <!-- Akdeniz Diyeti -->
+                <div style="border: 2px solid #14b8a6; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: #0f766e;">Akdeniz Diyeti</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div class="settings-row">
+                            <label>Karbonhidrat Çarpanı</label>
+                            <input type="number" id="akdenizCarb" step="0.1" min="0" value="0.6">
+                        </div>
+                        <div class="settings-row">
+                            <label>Protein Çarpanı</label>
+                            <input type="number" id="akdenizProtein" step="0.1" min="0" value="0.8">
+                        </div>
+                        <div class="settings-row">
+                            <label>Yağ Çarpanı</label>
+                            <input type="number" id="akdenizFat" step="0.1" min="0" value="1.0">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Aktivite Çarpanları -->
                 <div style="border: 2px solid #f59e0b; border-radius: 12px; padding: 16px;">
                     <h3 style="margin: 0 0 12px 0; color: #92400e;">Aktivite Seviyesi Çarpanları</h3>
@@ -1242,6 +1261,11 @@
                     protein: 0.8,
                     fat: 1.0
                 },
+                akdeniz: {
+                    carb: 0.6,
+                    protein: 0.8,
+                    fat: 1.0
+                },
                 activityMultipliers: {
                     1: 0.8,
                     2: 0.9,
@@ -1276,6 +1300,9 @@
         const lowcarbCarb = document.getElementById('lowcarbCarb');
         const lowcarbProtein = document.getElementById('lowcarbProtein');
         const lowcarbFat = document.getElementById('lowcarbFat');
+        const akdenizCarb = document.getElementById('akdenizCarb');
+        const akdenizProtein = document.getElementById('akdenizProtein');
+        const akdenizFat = document.getElementById('akdenizFat');
         const activity1 = document.getElementById('activity1');
         const activity2 = document.getElementById('activity2');
         const activity3 = document.getElementById('activity3');
@@ -1873,6 +1900,9 @@
                 lowcarbCarb.value = settingsDraft.dietFormulas.lowcarb.carb;
                 lowcarbProtein.value = settingsDraft.dietFormulas.lowcarb.protein;
                 lowcarbFat.value = settingsDraft.dietFormulas.lowcarb.fat;
+                akdenizCarb.value = settingsDraft.dietFormulas.akdeniz?.carb ?? 0.6;
+                akdenizProtein.value = settingsDraft.dietFormulas.akdeniz?.protein ?? 0.8;
+                akdenizFat.value = settingsDraft.dietFormulas.akdeniz?.fat ?? 1.0;
                 activity1.value = settingsDraft.dietFormulas.activityMultipliers[1];
                 activity2.value = settingsDraft.dietFormulas.activityMultipliers[2];
                 activity3.value = settingsDraft.dietFormulas.activityMultipliers[3];
@@ -2059,6 +2089,9 @@
             settingsDraft.dietFormulas.lowcarb.carb = parseFloat(lowcarbCarb.value) || 0.6;
             settingsDraft.dietFormulas.lowcarb.protein = parseFloat(lowcarbProtein.value) || 0.8;
             settingsDraft.dietFormulas.lowcarb.fat = parseFloat(lowcarbFat.value) || 1.0;
+            settingsDraft.dietFormulas.akdeniz.carb = parseFloat(akdenizCarb.value) || 0.6;
+            settingsDraft.dietFormulas.akdeniz.protein = parseFloat(akdenizProtein.value) || 0.8;
+            settingsDraft.dietFormulas.akdeniz.fat = parseFloat(akdenizFat.value) || 1.0;
             settingsDraft.dietFormulas.activityMultipliers[1] = parseFloat(activity1.value) || 0.8;
             settingsDraft.dietFormulas.activityMultipliers[2] = parseFloat(activity2.value) || 0.9;
             settingsDraft.dietFormulas.activityMultipliers[3] = parseFloat(activity3.value) || 1.0;
