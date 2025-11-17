@@ -16302,6 +16302,7 @@ function openMeasurementsModal(weekIndex) {
     }, 100);
 }
 
+
 // Ölçüm modalını kapat
 function closeMeasurementsModal() {
     document.getElementById('measurementsModal').classList.remove('active');
@@ -16406,17 +16407,30 @@ function loadMeasurementsTable() {
         
         // FARK SÜTUNU (en sağda her satır için)
         if (sortedMeasurements.length >= 2) {
-            const first = sortedMeasurements[0];
-            const last = sortedMeasurements[sortedMeasurements.length - 1];
-            const diff = (last[field.key] || 0) - (first[field.key] || 0);
-            const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
-            const prefix = diff > 0 ? '+' : '';
+            // Bu ölçüm noktası için SADECE dolu değerleri al
+            const values = sortedMeasurements
+                .map(m => m[field.key])
+                .filter(v => v !== null && v !== undefined && v !== '' && !isNaN(parseFloat(v)))
+                .map(v => parseFloat(v));
+            
+            let diffHtml = '<span style="color: #bdc3c7;">-</span>';
+            
+            // En az 2 gerçek değer varsa FARK hesapla
+            if (values.length >= 2) {
+                const firstValue = values[0];
+                const lastValue = values[values.length - 1];
+                const diff = lastValue - firstValue;
+                const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
+                const prefix = diff > 0 ? '+' : '';
+                
+                diffHtml = `<div style="color: ${color}; font-weight: 700; font-size: 13px;">
+                    ${prefix}${diff.toFixed(1)}
+                </div>`;
+            }
             
             html += `
                 <td style="padding: 8px; text-align: center; border-left: 2px solid #27ae60; position: sticky; right: 0; background: #e8f5e9; z-index: 1; min-width: 90px;">
-                    <div style="color: ${color}; font-weight: 700; font-size: 13px;">
-                        ${prefix}${diff.toFixed(1)}
-                    </div>
+                    ${diffHtml}
                 </td>
             `;
         }
@@ -16469,6 +16483,14 @@ function addMeasurementRow() {
     
     patientData.measurements.push(newMeasurement);
     loadMeasurementsTable();
+    
+    // Yeni ölçüm eklendikten sonra otomatik sağa scroll
+    setTimeout(() => {
+        const container = document.getElementById('measurementsTableContainer');
+        if (container) {
+            container.scrollLeft = container.scrollWidth;
+        }
+    }, 100);
 }
 
 // Ölçümü güncelle
@@ -16672,7 +16694,7 @@ function drawMeasurementChart() {
             
             <div style="padding: 20px;">
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <button onclick="addMeasurementRow()" style="padding: 10px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(39,174,96,0.2);">➕ Yeni Satır</button>
+                    <button onclick="addMeasurementRow()" style="padding: 10px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(39,174,96,0.2);">➕ Yeni Ölçüm</button>
                     <button onclick="saveMeasurements()" style="padding: 10px 16px; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(52,152,219,0.2);">💾 Kaydet</button>
                     <button onclick="showMeasurementChart()" style="padding: 10px 16px; background: #9b59b6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(155,89,182,0.2);">📊 Grafik</button>
                 </div>
