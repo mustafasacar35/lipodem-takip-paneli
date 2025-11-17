@@ -185,10 +185,11 @@ const DeviceManager = {
                 const patientDetailsStr = localStorage.getItem(detailsKey);
                 
                 if (!patientDetailsStr) {
-                    console.warn('⚠️ Hasta detayları bulunamadı');
-                    return { allowed: true, reason: 'Hasta detayları yok, varsayılan izin' };
+                    console.error('❌ Hasta detayları bulunamadı (GitHub ve localStorage boş)');
+                    throw new Error('Hasta doğrulama başarısız - veri bulunamadı');
                 }
                 
+                console.warn('⚠️ localStorage\'dan yedek veri kullanılıyor');
                 patientDetails = JSON.parse(patientDetailsStr);
             }
             
@@ -245,7 +246,8 @@ const DeviceManager = {
 
         } catch (error) {
             console.error('❌ Cihaz limit kontrolü hatası:', error);
-            return { allowed: true, reason: 'Kontrol hatası, varsayılan izin' };
+            // ⚠️ GÜVENLİK: Hata durumunda GİRİŞ ENGELLENMELİ
+            throw error; // Auth.js catch bloğuna ilet
         }
     },
 
@@ -298,9 +300,10 @@ const DeviceManager = {
             };
 
             patientDetails.devices.push(deviceRecord);
-            localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
-
-            // 🆕 GitHub'a da yaz (API endpoint üzerinden)
+            
+            // ⚠️ ÖNCE GitHub'a yaz, başarılı olursa localStorage'a kaydet
+            let githubSuccess = false;
+            
             try {
                 const response = await fetch('/api/update-devices', {
                     method: 'POST',
@@ -317,15 +320,24 @@ const DeviceManager = {
                 if (response.ok) {
                     const result = await response.json();
                     console.log(`✅ Cihaz GitHub'a kaydedildi: ${deviceRecord.deviceInfo.name} (Toplam: ${result.deviceCount})`);
+                    githubSuccess = true;
                 } else {
-                    console.warn('⚠️ GitHub kaydı başarısız (localStorage\'da kaydedildi)');
+                    const errorText = await response.text();
+                    console.error(`❌ GitHub API hatası (${response.status}):`, errorText);
+                    throw new Error(`GitHub API failed: ${response.status}`);
                 }
             } catch (apiError) {
-                console.warn('⚠️ GitHub API hatası:', apiError.message);
-                // API hatası cihaz kaydını engellemez
+                console.error('❌ GitHub API bağlantı hatası:', apiError.message);
+                throw apiError; // Hatayı üst katmana ilet
             }
 
-            console.log(`✅ Yeni cihaz kaydedildi: ${deviceRecord.deviceInfo.name}`);
+            // ✅ GitHub başarılı, şimdi localStorage'a kaydet
+            if (githubSuccess) {
+                localStorage.setItem(detailsKey, JSON.stringify(patientDetails));
+                console.log(`✅ Cihaz localStorage'a kaydedildi: ${deviceRecord.deviceInfo.name}`);
+            }
+
+            console.log(`✅ Yeni cihaz başarıyla kaydedildi: ${deviceRecord.deviceInfo.name}`);
             return true;
 
         } catch (error) {

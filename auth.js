@@ -185,8 +185,12 @@ const PatientAuth = {
                     }
                 }
             } catch (deviceError) {
-                console.warn('⚠️ Cihaz kontrolü hatası (giriş devam edecek):', deviceError);
-                // Cihaz kontrol hatası girişi engellemez
+                console.error('❌ CİHAZ KONTROLÜ HATASI - GİRİŞ ENGELLENDİ:', deviceError);
+                return {
+                    success: false,
+                    error: 'Cihaz doğrulama hatası. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.',
+                    errorType: 'device_check_failed'
+                };
             }
             
             // Hasta detaylarını yükle (isAdmin için gerekli)
