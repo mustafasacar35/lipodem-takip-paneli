@@ -16250,7 +16250,21 @@ function filterDatabaseCheck() {
 // 📏 VÜCUT ÖLÇÜMLERİ SİSTEMİ
 // ═══════════════════════════════════════════════════════════════
 
-const MEASUREMENT_FIELDS = ['kilo', 'boyun', 'omuz', 'gogus', 'bel', 'karin', 'kalca', 'sagKol', 'solKol', 'sagUyluk', 'solUyluk', 'sagBaldir', 'solBaldir'];
+const MEASUREMENT_FIELDS = [
+    { key: 'boyun', label: 'Boyun (cm)' },
+    { key: 'omuz', label: 'Omuz (cm)' },
+    { key: 'gogus', label: 'Göğüs (cm)' },
+    { key: 'bel', label: 'Bel (cm)' },
+    { key: 'karin', label: 'Karın (cm)' },
+    { key: 'kalca', label: 'Kalça (cm)' },
+    { key: 'sagKol', label: 'Sağ Kol (cm)' },
+    { key: 'solKol', label: 'Sol Kol (cm)' },
+    { key: 'sagUyluk', label: 'Sağ Uyluk (cm)' },
+    { key: 'solUyluk', label: 'Sol Uyluk (cm)' },
+    { key: 'sagBaldir', label: 'Sağ Baldır (cm)' },
+    { key: 'solBaldir', label: 'Sol Baldır (cm)' },
+    { key: 'kilo', label: 'Kilo (kg)' }
+];
 let currentMeasurementWeekIndex = -1;
 
 // Ölçüm modalını aç
@@ -16277,6 +16291,15 @@ function openMeasurementsModal(weekIndex) {
     // Modalı göster
     document.getElementById('measurementsModal').classList.add('active');
     document.getElementById('measurementsModal').style.display = 'flex';
+    
+    // 📱 Mobil için: Modal açıldıktan sonra sağa scroll (son sütunlar görünsün)
+    setTimeout(() => {
+        const container = document.getElementById('measurementsTableContainer');
+        if (container) {
+            // Sağa scroll - son eklenen ölçüm sütunları ve fark sütunu görünsün
+            container.scrollLeft = container.scrollWidth;
+        }
+    }, 100);
 }
 
 // Ölçüm modalını kapat
@@ -16285,116 +16308,155 @@ function closeMeasurementsModal() {
     document.getElementById('measurementsModal').style.display = 'none';
 }
 
-// Ölçümleri tabloya yükle
+// Ölçümleri tabloya yükle (TRANSPOZ - Satırlar: Ölçüm noktaları, Sütunlar: Tarihler)
 function loadMeasurementsTable() {
     if (!patientData.measurements) {
         patientData.measurements = [];
     }
     
     const week = weeks[currentMeasurementWeekIndex];
+    const thead = document.getElementById('measurementsHeader');
     const tbody = document.getElementById('measurementsBody');
     const tfoot = document.getElementById('measurementsFooter');
+    thead.innerHTML = '';
     tbody.innerHTML = '';
     tfoot.innerHTML = '';
     
-    // Sıralı ölçümler
+    // Sıralı ölçümler (eskiden yeniye)
     const sortedMeasurements = [...patientData.measurements].sort((a, b) => 
         new Date(a.tarih) - new Date(b.tarih)
     );
     
-    // Tabloyu doldur
-    sortedMeasurements.forEach((measurement, index) => {
-        tbody.appendChild(createMeasurementRow(measurement, index));
-    });
-    
-    // Eğer bu hafta için ölçüm yoksa, otomatik bir satır ekle
-    const weekMeasurements = sortedMeasurements.filter(m => m.hafta === `${week.weekNumber}. Hafta`);
-    if (weekMeasurements.length === 0) {
+    // Eğer hiç ölçüm yoksa boş satır ekle
+    if (sortedMeasurements.length === 0) {
         addMeasurementRow();
+        return;
     }
     
-    // Fark satırını ekle (en az 2 ölçüm varsa)
-    if (sortedMeasurements.length >= 2) {
-        tfoot.appendChild(createDifferenceRow(sortedMeasurements));
-    }
-}
-
-// Ölçüm satırı oluştur
-function createMeasurementRow(measurement, index) {
-    const tr = document.createElement('tr');
-    const week = weeks[currentMeasurementWeekIndex];
-    const isCurrentWeek = measurement.hafta === `${week.weekNumber}. Hafta`;
+    // HEADER OLUŞTUR (Tarihler)
+    const headerTr = document.createElement('tr');
+    headerTr.style.cssText = 'background: #9b59b6; color: white;';
     
-    tr.style.cssText = `border-bottom: 1px solid #e0e0e0; background: ${isCurrentWeek ? '#f4ecf7' : 'white'};`;
-    
-    let html = `
-        <td style="padding: 8px; border-right: 1px solid #e0e0e0;">
-            <input type="date" value="${measurement.tarih}" 
-                onchange="updateMeasurement(${index}, 'tarih', this.value)" 
-                style="width: 100%; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; font-size: 13px;">
-            <input type="text" value="${measurement.hafta || ''}" 
-                placeholder="1. Hafta" 
-                onchange="updateMeasurement(${index}, 'hafta', this.value)" 
-                style="width: 100%; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; margin-top: 4px; font-size: 12px;">
-        </td>
+    let headerHtml = `
+        <th style="padding: 12px; min-width: 120px; position: sticky; left: 0; background: #9b59b6; z-index: 2; border-right: 2px solid white;">
+            Ölçüm Noktası
+        </th>
     `;
     
-    MEASUREMENT_FIELDS.forEach(field => {
-        html += `
-            <td style="padding: 8px; text-align: center; border-right: 1px solid #e0e0e0;">
-                <input type="number" step="0.1" value="${measurement[field] || ''}" 
-                    onchange="updateMeasurement(${index}, '${field}', this.value)" 
-                    style="width: 70px; border: 1px solid #d0d0d0; padding: 6px; border-radius: 4px; text-align: center; font-size: 13px;">
-            </td>
-        `;
-    });
-    
-    html += `
-        <td style="padding: 8px; text-align: center;">
-            <button onclick="deleteMeasurement(${index})" 
-                style="background: #e74c3c; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; box-shadow: 0 2px 4px rgba(231,76,60,0.2);">
-                🗑️
-            </button>
-        </td>
-    `;
-    
-    tr.innerHTML = html;
-    return tr;
-}
-
-// Fark satırı oluştur
-function createDifferenceRow(measurements) {
-    const tr = document.createElement('tr');
-    tr.style.cssText = 'background: #f8f9fa; font-weight: bold; border-top: 2px solid #9b59b6;';
-    
-    const first = measurements[0];
-    const last = measurements[measurements.length - 1];
-    const weekDiff = Math.round((new Date(last.tarih) - new Date(first.tarih)) / (7 * 24 * 60 * 60 * 1000));
-    
-    let html = `
-        <td style="padding: 8px; color: #9b59b6; border-right: 1px solid #dfe6e9;">
-            <div>FARK</div>
-            <div style="font-size: 11px; font-weight: normal;">${weekDiff} Hafta</div>
-        </td>
-    `;
-    
-    MEASUREMENT_FIELDS.forEach(field => {
-        const diff = (last[field] || 0) - (first[field] || 0);
-        const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
-        const prefix = diff > 0 ? '+' : '';
+    sortedMeasurements.forEach((measurement, index) => {
+        const date = new Date(measurement.tarih);
+        const dateStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+        const isCurrentWeek = measurement.hafta === `${week.weekNumber}. Hafta`;
         
-        html += `
-            <td style="padding: 8px; text-align: center; border-right: 1px solid #e0e0e0;">
-                <div style="color: ${color}; font-weight: 600;">
-                    ${prefix}${diff.toFixed(1)}
-                </div>
-            </td>
+        headerHtml += `
+            <th style="padding: 8px; min-width: 80px; border-right: 1px solid white; background: ${isCurrentWeek ? '#8e44ad' : '#9b59b6'};">
+                <div style="font-size: 11px; font-weight: 600;">${dateStr}</div>
+                <div style="font-size: 9px; opacity: 0.9; margin-top: 2px;">${measurement.hafta || ''}</div>
+                <button onclick="deleteMeasurementColumn(${index})" 
+                    style="background: rgba(231,76,60,0.9); color: white; border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-top: 4px;">
+                    🗑️
+                </button>
+            </th>
         `;
     });
     
-    html += `<td></td>`;
-    tr.innerHTML = html;
-    return tr;
+    headerTr.innerHTML = headerHtml;
+    thead.appendChild(headerTr);
+    
+    // TRANSPOZ TABLO: Her ölçüm noktası bir satır
+    MEASUREMENT_FIELDS.forEach(field => {
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'border-bottom: 1px solid #e0e0e0;';
+        
+        // İlk sütun: Ölçüm noktası adı (sticky)
+        let html = `
+            <td style="padding: 10px 12px; font-weight: 600; color: #2c3e50; border-right: 2px solid #9b59b6; position: sticky; left: 0; background: #f8f9fa; z-index: 1; min-width: 120px;">
+                ${field.label}
+            </td>
+        `;
+        
+        // Her tarih için değer sütunu
+        sortedMeasurements.forEach((measurement, index) => {
+            const value = measurement[field.key] || '';
+            const isCurrentWeek = measurement.hafta === `${week.weekNumber}. Hafta`;
+            
+            html += `
+                <td style="padding: 6px; text-align: center; border-right: 1px solid #e0e0e0; background: ${isCurrentWeek ? '#f4ecf7' : 'white'}; min-width: 80px;">
+                    <input type="number" 
+                        step="0.1" 
+                        value="${value}" 
+                        placeholder="-"
+                        data-index="${index}"
+                        data-field="${field.key}"
+                        onchange="updateMeasurementValue(${index}, '${field.key}', this.value)" 
+                        style="width: 65px; border: 1px solid #d0d0d0; padding: 5px; border-radius: 4px; text-align: center; font-size: 12px;">
+                </td>
+            `;
+        });
+        
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+    });
+    
+    // FARK SATIRI (varsa)
+    if (sortedMeasurements.length >= 2) {
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'background: #e8f5e9; font-weight: bold; border-top: 2px solid #27ae60;';
+        
+        const first = sortedMeasurements[0];
+        const last = sortedMeasurements[sortedMeasurements.length - 1];
+        
+        let html = `
+            <td style="padding: 10px 12px; color: #27ae60; border-right: 2px solid #9b59b6; position: sticky; left: 0; background: #e8f5e9; z-index: 1;">
+                FARK (İlk → Son)
+            </td>
+        `;
+        
+        sortedMeasurements.forEach((measurement, colIndex) => {
+            // Her sütun için fark hesabı (ilk ve son değer karşılaştırması)
+            let cellContent = '';
+            
+            if (colIndex === sortedMeasurements.length - 1) {
+                // Son sütunda tüm farkları göster
+                MEASUREMENT_FIELDS.forEach(field => {
+                    const diff = (last[field.key] || 0) - (first[field.key] || 0);
+                    const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
+                    const prefix = diff > 0 ? '+' : '';
+                    
+                    cellContent += `
+                        <div style="color: ${color}; font-size: 10px; margin: 1px 0;">
+                            ${field.label.split('(')[0].trim()}: ${prefix}${diff.toFixed(1)}
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `
+                <td style="padding: 4px; text-align: center; border-right: 1px solid #e0e0e0; font-size: 10px;">
+                    ${cellContent}
+                </td>
+            `;
+        });
+        
+        tr.innerHTML = html;
+        tfoot.appendChild(tr);
+    }
+}
+
+// Ölçüm sütununu sil (tarih/hafta sil)
+function deleteMeasurementColumn(index) {
+    if (confirm('Bu tarihteki tüm ölçümleri silmek istediğinizden emin misiniz?')) {
+        patientData.measurements.splice(index, 1);
+        loadMeasurementsTable();
+        showToast('✅ Ölçüm silindi', 'success');
+    }
+}
+
+// Ölçüm değerini güncelle
+function updateMeasurementValue(index, field, value) {
+    if (patientData.measurements[index]) {
+        patientData.measurements[index][field] = value;
+    }
 }
 
 // Yeni ölçüm satırı ekle
@@ -16425,20 +16487,6 @@ function addMeasurementRow() {
 }
 
 // Ölçümü güncelle
-function updateMeasurement(index, field, value) {
-    if (patientData.measurements[index]) {
-        patientData.measurements[index][field] = value;
-    }
-}
-
-// Ölçümü sil
-function deleteMeasurement(index) {
-    if (confirm('Bu ölçümü silmek istediğinizden emin misiniz?')) {
-        patientData.measurements.splice(index, 1);
-        loadMeasurementsTable();
-    }
-}
-
 // Ölçümleri kaydet
 async function saveMeasurements() {
     try {
@@ -16644,26 +16692,10 @@ function drawMeasurementChart() {
                     <button onclick="showMeasurementChart()" style="padding: 10px 16px; background: #9b59b6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(155,89,182,0.2);">📊 Grafik</button>
                 </div>
                 
-                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e0e0e0;">
-                    <table id="measurementsTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <thead>
-                            <tr style="background: #9b59b6; color: white;">
-                                <th style="padding: 8px; min-width: 120px;">Tarih / Hafta</th>
-                                <th style="padding: 8px;">Kilo<br>(kg)</th>
-                                <th style="padding: 8px;">Boyun<br>(cm)</th>
-                                <th style="padding: 8px;">Omuz<br>(cm)</th>
-                                <th style="padding: 8px;">Göğüs<br>(cm)</th>
-                                <th style="padding: 8px;">Bel<br>(cm)</th>
-                                <th style="padding: 8px;">Karın<br>(cm)</th>
-                                <th style="padding: 8px;">Kalça<br>(cm)</th>
-                                <th style="padding: 8px;">Sağ Kol<br>(cm)</th>
-                                <th style="padding: 8px;">Sol Kol<br>(cm)</th>
-                                <th style="padding: 8px;">Sağ Uyluk<br>(cm)</th>
-                                <th style="padding: 8px;">Sol Uyluk<br>(cm)</th>
-                                <th style="padding: 8px;">Sağ Baldır<br>(cm)</th>
-                                <th style="padding: 8px;">Sol Baldır<br>(cm)</th>
-                                <th style="padding: 8px;">İşlem</th>
-                            </tr>
+                <div id="measurementsTableContainer" style="overflow-x: auto; border-radius: 8px; border: 1px solid #e0e0e0; max-width: 100%;">
+                    <table id="measurementsTable" style="width: auto; border-collapse: collapse; font-size: 12px; table-layout: auto;">
+                        <thead id="measurementsHeader">
+                            <!-- Header dinamik oluşturulacak -->
                         </thead>
                         <tbody id="measurementsBody"></tbody>
                         <tfoot id="measurementsFooter"></tfoot>
