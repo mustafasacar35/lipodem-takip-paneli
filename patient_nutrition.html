@@ -2806,6 +2806,16 @@
                         <line x1="10" y1="16" x2="14" y2="16"></line>
                     </svg>
                 </button>
+                <button class="week-action-btn week-measurement-btn" onclick="openMeasurementsModal()" title="Vücut Ölçümleri" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                        <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                        <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </button>
                 <button class="week-action-btn week-pdf-btn" id="pdfExportBtn" onclick="exportWeekToPDF()" title="Haftalık PDF İndir" style="display: none;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -7604,28 +7614,6 @@
                     <div style="width: 45px; text-align: center; font-size: 12px;">
                         <div style="color: #667eea; font-weight: 600;">${avgFat}</div>
                         <div style="color: #999; font-size: 10px;">${targetFat}</div>
-                    </div>
-                </div>
-                
-                <!-- Vücut Ölçümleri Kartı -->
-                <div style="margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #9b59b6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="background: #e8daef; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                                📏
-                            </div>
-                            <div>
-                                <h4 style="margin: 0; color: #2c3e50; font-size: 13px; font-weight: 600;">Vücut Ölçümleri</h4>
-                                <p id="measurementCount_${activeWeekIndex}" style="margin: 2px 0 0 0; color: #7f8c8d; font-size: 11px;">
-                                    ${(patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length > 0 
-                                        ? (patientData.measurements || []).filter(m => m.hafta === `${week.weekNumber}. Hafta`).length + ' kayıt' 
-                                        : 'Kayıt yok'}
-                                </p>
-                            </div>
-                        </div>
-                        <button onclick="openMeasurementsModal(${activeWeekIndex})" style="background: #9b59b6; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(155,89,182,0.2); transition: all 0.2s;">
-                            <span style="font-size: 14px;">📊</span> Ölçümleri Görüntüle
-                        </button>
                     </div>
                 </div>
             `;
@@ -16262,11 +16250,16 @@ function filterDatabaseCheck() {
 // 📏 VÜCUT ÖLÇÜMLERİ SİSTEMİ
 // ═══════════════════════════════════════════════════════════════
 
-const MEASUREMENT_FIELDS = ['kilo', 'bel', 'kalca', 'sagUyluk', 'solUyluk', 'sagBaldir', 'solBaldir'];
+const MEASUREMENT_FIELDS = ['kilo', 'boyun', 'omuz', 'gogus', 'bel', 'karin', 'kalca', 'sagKol', 'solKol', 'sagUyluk', 'solUyluk', 'sagBaldir', 'solBaldir'];
 let currentMeasurementWeekIndex = -1;
 
 // Ölçüm modalını aç
 function openMeasurementsModal(weekIndex) {
+    // weekIndex verilmediyse aktif hafta kullan
+    if (weekIndex === undefined || weekIndex === null) {
+        weekIndex = activeWeekIndex;
+    }
+    
     currentMeasurementWeekIndex = weekIndex;
     const week = weeks[weekIndex];
     
@@ -16413,8 +16406,14 @@ function addMeasurementRow() {
         tarih: today,
         hafta: `${week.weekNumber}. Hafta`,
         kilo: '',
+        boyun: '',
+        omuz: '',
+        gogus: '',
         bel: '',
+        karin: '',
         kalca: '',
+        sagKol: '',
+        solKol: '',
         sagUyluk: '',
         solUyluk: '',
         sagBaldir: '',
@@ -16651,8 +16650,14 @@ function drawMeasurementChart() {
                             <tr style="background: #9b59b6; color: white;">
                                 <th style="padding: 8px; min-width: 120px;">Tarih / Hafta</th>
                                 <th style="padding: 8px;">Kilo<br>(kg)</th>
+                                <th style="padding: 8px;">Boyun<br>(cm)</th>
+                                <th style="padding: 8px;">Omuz<br>(cm)</th>
+                                <th style="padding: 8px;">Göğüs<br>(cm)</th>
                                 <th style="padding: 8px;">Bel<br>(cm)</th>
+                                <th style="padding: 8px;">Karın<br>(cm)</th>
                                 <th style="padding: 8px;">Kalça<br>(cm)</th>
+                                <th style="padding: 8px;">Sağ Kol<br>(cm)</th>
+                                <th style="padding: 8px;">Sol Kol<br>(cm)</th>
                                 <th style="padding: 8px;">Sağ Uyluk<br>(cm)</th>
                                 <th style="padding: 8px;">Sol Uyluk<br>(cm)</th>
                                 <th style="padding: 8px;">Sağ Baldır<br>(cm)</th>
