@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -16360,6 +16360,16 @@ function loadMeasurementsTable() {
         `;
     });
     
+    // FARK SÜTUNU (en sağda, sticky)
+    if (sortedMeasurements.length >= 2) {
+        headerHtml += `
+            <th style="padding: 8px; min-width: 90px; position: sticky; right: 0; background: #27ae60; z-index: 2; border-left: 2px solid white;">
+                <div style="font-size: 11px; font-weight: 600;">FARK</div>
+                <div style="font-size: 9px; opacity: 0.9; margin-top: 2px;">İlk → Son</div>
+            </th>
+        `;
+    }
+    
     headerTr.innerHTML = headerHtml;
     thead.appendChild(headerTr);
     
@@ -16394,53 +16404,28 @@ function loadMeasurementsTable() {
             `;
         });
         
+        // FARK SÜTUNU (en sağda her satır için)
+        if (sortedMeasurements.length >= 2) {
+            const first = sortedMeasurements[0];
+            const last = sortedMeasurements[sortedMeasurements.length - 1];
+            const diff = (last[field.key] || 0) - (first[field.key] || 0);
+            const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
+            const prefix = diff > 0 ? '+' : '';
+            
+            html += `
+                <td style="padding: 8px; text-align: center; border-left: 2px solid #27ae60; position: sticky; right: 0; background: #e8f5e9; z-index: 1; min-width: 90px;">
+                    <div style="color: ${color}; font-weight: 700; font-size: 13px;">
+                        ${prefix}${diff.toFixed(1)}
+                    </div>
+                </td>
+            `;
+        }
+        
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
     
-    // FARK SATIRI (varsa)
-    if (sortedMeasurements.length >= 2) {
-        const tr = document.createElement('tr');
-        tr.style.cssText = 'background: #e8f5e9; font-weight: bold; border-top: 2px solid #27ae60;';
-        
-        const first = sortedMeasurements[0];
-        const last = sortedMeasurements[sortedMeasurements.length - 1];
-        
-        let html = `
-            <td style="padding: 10px 12px; color: #27ae60; border-right: 2px solid #9b59b6; position: sticky; left: 0; background: #e8f5e9; z-index: 1;">
-                FARK (İlk → Son)
-            </td>
-        `;
-        
-        sortedMeasurements.forEach((measurement, colIndex) => {
-            // Her sütun için fark hesabı (ilk ve son değer karşılaştırması)
-            let cellContent = '';
-            
-            if (colIndex === sortedMeasurements.length - 1) {
-                // Son sütunda tüm farkları göster
-                MEASUREMENT_FIELDS.forEach(field => {
-                    const diff = (last[field.key] || 0) - (first[field.key] || 0);
-                    const color = diff < 0 ? '#27ae60' : (diff > 0 ? '#e74c3c' : '#95a5a6');
-                    const prefix = diff > 0 ? '+' : '';
-                    
-                    cellContent += `
-                        <div style="color: ${color}; font-size: 10px; margin: 1px 0;">
-                            ${field.label.split('(')[0].trim()}: ${prefix}${diff.toFixed(1)}
-                        </div>
-                    `;
-                });
-            }
-            
-            html += `
-                <td style="padding: 4px; text-align: center; border-right: 1px solid #e0e0e0; font-size: 10px;">
-                    ${cellContent}
-                </td>
-            `;
-        });
-        
-        tr.innerHTML = html;
-        tfoot.appendChild(tr);
-    }
+    // FARK SATIRI KALDIRILDI - Artık sağda sütun olarak var
 }
 
 // Ölçüm sütununu sil (tarih/hafta sil)
