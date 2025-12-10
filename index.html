@@ -8717,16 +8717,22 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
           renderSeciliHastaBaslik(hastaDetay, { notMetni: hastaDetay.not || 'Not yok' });
           
-          // Telefon butonunu güncelle
-          updateTelefonButonu();
+          // Telefon butonunu güncelle (eğer fonksiyon yüklenmişse)
+          if (typeof updateTelefonButonu === 'function') {
+            updateTelefonButonu();
+          }
           
           // Seçili hastayı vurgula
-          vurgulaSeciliHasta(hastaBilgi.id);
+          if (typeof vurgulaSeciliHasta === 'function') {
+            vurgulaSeciliHasta(hastaBilgi.id);
+          }
           
           console.log('✅ Yeni sistemde hasta bilgileri yüklendi:', hastaDetay.isim);
           
           // Hafta tablarını göster
-          gosterHaftalar();
+          if (typeof gosterHaftalar === 'function') {
+            gosterHaftalar();
+          }
           
           // Eşleşmeyenler listesini güncelle (hasta değiştiğinde)
           setTimeout(() => {
@@ -10014,23 +10020,40 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
                     <span>📝 Ek Not</span>
                   </label>
                 </div>
-                <button onclick="gptAnalizeEt(${i})" style="
-                  background: linear-gradient(135deg, #007bff, #0056b3); 
-                  color: white; 
-                  border: none; 
-                  padding: 10px 15px; 
-                  border-radius: 6px; 
-                  font-size: 12px;
-                  font-weight: bold;
-                  cursor: pointer;
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-                  transition: transform 0.2s ease;
-                " ${hafta.kilitli ? 'disabled' : ''}>
-                  <span>🚀</span> GPT ile Analiz Et
-                </button>
-              </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <button onclick="gptAnalizeEt(${i})" style="
+                    background: linear-gradient(135deg, #007bff, #0056b3); 
+                    color: white; 
+                    border: none; 
+                    padding: 10px 15px; 
+                    border-radius: 6px; 
+                    font-size: 12px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: transform 0.2s ease;
+                  " ${hafta.kilitli ? 'disabled' : ''}>
+                    <span>🚀</span> GPT ile Analiz Et
+                  </button>
+                  <button onclick="copyGptAnalysisResult(${i}, event)" style="
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 10px 15px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: transform 0.2s ease;
+                  " ${hafta.kilitli ? 'disabled' : ''}>
+                    <span>📋</span> Kopyala
+                  </button>
+                </div>
 
               <!-- Ek Bilgiler -->
               <div style="margin-bottom: 15px;">
@@ -10197,14 +10220,25 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         content.classList.toggle('active', index === activeIndex);
       });
       
-      // Sidebar'ları güncelle
-      haftaTabSecildiginde(activeIndex);
+      // Tab açıldığında default template mesajını set et
+      setTimeout(() => {
+        const ekNotlarTextarea = document.getElementById(`ekNotlar_${activeIndex}`);
+        if (ekNotlarTextarea && !ekNotlarTextarea.value.trim()) {
+          ekNotlarTextarea.value = olusturEkBilgilerTemplatesu(activeIndex);
+        }
+      }, 100);
+      
+      // Sidebar'ları güncelle (eğer fonksiyon yüklenmişse)
+      if (typeof haftaTabSecildiginde === 'function') {
+        haftaTabSecildiginde(activeIndex);
+      }
       
       console.log(`🏷️ ${activeIndex + 1}. hafta tab'ına geçildi`);
     }
     
     // Tab değiştirme fonksiyonunu global yap
     window.switchTab = switchTab;
+    window.olusturEkBilgilerTemplatesu = olusturEkBilgilerTemplatesu;
 
 // Hafta açıklama kaydet (otomatik)
 function aciklamaKaydet(i) {
@@ -20583,6 +20617,32 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       }
     }
 
+    // Ek Bilgiler için template mesaj oluştur
+    function olusturEkBilgilerTemplatesu(haftaIndex) {
+      if (!seciliHasta) return '';
+      
+      const hafta = seciliHasta.haftalar?.[haftaIndex];
+      const haftaNo = haftaIndex + 1;
+      const hastaAdi = seciliHasta.hastaIsim || seciliHasta.isim || 'Hanım';
+      
+      let template = `Merhaba ${hastaAdi}, ben Dr. Mustafa. Nasılsınız? Umarım her şey yolundadır. `;
+      
+      if (haftaIndex === 0) {
+        template += `Pazartesi günü itibariyle programımızda ilk haftaya başlıyoruz. `;
+      } else {
+        template += `Pazartesi günü itibariyle programımızda ${haftaNo}. haftaya başlıyoruz. `;
+      }
+      
+      template += `Bu hafta için hazırlanan beslenme listesine baktığımda, lipödem ve bölgesel incelme hedefleri doğrultusunda seçilmiş yiyeceklerin yer aldığını görüyorum. `;
+      
+      // Beslenme listesi analizi ekle
+      template += `Listeye dahil edilen besinler, antiinflamatuar özellikleri ve kan dolaşımı desteklemesi nedeniyle seçilmiştir. `;
+      template += `Bu yiyecekler, lipödemi yönetmede kritik olan lenfatik sistemi desteklerken, aynı zamanda kilo vermede de etkili olacaktır. `;
+      template += `Beslenme programımız bu şekilde tasarlanmış olup, bölgesel ölçülerde ilerleme kaydetmek için bu besinleri günlük rutininize dahil etmeniz oldukça önemlidir.`;
+      
+      return template;
+    }
+
     function temizlePdfIcerik(pdfText) {
       if (!pdfText || typeof pdfText !== 'string') return '';
 
@@ -20868,8 +20928,8 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
             <!-- Düzenlenebilir textarea (gizli) -->
             <textarea id="finalPromptText" style="display: none;">${finalPrompt}</textarea>
             
-            <!-- Düzenleme butonu -->
-            <div style="margin-bottom: 15px;">
+            <!-- Düzenleme ve Kopyala butonları -->
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
               <button id="editPromptBtn" onclick="toggleEditMode()" style="
                 padding: 8px 15px; 
                 background: #ffc107; 
@@ -20879,6 +20939,15 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
                 cursor: pointer;
                 font-size: 12px;
               ">✏️ Düzenle</button>
+              <button id="copyPromptBtn" onclick="copyPromptContent()" style="
+                padding: 8px 15px; 
+                background: #28a745; 
+                color: white; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer;
+                font-size: 12px;
+              ">📋 Kopyala</button>
             </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
@@ -21144,6 +21213,178 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
         editBtn.textContent = '✏️ Düzenle';
         editBtn.style.background = '#ffc107';
         editBtn.style.color = '#212529';
+      }
+    }
+    
+    // Prompt içeriğini panoya kopyala
+    function copyPromptContent() {
+      const textareaEl = document.getElementById('finalPromptText');
+      const previewDiv = document.getElementById('promptPreview');
+      
+      // Eğer düzenleme modundaysa textarea'dan, değilse preview div'den kopyala
+      let textToCopy = '';
+      
+      if (textareaEl.style.display !== 'none') {
+        // Düzenleme modu - textarea'dan kopyala
+        textToCopy = textareaEl.value;
+      } else {
+        // Önizleme modu - HTML'den düz metni çıkar
+        textToCopy = previewDiv.innerText;
+      }
+      
+      // Panoya kopyala
+      navigator.clipboard.writeText(textToCopy).then(function() {
+        // Başarılı olduğunda buton rengini geçici olarak değiştir
+        const copyBtn = document.getElementById('copyPromptBtn');
+        const originalBg = copyBtn.style.background;
+        const originalText = copyBtn.textContent;
+        
+        copyBtn.style.background = '#20c997';
+        copyBtn.textContent = '✅ Kopyalandı!';
+        
+        setTimeout(() => {
+          copyBtn.style.background = originalBg;
+          copyBtn.textContent = originalText;
+        }, 2000);
+        
+        console.log('✅ İçerik başarıyla panoya kopyalandı!');
+      }).catch(function(err) {
+        alert('❌ Kopyalama başarısız oldu: ' + err);
+        console.error('Kopyalama hatası:', err);
+      });
+    }
+    
+    // GPT Analiz sonucunu kopyala (hafta sekmesinde)
+    function copyGptAnalysisResult(haftaIndex, event) {
+      try {
+        if (!seciliHasta || !seciliHasta.haftalar || !seciliHasta.haftalar[haftaIndex]) {
+          alert('❌ Hasta veya hafta verisi bulunamadı!');
+          return;
+        }
+
+        const hafta = seciliHasta.haftalar[haftaIndex];
+        const settings = JSON.parse(localStorage.getItem(GPT_SETTINGS_KEY) || '{}');
+        const prompts = [];
+
+        // Giriş Prompt (en başta) - modalda olduğu gibi
+        if (settings.girisPrompt?.trim()) {
+          prompts.push('=== GİRİŞ TALİMATI ===');
+          prompts.push(settings.girisPrompt.trim());
+        }
+
+        // Genel prompt
+        if (document.getElementById(`genelPrompt_${haftaIndex}`)?.checked) {
+          const genelPromptlar = JSON.parse(localStorage.getItem(GENEL_PROMPTLAR_KEY) || '[]');
+          if (genelPromptlar.length > 0) {
+            prompts.push('=== GENEL TALİMAT ===');
+            prompts.push(genelPromptlar[0].icerik);
+          }
+        }
+
+        // Haftalık prompt
+        if (document.getElementById(`haftalikPrompt_${haftaIndex}`)?.checked) {
+          const haftalikPromptlar = JSON.parse(localStorage.getItem(HAFTALIK_PROMPTLAR_KEY) || '[]');
+          const haftaNo = haftaIndex + 1;
+          const haftaPrompt = haftalikPromptlar.find(p => p.haftaNo === haftaNo);
+          if (haftaPrompt) {
+            prompts.push('=== HAFTALIK TEMA ===');
+            prompts.push(haftaPrompt.icerik);
+          }
+        }
+
+        // Hasta bilgileri
+        if (document.getElementById(`hastaPrompt_${haftaIndex}`)?.checked && seciliHasta) {
+          prompts.push('=== HASTA BİLGİLERİ ===');
+          prompts.push(`Hasta Adı: ${seciliHasta.hastaIsim || seciliHasta.isim || 'Bilinmiyor'}`);
+          if (seciliHasta.not) {
+            prompts.push(`Hasta Notu: ${seciliHasta.not}`);
+          }
+          if (seciliHasta.notlar) {
+            prompts.push(`Hasta Notları: ${seciliHasta.notlar}`);
+          }
+          if (seciliHasta.yasam) {
+            prompts.push(`Yaşam Bilgileri: ${seciliHasta.yasam}`);
+          }
+        }
+
+        // Önceki analizler (TAM METİN - modalda olduğu gibi)
+        if (document.getElementById(`oncekiAnalizler_${haftaIndex}`)?.checked) {
+          const oncekiAnalizler = getOncekiGptAnalizleri(haftaIndex);
+          if (oncekiAnalizler.length > 0) {
+            prompts.push('=== ÖNCEKİ HAFTALARIN GPT ANALİZLERİ (TUTARLILIK İÇİN) ===');
+            prompts.push('ÖNEMLİ: Aynı içeriği tekrar etmeyin. Önceki haftaları tamamlayan yeni öneriler üretin.');
+            prompts.push('');
+            oncekiAnalizler.forEach(analiz => {
+              prompts.push(`--- ${analiz.haftaNo}. Hafta ---`);
+              prompts.push(analiz.icerik); // TAM METİN
+              prompts.push('');
+            });
+          }
+        }
+
+        // Ek notlar
+        if (document.getElementById(`ekPrompt_${haftaIndex}`)?.checked) {
+          const ekNotlarHam = document.getElementById(`ekNotlar_${haftaIndex}`)?.value?.trim();
+          if (ekNotlarHam) {
+            const temizEkNotlar = temizleEkBilgilerTekrarlari(ekNotlarHam);
+            if (temizEkNotlar) {
+              prompts.push('=== BU HAFTA İÇİN EK BİLGİLER ===');
+              prompts.push(temizEkNotlar);
+            }
+          }
+        }
+
+        // Beslenme listesi
+        if (document.getElementById(`beslenmeListesi_${haftaIndex}`)?.checked) {
+          prompts.push('=== BESLENME LİSTESİ ===');
+          if (window.cleanedPdfContent) {
+            prompts.push(window.cleanedPdfContent);
+          } else if (hafta.tarifler && hafta.tarifler.length > 0) {
+            const tarifListesi = hafta.tarifler.map(t => `• ${t}`).join('\n');
+            prompts.push(tarifListesi);
+          } else {
+            prompts.push('Bu hafta için henüz beslenme listesi yüklenmemiş.');
+          }
+        }
+
+        // Sonuç Prompt (en sonda) - modalda olduğu gibi
+        if (settings.sonucPrompt?.trim()) {
+          prompts.push('=== SONUÇ TALİMATI ===');
+          prompts.push(settings.sonucPrompt.trim());
+        }
+
+        const finalPrompt = prompts.length > 0 ? prompts.join('\n\n') : 'Bu hafta için analiz yapılabilecek veri bulunamadı.';
+        
+        // Prompt'u panoya kopyala
+        navigator.clipboard.writeText(finalPrompt).then(function() {
+          // Başarılı olduğunda buton rengini geçici olarak değiştir
+          let copyBtn = event?.target;
+          if (!copyBtn) {
+            copyBtn = document.querySelector(`button[onclick="copyGptAnalysisResult(${haftaIndex}, event)"]`);
+          }
+          
+          if (copyBtn) {
+            const originalBg = copyBtn.style.background;
+            const originalText = copyBtn.textContent;
+            
+            copyBtn.style.background = '#20c997';
+            copyBtn.textContent = '✅ Kopyalandı!';
+            
+            setTimeout(() => {
+              copyBtn.style.background = originalBg;
+              copyBtn.textContent = originalText;
+            }, 2000);
+          }
+          
+          console.log('✅ Prompt başarıyla panoya kopyalandı!');
+        }).catch(function(err) {
+          alert('❌ Kopyalama başarısız oldu: ' + err);
+          console.error('Kopyalama hatası:', err);
+        });
+
+      } catch (error) {
+        console.error('Kopyalama hatası:', error);
+        alert('❌ Kopyalama sırasında hata oluştu: ' + error.message);
       }
     }
     
@@ -22066,6 +22307,8 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
     window.showFinalPromptModal = showFinalPromptModal;
     window.closeFinalPromptModal = closeFinalPromptModal;
     window.toggleEditMode = toggleEditMode;
+    window.copyPromptContent = copyPromptContent;
+    window.copyGptAnalysisResult = copyGptAnalysisResult;
     window.sendFinalPromptToGpt = sendFinalPromptToGpt;
     window.updatePromptWithSelectedAnalyses = updatePromptWithSelectedAnalyses;
     window.getModelMaxTokens = getModelMaxTokens;
