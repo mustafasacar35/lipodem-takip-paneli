@@ -20,7 +20,12 @@
 
       --guide: rgba(255,255,255,.55);
 
-      /* ✅ Pro band varsayılanları (JS güncelliyor) */
+      /* ✅ Kullanıcı ayarları (JS günceller) */
+      --baseText: #e5e7eb;
+      --sidePad: 64px;
+      --topPad: 48px;
+
+      /* Pro band */
       --bandTop: 38;      /* % */
       --bandBottom: 62;   /* % */
       --shadeAlpha: .55;  /* 0..0.85 */
@@ -34,17 +39,17 @@
       color:var(--text);
     }
 
+    /* ✅ Yeni yerleşim: Sol=Metin, Sağ=Prompter+Alt Ayarlar */
     .wrap{
       display:grid;
       grid-template-columns: 420px 1fr;
-      grid-template-rows: 1fr;
       gap:16px;
       padding:16px;
       height:100vh;
       align-items:stretch;
     }
 
-    .panel{
+    .leftPanel{
       background:var(--panel);
       border:1px solid var(--border);
       border-radius:var(--radius);
@@ -53,15 +58,13 @@
       flex-direction:column;
       gap:12px;
       min-width:0;
-      height:100%;
       min-height:0;
-      transition: opacity .15s ease;
     }
 
     textarea{
       width:100%;
       flex:1;
-      min-height:220px;
+      min-height:240px;
       resize:vertical;
       border-radius:12px;
       border:1px solid var(--border);
@@ -72,75 +75,24 @@
       line-height:1.4;
     }
 
-    .row{
+    .rightCol{
       display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .row label{
-      color:var(--muted);
-      font-size:13px;
-      display:flex;
-      gap:8px;
-      align-items:center;
-      white-space:nowrap;
-      user-select:none;
-    }
-    input[type="range"]{ width:220px; }
-    select{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:10px;
-      outline:none;
-    }
-    .val{
-      font-variant-numeric:tabular-nums;
-      color:var(--text);
-      opacity:.9;
-    }
-    button{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      transition:.12s;
-      user-select:none;
-    }
-    button:hover{ border-color:rgba(255,255,255,.18); }
-    button.primary{
-      background:rgba(96,165,250,.18);
-      border-color:rgba(96,165,250,.35);
-    }
-    button.danger{
-      background:rgba(248,113,113,.14);
-      border-color:rgba(248,113,113,.28);
-    }
-    button.small{
-      padding:8px 10px;
-      border-radius:10px;
-      font-size:13px;
-    }
-    .hint{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.4;
+      flex-direction:column;
+      gap:12px;
+      min-width:0;
+      min-height:0;
+      height:100%;
     }
 
     .stage{
       position:relative;
       border-radius:var(--radius);
       border:1px solid var(--border);
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      background:#000;
       overflow:hidden;
       min-width:0;
-      height:100%;
       min-height:0;
-      transition: filter .15s ease, background .15s ease;
+      flex:1;
     }
 
     /* Kamera */
@@ -154,26 +106,25 @@
       z-index:0;
       background:#000;
     }
-    .stage.camOn{ background:#000; }
     .stage.camOn .cam{ display:block; }
 
-    /* Scrollbar */
+    /* Scrollbar + içerik */
     .viewport{
       position:absolute;
       inset:0;
-      padding:48px 64px;
+      padding: var(--topPad) var(--sidePad);
       overflow-y: scroll;
       overflow-x: hidden;
       scrollbar-gutter: stable;
       z-index:5;
     }
-
     .content{
       white-space: pre-wrap;
       font-size:42px;
       line-height:1.35;
       letter-spacing:.2px;
       text-shadow:0 2px 16px rgba(0,0,0,.45);
+      color: var(--baseText); /* ✅ varsayılan yazı rengi */
     }
 
     .sentence.sA{ color: var(--sentA); }
@@ -211,10 +162,7 @@
 
     .pad{ height: 0px; }
 
-    /* Odak / karartma */
-    body.dim .panel{ opacity:.18; }
-
-    /* Metin okunurluğu için perde */
+    /* Perde */
     .glass{
       position:absolute;
       inset:0;
@@ -226,7 +174,7 @@
     }
     .stage.glassOn .glass{ opacity:1; }
 
-    /* ✅ Pro Mod: Okuma Şeridi (Band) - şerit dışını karartır */
+    /* Pro band */
     .bandShade{
       position:absolute;
       inset:0;
@@ -293,13 +241,79 @@
     }
     .stage.guideOn .guideLine{ opacity:1; }
 
-    /* tam ekran */
-    .stage:fullscreen .viewport{ padding:72px 96px; }
-    .stage:fullscreen{
-      border-radius:0;
-      border:none;
-      background:#000;
+    /* ✅ Alt ayarlar paneli */
+    .settings{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .row label{
+      color:var(--muted);
+      font-size:13px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      white-space:nowrap;
+      user-select:none;
+    }
+
+    input[type="range"]{ width:220px; }
+    input[type="color"]{
+      width:44px;
+      height:34px;
+      border:none;
+      background:transparent;
+      padding:0;
+    }
+    select{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:10px;
+      outline:none;
+    }
+    .val{
+      font-variant-numeric:tabular-nums;
+      color:var(--text);
+      opacity:.9;
+    }
+    button{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:.12s;
+      user-select:none;
+    }
+    button:hover{ border-color:rgba(255,255,255,.18); }
+    button.primary{
+      background:rgba(96,165,250,.18);
+      border-color:rgba(96,165,250,.35);
+    }
+    button.danger{
+      background:rgba(248,113,113,.14);
+      border-color:rgba(248,113,113,.28);
+    }
+    button.small{
+      padding:8px 10px;
+      border-radius:10px;
+      font-size:13px;
+    }
+    .hint{ color:var(--muted); font-size:12px; line-height:1.35; }
 
     a.dl{
       color:#c7d2fe;
@@ -311,149 +325,169 @@
     }
     a.dl.show{ display:inline-flex; }
 
+    /* ✅ Mobil: prompter üstte, ayarlar altında, metin input en altta */
     @media (max-width: 980px){
-      .wrap{ grid-template-columns: 1fr; height:auto; }
-      .stage{ height:60vh; min-height:60vh; }
+      .wrap{
+        grid-template-columns: 1fr;
+        height:auto;
+      }
+      .rightCol{ order:1; }
+      .leftPanel{ order:2; }
+
+      /* Telefonda yan boşluğu otomatik küçült */
+      :root{
+        --sidePad: 18px;
+        --topPad: 24px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="panel">
+
+    <!-- SOL: Metin girişi -->
+    <div class="leftPanel">
       <div class="row" style="justify-content:space-between;">
-        <strong>Prompter + Kamera (Pro)</strong>
-        <span class="hint">Space: Duraklat • ↑↓: Basılı tut sar • ←→: Hız • F: Tam ekran</span>
+        <strong>Metin</strong>
+        <span class="hint">Metni buraya yapıştır</span>
       </div>
-
       <textarea id="input" placeholder="Metni buraya yapıştır..."></textarea>
-
-      <div class="row">
-        <button id="startBtn" class="primary">Başlat</button>
-        <button id="pauseBtn">Duraklat</button>
-        <button id="stopBtn" class="danger">Durdur</button>
-        <button id="fsBtn">Tam Ekran (F)</button>
-      </div>
-
-      <div class="row">
-        <label>
-          Hız
-          <input id="speed" type="range" min="0" max="300" step="1" value="80" />
-          <span class="val" id="speedVal">80 px/sn</span>
-        </label>
-      </div>
-
-      <div class="row">
-        <label>
-          Yazı Boyutu
-          <input id="fontSize" type="range" min="20" max="80" step="1" value="42" />
-          <span class="val" id="fontVal">42 px</span>
-        </label>
-      </div>
-
-      <div class="row"><label><input id="altSent" type="checkbox" /> Cümleleri iki renk yap</label></div>
-      <div class="row"><label><input id="parenOn" type="checkbox" /> Parantez içi mavi</label></div>
-      <div class="row"><label><input id="quoteOn" type="checkbox" /> Tırnak içi renk</label></div>
-      <div class="row"><label><input id="mdOn" type="checkbox" /> **Kalın** / *İtalik* (markdown)</label></div>
-      <div class="row"><label><input id="dimOn" type="checkbox" /> Sol paneli soluklaştır (odak)</label></div>
-      <div class="row"><label><input id="mirror" type="checkbox" /> Ayna modu</label></div>
-
-      <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);width:100%;margin:2px 0;">
-
-      <div class="row"><label><input id="vignetteOn" type="checkbox" /> Vignette</label></div>
-      <div class="row"><label><input id="guideOn" type="checkbox" /> Okuma çizgisi</label></div>
-      <div class="row"><label><input id="glassOn" type="checkbox" /> Okunurluk perdesi (kamera üstüne)</label></div>
-
-      <!-- ✅ Pro Mod -->
-      <div class="row">
-        <label><input id="proMode" type="checkbox" /> Pro Mod (tek tık ayar)</label>
-      </div>
-
-      <div class="row">
-        <label><input id="bandOn" type="checkbox" /> Okuma şeridi (band)</label>
-      </div>
-
-      <div class="row">
-        <label>
-          Band Yüksekliği
-          <input id="bandH" type="range" min="10" max="50" step="1" value="24" />
-          <span class="val" id="bandHVal">%24</span>
-        </label>
-      </div>
-
-      <div class="row">
-        <label>
-          Dış Karartma
-          <input id="bandShade" type="range" min="0" max="85" step="1" value="55" />
-          <span class="val" id="bandShadeVal">%55</span>
-        </label>
-      </div>
-
-      <div class="row">
-        <label>
-          Çizgi Konumu
-          <input id="guidePos" type="range" min="10" max="90" step="1" value="50" />
-          <span class="val" id="guidePosVal">%50</span>
-        </label>
-      </div>
-
-      <div class="row">
-        <label>
-          Çizgi Kalınlığı
-          <input id="guideThick" type="range" min="1" max="10" step="1" value="3" />
-          <span class="val" id="guideThickVal">3 px</span>
-        </label>
-      </div>
-
-      <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);width:100%;margin:2px 0;">
-
-      <div class="row">
-        <label><input id="camOn" type="checkbox" /> Kamera önizleme</label>
-        <label>Yön:
-          <select id="camFacing">
-            <option value="user">Ön kamera</option>
-            <option value="environment">Arka kamera</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="row">
-        <label><input id="camAudio" type="checkbox" checked /> Ses kaydı</label>
-        <button id="recBtn">Kayıt Başlat</button>
-        <a id="dl" class="dl" href="#" download="kayit.webm">Kaydı indir</a>
-        <button id="shareBtn" style="display:none;">Paylaş</button>
-      </div>
-
-      <div class="row">
-        <button id="holdUp" class="small">▲ Yukarı (Basılı tut)</button>
-        <button id="holdDown" class="small">▼ Aşağı (Basılı tut)</button>
-      </div>
-
-      <div class="hint">
-        iPhone için: Kamera sadece HTTPS sayfada açılır. En iyi kullanım: Tam ekran + Pro Mod + Band.
-      </div>
+      <div class="hint">Not: iPhone’da kamera için sayfayı HTTPS üzerinden açmalısın.</div>
     </div>
 
-    <div class="stage" id="stage">
-      <div class="topbar">
-        <div class="pill" id="statusPill">Hazır</div>
-        <div class="pill" id="posPill">0%</div>
+    <!-- SAĞ: Prompter + Alt ayarlar -->
+    <div class="rightCol">
+      <div class="stage" id="stage">
+        <div class="topbar">
+          <div class="pill" id="statusPill">Hazır</div>
+          <div class="pill" id="posPill">0%</div>
+        </div>
+
+        <video id="cam" class="cam" playsinline muted></video>
+
+        <div class="glass"></div>
+
+        <div class="bandShade"></div>
+        <div class="bandFrame" id="bandFrame"></div>
+
+        <div class="vignette"></div>
+        <div class="guideLine" id="guideLine"></div>
+
+        <div class="viewport" id="viewport">
+          <div class="pad" id="padTop"></div>
+          <div class="content" id="content"></div>
+          <div class="pad" id="padBottom"></div>
+        </div>
       </div>
 
-      <video id="cam" class="cam" playsinline muted></video>
+      <!-- ✅ Ayarlar artık burada: kayan metin alanının ALTINDA -->
+      <div class="settings">
+        <div class="row">
+          <button id="startBtn" class="primary">Başlat</button>
+          <button id="pauseBtn">Duraklat</button>
+          <button id="stopBtn" class="danger">Durdur</button>
+          <button id="fsBtn">Tam Ekran</button>
+        </div>
 
-      <div class="glass"></div>
+        <div class="row">
+          <label>
+            Hız
+            <input id="speed" type="range" min="0" max="300" step="1" value="80" />
+            <span class="val" id="speedVal">80 px/sn</span>
+          </label>
+          <label>
+            Yazı
+            <input id="fontSize" type="range" min="20" max="80" step="1" value="42" />
+            <span class="val" id="fontVal">42 px</span>
+          </label>
+        </div>
 
-      <!-- ✅ Pro overlay -->
-      <div class="bandShade" id="bandShadeLayer"></div>
-      <div class="bandFrame" id="bandFrame"></div>
+        <div class="row">
+          <!-- ✅ Telefon boşluğu için -->
+          <label>
+            Yan boşluk
+            <input id="sidePad" type="range" min="8" max="120" step="1" value="64" />
+            <span class="val" id="sidePadVal">64 px</span>
+          </label>
+        </div>
 
-      <div class="vignette"></div>
-      <div class="guideLine" id="guideLine"></div>
+        <!-- ✅ Yazı rengi: renk skalası + color picker -->
+        <div class="row">
+          <label>
+            Yazı rengi (Hue)
+            <input id="hue" type="range" min="0" max="360" step="1" value="210"
+                   style="width:220px;background:linear-gradient(90deg, red, yellow, lime, cyan, blue, magenta, red);border-radius:999px;height:8px;appearance:none;" />
+            <span class="val" id="hueVal">210</span>
+          </label>
 
-      <div class="viewport" id="viewport">
-        <div class="pad" id="padTop"></div>
-        <div class="content" id="content"></div>
-        <div class="pad" id="padBottom"></div>
+          <label>
+            Seç
+            <input id="colorPick" type="color" value="#e5e7eb" />
+            <span class="val" id="colorVal">#e5e7eb</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label><input id="altSent" type="checkbox" /> Cümleleri iki renk</label>
+          <label><input id="parenOn" type="checkbox" /> Parantez mavi</label>
+          <label><input id="quoteOn" type="checkbox" /> Tırnak içi renk</label>
+          <label><input id="mdOn" type="checkbox" /> **Kalın** / *İtalik*</label>
+          <label><input id="mirror" type="checkbox" /> Ayna</label>
+        </div>
+
+        <div class="row">
+          <label><input id="vignetteOn" type="checkbox" /> Vignette</label>
+          <label><input id="guideOn" type="checkbox" /> Okuma çizgisi</label>
+          <label><input id="glassOn" type="checkbox" /> Okunurluk perdesi</label>
+          <label><input id="bandOn" type="checkbox" /> Okuma bandı</label>
+          <label><input id="proMode" type="checkbox" /> Pro Mod</label>
+        </div>
+
+        <div class="row">
+          <label>
+            Çizgi konumu
+            <input id="guidePos" type="range" min="10" max="90" step="1" value="50" />
+            <span class="val" id="guidePosVal">%50</span>
+          </label>
+          <label>
+            Kalınlık
+            <input id="guideThick" type="range" min="1" max="10" step="1" value="3" />
+            <span class="val" id="guideThickVal">3 px</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Band yüksekliği
+            <input id="bandH" type="range" min="10" max="50" step="1" value="24" />
+            <span class="val" id="bandHVal">%24</span>
+          </label>
+          <label>
+            Dış karartma
+            <input id="bandShade" type="range" min="0" max="85" step="1" value="55" />
+            <span class="val" id="bandShadeVal">%55</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label><input id="camOn" type="checkbox" /> Kamera</label>
+          <label>Yön:
+            <select id="camFacing">
+              <option value="user">Ön</option>
+              <option value="environment">Arka</option>
+            </select>
+          </label>
+          <label><input id="camAudio" type="checkbox" checked /> Ses</label>
+          <button id="recBtn">Kayıt Başlat</button>
+          <a id="dl" class="dl" href="#" download="kayit.webm">Kaydı indir</a>
+          <button id="shareBtn" style="display:none;">Paylaş</button>
+        </div>
+
+        <div class="row">
+          <button id="holdUp" class="small">▲ Yukarı (basılı tut)</button>
+          <button id="holdDown" class="small">▼ Aşağı (basılı tut)</button>
+          <span class="hint">Space: Duraklat • ↑↓: sar • ←→: hız • Tam ekran önerilir</span>
+        </div>
       </div>
     </div>
   </div>
@@ -479,11 +513,18 @@
     const fontSize = document.getElementById('fontSize');
     const fontVal = document.getElementById('fontVal');
 
+    const sidePad = document.getElementById('sidePad');
+    const sidePadVal = document.getElementById('sidePadVal');
+
+    const hue = document.getElementById('hue');
+    const hueVal = document.getElementById('hueVal');
+    const colorPick = document.getElementById('colorPick');
+    const colorVal = document.getElementById('colorVal');
+
     const altSent = document.getElementById('altSent');
     const parenOn = document.getElementById('parenOn');
     const quoteOn = document.getElementById('quoteOn');
     const mdOn = document.getElementById('mdOn');
-    const dimOn = document.getElementById('dimOn');
     const mirror = document.getElementById('mirror');
 
     const vignetteOn = document.getElementById('vignetteOn');
@@ -495,7 +536,6 @@
     const guideLine = document.getElementById('guideLine');
     const glassOn = document.getElementById('glassOn');
 
-    // ✅ Pro Mod kontrolleri
     const proMode = document.getElementById('proMode');
     const bandOn = document.getElementById('bandOn');
     const bandH = document.getElementById('bandH');
@@ -522,7 +562,6 @@
     const manualSpeed = 420;
     let lastTs = 0;
 
-    // Kamera / kayıt
     let stream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -537,52 +576,38 @@
       }[ch]));
     }
 
+    function hslToHex(h, s=35, l=90){
+      // s,l 0..100
+      s /= 100; l /= 100;
+      const c = (1 - Math.abs(2*l - 1)) * s;
+      const x = c * (1 - Math.abs(((h/60) % 2) - 1));
+      const m = l - c/2;
+      let r=0,g=0,b=0;
+      if (0<=h && h<60) { r=c; g=x; b=0; }
+      else if (60<=h && h<120){ r=x; g=c; b=0; }
+      else if (120<=h && h<180){ r=0; g=c; b=x; }
+      else if (180<=h && h<240){ r=0; g=x; b=c; }
+      else if (240<=h && h<300){ r=x; g=0; b=c; }
+      else { r=c; g=0; b=x; }
+      const toHex = v => Math.round((v+m)*255).toString(16).padStart(2,'0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
     function updateBandVars(){
-      const pos = Number(guidePos.value);     // 10..90
-      const h = Number(bandH.value);          // 10..50 (%)
+      const pos = Number(guidePos.value);
+      const h = Number(bandH.value);
       const top = clamp(pos - (h/2), 0, 100);
       const bottom = clamp(pos + (h/2), 0, 100);
 
-      const shadePct = Number(bandShade.value);  // 0..85
+      const shadePct = Number(bandShade.value);
       const alpha = clamp(shadePct / 100, 0, 0.85);
 
       stage.style.setProperty('--bandTop', String(top));
       stage.style.setProperty('--bandBottom', String(bottom));
       stage.style.setProperty('--shadeAlpha', String(alpha));
 
-      // bandFrame konum/ölçü
       bandFrame.style.top = `${top}%`;
       bandFrame.style.height = `${bottom - top}%`;
-    }
-
-    function updateUI(){
-      speedVal.textContent = `${speed.value} px/sn`;
-      fontVal.textContent = `${fontSize.value} px`;
-      content.style.fontSize = `${fontSize.value}px`;
-      pauseBtn.textContent = paused ? 'Devam' : 'Duraklat';
-
-      stage.classList.toggle('mirror', mirror.checked);
-      document.body.classList.toggle('dim', dimOn.checked);
-
-      stage.classList.toggle('vignetteOn', vignetteOn.checked);
-      stage.classList.toggle('guideOn', guideOn.checked);
-      stage.classList.toggle('glassOn', glassOn.checked);
-
-      stage.classList.toggle('camOn', camOn.checked);
-
-      // pro band
-      stage.classList.toggle('bandOn', bandOn.checked);
-
-      guidePosVal.textContent = `%${guidePos.value}`;
-      guideThickVal.textContent = `${guideThick.value} px`;
-      guideLine.style.top = `${guidePos.value}%`;
-      guideLine.style.height = `${guideThick.value}px`;
-
-      bandHVal.textContent = `%${bandH.value}`;
-      bandShadeVal.textContent = `%${bandShade.value}`;
-      updateBandVars();
-
-      fsBtn.textContent = document.fullscreenElement ? 'Tam Ekrandan Çık (F)' : 'Tam Ekran (F)';
     }
 
     function updatePadding(){
@@ -599,6 +624,38 @@
       const m = maxScroll();
       const pct = m ? (viewport.scrollTop / m) * 100 : 0;
       posPill.textContent = `${clamp(pct,0,100).toFixed(0)}%`;
+    }
+
+    function updateUI(){
+      speedVal.textContent = `${speed.value} px/sn`;
+      fontVal.textContent = `${fontSize.value} px`;
+      content.style.fontSize = `${fontSize.value}px`;
+      pauseBtn.textContent = paused ? 'Devam' : 'Duraklat';
+
+      sidePadVal.textContent = `${sidePad.value} px`;
+      stage.style.setProperty('--sidePad', `${sidePad.value}px`);
+
+      stage.classList.toggle('mirror', mirror.checked);
+      stage.classList.toggle('vignetteOn', vignetteOn.checked);
+      stage.classList.toggle('guideOn', guideOn.checked);
+      stage.classList.toggle('glassOn', glassOn.checked);
+      stage.classList.toggle('bandOn', bandOn.checked);
+      stage.classList.toggle('camOn', camOn.checked);
+
+      guidePosVal.textContent = `%${guidePos.value}`;
+      guideThickVal.textContent = `${guideThick.value} px`;
+      guideLine.style.top = `${guidePos.value}%`;
+      guideLine.style.height = `${guideThick.value}px`;
+
+      bandHVal.textContent = `%${bandH.value}`;
+      bandShadeVal.textContent = `%${bandShade.value}`;
+      updateBandVars();
+
+      hueVal.textContent = hue.value;
+      colorVal.textContent = colorPick.value;
+      stage.style.setProperty('--baseText', colorPick.value);
+
+      fsBtn.textContent = document.fullscreenElement ? 'Tam ekrandan çık' : 'Tam ekran';
     }
 
     function splitSentencesKeepingSpaces(text){
@@ -690,13 +747,8 @@
       lastTs = ts;
 
       let delta = 0;
-
-      if (running && !paused){
-        delta += Number(speed.value) * dt;
-      }
-      if (manualDir !== 0){
-        delta += manualDir * manualSpeed * dt;
-      }
+      if (running && !paused) delta += Number(speed.value) * dt;
+      if (manualDir !== 0) delta += manualDir * manualSpeed * dt;
 
       if (delta !== 0){
         const m = maxScroll();
@@ -714,24 +766,19 @@
         }
       }
 
-      if (running || manualDir !== 0){
-        rafId = requestAnimationFrame(tick);
-      } else {
-        stopLoopIfIdle();
-      }
+      if (running || manualDir !== 0) rafId = requestAnimationFrame(tick);
+      else stopLoopIfIdle();
     }
 
     function start(){
       renderText();
       updatePadding();
-
       if (!input.value.trim()){
         setStatus('Metin boş');
         content.textContent = "";
         posPill.textContent = "0%";
         return;
       }
-
       viewport.scrollTop = 0;
       running = true;
       paused = false;
@@ -767,52 +814,44 @@
 
     async function toggleFullscreen(){
       try{
-        if (!document.fullscreenElement){
-          await stage.requestFullscreen();
-        } else {
-          await document.exitFullscreen();
-        }
-      }catch(e){
-        console.warn(e);
-      }
+        if (!document.fullscreenElement) await stage.requestFullscreen();
+        else await document.exitFullscreen();
+      }catch(e){ console.warn(e); }
       updateUI();
     }
 
-    // ✅ Pro preset (tek tık)
     function applyProPreset(){
-      // okunurluk / fokus
       bandOn.checked = true;
       vignetteOn.checked = true;
       guideOn.checked = true;
       glassOn.checked = true;
-      dimOn.checked = true;
 
       guidePos.value = "45";
       guideThick.value = "2";
       bandH.value = "24";
       bandShade.value = "55";
 
+      // telefonda yan boşluk otomatik daha düşük olsun
+      if (window.matchMedia("(max-width: 980px)").matches){
+        sidePad.value = "18";
+      }
       updateUI();
     }
 
-    // ---- Kamera ----
     async function startCamera(){
       try{
         await stopCamera();
-
         const constraints = {
           video: { facingMode: camFacing.value },
           audio: camAudio.checked
         };
-
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         camEl.srcObject = stream;
         await camEl.play();
-
         setStatus('Kamera açık');
       }catch(err){
         console.error(err);
-        setStatus('Kamera açılamadı (HTTPS + izin kontrol)');
+        setStatus('Kamera açılamadı (HTTPS + izin)');
         camOn.checked = false;
         updateUI();
       }
@@ -837,9 +876,7 @@
         'video/mp4'
       ];
       for (const t of candidates){
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)){
-          return t;
-        }
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
       }
       return '';
     }
@@ -849,7 +886,6 @@
         setStatus('Kayıt desteklenmiyor');
         return;
       }
-
       if (!stream){
         camOn.checked = true;
         updateUI();
@@ -863,11 +899,8 @@
       shareBtn.style.display = 'none';
 
       const mimeType = pickMimeType();
-      try{
-        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      }catch(e){
-        mediaRecorder = new MediaRecorder(stream);
-      }
+      try{ mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined); }
+      catch{ mediaRecorder = new MediaRecorder(stream); }
 
       mediaRecorder.ondataavailable = (ev) => {
         if (ev.data && ev.data.size > 0) recordedChunks.push(ev.data);
@@ -886,12 +919,9 @@
           const file = new File([lastBlob], `kayit.${ext}`, { type: lastBlob.type || 'video/webm' });
           if (navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
             shareBtn.style.display = 'inline-flex';
-            shareBtn.onclick = async () => {
-              try{ await navigator.share({ files:[file], title:'Kayıt' }); }catch(_){}
-            };
+            shareBtn.onclick = async () => { try{ await navigator.share({ files:[file], title:'Kayıt' }); }catch(_){} };
           }
         }catch(_){}
-
         setStatus('Kayıt hazır');
         recBtn.textContent = 'Kayıt Başlat';
       };
@@ -909,42 +939,46 @@
     }
 
     // --- Eventler ---
-    speed.addEventListener('input', updateUI);
-    fontSize.addEventListener('input', () => { updateUI(); updatePadding(); });
-
-    mirror.addEventListener('change', updateUI);
-    dimOn.addEventListener('change', () => document.body.classList.toggle('dim', dimOn.checked));
-
-    altSent.addEventListener('change', () => { renderText(); updatePadding(); updateProgress(); });
-    parenOn.addEventListener('change', () => { renderText(); updatePadding(); updateProgress(); });
-    quoteOn.addEventListener('change', () => { renderText(); updatePadding(); updateProgress(); });
-    mdOn.addEventListener('change', () => { renderText(); updatePadding(); updateProgress(); });
-
-    vignetteOn.addEventListener('change', updateUI);
-    guideOn.addEventListener('change', updateUI);
-    guidePos.addEventListener('input', updateUI);
-    guideThick.addEventListener('input', updateUI);
-    glassOn.addEventListener('change', updateUI);
-
-    // Pro
-    proMode.addEventListener('change', () => {
-      if (proMode.checked) applyProPreset();
-      updateUI();
-    });
-    bandOn.addEventListener('change', updateUI);
-    bandH.addEventListener('input', updateUI);
-    bandShade.addEventListener('input', updateUI);
-
     startBtn.addEventListener('click', start);
     pauseBtn.addEventListener('click', togglePause);
     stopBtn.addEventListener('click', stop);
     fsBtn.addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', () => updateUI());
 
+    speed.addEventListener('input', updateUI);
+    fontSize.addEventListener('input', () => { updateUI(); updatePadding(); });
+
+    sidePad.addEventListener('input', () => { updateUI(); });
+
+    // Hue skalası -> colorPick’e uygula
+    hue.addEventListener('input', () => {
+      hueVal.textContent = hue.value;
+      const hex = hslToHex(Number(hue.value), 35, 90);
+      colorPick.value = hex;
+      colorVal.textContent = hex;
+      stage.style.setProperty('--baseText', hex);
+    });
+
+    // Color picker -> direkt uygula
+    colorPick.addEventListener('input', () => {
+      colorVal.textContent = colorPick.value;
+      stage.style.setProperty('--baseText', colorPick.value);
+    });
+
+    [altSent, parenOn, quoteOn, mdOn].forEach(el => {
+      el.addEventListener('change', () => { renderText(); updatePadding(); updateProgress(); });
+    });
+    [mirror, vignetteOn, guideOn, glassOn, bandOn].forEach(el => el.addEventListener('change', updateUI));
+    [guidePos, guideThick, bandH, bandShade].forEach(el => el.addEventListener('input', updateUI));
+
+    proMode.addEventListener('change', () => {
+      if (proMode.checked) applyProPreset();
+      updateUI();
+    });
+
     input.addEventListener('input', () => {
-      if (!running){
-        preview();
-      } else {
+      if (!running) preview();
+      else {
         const keep = viewport.scrollTop;
         renderText();
         updatePadding();
@@ -967,61 +1001,45 @@
     bindHold(document.getElementById('holdUp'), -1);
     bindHold(document.getElementById('holdDown'), +1);
 
-    // Kamera toggle / yön değişimi
+    // Kamera
     camOn.addEventListener('change', async () => {
       updateUI();
       if (camOn.checked){
-        // Kamera açılırken Pro Mod açıksa otomatik pro preset uygula
         if (proMode.checked) applyProPreset();
         await startCamera();
       } else {
         await stopCamera();
       }
     });
-
-    camFacing.addEventListener('change', async () => {
-      if (camOn.checked) await startCamera();
-    });
-
+    camFacing.addEventListener('change', async () => { if (camOn.checked) await startCamera(); });
     camAudio.addEventListener('change', async () => {
       if (camOn.checked && (!mediaRecorder || mediaRecorder.state === 'inactive')) await startCamera();
     });
 
-    // Kayıt butonu
     recBtn.addEventListener('click', async () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
       else await startRecording();
     });
 
-    // Klavye
+    // Klavye (BT klavye varsa)
     window.addEventListener('keydown', (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === 'textarea' || tag === 'input' || tag === 'button' || tag === 'select') return;
 
       if (e.code === 'Space'){ e.preventDefault(); togglePause(); return; }
-      if (e.code === 'KeyF'){ e.preventDefault(); toggleFullscreen(); return; }
-
-      if (e.code === 'ArrowUp'){ e.preventDefault(); manualDir = -1; ensureLoop(); return; }
-      if (e.code === 'ArrowDown'){ e.preventDefault(); manualDir = +1; ensureLoop(); return; }
-
       if (e.code === 'ArrowRight'){ e.preventDefault(); adjustSpeed(+5); return; }
       if (e.code === 'ArrowLeft'){ e.preventDefault(); adjustSpeed(-5); return; }
+      if (e.code === 'ArrowUp'){ e.preventDefault(); manualDir = -1; ensureLoop(); return; }
+      if (e.code === 'ArrowDown'){ e.preventDefault(); manualDir = +1; ensureLoop(); return; }
     });
-
     window.addEventListener('keyup', (e) => {
       if (e.code === 'ArrowUp' && manualDir === -1){ manualDir = 0; stopLoopIfIdle(); }
       if (e.code === 'ArrowDown' && manualDir === +1){ manualDir = 0; stopLoopIfIdle(); }
     });
 
-    window.addEventListener('resize', () => {
-      const keep = viewport.scrollTop;
-      updatePadding();
-      viewport.scrollTop = clamp(keep, 0, maxScroll());
-      updateProgress();
-      updateUI();
-    });
+    window.addEventListener('resize', () => { updatePadding(); updateUI(); updateProgress(); });
 
-    // ilk durum
+    // İlk durum
     updateUI();
     preview();
   </script>
