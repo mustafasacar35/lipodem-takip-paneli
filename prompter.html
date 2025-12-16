@@ -20,7 +20,7 @@
 
       --guide: rgba(255,255,255,.55);
 
-      /* ✅ Kullanıcı ayarları (JS günceller) */
+      /* Kullanıcı ayarları */
       --baseText: #e5e7eb;
       --sidePad: 64px;
       --topPad: 48px;
@@ -39,7 +39,6 @@
       color:var(--text);
     }
 
-    /* ✅ Yeni yerleşim: Sol=Metin, Sağ=Prompter+Alt Ayarlar */
     .wrap{
       display:grid;
       grid-template-columns: 420px 1fr;
@@ -124,7 +123,7 @@
       line-height:1.35;
       letter-spacing:.2px;
       text-shadow:0 2px 16px rgba(0,0,0,.45);
-      color: var(--baseText); /* ✅ varsayılan yazı rengi */
+      color: var(--baseText);
     }
 
     .sentence.sA{ color: var(--sentA); }
@@ -241,6 +240,33 @@
     }
     .stage.guideOn .guideLine{ opacity:1; }
 
+    /* ✅ Mini kontrol barı (ayarlar gizliyken/tam ekranda) */
+    .miniControls{
+      position:absolute;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      z-index:13;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      pointer-events:auto;
+      padding:10px;
+      border-radius:12px;
+      background:rgba(0,0,0,.48);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      opacity:0;
+      transform: translateY(8px);
+      transition: opacity .12s ease, transform .12s ease;
+    }
+    body.settingsHidden .miniControls{ opacity:1; transform: translateY(0); }
+    .stage:fullscreen .miniControls{ opacity:1; transform: translateY(0); }
+
+    .miniLeft,.miniRight{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .miniControls .miniVal{ color:var(--muted); font-size:12px; }
+
     /* ✅ Alt ayarlar paneli */
     .settings{
       background:var(--panel);
@@ -251,6 +277,7 @@
       flex-direction:column;
       gap:10px;
     }
+    body.settingsHidden .settings{ display:none; }
 
     .row{
       display:flex;
@@ -325,7 +352,16 @@
     }
     a.dl.show{ display:inline-flex; }
 
-    /* ✅ Mobil: prompter üstte, ayarlar altında, metin input en altta */
+    /* Tam ekran */
+    .stage:fullscreen{
+      border-radius:0;
+      border:none;
+    }
+    .stage:fullscreen .viewport{
+      padding: 72px 32px;
+    }
+
+    /* ✅ Mobil: stage’in görünmesi garanti */
     @media (max-width: 980px){
       .wrap{
         grid-template-columns: 1fr;
@@ -334,10 +370,24 @@
       .rightCol{ order:1; }
       .leftPanel{ order:2; }
 
-      /* Telefonda yan boşluğu otomatik küçült */
       :root{
         --sidePad: 18px;
         --topPad: 24px;
+      }
+
+      .stage{
+        flex:none;
+        height: 58vh;     /* ✅ prompter + kamera kesin görünür */
+        min-height: 320px;
+      }
+
+      body.settingsHidden .stage{
+        height: 82vh;     /* ✅ ayarlar gizliyken daha büyük */
+      }
+
+      .settings{
+        max-height: 44vh;
+        overflow:auto;
       }
     }
   </style>
@@ -352,7 +402,7 @@
         <span class="hint">Metni buraya yapıştır</span>
       </div>
       <textarea id="input" placeholder="Metni buraya yapıştır..."></textarea>
-      <div class="hint">Not: iPhone’da kamera için sayfayı HTTPS üzerinden açmalısın.</div>
+      <div class="hint">iPhone’da kamera için sayfayı HTTPS üzerinden açmalısın.</div>
     </div>
 
     <!-- SAĞ: Prompter + Alt ayarlar -->
@@ -366,10 +416,8 @@
         <video id="cam" class="cam" playsinline muted></video>
 
         <div class="glass"></div>
-
         <div class="bandShade"></div>
         <div class="bandFrame" id="bandFrame"></div>
-
         <div class="vignette"></div>
         <div class="guideLine" id="guideLine"></div>
 
@@ -378,15 +426,38 @@
           <div class="content" id="content"></div>
           <div class="pad" id="padBottom"></div>
         </div>
+
+        <!-- ✅ Mini kontroller (ayarlar gizliyken/tam ekranda) -->
+        <div class="miniControls" id="miniControls">
+          <div class="miniLeft">
+            <button id="miniPlay" class="small primary">Başlat</button>
+            <button id="miniPause" class="small">Duraklat</button>
+            <button id="miniStop" class="small danger">Durdur</button>
+          </div>
+          <div class="miniRight">
+            <button id="miniSlow" class="small">Hız −</button>
+            <span class="miniVal" id="miniSpeedVal">80</span>
+            <button id="miniFast" class="small">Hız +</button>
+            <button id="miniCam" class="small">Kamera</button>
+            <button id="miniSettings" class="small">Ayarlar</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ✅ Ayarlar artık burada: kayan metin alanının ALTINDA -->
-      <div class="settings">
+      <!-- Ayarlar -->
+      <div class="settings" id="settings">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Ayarlar</strong>
+          <div class="row">
+            <button id="toggleSettings" class="small">Ayarları Gizle</button>
+            <button id="fsBtn" class="small">Tam ekran</button>
+          </div>
+        </div>
+
         <div class="row">
           <button id="startBtn" class="primary">Başlat</button>
           <button id="pauseBtn">Duraklat</button>
           <button id="stopBtn" class="danger">Durdur</button>
-          <button id="fsBtn">Tam Ekran</button>
         </div>
 
         <div class="row">
@@ -403,7 +474,6 @@
         </div>
 
         <div class="row">
-          <!-- ✅ Telefon boşluğu için -->
           <label>
             Yan boşluk
             <input id="sidePad" type="range" min="8" max="120" step="1" value="64" />
@@ -411,7 +481,7 @@
           </label>
         </div>
 
-        <!-- ✅ Yazı rengi: renk skalası + color picker -->
+        <!-- Yazı rengi -->
         <div class="row">
           <label>
             Yazı rengi (Hue)
@@ -486,7 +556,7 @@
         <div class="row">
           <button id="holdUp" class="small">▲ Yukarı (basılı tut)</button>
           <button id="holdDown" class="small">▼ Aşağı (basılı tut)</button>
-          <span class="hint">Space: Duraklat • ↑↓: sar • ←→: hız • Tam ekran önerilir</span>
+          <span class="hint">Space: Duraklat • ↑↓: sar • ←→: hız • iPhone’da mini bar kullan</span>
         </div>
       </div>
     </div>
@@ -506,6 +576,7 @@
     const pauseBtn = document.getElementById('pauseBtn');
     const stopBtn = document.getElementById('stopBtn');
     const fsBtn = document.getElementById('fsBtn');
+    const toggleSettingsBtn = document.getElementById('toggleSettings');
 
     const speed = document.getElementById('speed');
     const speedVal = document.getElementById('speedVal');
@@ -554,6 +625,16 @@
     const statusPill = document.getElementById('statusPill');
     const posPill = document.getElementById('posPill');
 
+    // Mini bar
+    const miniPlay = document.getElementById('miniPlay');
+    const miniPause = document.getElementById('miniPause');
+    const miniStop = document.getElementById('miniStop');
+    const miniSlow = document.getElementById('miniSlow');
+    const miniFast = document.getElementById('miniFast');
+    const miniCam = document.getElementById('miniCam');
+    const miniSettings = document.getElementById('miniSettings');
+    const miniSpeedVal = document.getElementById('miniSpeedVal');
+
     let rafId = null;
     let running = false;
     let paused = false;
@@ -577,7 +658,6 @@
     }
 
     function hslToHex(h, s=35, l=90){
-      // s,l 0..100
       s /= 100; l /= 100;
       const c = (1 - Math.abs(2*l - 1)) * s;
       const x = c * (1 - Math.abs(((h/60) % 2) - 1));
@@ -630,7 +710,6 @@
       speedVal.textContent = `${speed.value} px/sn`;
       fontVal.textContent = `${fontSize.value} px`;
       content.style.fontSize = `${fontSize.value}px`;
-      pauseBtn.textContent = paused ? 'Devam' : 'Duraklat';
 
       sidePadVal.textContent = `${sidePad.value} px`;
       stage.style.setProperty('--sidePad', `${sidePad.value}px`);
@@ -655,7 +734,10 @@
       colorVal.textContent = colorPick.value;
       stage.style.setProperty('--baseText', colorPick.value);
 
-      fsBtn.textContent = document.fullscreenElement ? 'Tam ekrandan çık' : 'Tam ekran';
+      pauseBtn.textContent = paused ? 'Devam' : 'Duraklat';
+      miniSpeedVal.textContent = speed.value;
+
+      toggleSettingsBtn.textContent = document.body.classList.contains('settingsHidden') ? 'Ayarları Göster' : 'Ayarları Gizle';
     }
 
     function splitSentencesKeepingSpaces(text){
@@ -683,7 +765,7 @@
     function renderText(){
       const text = input.value || "";
       if (!text.trim()){
-        content.textContent = "";
+        content.textContent = "Metin burada görünecek…";
         return;
       }
 
@@ -760,7 +842,7 @@
           running = false;
           paused = false;
           setStatus('Bitti');
-          pauseBtn.textContent = 'Duraklat';
+          updateUI();
           stopLoopIfIdle();
           return;
         }
@@ -773,12 +855,14 @@
     function start(){
       renderText();
       updatePadding();
+
       if (!input.value.trim()){
         setStatus('Metin boş');
-        content.textContent = "";
+        content.textContent = "Metin burada görünecek…";
         posPill.textContent = "0%";
         return;
       }
+
       viewport.scrollTop = 0;
       running = true;
       paused = false;
@@ -831,13 +915,13 @@
       bandH.value = "24";
       bandShade.value = "55";
 
-      // telefonda yan boşluk otomatik daha düşük olsun
       if (window.matchMedia("(max-width: 980px)").matches){
         sidePad.value = "18";
       }
       updateUI();
     }
 
+    // Kamera
     async function startCamera(){
       try{
         await stopCamera();
@@ -868,74 +952,12 @@
       camEl.srcObject = null;
     }
 
-    function pickMimeType(){
-      const candidates = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm',
-        'video/mp4'
-      ];
-      for (const t of candidates){
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
-      }
-      return '';
-    }
-
-    async function startRecording(){
-      if (!window.MediaRecorder){
-        setStatus('Kayıt desteklenmiyor');
-        return;
-      }
-      if (!stream){
-        camOn.checked = true;
-        updateUI();
-        await startCamera();
-        if (!stream) return;
-      }
-
-      recordedChunks = [];
-      lastBlob = null;
-      dl.classList.remove('show');
-      shareBtn.style.display = 'none';
-
-      const mimeType = pickMimeType();
-      try{ mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined); }
-      catch{ mediaRecorder = new MediaRecorder(stream); }
-
-      mediaRecorder.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) recordedChunks.push(ev.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        lastBlob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || 'video/webm' });
-        const url = URL.createObjectURL(lastBlob);
-
-        const ext = (lastBlob.type.includes('mp4')) ? 'mp4' : 'webm';
-        dl.download = `kayit.${ext}`;
-        dl.href = url;
-        dl.classList.add('show');
-
-        try{
-          const file = new File([lastBlob], `kayit.${ext}`, { type: lastBlob.type || 'video/webm' });
-          if (navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
-            shareBtn.style.display = 'inline-flex';
-            shareBtn.onclick = async () => { try{ await navigator.share({ files:[file], title:'Kayıt' }); }catch(_){} };
-          }
-        }catch(_){}
-        setStatus('Kayıt hazır');
-        recBtn.textContent = 'Kayıt Başlat';
-      };
-
-      mediaRecorder.start(250);
-      setStatus('Kayıt alınıyor…');
-      recBtn.textContent = 'Kayıt Durdur';
-    }
-
-    function stopRecording(){
-      if (mediaRecorder && mediaRecorder.state !== 'inactive'){
-        mediaRecorder.stop();
-        setStatus('Kayıt işleniyor…');
-      }
+    // Ayarlar gizle/göster
+    function toggleSettings(){
+      document.body.classList.toggle('settingsHidden');
+      updateUI();
+      // iPhone'da yükseklik değişince padding’i güncelle
+      setTimeout(() => { updatePadding(); updateProgress(); }, 50);
     }
 
     // --- Eventler ---
@@ -943,23 +965,40 @@
     pauseBtn.addEventListener('click', togglePause);
     stopBtn.addEventListener('click', stop);
     fsBtn.addEventListener('click', toggleFullscreen);
+    toggleSettingsBtn.addEventListener('click', toggleSettings);
+
+    // Mini bar
+    miniPlay.addEventListener('click', start);
+    miniPause.addEventListener('click', togglePause);
+    miniStop.addEventListener('click', stop);
+    miniSlow.addEventListener('click', () => adjustSpeed(-5));
+    miniFast.addEventListener('click', () => adjustSpeed(+5));
+    miniCam.addEventListener('click', async () => {
+      camOn.checked = !camOn.checked;
+      updateUI();
+      if (camOn.checked){
+        if (proMode.checked) applyProPreset();
+        await startCamera();
+      } else {
+        await stopCamera();
+      }
+    });
+    miniSettings.addEventListener('click', toggleSettings);
+
     document.addEventListener('fullscreenchange', () => updateUI());
 
     speed.addEventListener('input', updateUI);
     fontSize.addEventListener('input', () => { updateUI(); updatePadding(); });
+    sidePad.addEventListener('input', updateUI);
 
-    sidePad.addEventListener('input', () => { updateUI(); });
-
-    // Hue skalası -> colorPick’e uygula
     hue.addEventListener('input', () => {
-      hueVal.textContent = hue.value;
       const hex = hslToHex(Number(hue.value), 35, 90);
+      hueVal.textContent = hue.value;
       colorPick.value = hex;
       colorVal.textContent = hex;
       stage.style.setProperty('--baseText', hex);
     });
 
-    // Color picker -> direkt uygula
     colorPick.addEventListener('input', () => {
       colorVal.textContent = colorPick.value;
       stage.style.setProperty('--baseText', colorPick.value);
@@ -989,7 +1028,6 @@
 
     viewport.addEventListener('scroll', () => updateProgress(), { passive:true });
 
-    // Basılı tut sarma
     function bindHold(btn, dir){
       const startHold = (e) => { e.preventDefault(); manualDir = dir; ensureLoop(); };
       const stopHold = () => { manualDir = 0; stopLoopIfIdle(); };
@@ -1001,7 +1039,6 @@
     bindHold(document.getElementById('holdUp'), -1);
     bindHold(document.getElementById('holdDown'), +1);
 
-    // Kamera
     camOn.addEventListener('change', async () => {
       updateUI();
       if (camOn.checked){
@@ -1014,27 +1051,6 @@
     camFacing.addEventListener('change', async () => { if (camOn.checked) await startCamera(); });
     camAudio.addEventListener('change', async () => {
       if (camOn.checked && (!mediaRecorder || mediaRecorder.state === 'inactive')) await startCamera();
-    });
-
-    recBtn.addEventListener('click', async () => {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
-      else await startRecording();
-    });
-
-    // Klavye (BT klavye varsa)
-    window.addEventListener('keydown', (e) => {
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      if (tag === 'textarea' || tag === 'input' || tag === 'button' || tag === 'select') return;
-
-      if (e.code === 'Space'){ e.preventDefault(); togglePause(); return; }
-      if (e.code === 'ArrowRight'){ e.preventDefault(); adjustSpeed(+5); return; }
-      if (e.code === 'ArrowLeft'){ e.preventDefault(); adjustSpeed(-5); return; }
-      if (e.code === 'ArrowUp'){ e.preventDefault(); manualDir = -1; ensureLoop(); return; }
-      if (e.code === 'ArrowDown'){ e.preventDefault(); manualDir = +1; ensureLoop(); return; }
-    });
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'ArrowUp' && manualDir === -1){ manualDir = 0; stopLoopIfIdle(); }
-      if (e.code === 'ArrowDown' && manualDir === +1){ manualDir = 0; stopLoopIfIdle(); }
     });
 
     window.addEventListener('resize', () => { updatePadding(); updateUI(); updateProgress(); });
