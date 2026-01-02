@@ -8909,6 +8909,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         if (!hastaDetay) {
           console.log('⚠️ Standart dosya adlarıyla bulunamadı, dizin taranıyor (Fallback)...');
           try {
+            const token = document.getElementById('githubToken').value.trim();
+            const headers = token ? { 'Authorization': `token ${token}` } : {};
             // Cache buster ile güncel listeyi al
             const listResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients?t=${Date.now()}`, { headers });
 
@@ -8927,12 +8929,23 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
               if (match) {
                 console.log(`✅ Fallback eşleşme bulundu: ${match.name}`);
-                const fileResp = await fetch(match.url, { headers });
-                if (fileResp.ok) {
-                  const data = await fileResp.json();
-                  hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
-                  bulunanDosya = match.name;
-                  console.log('✅ Fallback ile hasta verisi yüklendi.');
+                // Raw içerik (download_url) üzerinden çek (Base64 decode sorunlarını önler)
+                if (match.download_url) {
+                  const fileResp = await fetch(match.download_url);
+                  if (fileResp.ok) {
+                    hastaDetay = await fileResp.json();
+                    bulunanDosya = match.name;
+                    console.log('✅ Fallback (Raw) ile hasta verisi yüklendi.');
+                  }
+                } else {
+                  // download_url yoksa API üzerinden dene
+                  const fileResp = await fetch(match.url, { headers });
+                  if (fileResp.ok) {
+                    const data = await fileResp.json();
+                    hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
+                    bulunanDosya = match.name;
+                    console.log('✅ Fallback (API) ile hasta verisi yüklendi.');
+                  }
                 }
               }
             }
