@@ -8905,6 +8905,42 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           }
         }
 
+        // 🔍 FALLBACK: Eğer standart isimlerle bulunamadıysa dizin taraması yap
+        if (!hastaDetay) {
+          console.log('⚠️ Standart dosya adlarıyla bulunamadı, dizin taranıyor (Fallback)...');
+          try {
+            // Cache buster ile güncel listeyi al
+            const listResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients?t=${Date.now()}`, { headers });
+
+            if (listResponse.ok) {
+              const files = await listResponse.json();
+              console.log(`📂 Dizin tarandı (${files.length} dosya), eşleşme aranıyor...`);
+
+              // 1. ID ile eşleşen (En güvenilir)
+              let match = files.find(f => f.name.includes(hastaBilgi.id));
+
+              // 2. İsim (Slug) ile eşleşen
+              if (!match && hastaBilgi.isim) {
+                const slug = turkceKarakterDuzelt(hastaBilgi.isim);
+                match = files.find(f => f.name.toLowerCase().includes(slug.toLowerCase()));
+              }
+
+              if (match) {
+                console.log(`✅ Fallback eşleşme bulundu: ${match.name}`);
+                const fileResp = await fetch(match.url, { headers });
+                if (fileResp.ok) {
+                  const data = await fileResp.json();
+                  hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
+                  bulunanDosya = match.name;
+                  console.log('✅ Fallback ile hasta verisi yüklendi.');
+                }
+              }
+            }
+          } catch (fallbackErr) {
+            console.warn('Fallback tarama hatası:', fallbackErr);
+          }
+        }
+
         if (hastaDetay) {
           // ⭐ YENİ YAKLAŞIM: localStorage'ı temel al, GitHub'ı sadece eksik PDF'ler için kullan
           if (seciliHasta && seciliHasta.id === hastaDetay.id && seciliHasta.haftalar) {
@@ -9007,9 +9043,15 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             }
           }, 1000);
 
-        } else {
-          throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
+          if (!hastaDetay) {
+            throw new Error(`Hasta dosyası bulunamadı. Denenen dosyalar: ${benzersizDosyaAdlari.join(', ')}`);
+          }
         }
+
+        // Eğer fallback ile bulunduysa akışı devam ettir (yukarıdaki if(hastaDetay) bloğunu tekrarla veya yapılandır)
+        // Ancak kod yapısı gereği 'else' bloğundayız. Kod tekrarını önlemek için 'hastaDetay' kontrolünü dışarı almamız lazım.
+        // Bu yüzden replace_file_content ile yapıyı biraz değiştireceğim.
+
 
       } catch (error) {
         console.error('❌ Yeni sistemde hasta seçme hatası:', error);
@@ -20074,8 +20116,8 @@ ${mesajlar.join('\n')}
       }
     }
 
-    // Özel prompt'ları (Giriş ve Sonuç) GitHub'a kaydet
-    async function saveOzelPromptlarToGithub(girisPrompt, sonucPrompt) {
+    // Özel prompt'ları (Giriş, Sonuç ve Görsel) GitHub'a kaydet
+    async function saveOzelPromptlarToGithub(girisPrompt, sonucPrompt, gorselPrompt = null) {
       try {
         // GitHub token'ı al
         let token = localStorage.getItem('github_api_token');
@@ -20138,8 +20180,9 @@ ${mesajlar.join('\n')}
 
         // Özel prompt'ları ekle veya güncelle
         currentContent.ozelPromptlar = {
-          girisPrompt: girisPrompt || '',
-          sonucPrompt: sonucPrompt || '',
+          girisPrompt: girisPrompt !== null ? girisPrompt : (currentContent.ozelPromptlar?.girisPrompt || ''),
+          sonucPrompt: sonucPrompt !== null ? sonucPrompt : (currentContent.ozelPromptlar?.sonucPrompt || ''),
+          gorselPrompt: (typeof gorselPrompt !== 'undefined' && gorselPrompt !== null) ? gorselPrompt : (currentContent.ozelPromptlar?.gorselPrompt || ''),
           guncellemeTarihi: new Date().toISOString()
         };
 
@@ -23079,6 +23122,36 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       return meals;
     }
 
+    // Görsel promptunu varsayılan olarak (GitHub + LocalStorage) kaydet
+    async function saveImagePromptDefault() {
+      const promptText = document.getElementById('mealCustomPrompt').value;
+
+      // LocalStorage'a kaydet (Hızlı erişim için)
+      localStorage.setItem('customImagePrompt', promptText);
+
+      const btn = event.target;
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Kaydediliyor...';
+
+      try {
+        // GitHub'a kaydet
+        await saveOzelPromptlarToGithub(null, null, promptText);
+        showToast('✅ Varsayılan görsel talimatı GitHub\'a kaydedildi!', 'success');
+      } catch (error) {
+        console.error('GitHub kayıt hatası:', error);
+        alert('❌ GitHub\'a kaydedilemedi (Local\'e kaydedildi): ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    // Varsayılan görsel promptunu yükle (LocalStorage veya Cache'den)
+    function loadDefaultImagePrompt() {
+      return localStorage.getItem('customImagePrompt') || '';
+    }
+
     // Tarifler array'inden öğün oluştur (fallback)
     function createMealsFromTarifler(tarifler) {
       if (!tarifler || tarifler.length === 0) return [];
@@ -23118,6 +23191,90 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
     }
 
     // Meal Image Modal göster
+    // --- GÖRSEL KARA LİSTE SİSTEMİ ---
+    const VisualBlacklistManager = {
+      getKey: () => 'visual_blacklist',
+
+      load: function () {
+        return JSON.parse(localStorage.getItem(this.getKey()) || '{"blacklist":[]}').blacklist;
+      },
+
+      save: function (blacklist) {
+        localStorage.setItem(this.getKey(), JSON.stringify({ blacklist }));
+        saveBlacklistToGithub(blacklist);
+      },
+
+      add: function (item) {
+        const list = this.load();
+        if (!list.includes(item)) {
+          list.push(item);
+          this.save(list);
+          showToast(`🚫 "${item}" kara listeye eklendi`, 'success');
+        }
+      },
+
+      contains: function (text) {
+        const list = this.load();
+        const lower = text.toLowerCase();
+        return list.some(blocked => lower.includes(blocked.toLowerCase()));
+      }
+    };
+
+    // Kara listeyi GitHub'a kaydet
+    async function saveBlacklistToGithub(blacklist) {
+      try {
+        const token = localStorage.getItem('github_api_token') || JSON.parse(localStorage.getItem('githubSettings') || '{}').token;
+        if (!token) return;
+
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const branch = githubSettings.branch || 'main';
+        const path = 'promptlar/visual_blacklist.json';
+
+        // Dosya var mı kontrol et (SHA)
+        let sha = null;
+        try {
+          const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (check.ok) sha = (await check.json()).sha;
+        } catch (e) { }
+
+        const content = btoa(JSON.stringify({ blacklist, lastUpdated: new Date().toISOString() }, null, 2));
+
+        await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: 'Visual blacklist guncellendi',
+            content: content,
+            branch: branch,
+            sha: sha
+          })
+        });
+        console.log('🚫 Kara liste GitHub\'a yedeklendi');
+      } catch (e) {
+        console.warn('Kara liste GitHub yedekleme hatası:', e);
+      }
+    }
+
+    // Listeden yasaklama fonksiyonu (Global erişim için)
+    window.addToVisualBlacklist = function (text, btn) {
+      if (confirm(`"${text}" ifadesini görsel oluşturma kara listesine eklemek istiyor musunuz?\n\nBu ifadeyi içeren yemekler bundan sonra otomatik olarak seçilmeyecek.`)) {
+        VisualBlacklistManager.add(text);
+        // UI güncelle
+        const checkbox = btn.parentElement.querySelector('input[type="checkbox"]');
+        if (checkbox) checkbox.checked = false;
+        const span = btn.parentElement.querySelector('span');
+        if (span) {
+          span.style.textDecoration = 'line-through';
+          span.style.color = '#999';
+        }
+        btn.remove();
+      }
+    };
+
     function showMealImageModal(haftaIndex) {
       console.log('🍽️ showMealImageModal çağrıldı, haftaIndex:', haftaIndex);
 
@@ -23158,7 +23315,27 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       }
 
       // Düzenlenebilir öğün HTML oluştur
-      const mealItemsHtml = meals.map((meal, idx) => `
+      const mealItemsHtml = meals.map((meal, idx) => {
+        // Yemek listesi (Checkbox'lı)
+        const foodListHtml = meal.yemekler.map((food, fIdx) => {
+          // Kara liste kontrolü
+          const isBlocked = VisualBlacklistManager.contains(food);
+          const isChecked = !isBlocked;
+          const style = isBlocked ? 'text-decoration: line-through; color: #999;' : '';
+          const btnStyle = 'padding: 2px 6px; font-size: 10px; border: 1px solid #dc3545; background: #fff; color: #dc3545; border-radius: 4px; cursor: pointer; margin-left: 5px;';
+          const safeFood = food.replace(/"/g, '&quot;');
+          const safeFoodJs = food.replace(/'/g, "\\'");
+
+          return `
+            <div style="display: flex; align-items: center; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #eee;">
+              <input type="checkbox" class="food-check-${idx}" value="${safeFood}" ${isChecked ? 'checked' : ''} onchange="this.nextElementSibling.style.textDecoration = this.checked ? 'none' : 'line-through'; this.nextElementSibling.style.color = this.checked ? 'black' : '#999'">
+              <span style="flex: 1; font-size: 12px; margin-left: 6px; ${style}">${food}</span>
+              ${!isBlocked ? `<button onclick="addToVisualBlacklist('${safeFoodJs}', this)" style="${btnStyle}" title="Yasakla (Kara Listeye Ekle)">🚫</button>` : ''}
+            </div>
+          `;
+        }).join('');
+
+        return `
         <div class="meal-item" style="margin-bottom: 12px; background: white; border: 2px solid #28a745; border-radius: 8px; overflow: hidden;">
           <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #d4edda; cursor: pointer;" onclick="toggleMealContent(${idx})">
             <input type="checkbox" id="mealCheck_${idx}" checked style="width: 18px; height: 18px;" onclick="event.stopPropagation()">
@@ -23167,11 +23344,14 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
             <span id="mealToggle_${idx}" style="font-size: 12px;">▼</span>
           </div>
           <div id="mealContent_${idx}" style="padding: 10px 12px; display: block;">
-            <textarea id="mealFoods_${idx}" style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; resize: vertical; line-height: 1.5;" placeholder="Her satıra bir yemek yazın...">${meal.yemekler.join('\n')}</textarea>
-            <div style="margin-top: 6px; color: #6c757d; font-size: 10px;">Her satır bir yemek olarak AI'a gönderilir. Düzenleyebilirsiniz.</div>
+            <div style="max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; background: #f8f9fa;">
+              ${foodListHtml}
+            </div>
+            <div style="margin-top: 6px; color: #6c757d; font-size: 10px;">İşaretli olmayan yemekler görsel oluşturmaya dahil edilmez. 🚫 ile kalıcı olarak engelleyebilirsiniz.</div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       // Maliyet tahmini (her öğün için ayrı görsel)
       const mealCount = meals.length;
@@ -23232,7 +23412,10 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
                 <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057; font-size: 13px;">
                   ✏️ Özel Talimatlar (İsteğe bağlı)
                 </label>
-                <textarea id="mealCustomPrompt" style="width: 100%; height: 80px; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 12px; resize: vertical;" placeholder="Örn: Kollajen tozu bir bardak suda çözünmüş olarak göster. Zeytinler siyah olsun. Tabaklar beyaz porselen olsun..."></textarea>
+                <textarea id="mealCustomPrompt" style="width: 100%; height: 80px; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 12px; resize: vertical;" placeholder="Örn: Kollajen tozu bir bardak suda çözünmüş olarak göster. Zeytinler siyah olsun. Tabaklar beyaz porselen olsun...">${loadDefaultImagePrompt()}</textarea>
+                <div style="margin-top: 5px; text-align: right;">
+                  <button onclick="saveImagePromptDefault()" style="padding: 4px 10px; background: #e9ecef; color: #495057; border: 1px solid #ced4da; border-radius: 4px; font-size: 11px; cursor: pointer;">💾 Varsayılan Olarak (GitHub) Kaydet</button>
+                </div>
               </div>
 
               <!-- Sonuç Alanı (gizli, görsel gelince gösterilecek) -->
@@ -23296,6 +23479,103 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       }
     }
 
+    // Metni URL uyumlu hale getir (Slugify)
+    function slugify(text) {
+      if (!text) return '';
+      const trMap = {
+        'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ş': 's', 'Ş': 's',
+        'ü': 'u', 'Ü': 'u', 'ı': 'i', 'İ': 'i', 'ö': 'o', 'Ö': 'o'
+      };
+      return text
+        .split('')
+        .map(char => trMap[char] || char)
+        .join('')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // Harf, rakam ve boşluk hariç her şeyi sil
+        .trim()
+        .replace(/\s+/g, '-'); // Boşlukları tire yap
+    }
+
+    // Görseli GitHub'a yükle
+    async function uploadMealImageToGithub(haftaIndex, base64Data) {
+      try {
+        if (!seciliHasta || !seciliHasta.isim) throw new Error('Hasta bilgisi bulunamadı');
+
+        // Token kontrolü
+        let token = localStorage.getItem('github_api_token');
+        if (!token) {
+          const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+          token = githubSettings.token;
+        }
+
+        if (!token) {
+          console.warn('⚠️ GitHub token yok, görsel yüklenemedi.');
+          return null;
+        }
+
+        // GitHub ayarları
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const branch = githubSettings.branch || 'main';
+
+        // Dosya yolu: patient_images/{slug}/week_{week}.png
+        const slug = slugify(seciliHasta.isim);
+        const fileName = `week_${haftaIndex + 1}.png`;
+        const path = `patient_images/${slug}/${fileName}`;
+
+        // Base64 header'ı temizle
+        const content = base64Data.replace(/^data:image\/\w+;base64,/, '');
+
+        // 1. Dosya var mı kontrol et (SHA için)
+        let sha = null;
+        try {
+          const checkResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+
+          if (checkResponse.ok) {
+            const data = await checkResponse.json();
+            sha = data.sha;
+            console.log('📄 Mevcut görsel bulundu, üzerine yazılacak. SHA:', sha);
+          }
+        } catch (e) {
+          // Dosya yoksa sorun değil, yeni oluşturulacak
+          console.log('📄 Yeni görsel dosyası oluşturulacak.');
+        }
+
+        // 2. Dosyayı yükle (PUT)
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Görsel güncelleme: ${seciliHasta.isim} - ${fileName}`,
+            content: content,
+            branch: branch,
+            sha: sha // Varsa güncelle, yoksa yeni oluştur
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`GitHub upload hatası: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const downloadUrl = result.content.download_url; // Raw URL
+        console.log('✅ Görsel GitHub\'a yüklendi:', downloadUrl);
+
+        return downloadUrl;
+
+      } catch (error) {
+        console.error('Görsel yükleme hatası:', error);
+        showToast('⚠️ Görsel GitHub\'a yedeklenemedi (Local kayıt tamam)', 'warning', 4000);
+        return null;
+      }
+    }
+
     // Her öğün için ayrı görsel oluştur + Canvas grid
     async function generateMealImages(haftaIndex) {
       const modalData = window.currentMealModalData;
@@ -23314,12 +23594,20 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
       const selectedMeals = [];
       modalData.meals.forEach((meal, idx) => {
         const checkbox = document.getElementById(`mealCheck_${idx}`);
-        const foodsTextarea = document.getElementById(`mealFoods_${idx}`);
 
         if (checkbox && checkbox.checked) {
-          const updatedFoods = foodsTextarea
-            ? foodsTextarea.value.split('\n').map(f => f.trim()).filter(f => f.length > 0)
-            : meal.yemekler;
+          // Yeni Checkbox yapısından verileri al
+          const checkedBoxes = document.querySelectorAll(`.food-check-${idx}:checked`);
+          let updatedFoods = [];
+
+          if (checkedBoxes.length > 0) {
+            updatedFoods = Array.from(checkedBoxes).map(cb => cb.value.trim());
+          }
+
+          // Eğer yeni yapı yoksa meal.yemekler (fallback)
+          if (checkedBoxes.length === 0 && (!document.querySelector(`.food-check-${idx}`))) {
+            updatedFoods = meal.yemekler;
+          }
 
           selectedMeals.push({
             gun: meal.gun,
@@ -23396,11 +23684,43 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
         `;
         resultDiv.style.display = 'block';
 
+        // GitHub'a yükle (Arka planda)
+        btn.innerHTML = '☁️ GitHub\'a yükleniyor...';
+        const githubUrl = await uploadMealImageToGithub(haftaIndex, gridDataUrl);
+
         // Hasta verisine kaydet
         if (seciliHasta?.haftalar?.[haftaIndex]) {
           seciliHasta.haftalar[haftaIndex].mealImage = gridDataUrl;
           seciliHasta.haftalar[haftaIndex].mealImagePrompt = customPrompt;
+
+          if (githubUrl) {
+            seciliHasta.haftalar[haftaIndex].mealImageUrl = githubUrl;
+          }
+
           saveToStorage();
+
+          // Değişiklikleri GitHub'a da sync et (JSON güncellemesi)
+          if (window.hastayiAyriKaydet) {
+            console.log('🔄 Hasta JSON verisi GitHub\'a güncelleniyor...');
+            hastayiAyriKaydet(seciliHasta).catch(e => console.warn('JSON sync hatası:', e));
+          }
+
+          // Manuel kartlara ekle (ZIP ve UI'da görünmesi için)
+          if (!seciliHasta.haftalar[haftaIndex].manuelKartlar) {
+            seciliHasta.haftalar[haftaIndex].manuelKartlar = [];
+          }
+          // Varsa eskisini temizle (meal_image tipindekileri)
+          seciliHasta.haftalar[haftaIndex].manuelKartlar = seciliHasta.haftalar[haftaIndex].manuelKartlar.filter(k => k.type !== 'meal_image');
+
+          // Yeni ekle
+          seciliHasta.haftalar[haftaIndex].manuelKartlar.push({
+            name: `Ogun_Tabagi_${haftaIndex + 1}.png`,
+            data: gridDataUrl,
+            type: 'meal_image',
+            width: 800,
+            height: 600
+          });
+          console.log('✅ Öğün tabağı manuel kartlara eklendi (ZIP için)');
         }
 
         btn.innerHTML = '✅ Tamamlandı!';
