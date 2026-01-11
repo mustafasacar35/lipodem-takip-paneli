@@ -2012,48 +2012,60 @@
     // GPT Model Seçeneklerini HTML Olarak Döndür
     function getModelOptionsHtml(selectedModel) {
       const models = [
-        { label: "OpenAI GPT-4o", options: [
+        {
+          label: "OpenAI GPT-4o", options: [
             { val: "gpt-4o", text: "GPT-4o (En Zeki & Hızlı)" },
             { val: "gpt-4o-mini", text: "GPT-4o Mini (Hızlı & Ucuz)" },
             { val: "gpt-4-turbo", text: "GPT-4 Turbo" },
             { val: "gpt-3.5-turbo", text: "GPT-3.5 Turbo" }
-        ]},
-        { label: "OpenAI o-Serisi", options: [
+          ]
+        },
+        {
+          label: "OpenAI o-Serisi", options: [
             { val: "o4-mini", text: "o4-mini (Hızlı Akıl Yürütme)" },
             { val: "o3", text: "o3 (Derin Akıl Yürütme)" },
             { val: "o3-mini", text: "o3-mini" }
-        ]},
-        { label: "Anthropic Claude", options: [
+          ]
+        },
+        {
+          label: "Anthropic Claude", options: [
             { val: "claude-sonnet-4-20250514", text: "Claude 4 Sonnet (En Yeni)" },
             { val: "claude-opus-4-20250514", text: "Claude 4 Opus (En Güçlü)" },
             { val: "claude-3-7-sonnet-20250219", text: "Claude 3.7 Sonnet" },
             { val: "claude-3-5-sonnet-20241022", text: "Claude 3.5 Sonnet (Önerilen)" },
             { val: "claude-3-5-haiku-20241022", text: "Claude 3.5 Haiku (Hızlı)" }
-        ]},
-        { label: "Google Gemini 3", options: [
+          ]
+        },
+        {
+          label: "Google Gemini 3", options: [
             { val: "gemini-3-pro-preview", text: "Gemini 3 Pro (En Güçlü)" },
             { val: "gemini-3-flash-preview", text: "Gemini 3 Flash (Hızlı)" }
-        ]},
-        { label: "Google Gemini 2.x", options: [
+          ]
+        },
+        {
+          label: "Google Gemini 2.x", options: [
             { val: "gemini-2.5-pro-preview-06-05", text: "Gemini 2.5 Pro" },
             { val: "gemini-2.5-flash-preview-05-20", text: "Gemini 2.5 Flash (Önerilen)" },
             { val: "gemini-2.0-pro", text: "Gemini 2.0 Pro" },
             { val: "gemini-2.0-flash", text: "Gemini 2.0 Flash" }
-        ]},
-        { label: "Google Gemini 1.5", options: [
-             { val: "gemini-1.5-pro", text: "Gemini 1.5 Pro" },
-             { val: "gemini-1.5-flash", text: "Gemini 1.5 Flash" }
-        ]}
+          ]
+        },
+        {
+          label: "Google Gemini 1.5", options: [
+            { val: "gemini-1.5-pro", text: "Gemini 1.5 Pro" },
+            { val: "gemini-1.5-flash", text: "Gemini 1.5 Flash" }
+          ]
+        }
       ];
 
       let html = '';
       models.forEach(group => {
-          html += `<optgroup label="${group.label}">`;
-          group.options.forEach(opt => {
-              const selected = opt.val === selectedModel ? 'selected' : '';
-              html += `<option value="${opt.val}" ${selected}>${opt.text}</option>`;
-          });
-          html += `</optgroup>`;
+        html += `<optgroup label="${group.label}">`;
+        group.options.forEach(opt => {
+          const selected = opt.val === selectedModel ? 'selected' : '';
+          html += `<option value="${opt.val}" ${selected}>${opt.text}</option>`;
+        });
+        html += `</optgroup>`;
       });
       return html;
     }
@@ -20408,6 +20420,11 @@ ${mesajlar.join('\n')}
 
 {{MEAL}}
 
+⚠️ CRITICAL RULES:
+1. COUNT ITEMS EXACTLY! If it says "10 almonds", show EXACTLY 10 almonds - not more, not less.
+2. If "/" appears (e.g., "cheese / yogurt"), show ONLY ONE of them, not both.
+3. Respect quantities precisely: "50g cheese" = small portion, "200g meat" = larger portion.
+
 Style Requirements:
 - Professional food photography, top-down or 45° angle
 - Natural daylight, soft shadows
@@ -23649,6 +23666,12 @@ Yanıtınızı Türkçe, anlaşılır ve profesyonel bir dilde verin.`;
           let extractedText = '';
 
           const visionPrompt = `Bu bir yemek tarifi kartı. SADECE "Malzemeler" bölümündeki maddeleri listele.
+
+⚠️ ÖNEMLİ KURALLAR:
+1. "/" İŞARETİ = "VEYA" anlamındadır! Örnek: "kaşar / lor peyniri" → "kaşar veya lor peyniri" olarak yaz.
+2. Miktarları AYNEN KORU! "10 adet badem" = 10 adet, "50 gram peynir" = 50 gram.
+3. SADECE malzeme adlarını yaz, yemek adlarını yazma (köfte, musakka gibi tarifler DEĞİL).
+
 Her malzemeyi şu formatta yaz:
 - miktar birim malzeme_adı
 
@@ -23656,8 +23679,10 @@ Her malzemeyi şu formatta yaz:
 - 500 gr kıyma
 - 1 adet soğan
 - 2 yemek kaşığı zeytinyağı
+- kaşar veya lor peyniri (eğer / varsa)
 
 SADECE malzemeleri listele, başka bir şey yazma.`;
+
 
           if (selectedModel.startsWith('gemini')) {
             // Gemini Vision
@@ -23863,56 +23888,58 @@ Aşağıdaki metin, bir haftalık yemek planını içeriyor. Bu metinden ALIŞVE
 
 ⚠️ ÇOK ÖNEMLİ KURALLAR:
 
-1. YEMEK ADI vs MALZEME AYRIMI:
-   - "köfte", "musakka", "sote", "çorba" gibi ifadeler YEMEK ADIDIR, listeye EKLEME!
-   - Bunların yerine TARİF KARTINDAN okunan MALZEMELERI kullan.
-   - ⚠️ ETİKET KURALI: Bir malzeme eğer "=== EŞLEŞMİŞ TARİF KARTLARI ===" bölümünden geliyorsa, adının sonuna MUTLAKA " (tarif)" ekle.
-   - Örnek: Kartta "kıyma" yazıyorsa -> Listeye "kıyma (tarif)" olarak yaz.
+1. YEMEK ADI vs MALZEME AYRIMI (KRİTİK!):
+   - ❌ ASLA LİSTEYE EKLEME: "köfte", "musakka", "sote", "çorba", "kebap", "yoğurtlama", "salatası", "mantarlı", "patlıcanlı", "poğaça", "ekmek", "salata"
+   - ❌ YEMEK İSİMLERİNİ ASLA MALZEME OLARAK EKLEME!
+   - ✅ Bunların yerine SADECE TARİF KARTINDAN okunan HAM MALZEMELERI kullan.
+   
+2. PDF'DEN MİKTAR ÇIKARMA (KRİTİK!):
+   - PDF satırlarında miktar genellikle BAŞTA gelir. MİKTARI MUTLAKA ÇIKAR!
+   - PARANTEZ İÇİ DETAYLARI KORU (özellikle balık türleri):
+     ✅ "300 gr. ızgara balık (somon, çupra, levrek, alabalık vs.)" → 
+        Malzeme: "balık (somon, çupra, levrek, alabalık)", Miktar: 300, Birim: "gram"
+     ✅ "30 gr pastırma ya da sucuk" → 
+        Malzeme: "pastırma ya da sucuk", Miktar: 30, Birim: "gram"
+     ✅ "200 gram ızgara kırmızı et" → 
+        Malzeme: "kırmızı et", Miktar: 200, Birim: "gram"
+     ✅ "150 gram hindi ya da tavuk" → 
+        Malzeme: "hindi ya da tavuk", Miktar: 150, Birim: "gram"
+   - "gr", "gr.", "g" hepsi "gram" olarak standartlaştır
+   - ⚠️ MİKTAR HER ZAMAN OLMALI! Yoksa bile makul bir miktar ver (örn: 150 gram)
+   - PİŞİRME YÖNTEMLERİNİ TEMİZLE: "ızgara", "tavada", "haşlama", "fırın", "buharda", "fırında" kelimelerini malzeme adından SİL
+   
+3. TARİF KARTI MALZEMELER:
+   - "=== EŞLEŞMİŞ TARİF KARTLARI ===" bölümündeki malzemelere " (tarif)" ekle.
+   - Tarif kartındaki miktarları AYNEN KORU.
 
-2. MİKTAR VE BİRİMLER (KRİTİK):
-   - SATIRIN BAŞINDAKİ MİKTARLARI AL:
-     - "150 gram hindi ya da tavuk" -> Malzeme: "hindi ya da tavuk", Miktar: 150, Birim: "gram" (ASLA 1 adet değil!)
-     - "250 gr. balık" -> Malzeme: "balık", Miktar: 250, Birim: "gram"
-   - Tarif kartındaki miktarları (gram, adet, kaşık) AYNEN KORU.
-   - "Kıyma 120g" yazıyorsa -> "kıyma (tarif)": 120 gram (ASLA "1 adet" uydurma!)
-   - Eğer OCR kaynaklı miktar tam okunamazsa ama "tavuk" gibiyse, makul bir standart ata. SADECE "1 adet" DEYİP GEÇME.
+4. ALTERNATİF MALZEMELER:
+   - "A veya B", "A ya da B" formatını KORU
+   - Parantez içi açıklamaları da KORU!
 
-3. ALTERNATİF/OPSİYONEL MALZEMELER:
-   - "A veya B" şeklindeki malzemeleri TEK SATIRDA birleştir: "A veya B" (veya "ya da")
-   - Bu satırlardaki miktarı koru!
-   - Örnek: "150 gram hindi ya da tavuk" -> Listeye: "hindi ya da tavuk", Miktar: 150, Birim: "gram". 
-   - Yanlış: "hindi": 1, "tavuk": 1 (BU YANLIŞTIR!)
-
-4. TEMİZLEME KURALLARI:
-   - Pişirme yöntemlerini sil: "ızgara", "tava", "haşlama", "fırında", "buğulama" kelimelerini malzeme adından çıkar.
-   - Örnek: "ızgara balık" -> "balık"
-   - Örnek: "tavuk göğsü haşlama" -> "tavuk göğsü"
-
-5. KATEGORİLER:
-   - SEBZE: domates, biber, patlıcan, mantar, ISPANAK (yemekse), PAZI, taze fasulye, kabak
-   - MEYVE: elma, muz, vb.
-   - ET/TAVUK/BALIK: kıyma, tavuk, hindi, balık, ton balığı, sucuk, pastırma, sosis
-   - SÜT ÜRÜNLERİ VE KAHVALTILIK: Peynir, yoğurt, süt, YUMURTA, ZEYTİN, TEREYAĞI
-   - BAKLİYAT: mercimek, nohut
-   - TAHIL/EKMEK: ekmek, yulaf, makarna, unlar, kinoa
-   - YAĞLAR: Zeytinyağı, tereyağı, hindistan cevizi yağı
-   - KURUYEMİŞ/TOHUM: ceviz, badem, KABAK ÇEKİRDEĞİ (buraya!), keten tohumu
+5. KATEGORİLER (DOĞRU KATEGORİYE KOY!):
+   - ET/TAVUK/BALIK: kıyma, kırmızı et, dana, kuzu, tavuk, tavuk göğsü, hindi, balık, ton balığı, sucuk, pastırma, kavurma, hindi füme
+   - SEBZE: domates, biber (sebze olarak), patlıcan, mantar, ıspanak, kabak, havuç, soğan, sarımsak, brokoli
+   - SÜT ÜRÜNLERİ VE KAHVALTILIK: peynir, yoğurt, süt, yumurta, zeytin, tereyağı, kaşar, lor, labne
+   - TAHIL/EKMEK: yulaf, makarna, un, lupin unu, badem unu, haşhaş ezmesi, kabartma tozu
+   - YAĞLAR: zeytinyağı, tereyağı, hindistan cevizi yağı
+   - KURUYEMİŞ/TOHUM: ceviz, badem, fındık, kabak çekirdeği, chia tohumu
+   - MEYVE: elma, muz, portakal, yaban mersini, çilek
    - YEŞİLLİK: maydanoz, dereotu, roka (Miktar yazma!)
-   - BAHARAT: tuz, karabiber, kekik, pul biber (Miktar yazma!)
-   - DİĞER: sirke, tahin, kakao vb.
+   - BAHARAT: tuz, karabiber, kekik, pul biber, köri (Miktar yazma!)
+   - DİĞER: sirke, tahin, salça, biber salçası, domates salçası, limon suyu, karnıyarık otu tozu
 
 6. TOPLAMA MANTIĞI:
    - Aynı malzemeleri topla.
-   - Örnek: Pzt 100g kıyma + Çrş 150g kıyma = "kıyma (tarif)": 250 gram
+   - Örnek: Pzt 100g kıyma + Çrş 150g kıyma = "kıyma": 250 gram
 
 JSON formatında çıktı ver (SADECE JSON):
 {
   "gunler": {
-    "Pazartesi": { "Et/Balık": [{"ad": "kıyma (tarif)", "miktar": 120, "birim": "gram"}] }
+    "Pazartesi": { "Et/Balık": [{"ad": "balık (somon, çupra, levrek)", "miktar": 300, "birim": "gram"}] }
   },
   "toplam": {
-    "Et/Balık": [{"ad": "kıyma (tarif)", "miktar": 350, "birim": "gram"}],
-    "Yeşillik": [{"ad": "maydanoz"}]
+    "Et/Balık": [{"ad": "balık (somon, çupra, levrek)", "miktar": 300, "birim": "gram"}, {"ad": "pastırma ya da sucuk", "miktar": 30, "birim": "gram"}],
+    "Diğer": [{"ad": "biber salçası", "miktar": 1, "birim": "yemek kaşığı"}]
   }
 }
 
@@ -24006,13 +24033,12 @@ METİN:
         }
       },
 
-      // JSON parse (AI çıktısını temizle)
+      // JSON parse (AI çıktısını temizle - GELİŞTİRİLMİŞ)
       parseAIResponse: function (responseText) {
         try {
-          // JSON bloğunu bul
           let jsonStr = responseText;
 
-          // ```json ... ``` formatını temizle
+          // 1. ```json ... ``` formatını temizle
           const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
           if (jsonMatch) {
             jsonStr = jsonMatch[1];
@@ -24025,9 +24051,32 @@ METİN:
             }
           }
 
-          return JSON.parse(jsonStr);
+          // 2. Yaygın JSON hatalarını düzelt
+          jsonStr = jsonStr
+            .replace(/,\s*}/g, '}')         // Trailing comma before }
+            .replace(/,\s*]/g, ']')         // Trailing comma before ]
+            .replace(/[\x00-\x1F\x7F]/g, '') // Control karakterleri temizle
+            .replace(/\\'/g, "'")           // Escaped single quotes
+            .trim();
+
+          // 3. Parse dene
+          try {
+            return JSON.parse(jsonStr);
+          } catch (firstError) {
+            console.warn('⚠️ İlk parse başarısız, düzeltme deneniyor...');
+
+            // 4. Daha agresif temizlik
+            jsonStr = jsonStr
+              .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3') // Unquoted keys
+              .replace(/:\s*'([^']*)'/g, ': "$1"')          // Single to double quotes
+              .replace(/\n/g, ' ')                           // Newlines to space
+              .replace(/\t/g, ' ');                          // Tabs to space
+
+            return JSON.parse(jsonStr);
+          }
         } catch (error) {
           console.error('❌ JSON parse hatası:', error);
+          console.error('📄 Sorunlu JSON (ilk 500 karakter):', responseText.substring(0, 500));
           throw new Error('AI yanıtı işlenemedi. Lütfen tekrar deneyin.');
         }
       },
@@ -24064,280 +24113,305 @@ METİN:
 
 
 
-      // ⭐ Gelişmiş Agregasyon (Tekrarları önler, birimleri birleştirir)
+      // ⭐ Gelişmiş Agregasyon (Tekrarları önler, birimleri birleştirir, büyük/küçük harf duyarsız)
       aggregateShoppingList(listData) {
         if (!listData) return {};
         const output = {};
-        
-        // Sorting Helper
-        const getPriority = (name) => {
-            const n = name.toLowerCase();
-            if (n.includes('kıyma') || n.includes('et') || n.includes('kuzu') || n.includes('biftek')) return 1;
-            if (n.includes('tavuk') || n.includes('hindi')) return 2;
-            if (n.includes('balık') || n.includes('somon') || n.includes('havuç') || n.includes('ton')) return 3;
-            // ... diğerleri
-            return 10;
+
+        // Türkçe karakter normalizasyonu
+        const normalizeTurkish = (str) => {
+          return str
+            .toLowerCase()
+            .replace(/İ/g, 'i').replace(/I/g, 'ı')
+            .replace(/Ğ/g, 'ğ').replace(/Ü/g, 'ü')
+            .replace(/Ş/g, 'ş').replace(/Ö/g, 'ö')
+            .replace(/Ç/g, 'ç')
+            .trim()
+            .replace(/\s+/g, ' '); // Çoklu boşlukları tek boşluğa çevir
         };
 
+        // Yaygın malzeme eşleştirmeleri (varyasyonları birleştirmek için)
+        const aliasMap = {
+          'yumurta': ['yumurta', 'yumurtasi', 'yumurtası'],
+          'zeytinyağı': ['zeytinyağı', 'zeytinyagi', 'sıvı yağ', 'sivi yag', 'sıvıyağ'],
+          'tuz': ['tuz', 'himalaya tuzu'],
+          'tereyağı': ['tereyağı', 'tereyagi', 'tereyağ'],
+          'soğan': ['soğan', 'sogan', 'küçük soğan', 'orta boy soğan', 'kırmızı soğan'],
+          'sarımsak': ['sarımsak', 'sarimsak', 'diş sarımsak'],
+          'domates': ['domates', 'cherry domates', 'küçük domates', 'orta boy domates'],
+          'biber': ['biber', 'sivri biber', 'yeşil biber', 'kapya biber', 'kırmızı biber'],
+          'maydanoz': ['maydanoz', 'dal maydanoz'],
+          'karabiber': ['karabiber', 'kara biber'],
+          'pulbiber': ['pulbiber', 'pul biber', 'kırmızı pulbiber', 'kirmizi pulbiber'],
+        };
+
+        // Alias lookup fonksiyonu
+        const getCanonicalName = (name) => {
+          const normalized = normalizeTurkish(name);
+          for (const [canonical, aliases] of Object.entries(aliasMap)) {
+            for (const alias of aliases) {
+              if (normalized === normalizeTurkish(alias) || normalized.includes(normalizeTurkish(alias))) {
+                // Eğer tam eşleşme varsa canonical döndür
+                if (normalized === normalizeTurkish(alias)) {
+                  return canonical;
+                }
+              }
+            }
+          }
+          return normalized;
+        };
+
+        // Sorting Helper
+        const getPriority = (name) => {
+          const n = normalizeTurkish(name);
+          if (n.includes('kıyma') || n.includes('et') || n.includes('kuzu') || n.includes('biftek')) return 1;
+          if (n.includes('tavuk') || n.includes('hindi')) return 2;
+          if (n.includes('balık') || n.includes('somon') || n.includes('havuç') || n.includes('ton')) return 3;
+          return 10;
+        };
+
+        // Kategori normalizasyonu (benzer kategorileri birleştir)
+        const normalizeCategory = (kategori) => {
+          const k = kategori.toLowerCase().trim();
+          // Et kategorileri
+          if (k.includes('et') && (k.includes('balık') || k.includes('tavuk'))) return 'Et/Balık';
+          if (k === 'et' || k === 'et/tavuk' || k === 'et/balik') return 'Et/Balık';
+          // Süt kategorileri
+          if (k.includes('süt') || k.includes('kahvaltı')) return 'Süt Ürünleri ve Kahvaltılık';
+          // Sebze
+          if (k === 'sebze' || k === 'sebzeler') return 'Sebze';
+          // Meyve
+          if (k === 'meyve' || k === 'meyveler') return 'Meyve';
+          // Tahıl
+          if (k.includes('tahıl') || k.includes('ekmek') || k.includes('un')) return 'Tahıl/Ekmek';
+          // Yağlar
+          if (k.includes('yağ') && !k.includes('tereyağ')) return 'Yağlar';
+          // Kuruyemiş
+          if (k.includes('kuruyemiş') || k.includes('tohum')) return 'Kuruyemiş/Tohum';
+          // Yeşillik
+          if (k.includes('yeşillik')) return 'Yeşillik';
+          // Baharat
+          if (k.includes('baharat')) return 'Baharat';
+          // Baklagil
+          if (k.includes('bakl') || k.includes('baklagil')) return 'Baklagil';
+          // Diğer
+          if (k.includes('diğer') || k.includes('diger')) return 'Diğer';
+          return kategori; // Değişiklik yoksa orijinali döndür
+        };
+
+        // Tüm kategorileri tek bir map'te topla (kategoriler arası birleştirme için)
+        const globalMap = new Map();
+
         Object.entries(listData).forEach(([kategori, items]) => {
-            if (!items || !items.length) return;
+          if (!items || !items.length) return;
+          
+          // Kategoriyi normalize et
+          const normalizedKategori = normalizeCategory(kategori);
 
-            const map = new Map();
+          items.forEach(item => {
+            if (!item.ad) return;
 
-            items.forEach(item => {
-                if (!item.ad) return;
-                
-                // Normalizasyon
-                let rawName = item.ad;
-                // Tarif etiketini isimden ayır ama bilgisini sakla
-                const isRecipe = rawName.toLowerCase().includes('(tarif)');
-                let cleanName = rawName.replace(/\s*\(tarif\)\s*/i, '').trim();
-                
-                // Özel Düzeltmeler
-                const lowerName = cleanName.toLowerCase();
-                if (lowerName === 'sıvı yağ' || lowerName === 'sivi yag') cleanName = 'Zeytinyağı';
-                if (lowerName === 'himalaya tuzu' || lowerName === 'tuz') cleanName = 'Tuz';
+            // Normalizasyon
+            let rawName = String(item.ad).trim();
+            // Tarif etiketini isimden ayır ama bilgisini sakla
+            const isRecipe = rawName.toLowerCase().includes('(tarif)');
+            let cleanName = rawName.replace(/\s*\(tarif\)\s*/i, '').trim();
 
-                // Key oluştur (küçük harf, 'tuz', 'zeytinyağı' gibi birleştirilmiş)
-                const key = cleanName.toLowerCase();
+            // Çoklu boşlukları temizle
+            cleanName = cleanName.replace(/\s+/g, ' ').trim();
 
-                let entry = map.get(key);
-                if (!entry) {
-                    entry = { 
-                        displayAd: cleanName.charAt(0).toUpperCase() + cleanName.slice(1), 
-                        isRecipe: isRecipe, 
-                        quantities: {} // unit -> amount
-                    };
-                    map.set(key, entry);
-                }
-                
-                // Varsa (tarif) bilgisini merge et
-                if (isRecipe) entry.isRecipe = true; 
+            // Türkçe normalizasyon
+            const normalizedName = normalizeTurkish(cleanName);
 
-                // Miktar toplama
-                if (item.miktar != null && !String(item.miktar).includes('undefined')) {
-                    const unit = (item.birim || '').trim();
-                    const amount = parseFloat(item.miktar) || 0;
-                    const unitKey = unit.toLowerCase();
-                    
-                    if (!entry.quantities[unitKey]) {
-                        entry.quantities[unitKey] = { val: 0, displayUnit: unit };
-                    }
-                    entry.quantities[unitKey].val += amount;
-                }
-            });
+            // Canonical isim al (yumurta, zeytinyağı vs için birleştirme)
+            const key = getCanonicalName(cleanName);
 
-            // Map -> Array
-            const resultItems = Array.from(map.values()).map(val => {
-                const quantityParts = [];
-                Object.values(val.quantities).forEach(q => {
-                    if (q.val > 0) {
-                        // Ondalık düzeltme (örn: 1.00 -> 1, 0.50 -> 0.5)
-                        const valFixed = parseFloat(q.val.toFixed(2));
-                        quantityParts.push(`${valFixed} ${q.displayUnit}`);
-                    }
-                });
+            // Display adı oluştur (ilk harf büyük)
+            const displayAd = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
 
-                return {
-                    ad: val.displayAd, // Temiz isim
-                    isRecipe: val.isRecipe,
-                    quantityText: quantityParts.join(' + '),
-                    originalAd: val.displayAd + (val.isRecipe ? ' (tarif)' : '') // Compatibility
-                };
-            });
-
-            // Sıralama
-            if (kategori === 'ET/TAVUK/BALIK' || kategori === 'Et/Balık') {
-                 resultItems.sort((a, b) => getPriority(a.ad) - getPriority(b.ad));
-            } else {
-                 resultItems.sort((a, b) => a.ad.localeCompare(b.ad));
+            let entry = globalMap.get(key);
+            if (!entry) {
+              entry = {
+                displayAd: displayAd,
+                isRecipe: isRecipe,
+                kategori: normalizedKategori,
+                quantities: {} // unit -> amount
+              };
+              globalMap.set(key, entry);
             }
 
-            output[kategori] = resultItems;
+            // Varsa (tarif) bilgisini merge et
+            if (isRecipe) entry.isRecipe = true;
+
+            // Miktar toplama
+            if (item.miktar != null && !String(item.miktar).includes('undefined')) {
+              const unit = (item.birim || '').trim();
+              const amount = parseFloat(item.miktar) || 0;
+              const unitKey = unit.toLowerCase();
+
+              if (!entry.quantities[unitKey]) {
+                entry.quantities[unitKey] = { val: 0, displayUnit: unit };
+              }
+              entry.quantities[unitKey].val += amount;
+            }
+          });
+        });
+
+        // Kategorilere göre grupla
+        const categoryGroups = new Map();
+        globalMap.forEach((val, key) => {
+          const kategori = val.kategori;
+          if (!categoryGroups.has(kategori)) {
+            categoryGroups.set(kategori, []);
+          }
+
+          const quantityParts = [];
+          Object.values(val.quantities).forEach(q => {
+            if (q.val > 0) {
+              const valFixed = parseFloat(q.val.toFixed(2));
+              quantityParts.push(`${valFixed} ${q.displayUnit}`);
+            }
+          });
+
+          categoryGroups.get(kategori).push({
+            ad: val.displayAd,
+            isRecipe: val.isRecipe,
+            quantityText: quantityParts.join(' + '),
+            originalAd: val.displayAd + (val.isRecipe ? ' (tarif)' : '')
+          });
+        });
+
+        // Output oluştur ve sırala
+        categoryGroups.forEach((items, kategori) => {
+          if (kategori === 'ET/TAVUK/BALIK' || kategori === 'Et/Balık') {
+            items.sort((a, b) => getPriority(a.ad) - getPriority(b.ad));
+          } else {
+            items.sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+          }
+          output[kategori] = items;
         });
 
         return output;
       },
 
-      // PDF Oluştur (PAGED AYOUT - Sayfalama Mantıklı)
+      // PDF Oluştur (ULTRA COMPACT 2-COLUMN LAYOUT - Tek Sayfaya Sığdır)
       async createPdfBlob(data, haftaIndex) {
-        console.log('📄 Smart PDF render başlatıldı...');
-        
-        // 1. Veriyi Agrege Et (Tekrarları önle)
-        // PDF total veriyi kullanır
+        console.log('📄 Ultra Compact 2-Column PDF render başlatıldı...');
+
+        // Veriyi Agrege Et
         const aggregatedData = this.aggregateShoppingList(data.toplam || data);
-        
         if (!aggregatedData || Object.keys(aggregatedData).length === 0) return null;
 
         const { jsPDF } = window.jspdf;
         if (!jsPDF) return null;
 
-        // Container
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.top = '0';
-        container.style.left = '-10000px';
-        container.style.zIndex = '-9999';
-        document.body.appendChild(container);
+        // Tek sayfa HTML oluştur, sonra PDF'e çevir
+        const tempDiv = document.createElement('div');
+        tempDiv.id = 'pdf-compact-render';
+        tempDiv.style.cssText = `
+          width: 595px;
+          padding: 8px 10px;
+          background: white;
+          font-family: Arial, sans-serif;
+          position: fixed; top: 0; left: -10000px; z-index: -9999;
+          box-sizing: border-box;
+        `;
 
-        // A4 Boyutları (Pixel olarak, 96 DPI varsayımıyla yaklaşık)
-        // A4: 210mm x 297mm. jsPDF scale factor ile oynayacağız.
-        // Biz HTML'i "sayfa" divlerine böleceğiz.
-        const PAGE_WIDTH = 700; // Genişlik
-        const PAGE_HEIGHT = 980; // Yükseklik (güvenli alan, A4 oranına yakın)
-        const CONTENT_PADDING = 40;
+        // Header (minimal)
+        let html = `
+          <div style="text-align: center; border-bottom: 1px solid #28a745; padding-bottom: 4px; margin-bottom: 6px;">
+            <div style="color: #28a745; font-size: 14px; font-weight: bold;">🛒 Alışveriş Listesi</div>
+            <div style="color: #666; font-size: 9px;">${seciliHasta.isim || 'Danışan'} • Hafta ${(haftaIndex || 0) + 1}</div>
+          </div>
+          <div style="column-count: 2; column-gap: 10px; font-size: 8px; line-height: 1.15;">
+        `;
 
-        let pages = [];
-        let currentPage = document.createElement('div');
-        currentPage.className = 'pdf-page';
-        currentPage.style.cssText = `width: ${PAGE_WIDTH}px; height: ${PAGE_HEIGHT}px; background: white; padding: ${CONTENT_PADDING}px; box-sizing: border-box; position: relative; overflow: hidden; font-family: 'Segoe UI', sans-serif; border-bottom: 1px dashed #ccc;`;
-        
-        let currentY = CONTENT_PADDING; // Mevcut Y konumu
-
-        // Helper: Sayfayı bitir ve yeni sayfa aç
-        const addNewPage = () => {
-            pages.push(currentPage);
-            container.appendChild(currentPage); // Render için DOM'a ekle
-            
-            currentPage = document.createElement('div');
-            currentPage.className = 'pdf-page';
-            currentPage.style.cssText = `width: ${PAGE_WIDTH}px; height: ${PAGE_HEIGHT}px; background: white; padding: ${CONTENT_PADDING}px; box-sizing: border-box; position: relative; overflow: hidden; font-family: 'Segoe UI', sans-serif; border-bottom: 1px dashed #ccc;`;
-            currentY = CONTENT_PADDING;
-            
-            // Yeni sayfa Header (Kısa versiyon)
-             const headerShort = `
-                <div style="font-size: 10px; color: #888; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 15px; text-align: right;">
-                    ${seciliHasta.isim} • Hafta ${haftaIndex+1} (Devam)
-                </div>`;
-            currentPage.insertAdjacentHTML('beforeend', headerShort);
-            currentY += 30;
+        // Kategori ikonları
+        const icons = {
+          'SEBZE': '🥬', 'MEYVE': '🍎', 'ET/TAVUK/BALIK': '🥩', 'SÜT VE KAHVALTILIK': '🥛',
+          'BAKLİYAT': '🫘', 'TAHIL/EKMEK': '🌾', 'YAĞLAR': '🫒', 'KURUYEMİŞ/TOHUM': '🥜',
+          'YEŞİLLİK': '🌿', 'BAHARAT': '🧂', 'DİĞER': '📦', 'Sebze': '🥬', 'Meyve': '🍎',
+          'Et/Balık': '🥩', 'Et/Tavuk/Balık': '🥩', 'Süt Ürünleri': '🥛', 'Tahıl/Ekmek': '🌾',
+          'Yağ': '🫒', 'Kuruyemiş': '🥜', 'Yeşillik': '🌿', 'Baharat': '🧂', 'Diğer': '📦',
+          'Sarımsak': '🧄', 'SARIMSAK': '🧄'
         };
 
-        // Ana Header (İlk Sayfa)
-        const headerHtml = `
-            <div style="text-align: center; border-bottom: 2px solid #28a745; padding-bottom: 15px; margin-bottom: 25px;">
-              <h1 style="color: #28a745; margin: 0; font-size: 26px;">🛒 Alışveriş Listesi</h1>
-              <div style="color: #666; margin-top: 5px; font-size: 14px;">
-                <span style="font-weight:600; color: #333;">${seciliHasta.isim || 'Danışan'}</span> • Hafta ${haftaIndex + 1}
+        Object.entries(aggregatedData).forEach(([kategori, items]) => {
+          if (!items || items.length === 0) return;
+
+          const icon = icons[kategori] || '📋';
+          html += `
+            <div style="break-inside: avoid; page-break-inside: avoid; margin-bottom: 4px;">
+              <div style="background: #e8f5e9; color: #2e7d32; padding: 1px 4px; border-radius: 2px; font-weight: bold; font-size: 8px; margin-bottom: 1px; border-left: 2px solid #28a745;">
+                ${icon} ${kategori} <span style="font-weight: normal; opacity: 0.6;">(${items.length})</span>
               </div>
-            </div>`;
-        
-        currentPage.insertAdjacentHTML('beforeend', headerHtml);
-        currentY += 100; // Header yüksekliği tahmini
+          `;
 
-        // İçerik Döngüsü - 2 Sütunlu CSS Grid yerine, manuel akış kullanıp "yüksekliği" kontrol ediyoruz.
-        // Daha iyi kontrol için tek sütun akış yapıp "page break" kontrolü yapacağız.
-        // Kullanıcı "tek sayfaya sığarsa güzel olur" dedi. Tek sütun sığmayabilir.
-        // 2 sütunlu layout: CSS Column kullansak page break kontrolü zor.
-        // Çözüm: Kategori bazlı bloklar.
-        
-        // Iconlar
-        const categoryIcons = {
-           'SEBZE': '🥬', 'MEYVE': '🍎', 'ET/TAVUK/BALIK': '🥩', 'SÜT VE KAHVALTILIK': '🥛',
-           'BAKLİYAT': '🫘', 'TAHIL/EKMEK': '🌾', 'YAĞLAR': '🫒', 'KURUYEMİŞ/TOHUM': '🥜',
-           'YEŞİLLİK': '🌿', 'BAHARAT': '🧂', 'İÇECEKLER': '🥤', 'DİĞER': '📦'
-        };
-
-        const categories = Object.keys(aggregatedData);
-        
-        // Layout: 2 Sütun simülasyonu için, her kategoriyi bir "blok" olarak düşünelim.
-        // Sayfa dolunca yeni sayfaya geçelim.
-        // CSS Columns kullanarak "break-inside: avoid" yaparsak, html2canvas bunu resme çevirince yine kesebilir mi?
-        // EVET, html2canvas resim çeker. Eğer biz resmi manuel bölersek kesilir.
-        // AMA biz burada Sayfa 1, Sayfa 2 diye ayrı Div'ler yapıyoruz.
-        // O yüzden CSS columns (column-count: 2) kullanabiliriz, ama "yükseklik taşarsa" yeni div'e aktarmak zor.
-        
-        // BASİT YÖNTEM: Tek sütun ama kompakt, ya da...
-        // Kullanıcı layout'tan ziyade "kesilmemesini" istiyor.
-        // Tek sütun yaparsak çok sayfa tutar.
-        // İki sütun yapıp sayfaya sığdırmak en iyisi.
-        // Manuel 2 kolon doldurma? Sol kolon dolunca sağa geç, sağ dolunca yeni sayfa.
-        
-        let col = 0; // 0: Left, 1: Right
-        let colWidth = (PAGE_WIDTH - (CONTENT_PADDING*2) - 20) / 2;
-        let colY = [currentY, currentY]; // Left Y, Right Y
-
-        const renderCategory = (cat, items) => {
-            // Tahmini yükseklik hesapla
-            const headerH = 35;
-            const itemH = 24;
-            let totalH = headerH + (items.length * itemH) + 10; // +margin
-
-            // Hangi kolona sığar?
-            let targetCol = col;
-            
-            // Eğer mevcut kolona sığmıyorsa
-            if (colY[targetCol] + totalH > PAGE_HEIGHT - 20) {
-                // Diğer kolona bak (Eğer sol'daysak sağa geç)
-                if (targetCol === 0) {
-                    targetCol = 1;
-                    // Sağ kolonun Y'si, Header'ın altı olmalı (currentY değil, sayfa başındaki Y)
-                    // Sayfa başında currentY header altıydı.
-                    // Ama sağ kolon boşsa oradan başla.
-                    if (colY[1] < 150) colY[1] = colY[0]; // Header varsa hizala? Hayır, en üstten
-                    // Ayrı bir değişken tutmak lazım: pageStartY
-                } else {
-                    // Sağ da doldu -> Yeni Sayfa
-                    addNewPage();
-                    targetCol = 0;
-                    colY = [currentY, currentY];
-                }
-            }
-            
-            // HTML Oluştur
-            const icon = categoryIcons[cat] || '📋';
-            let catHtml = `
-                <div style="position: absolute; top: ${colY[targetCol]}px; left: ${CONTENT_PADDING + (targetCol * (colWidth + 20))}px; width: ${colWidth}px; margin-bottom: 20px; break-inside: avoid;">
-                     <h3 style="background: #e8f5e9; color: #2e7d32; padding: 6px 10px; border-radius: 6px; margin: 0 0 8px 0; font-size: 14px; display: flex; align-items: center; gap: 6px;">
-                        <span>${icon}</span> ${cat} <span style="font-size: 11px; opacity: 0.7;">(${items.length})</span>
-                     </h3>
-                     <div style="display: flex; flex-direction: column;">
-            `;
-            
-            items.forEach((item, idx) => {
-                 const bg = idx % 2 === 0 ? 'transparent' : '#f9f9f9';
-                 const badge = item.isRecipe ? '<span style="font-size: 9px; border: 1px solid #ddd; padding: 0 3px; border-radius: 3px; color: #666; margin-left: 4px;">TARİF</span>' : '';
-                 catHtml += `
-                    <div style="display: flex; justify-content: space-between; padding: 4px 6px; background: ${bg}; border-bottom: 1px solid #eee; font-size: 12px;">
-                        <span style="font-weight: 500; color: #333;">${item.ad} ${badge}</span>
-                        <span style="color: #2e7d32;">${item.quantityText}</span>
-                    </div>
-                 `;
+          // Yeşillik ve Baharat için virgülle ayır (tek satırda)
+          if (kategori.toLowerCase().includes('yeşillik') || kategori.toLowerCase().includes('baharat')) {
+            const names = items.map(i => i.ad).join(', ');
+            html += `<div style="color: #333; line-height: 1.1; padding: 0 2px; font-size: 7px;">${names}</div>`;
+          } else {
+            items.forEach((item) => {
+              const badge = item.isRecipe ? '<span style="font-size: 5px; color: #999; margin-left: 1px;">[T]</span>' : '';
+              html += `
+                <div style="display: flex; justify-content: space-between; padding: 0 2px; border-bottom: 1px dotted #eee;">
+                  <span style="color: #333;">${item.ad}${badge}</span>
+                  <span style="color: #28a745; white-space: nowrap; font-size: 7px; margin-left: 3px;">${item.quantityText || ''}</span>
+                </div>
+              `;
             });
-            catHtml += `</div></div>`;
-            
-            currentPage.insertAdjacentHTML('beforeend', catHtml);
-            colY[targetCol] += totalH;
-            col = targetCol; // Son kullanılan kolon
-        };
+          }
 
-        // Kategorileri işle
-        categories.forEach(cat => renderCategory(cat, aggregatedData[cat]));
+          html += `</div>`;
+        });
 
-        // Son sayfayı ekle
-        pages.push(currentPage);
-        container.appendChild(currentPage);
+        html += `</div>`;
 
-        // PDF Render Loop
-        const pdf = new jsPDF('p', 'pt', [595, 842]); // A4 Point size
-        
-        for (let i = 0; i < pages.length; i++) {
-            if (i > 0) pdf.addPage();
-            
-            const canvas = await html2canvas(pages[i], {
-                scale: 2,
-                logging: false,
-                useCORS: true
-            });
-            
-            const imgData = canvas.toDataURL('image/jpeg', 0.9);
-            pdf.addImage(imgData, 'JPEG', 0, 0, 595, 842);
+        // Footer (minimal)
+        html += `
+          <div style="margin-top: 4px; text-align: center; font-size: 6px; color: #bbb; border-top: 1px solid #eee; padding-top: 2px;">
+            ${seciliHasta.isim || ''} • Lipodem Takip
+          </div>
+        `;
+
+        tempDiv.innerHTML = html;
+        document.body.appendChild(tempDiv);
+
+        try {
+          const canvas = await html2canvas(tempDiv, {
+            scale: 2.5,
+            useCORS: true,
+            logging: false,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pageH = pdf.internal.pageSize.getHeight();
+          const imgW = pdf.internal.pageSize.getWidth();
+          const imgH = (canvas.height * imgW) / canvas.width;
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+          // Tek sayfaya sığıyorsa direkt ekle
+          if (imgH <= pageH) {
+            pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+          } else {
+            // Çok sayfa gerekiyorsa scale down yap
+            const scale = pageH / imgH;
+            const scaledW = imgW * scale;
+            const scaledH = pageH;
+            const offsetX = (imgW - scaledW) / 2;
+            pdf.addImage(imgData, 'JPEG', offsetX, 0, scaledW, scaledH);
+          }
+
+          return pdf.output('blob');
+        } finally {
+          if (document.body.contains(tempDiv)) {
+            document.body.removeChild(tempDiv);
+          }
         }
-
-        // Temizlik
-        document.body.removeChild(container);
-        
-        return pdf.output('blob');
       },
 
 
@@ -24380,30 +24454,30 @@ METİN:
 
       async downloadPdf() {
         if (!this.currentData) return alert('Lütfen önce listeyi oluşturun.');
-        
+
         const btn = document.querySelector('#shoppingFooter button[onclick*="downloadPdf"]');
         const oldHtml = btn ? btn.innerHTML : '';
-        if(btn) { btn.disabled=true; btn.innerHTML='⏳ Hazırlanıyor...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Hazırlanıyor...'; }
 
         try {
-            const blob = await this.createPdfBlob(this.currentData, this.currentHaftaIndex||0);
-            if (blob) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                // Basit ve güvenli dosya adı temizleme
-                const safeName = (seciliHasta.isim||'Hasta').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ ]/g,'').trim().replace(/\s+/g,'_');
-                a.href = url;
-                a.download = `Alisveris_${safeName}_Hafta_${(this.currentHaftaIndex||0)+1}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-        } catch(e) { 
-            console.error(e);
-            alert('Hata: '+e.message); 
+          const blob = await this.createPdfBlob(this.currentData, this.currentHaftaIndex || 0);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            // Basit ve güvenli dosya adı temizleme
+            const safeName = (seciliHasta.isim || 'Hasta').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ ]/g, '').trim().replace(/\s+/g, '_');
+            a.href = url;
+            a.download = `Alisveris_${safeName}_Hafta_${(this.currentHaftaIndex || 0) + 1}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }
+        } catch (e) {
+          console.error(e);
+          alert('Hata: ' + e.message);
         }
-        finally { if(btn) { btn.disabled=false; btn.innerHTML=oldHtml; } }
+        finally { if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; } }
       },
 
       // Veriyi kaydet ve UI'ı güncelle
@@ -24822,16 +24896,16 @@ METİN:
       // Filtrele veya toplam kullan
       let listData = selectedDays.length === 7 ? data.toplam : ShoppingListManager.calculateFilteredList(data, selectedDays);
 
-       
-       // ⭐ CLIENT-SIDE TOPLAMA VE FİLTRELEME (Global Helper Kullanımı)
-       // Filtrelenmiş veri varsa onu kullan, yoksa toplamı
-       const rawSource = listData || {}; // Seçili günlere göre
-       
-       // Helper fonksiyonu kullanarak veriyi işle
-       const aggregatedData = ShoppingListManager.aggregateShoppingList(rawSource);
-       
-       // HTML oluştur
-       const listDiv = document.getElementById('shoppingList');
+
+      // ⭐ CLIENT-SIDE TOPLAMA VE FİLTRELEME (Global Helper Kullanımı)
+      // Filtrelenmiş veri varsa onu kullan, yoksa toplamı
+      const rawSource = listData || {}; // Seçili günlere göre
+
+      // Helper fonksiyonu kullanarak veriyi işle
+      const aggregatedData = ShoppingListManager.aggregateShoppingList(rawSource);
+
+      // HTML oluştur
+      const listDiv = document.getElementById('shoppingList');
 
       if (!aggregatedData || Object.keys(aggregatedData).length === 0) {
         listDiv.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">Seçili günlerde malzeme bulunamadı.</div>';
@@ -24881,11 +24955,11 @@ METİN:
           items.forEach(item => {
             // Helper'dan gelen quantityText'i kullan
             const badge = item.isRecipe ? '<span style="font-size: 9px; background: #e9ecef; color: #666; padding: 2px 4px; border-radius: 4px; margin-left: 4px;">(tarif)</span>' : '';
-            
+
             // Eğer quantityText boşsa ve item.miktar varsa onu kullan (fallback)
             let qText = item.quantityText;
             if (!qText && item.miktar) {
-                qText = `${item.miktar} ${item.birim||''}`;
+              qText = `${item.miktar} ${item.birim || ''}`;
             }
 
             html += `
