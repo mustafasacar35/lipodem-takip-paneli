@@ -19371,6 +19371,9 @@ ${mesajlar.join('\n')}
         <div style="margin-bottom: 25px;">
           <h3 style="margin: 0 0 15px 0; color: #e91e63; display: flex; align-items: center; gap: 8px;">
             <span>📌</span> Haftalık Fix Kartlar (Sabit Kartlar)
+            <button onclick="fixKartlarInit().then(()=>alert('✅ GitHub\'dan yüklendi!'))"
+              style="margin-left: auto; padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: normal;">☁️
+              GitHub'dan Yenile</button>
           </h3>
           <p style="margin: 0 0 15px 0; color: #999; font-size: 13px;">
             Belirli haftalara veya tarihlere sabit tarif/bilgi kartları atayın. ZIP indirirken otomatik dahil edilir.
@@ -26163,8 +26166,10 @@ IMPORTANT RULES:
     let fixKartTarifListesi = []; // tarifler/list.json cache
     let fixKartSeciliMod = 'hafta'; // 'hafta' veya 'tarih'
     let fixKartSeciliAnahtar = null; // seçili hafta no veya tarih string
+    let fixKartGithubSha = null; // config.json SHA for updates
+    let fixKartSaveTimer = null; // debounce timer
 
-    // Fix kartlar verisini localStorage'dan al
+    // Fix kartlar verisini localStorage'dan al (senkron, hızlı)
     function getFixKartData() {
       try {
         return JSON.parse(localStorage.getItem('fixKartlar') || '{"hafta":{},"tarih":{}}');
@@ -26173,11 +26178,128 @@ IMPORTANT RULES:
       }
     }
 
-    // Fix kartlar verisini localStorage'a kaydet
+    // Fix kartlar verisini hem localStorage'a hem GitHub'a kaydet
     function saveFixKartData(data) {
+      // 1) localStorage'a hemen kaydet (anlık)
       localStorage.setItem('fixKartlar', JSON.stringify(data));
-      console.log('💾 Fix kartlar kaydedildi:', data);
+      console.log('💾 Fix kartlar localStorage\'a kaydedildi');
+
+      // 2) GitHub'a debounce ile kaydet (1.5 sn bekle, art arda kayıtlarda sadece son hali gönder)
+      if (fixKartSaveTimer) clearTimeout(fixKartSaveTimer);
+      fixKartSaveTimer = setTimeout(() => {
+        fixKartGithubKaydet(data);
+      }, 1500);
     }
+
+    // GitHub'a config.json olarak kaydet
+    async function fixKartGithubKaydet(data) {
+      try {
+        const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+        if (!token) {
+          console.warn('⚠️ GitHub token yok, fix kartlar sadece localStorage\'da');
+          return;
+        }
+
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = 'fix_kartlar/config.json';
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+
+        const body = {
+          message: 'Fix kartlar güncellendi',
+          content: content
+        };
+        if (fixKartGithubSha) {
+          body.sha = fixKartGithubSha;
+        }
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          fixKartGithubSha = result.content.sha;
+          console.log('☁️ Fix kartlar GitHub\'a kaydedildi (SHA:', fixKartGithubSha, ')');
+        } else if (response.status === 409) {
+          // SHA conflict - yeniden yükle
+          console.warn('⚠️ SHA conflict, GitHub\'dan yeniden yükleniyor...');
+          await fixKartGithubYukle();
+          // Tekrar kaydet (merge yok, son yazan kazanır)
+          await fixKartGithubKaydet(data);
+        } else {
+          console.error('❌ GitHub kayıt hatası:', response.status, await response.text());
+        }
+      } catch (e) {
+        console.error('❌ Fix kartlar GitHub\'a kaydedilemedi:', e);
+      }
+    }
+
+    // GitHub'dan config.json'u yükle
+    async function fixKartGithubYukle() {
+      try {
+        const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = 'fix_kartlar/config.json';
+
+        // Token varsa API ile (SHA alabilmek için)
+        if (token) {
+          const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (response.ok) {
+            const fileData = await response.json();
+            fixKartGithubSha = fileData.sha;
+            const cleanBase64 = fileData.content.replace(/\s/g, ''); // GitHub API base64 newline temizle
+            const content = decodeURIComponent(escape(atob(cleanBase64)));
+            const data = JSON.parse(content);
+            localStorage.setItem('fixKartlar', JSON.stringify(data));
+            console.log('☁️ Fix kartlar GitHub\'dan yüklendi (SHA:', fixKartGithubSha, ')');
+            return data;
+          } else if (response.status === 404) {
+            console.log('ℹ️ GitHub\'da fix_kartlar/config.json bulunamadı, yeni oluşturulacak');
+            fixKartGithubSha = null;
+            // localStorage'da veri varsa GitHub'a at
+            const localData = getFixKartData();
+            if (Object.keys(localData.hafta).length > 0 || Object.keys(localData.tarih).length > 0) {
+              console.log('📤 Mevcut localStorage verisi GitHub\'a yükleniyor...');
+              await fixKartGithubKaydet(localData);
+            }
+            return localData;
+          }
+        }
+
+        // Token yoksa raw ile dene (sadece okuma, SHA yok)
+        const rawResponse = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`);
+        if (rawResponse.ok) {
+          const data = await rawResponse.json();
+          localStorage.setItem('fixKartlar', JSON.stringify(data));
+          console.log('☁️ Fix kartlar raw GitHub\'dan yüklendi');
+          return data;
+        }
+      } catch (e) {
+        console.warn('⚠️ GitHub\'dan fix kart yüklenemedi, localStorage kullanılıyor:', e);
+      }
+      return getFixKartData();
+    }
+
+    // Fix Kartlar panelini başlat (sayfa yüklendiğinde)
+    async function fixKartlarInit() {
+      // Önce GitHub'dan yükle (en güncel halini al)
+      await fixKartGithubYukle();
+      // Sonra UI'ı oluştur
+      fixKartHaftaPaneliOlustur();
+      fixKartTarifListesiYukle(); // Arka planda yükle
+      console.log('✅ Fix kartlar sistemi başlatıldı');
+    }
+
+    // Sayfa yüklenince fix kartlar panelini hazırla
+    window.addEventListener('load', () => {
+      setTimeout(fixKartlarInit, 2000);
+    });
 
     // Tab değiştir
     function fixKartTabDegistir(mod) {
@@ -26644,16 +26766,8 @@ IMPORTANT RULES:
       return unique;
     }
 
-    // Fix Kartlar panelini başlat (GPT modal açıldığında çağrılmalı)
-    function fixKartlarInit() {
-      fixKartHaftaPaneliOlustur();
-      fixKartTarifListesiYukle(); // Arka planda yükle
-    }
 
-    // Sayfa yüklenince fix kartlar panelini hazırla
-    window.addEventListener('load', () => {
-      setTimeout(fixKartlarInit, 2000);
-    });
+
 
   </script>
 
