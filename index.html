@@ -15119,9 +15119,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const hasPdf = hafta.pdf;
         const hasGptMessage = hafta.gptMesaj && hafta.gptMesaj.trim();
         const hasImages = imgs.length > 0;
+        const hasFixCards = getFixCardsForWeek(haftaNo, hafta.baslangic || '', hafta.bitis || '').length > 0;
 
-        if (!hasImages && !hasPdf && !hasGptMessage) {
-          alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• GPT mesajı');
+        if (!hasImages && !hasPdf && !hasGptMessage && !hasFixCards) {
+          alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• GPT mesajı\n• Fix kartlar');
           return;
         }
 
@@ -15217,6 +15218,46 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               }
             }
           }
+        }
+
+        // 2d. Fix kartları (sabit kartlar / ek kartlar) ZIP'e ekle - çift ekleme kontrolü ile
+        try {
+          const fixCards = getFixCardsForWeek(haftaNo, hafta.baslangic || '', hafta.bitis || '');
+          if (fixCards.length > 0) {
+            // Zaten eklenen kart isimlerini topla (eşleşen + manuel + çoklu PDF)
+            const eklenenKartlar = new Set();
+            for (let img of imgs) {
+              const name = img.title || img.alt || '';
+              if (name) eklenenKartlar.add(name.toLowerCase());
+            }
+            if (hafta.manuelKartlar) hafta.manuelKartlar.forEach(k => eklenenKartlar.add(k.name.toLowerCase()));
+            if (hafta.cokluPdfVerileri) hafta.cokluPdfVerileri.forEach(v => {
+              if (v.tarifKartlar) v.tarifKartlar.forEach(k => eklenenKartlar.add(k.name.toLowerCase()));
+            });
+
+            console.log(`📌 ${fixCards.length} ek kart kontrol ediliyor (mevcut: ${eklenenKartlar.size})...`);
+            for (let fixKart of fixCards) {
+              // Çift ekleme kontrolü
+              if (eklenenKartlar.has(fixKart.name.toLowerCase())) {
+                console.log(`⏭️ Ek kart zaten mevcut, atlanıyor: ${fixKart.name}`);
+                continue;
+              }
+              try {
+                const response = await fetch(fixKart.url);
+                const blob = await response.blob();
+                const prefix = fixKart.type === 'upload' ? '_Bilgilendirme_' : 'EK_';
+                const ekName = `${prefix}${fixKart.name}`;
+                zip.file(ekName, blob);
+                fileCount++;
+                eklenenKartlar.add(fixKart.name.toLowerCase());
+                console.log('✅ Ek kart eklendi:', ekName);
+              } catch (e) {
+                console.warn('⚠️ Ek kart eklenemedi:', fixKart.name, e);
+              }
+            }
+          }
+        } catch (fixErr) {
+          console.warn('⚠️ Ek kartlar yüklenemedi:', fixErr);
         }
 
         // 3. PDF dosyasını ekle
@@ -17506,6 +17547,55 @@ ${mesajlar.join('\n')}
                   }
                 }
 
+                // Ek kartları (sabit kartlar) ekle - çift ekleme kontrolü ile
+                try {
+                  const fixCards = getFixCardsForWeek(enBuyukHaftaNo, enBuyukHafta.baslangic || '', enBuyukHafta.bitis || '');
+                  if (fixCards.length > 0) {
+                    // Zaten eklenen kart isimlerini topla
+                    const eklenenKartlar = new Set();
+                    if (enBuyukHafta.tarifKartlar) enBuyukHafta.tarifKartlar.forEach(k => {
+                      const url = k.kartData || k.data || '';
+                      const name = url.split('/').pop() || k.tarifAdi || '';
+                      if (name) eklenenKartlar.add(name.toLowerCase());
+                    });
+                    if (enBuyukHafta.manuelKartlar) enBuyukHafta.manuelKartlar.forEach(k => {
+                      const url = k.kartData || k.data || '';
+                      const name = url.split('/').pop() || k.tarifAdi || '';
+                      if (name) eklenenKartlar.add(name.toLowerCase());
+                    });
+                    if (enBuyukHafta.cokluPdfVerileri) enBuyukHafta.cokluPdfVerileri.forEach(v => {
+                      if (v.tarifKartlar) v.tarifKartlar.forEach(k => {
+                        const url = k.kartData || k.data || '';
+                        const name = url.split('/').pop() || k.tarifAdi || '';
+                        if (name) eklenenKartlar.add(name.toLowerCase());
+                      });
+                    });
+
+                    console.log(`📌 ${hasta.isim} - ${fixCards.length} ek kart kontrol ediliyor (mevcut: ${eklenenKartlar.size})...`);
+                    for (const fixKart of fixCards) {
+                      // Çift ekleme kontrolü
+                      if (eklenenKartlar.has(fixKart.name.toLowerCase())) {
+                        console.log(`⏭️ ${hasta.isim} - Ek kart zaten mevcut, atlanıyor: ${fixKart.name}`);
+                        continue;
+                      }
+                      try {
+                        const response = await fetch(fixKart.url);
+                        if (response.ok) {
+                          const blob = await response.blob();
+                          const prefix = fixKart.type === 'upload' ? '_Bilgilendirme_' : 'EK_';
+                          anaZip.file(`${hastaKlasorAdi}/${prefix}${fixKart.name}`, blob);
+                          eklenenKartlar.add(fixKart.name.toLowerCase());
+                          console.log(`✅ ${hasta.isim} - Ek kart eklendi: ${fixKart.name}`);
+                        }
+                      } catch (e) {
+                        console.warn(`⚠️ ${hasta.isim} - Ek kart eklenemedi: ${fixKart.name}`, e);
+                      }
+                    }
+                  }
+                } catch (fixErr) {
+                  console.warn(`⚠️ ${hasta.isim} - Ek kartlar yüklenemedi:`, fixErr);
+                }
+
                 // GPT mesajını ekle
                 if (enBuyukHafta.gptMesaj && enBuyukHafta.gptMesaj.trim()) {
                   anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, enBuyukHafta.gptMesaj.trim());
@@ -19268,6 +19358,132 @@ ${mesajlar.join('\n')}
                   <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
                     💡 Her hafta için özel beslenme teması belirleyerek hastalarınıza daha odaklı öneriler
                     verebilirsiniz.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Haftalık Fix Kartlar -->
+        <div style="margin-bottom: 25px;">
+          <h3 style="margin: 0 0 15px 0; color: #e91e63; display: flex; align-items: center; gap: 8px;">
+            <span>📌</span> Haftalık Fix Kartlar (Sabit Kartlar)
+          </h3>
+          <p style="margin: 0 0 15px 0; color: #999; font-size: 13px;">
+            Belirli haftalara veya tarihlere sabit tarif/bilgi kartları atayın. ZIP indirirken otomatik dahil edilir.
+          </p>
+
+          <div style="display: flex; height: 500px; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+
+            <!-- Sol Panel - Hafta/Tarih Seçimi -->
+            <div
+              style="width: 250px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column;">
+              <!-- Tab Seçici -->
+              <div style="display: flex; border-bottom: 1px solid #dee2e6;">
+                <button id="fixKartTabHafta" onclick="fixKartTabDegistir('hafta')"
+                  style="flex: 1; padding: 10px; border: none; background: #e91e63; color: white; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s;">
+                  📋 Hafta Bazlı
+                </button>
+                <button id="fixKartTabTarih" onclick="fixKartTabDegistir('tarih')"
+                  style="flex: 1; padding: 10px; border: none; background: #f8f9fa; color: #666; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+                  📅 Tarih Bazlı
+                </button>
+              </div>
+
+              <!-- Hafta Bazlı Panel -->
+              <div id="fixKartHaftaPanel" style="flex: 1; overflow-y: auto; padding: 10px;">
+                <!-- 16 hafta butonları dinamik olarak oluşturulacak -->
+              </div>
+
+              <!-- Tarih Bazlı Panel -->
+              <div id="fixKartTarihPanel" style="flex: 1; overflow-y: auto; padding: 10px; display: none;">
+                <div style="margin-bottom: 10px;">
+                  <label style="display: block; font-size: 12px; color: #666; margin-bottom: 5px;">Tarih Seçin:</label>
+                  <input type="date" id="fixKartTarihInput" onchange="fixKartTarihSec(this.value)"
+                    style="width: 100%; padding: 8px; border: 1px solid #e91e63; border-radius: 4px; background: #fff0f5; font-size: 13px;">
+                </div>
+                <div id="fixKartTarihListesi" style="margin-top: 10px;">
+                  <!-- Tarih kartları listesi -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Sağ Panel - Kart Ekleme & Listesi -->
+            <div style="flex: 1; display: flex; flex-direction: column; background: white;">
+              <!-- Üst Bar -->
+              <div style="padding: 12px 15px; background: #fff; border-bottom: 1px solid #dee2e6;">
+                <strong id="fixKartBaslik" style="color: #e91e63;">Hafta veya tarih seçiniz</strong>
+              </div>
+
+              <!-- İçerik Alanı -->
+              <div style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+
+                <!-- Seçim Yapılmadığında -->
+                <div id="fixKartBosMsg" style="text-align: center; color: #6c757d; padding: 50px 20px;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">📌</div>
+                  <h4 style="margin-bottom: 10px; color: #e91e63;">Haftalık Fix Kartlar</h4>
+                  <p style="margin: 0; line-height: 1.6;">Sol panelden bir hafta veya tarih seçerek o döneme ait sabit
+                    kartları yönetebilirsiniz.</p>
+                  <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
+                    💡 Fix kartlar ZIP indirirken otomatik olarak eklenir.
+                  </div>
+                </div>
+
+                <!-- Seçim Yapıldığında (gizli başlar) -->
+                <div id="fixKartIcerik" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+
+                  <!-- Tarif Arama -->
+                  <div style="background: #fff0f5; border: 1px solid #f8bbd0; border-radius: 8px; padding: 12px;">
+                    <label
+                      style="display: block; font-size: 12px; font-weight: bold; color: #e91e63; margin-bottom: 6px;">🔍
+                      Tarif Kartı Ara (tarifler klasöründen):</label>
+                    <input type="text" id="fixKartSearchInput" oninput="fixKartAra(this.value)"
+                      placeholder="Tarif adı yazın... (örn: kabak, tavuk, brokoli)"
+                      style="width: 100%; padding: 8px 12px; border: 1px solid #f8bbd0; border-radius: 4px; background: white; font-size: 13px;">
+                    <div id="fixKartSearchResults"
+                      style="max-height: 150px; overflow-y: auto; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">
+                      <!-- Arama sonuçları burada görünecek -->
+                    </div>
+                  </div>
+
+                  <!-- Resim Yükleme -->
+                  <div style="background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 8px; padding: 12px;">
+                    <label
+                      style="display: block; font-size: 12px; font-weight: bold; color: #9c27b0; margin-bottom: 6px;">📤
+                      Bilgi/Tarif Kartı Yükle (JPG/PNG):</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <input type="text" id="fixKartUploadName" placeholder="Kart adı (örn: atistirmalik_tarifi)"
+                        style="flex: 1; padding: 8px; border: 1px solid #ce93d8; border-radius: 4px; font-size: 12px;">
+                      <label
+                        style="padding: 8px 12px; background: #9c27b0; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                        📁 Dosya Seç
+                        <input type="file" id="fixKartFileInput" accept="image/jpeg,image/png"
+                          onchange="fixKartDosyaSec(this)" style="display: none;">
+                      </label>
+                    </div>
+                    <div id="fixKartUploadPreview" style="margin-top: 8px; display: none;">
+                      <img id="fixKartUploadImg" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd;">
+                      <button onclick="fixKartYukle()"
+                        style="margin-left: 8px; padding: 6px 14px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        ✅ Yükle & Ekle
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Atanmış Kartlar Listesi -->
+                  <div
+                    style="flex: 1; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; overflow-y: auto;">
+                    <label
+                      style="display: block; font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;">📋
+                      Atanmış Kartlar:</label>
+                    <div id="fixKartAtanmislar" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                      <div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">
+                        Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -25938,6 +26154,507 @@ IMPORTANT RULES:
     document.addEventListener('DOMContentLoaded', function () {
       console.log('Sayfa yüklendi - GPT ayarları modal açıldığında yüklenecek');
     });
+
+    // =============================================
+    // 📌 FIX KARTLAR (SABİT KARTLAR) SİSTEMİ
+    // =============================================
+
+    // Global state
+    let fixKartTarifListesi = []; // tarifler/list.json cache
+    let fixKartSeciliMod = 'hafta'; // 'hafta' veya 'tarih'
+    let fixKartSeciliAnahtar = null; // seçili hafta no veya tarih string
+
+    // Fix kartlar verisini localStorage'dan al
+    function getFixKartData() {
+      try {
+        return JSON.parse(localStorage.getItem('fixKartlar') || '{"hafta":{},"tarih":{}}');
+      } catch (e) {
+        return { hafta: {}, tarih: {} };
+      }
+    }
+
+    // Fix kartlar verisini localStorage'a kaydet
+    function saveFixKartData(data) {
+      localStorage.setItem('fixKartlar', JSON.stringify(data));
+      console.log('💾 Fix kartlar kaydedildi:', data);
+    }
+
+    // Tab değiştir
+    function fixKartTabDegistir(mod) {
+      fixKartSeciliMod = mod;
+      fixKartSeciliAnahtar = null;
+
+      const haftaTab = document.getElementById('fixKartTabHafta');
+      const tarihTab = document.getElementById('fixKartTabTarih');
+      const haftaPanel = document.getElementById('fixKartHaftaPanel');
+      const tarihPanel = document.getElementById('fixKartTarihPanel');
+
+      if (mod === 'hafta') {
+        haftaTab.style.background = '#e91e63';
+        haftaTab.style.color = 'white';
+        haftaTab.style.fontWeight = 'bold';
+        tarihTab.style.background = '#f8f9fa';
+        tarihTab.style.color = '#666';
+        tarihTab.style.fontWeight = 'normal';
+        haftaPanel.style.display = 'block';
+        tarihPanel.style.display = 'none';
+      } else {
+        tarihTab.style.background = '#e91e63';
+        tarihTab.style.color = 'white';
+        tarihTab.style.fontWeight = 'bold';
+        haftaTab.style.background = '#f8f9fa';
+        haftaTab.style.color = '#666';
+        haftaTab.style.fontWeight = 'normal';
+        haftaPanel.style.display = 'none';
+        tarihPanel.style.display = 'block';
+        fixKartTarihListesiGuncelle();
+      }
+
+      // Sağ paneli sıfırla
+      document.getElementById('fixKartBosMsg').style.display = 'block';
+      document.getElementById('fixKartIcerik').style.display = 'none';
+      document.getElementById('fixKartBaslik').textContent = 'Hafta veya tarih seçiniz';
+    }
+
+    // Hafta panelini oluştur (16 hafta)
+    function fixKartHaftaPaneliOlustur() {
+      const panel = document.getElementById('fixKartHaftaPanel');
+      if (!panel) return;
+
+      const data = getFixKartData();
+      let html = '';
+
+      for (let i = 1; i <= 16; i++) {
+        const kartSayisi = (data.hafta && data.hafta[i]) ? data.hafta[i].length : 0;
+        const isActive = fixKartSeciliMod === 'hafta' && fixKartSeciliAnahtar === String(i);
+        const badge = kartSayisi > 0 ? `<span style="background: #e91e63; color: white; border-radius: 50%; padding: 1px 6px; font-size: 10px; margin-left: 5px;">${kartSayisi}</span>` : '';
+
+        html += `<button onclick="fixKartHaftaSec(${i})" style="
+          display: block; width: 100%; text-align: left; padding: 8px 12px; margin-bottom: 4px;
+          border: 1px solid ${isActive ? '#e91e63' : '#dee2e6'}; border-radius: 4px;
+          background: ${isActive ? '#fce4ec' : 'white'}; cursor: pointer; font-size: 13px;
+          color: ${isActive ? '#e91e63' : '#333'}; font-weight: ${isActive ? 'bold' : 'normal'};
+          transition: all 0.15s;">
+          📋 Hafta ${i} ${badge}
+        </button>`;
+      }
+
+      panel.innerHTML = html;
+    }
+
+    // Hafta seç
+    function fixKartHaftaSec(haftaNo) {
+      fixKartSeciliMod = 'hafta';
+      fixKartSeciliAnahtar = String(haftaNo);
+
+      document.getElementById('fixKartBaslik').textContent = `📋 Hafta ${haftaNo} - Fix Kartlar`;
+      document.getElementById('fixKartBosMsg').style.display = 'none';
+      document.getElementById('fixKartIcerik').style.display = 'flex';
+      document.getElementById('fixKartSearchInput').value = '';
+      document.getElementById('fixKartSearchResults').innerHTML = '';
+
+      fixKartHaftaPaneliOlustur();
+      fixKartAtanmislariGoster();
+    }
+
+    // Tarih seç
+    function fixKartTarihSec(tarih) {
+      if (!tarih) return;
+      fixKartSeciliMod = 'tarih';
+      fixKartSeciliAnahtar = tarih;
+
+      // Tarihi formatla
+      const d = new Date(tarih + 'T00:00:00');
+      const formatted = d.toLocaleDateString('tr-TR');
+
+      document.getElementById('fixKartBaslik').textContent = `📅 ${formatted} - Fix Kartlar`;
+      document.getElementById('fixKartBosMsg').style.display = 'none';
+      document.getElementById('fixKartIcerik').style.display = 'flex';
+      document.getElementById('fixKartSearchInput').value = '';
+      document.getElementById('fixKartSearchResults').innerHTML = '';
+
+      fixKartTarihListesiGuncelle();
+      fixKartAtanmislariGoster();
+    }
+
+    // Tarih listesini güncelle (mevcut tarih kartlarını göster)
+    function fixKartTarihListesiGuncelle() {
+      const container = document.getElementById('fixKartTarihListesi');
+      if (!container) return;
+
+      const data = getFixKartData();
+      const tarihler = Object.keys(data.tarih || {}).sort();
+
+      if (tarihler.length === 0) {
+        container.innerHTML = '<div style="color: #aaa; font-size: 12px; padding: 10px;">Henüz tarih bazlı kart eklenmedi.</div>';
+        return;
+      }
+
+      let html = '<div style="font-size: 11px; color: #888; margin-bottom: 6px;">Mevcut tarihler:</div>';
+      tarihler.forEach(tarih => {
+        const kartSayisi = data.tarih[tarih].length;
+        const isActive = fixKartSeciliAnahtar === tarih;
+        const d = new Date(tarih + 'T00:00:00');
+        const formatted = d.toLocaleDateString('tr-TR');
+
+        html += `<button onclick="fixKartTarihSec('${tarih}')" style="
+          display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px;
+          border: 1px solid ${isActive ? '#e91e63' : '#dee2e6'}; border-radius: 4px;
+          background: ${isActive ? '#fce4ec' : 'white'}; cursor: pointer; font-size: 12px;
+          color: ${isActive ? '#e91e63' : '#333'}; font-weight: ${isActive ? 'bold' : 'normal'};">
+          📅 ${formatted}
+          <span style="background: #e91e63; color: white; border-radius: 50%; padding: 1px 6px; font-size: 10px; margin-left: 5px;">${kartSayisi}</span>
+        </button>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // Tarifler listesini yükle (cache ile)
+    async function fixKartTarifListesiYukle() {
+      if (fixKartTarifListesi.length > 0) return fixKartTarifListesi;
+
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/list.json');
+        if (response.ok) {
+          const data = await response.json();
+          fixKartTarifListesi = data.map(item => {
+            const name = typeof item === 'string' ? item : (item.name || item.filename || item.file || null);
+            if (!name || !name.match(/\.(jpg|jpeg|png)$/i)) return null;
+            return {
+              name: name,
+              url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}`
+            };
+          }).filter(Boolean);
+          console.log(`✅ Fix Kart: ${fixKartTarifListesi.length} tarif yüklendi`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Tarif listesi yüklenemedi:', e);
+        // Fallback: GitHub API ile dene
+        try {
+          const response = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/tarifler');
+          if (response.ok) {
+            const files = await response.json();
+            fixKartTarifListesi = files
+              .filter(f => f.name.match(/\.(jpg|jpeg|png)$/i))
+              .map(f => ({ name: f.name, url: f.download_url }));
+            console.log(`✅ Fix Kart (API): ${fixKartTarifListesi.length} tarif yüklendi`);
+          }
+        } catch (e2) {
+          console.error('❌ Tarif listesi hiç yüklenemedi:', e2);
+        }
+      }
+
+      return fixKartTarifListesi;
+    }
+
+    // Tarif ara
+    async function fixKartAra(query) {
+      const resultsDiv = document.getElementById('fixKartSearchResults');
+      if (!query || query.length < 2) {
+        resultsDiv.innerHTML = '<div style="color: #aaa; font-size: 12px;">En az 2 karakter yazın...</div>';
+        return;
+      }
+
+      // Listeyi yükle
+      const tarifler = await fixKartTarifListesiYukle();
+
+      // Filtrele
+      const q = query.toLowerCase().replace(/\s+/g, '_');
+      const sonuclar = tarifler.filter(t => {
+        const cleanName = t.name.replace(/\.(jpg|jpeg|png)$/i, '').toLowerCase();
+        return cleanName.includes(q);
+      }).slice(0, 30); // Maksimum 30 sonuç
+
+      if (sonuclar.length === 0) {
+        resultsDiv.innerHTML = '<div style="color: #aaa; font-size: 12px;">Sonuç bulunamadı.</div>';
+        return;
+      }
+
+      // Mevcut kartları kontrol et (çift eklemeyi önle)
+      const data = getFixKartData();
+      const mevcutKartlar = fixKartSeciliMod === 'hafta'
+        ? (data.hafta[fixKartSeciliAnahtar] || [])
+        : (data.tarih[fixKartSeciliAnahtar] || []);
+      const mevcutIsimler = new Set(mevcutKartlar.map(k => k.name));
+
+      resultsDiv.innerHTML = sonuclar.map(tarif => {
+        const zatenVar = mevcutIsimler.has(tarif.name);
+        const displayName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        return `<button onclick="${zatenVar ? '' : `fixKartEkle('${tarif.name}','${tarif.url}','tarif')`}"
+          style="padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: ${zatenVar ? 'default' : 'pointer'};
+          border: 1px solid ${zatenVar ? '#ccc' : '#e91e63'}; background: ${zatenVar ? '#f0f0f0' : 'white'};
+          color: ${zatenVar ? '#aaa' : '#e91e63'}; transition: all 0.15s;"
+          ${zatenVar ? 'disabled' : ''}
+          title="${zatenVar ? 'Zaten ekli' : 'Tıklayarak ekle'}">
+          ${zatenVar ? '✓' : '+'} ${displayName}
+        </button>`;
+      }).join('');
+    }
+
+    // Kart ekle
+    function fixKartEkle(name, url, type) {
+      if (!fixKartSeciliAnahtar) {
+        alert('Lütfen önce bir hafta veya tarih seçin!');
+        return;
+      }
+
+      const data = getFixKartData();
+      const kategori = fixKartSeciliMod; // 'hafta' veya 'tarih'
+      const anahtar = fixKartSeciliAnahtar;
+
+      if (!data[kategori]) data[kategori] = {};
+      if (!data[kategori][anahtar]) data[kategori][anahtar] = [];
+
+      // Çift ekleme kontrolü
+      if (data[kategori][anahtar].some(k => k.name === name)) {
+        console.log('⚠️ Bu kart zaten ekli:', name);
+        return;
+      }
+
+      data[kategori][anahtar].push({ name, url, type });
+      saveFixKartData(data);
+
+      // UI güncelle
+      fixKartAtanmislariGoster();
+      if (fixKartSeciliMod === 'hafta') fixKartHaftaPaneliOlustur();
+      else fixKartTarihListesiGuncelle();
+
+      // Arama sonuçlarını da güncelle (çift ekleme önleme)
+      const searchInput = document.getElementById('fixKartSearchInput');
+      if (searchInput && searchInput.value) fixKartAra(searchInput.value);
+
+      console.log(`✅ Fix kart eklendi: ${name} → ${kategori}/${anahtar}`);
+    }
+
+    // Kart sil
+    function fixKartSil(name) {
+      const data = getFixKartData();
+      const kategori = fixKartSeciliMod;
+      const anahtar = fixKartSeciliAnahtar;
+
+      if (data[kategori] && data[kategori][anahtar]) {
+        data[kategori][anahtar] = data[kategori][anahtar].filter(k => k.name !== name);
+        if (data[kategori][anahtar].length === 0) {
+          delete data[kategori][anahtar];
+        }
+        saveFixKartData(data);
+      }
+
+      fixKartAtanmislariGoster();
+      if (fixKartSeciliMod === 'hafta') fixKartHaftaPaneliOlustur();
+      else fixKartTarihListesiGuncelle();
+
+      // Arama sonuçlarını da güncelle
+      const searchInput = document.getElementById('fixKartSearchInput');
+      if (searchInput && searchInput.value) fixKartAra(searchInput.value);
+
+      console.log(`🗑️ Fix kart silindi: ${name}`);
+    }
+
+    // Atanmış kartları göster
+    function fixKartAtanmislariGoster() {
+      const container = document.getElementById('fixKartAtanmislar');
+      if (!container || !fixKartSeciliAnahtar) return;
+
+      const data = getFixKartData();
+      const kartlar = (data[fixKartSeciliMod] && data[fixKartSeciliMod][fixKartSeciliAnahtar]) || [];
+
+      if (kartlar.length === 0) {
+        container.innerHTML = '<div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.</div>';
+        return;
+      }
+
+      container.innerHTML = kartlar.map(kart => {
+        const displayName = kart.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        const typeBadge = kart.type === 'upload'
+          ? '<span style="background: #9c27b0; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">📤 Yüklendi</span>'
+          : '<span style="background: #e91e63; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">🔍 Tarif</span>';
+
+        return `<div style="position: relative; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; background: white; width: 130px; text-align: center;">
+          <img src="${kart.url}" alt="${kart.name}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"
+            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E📷%3C/text%3E%3C/svg%3E'">
+          <div style="font-size: 10px; color: #333; word-break: break-word; margin-bottom: 3px;" title="${kart.name}">${displayName.substring(0, 25)}${displayName.length > 25 ? '...' : ''}</div>
+          ${typeBadge}
+          <button onclick="fixKartSil('${kart.name.replace(/'/g, "\\'")}')" style="
+            position: absolute; top: 2px; right: 2px; background: #ff5252; color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px;
+            cursor: pointer; line-height: 20px; padding: 0;" title="Kartı kaldır">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    // Dosya seçildiğinde önizleme göster
+    function fixKartDosyaSec(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const preview = document.getElementById('fixKartUploadPreview');
+      const img = document.getElementById('fixKartUploadImg');
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        preview.style.display = 'flex';
+        preview.style.alignItems = 'center';
+
+        // İsim alanını dosya adından otomatik doldur
+        const nameInput = document.getElementById('fixKartUploadName');
+        if (!nameInput.value) {
+          nameInput.value = file.name.replace(/\.(jpg|jpeg|png)$/i, '');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Dosyayı GitHub'a yükle ve kart olarak ekle
+    async function fixKartYukle() {
+      if (!fixKartSeciliAnahtar) {
+        alert('Lütfen önce bir hafta veya tarih seçin!');
+        return;
+      }
+
+      const fileInput = document.getElementById('fixKartFileInput');
+      const nameInput = document.getElementById('fixKartUploadName');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Lütfen bir dosya seçin!');
+        return;
+      }
+
+      const kartAdi = (nameInput.value.trim() || file.name).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+      const ext = file.name.match(/\.(jpg|jpeg|png)$/i)?.[0] || '.jpg';
+      const finalName = kartAdi.endsWith(ext) ? kartAdi : kartAdi + ext;
+
+      // GitHub'a yükle
+      const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+      if (!token) {
+        alert('GitHub token bulunamadı! Kart sadece lokal olarak ekleniyor.');
+        // Lokal olarak da ekleyebiliriz (base64 URL kullanarak)
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          fixKartEkle(finalName, e.target.result, 'upload');
+          fixKartUploadTemizle();
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      try {
+        // Dosyayı base64'e çevir
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = `fix_kartlar/${finalName}`;
+
+        // Önce SHA kontrol
+        let sha = undefined;
+        try {
+          const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (check.ok) {
+            const d = await check.json();
+            sha = d.sha;
+          }
+        } catch (e) { }
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `Fix kart eklendi: ${finalName}`,
+            content: base64,
+            sha: sha
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const url = result.content.download_url || `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+          fixKartEkle(finalName, url, 'upload');
+          fixKartUploadTemizle();
+          console.log('✅ Fix kart GitHub\'a yüklendi:', finalName);
+        } else {
+          throw new Error(`GitHub yanıtı: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Fix kart yükleme hatası:', error);
+        alert('GitHub yükleme başarısız oldu. Kart lokal olarak ekleniyor.');
+        // Fallback: lokal ekle
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          fixKartEkle(finalName, e.target.result, 'upload');
+          fixKartUploadTemizle();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Upload formunu temizle
+    function fixKartUploadTemizle() {
+      document.getElementById('fixKartFileInput').value = '';
+      document.getElementById('fixKartUploadName').value = '';
+      document.getElementById('fixKartUploadPreview').style.display = 'none';
+    }
+
+    // =============================================
+    // 📌 ZIP ENTEGRASYONU İÇİN HELPER FONKSİYONLAR
+    // =============================================
+
+    // Belirli bir hafta için fix kartları getir (hafta bazlı + tarih bazlı)
+    function getFixCardsForWeek(haftaNo, haftaBaslangic, haftaBitis) {
+      const data = getFixKartData();
+      let kartlar = [];
+
+      // 1) Hafta bazlı kartlar
+      if (data.hafta && data.hafta[haftaNo]) {
+        kartlar = kartlar.concat(data.hafta[haftaNo]);
+      }
+
+      // 2) Tarih bazlı kartlar - tarih aralığına bakarak eşleştir
+      if (data.tarih && haftaBaslangic && haftaBitis) {
+        const start = new Date(haftaBaslangic + (haftaBaslangic.includes('T') ? '' : 'T00:00:00'));
+        const end = new Date(haftaBitis + (haftaBitis.includes('T') ? '' : 'T23:59:59'));
+
+        Object.keys(data.tarih).forEach(tarihStr => {
+          const tarih = new Date(tarihStr + 'T12:00:00');
+          if (tarih >= start && tarih <= end) {
+            kartlar = kartlar.concat(data.tarih[tarihStr]);
+          }
+        });
+      }
+
+      // Çift kartları kaldır (aynı isme sahip olanlar)
+      const unique = [];
+      const seen = new Set();
+      kartlar.forEach(k => {
+        if (!seen.has(k.name)) {
+          seen.add(k.name);
+          unique.push(k);
+        }
+      });
+
+      return unique;
+    }
+
+    // Fix Kartlar panelini başlat (GPT modal açıldığında çağrılmalı)
+    function fixKartlarInit() {
+      fixKartHaftaPaneliOlustur();
+      fixKartTarifListesiYukle(); // Arka planda yükle
+    }
+
+    // Sayfa yüklenince fix kartlar panelini hazırla
+    window.addEventListener('load', () => {
+      setTimeout(fixKartlarInit, 2000);
+    });
+
   </script>
 
 </body>
