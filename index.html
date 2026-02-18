@@ -8790,166 +8790,191 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         }));
 
         // En büyük hafta numarasına göre sırala, aynı hafta numarası olanlarda alfabetik
+        // En büyük hafta numarasına ve ARŞİV durumuna göre sırala
+        // 1. Aktif hastalar önce (arsiv=false)
+        // 2. Max hafta sayısına göre (küçükten büyüğe)
+        // 3. İsim sırasına göre
         hastalarVeriAnaliziIle.sort((a, b) => {
+          // Arşiv durumu kontrolü (Aktif önce)
+          if (a.arsiv !== b.arsiv) {
+            return a.arsiv ? 1 : -1; // a.arsiv=true (arşiv) ise sona at
+          }
+          // Hafta sayısı kontrolü
           if (a.maxHafta !== b.maxHafta) {
             return a.maxHafta - b.maxHafta; // Küçük haftadan büyük haftaya
           }
-          return a.hastaIsim.localeCompare(b.hastaIsim, 'tr'); // Alfabetik sıralama
+          // İsim kontrolü
+          return a.hastaIsim.localeCompare(b.hastaIsim, 'tr');
         });
 
-        hastalarVeriAnaliziIle.forEach((hasta, index) => {
-          const li = document.createElement('li');
+        // Hafta sayısına göre renk belirleme fonksiyonu (Döngü dışında tanımlandı)
+        const getHaftaRengi = (haftaNo) => {
+          const renkPaleti = [
+            // Hafta 0 - PDF Yok
+            { background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderColor: '#dee2e6', textColor: '#6c757d' },
+            // Hafta 1 - Açık Mavi
+            { background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', borderColor: '#2196f3', textColor: '#0d47a1' },
+            // Hafta 2 - Cyan
+            { background: 'linear-gradient(135deg, #e0f7fa 0%, #80deea 100%)', borderColor: '#00bcd4', textColor: '#006064' },
+            // Hafta 3 - Teal
+            { background: 'linear-gradient(135deg, #e0f2f1 0%, #80cbc4 100%)', borderColor: '#009688', textColor: '#004d40' },
+            // Hafta 4 - Yeşil
+            { background: 'linear-gradient(135deg, #e8f5e8 0%, #a5d6a7 100%)', borderColor: '#4caf50', textColor: '#1b5e20' },
+            // Hafta 5 - Açık Yeşil
+            { background: 'linear-gradient(135deg, #f1f8e9 0%, #c5e1a5 100%)', borderColor: '#8bc34a', textColor: '#33691e' },
+            // Hafta 6 - Lime
+            { background: 'linear-gradient(135deg, #f9fbe7 0%, #dcedc8 100%)', borderColor: '#cddc39', textColor: '#827717' },
+            // Hafta 7 - Sarı
+            { background: 'linear-gradient(135deg, #fffde7 0%, #fff176 100%)', borderColor: '#ffeb3b', textColor: '#f57f17' },
+            // Hafta 8 - Amber
+            { background: 'linear-gradient(135deg, #fff8e1 0%, #ffcc02 100%)', borderColor: '#ffc107', textColor: '#ff6f00' },
+            // Hafta 9 - Turuncu
+            { background: 'linear-gradient(135deg, #fff3e0 0%, #ffb74d 100%)', borderColor: '#ff9800', textColor: '#e65100' },
+            // Hafta 10 - Koyu Turuncu
+            { background: 'linear-gradient(135deg, #fbe9e7 0%, #ffab91 100%)', borderColor: '#ff5722', textColor: '#d84315' },
+            // Hafta 11 - Kırmızı
+            { background: 'linear-gradient(135deg, #ffebee 0%, #ef9a9a 100%)', borderColor: '#f44336', textColor: '#c62828' },
+            // Hafta 12 - Pink
+            { background: 'linear-gradient(135deg, #fce4ec 0%, #f48fb1 100%)', borderColor: '#e91e63', textColor: '#ad1457' },
+            // Hafta 13 - Mor
+            { background: 'linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%)', borderColor: '#9c27b0', textColor: '#6a1b9a' }
+          ];
 
-          // Hafta sayısına göre renk belirleme
-          const getHaftaRengi = (haftaNo) => {
-            const renkPaleti = [
-              // Hafta 0 - PDF Yok
-              { background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderColor: '#dee2e6', textColor: '#6c757d' },
-              // Hafta 1 - Açık Mavi
-              { background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', borderColor: '#2196f3', textColor: '#0d47a1' },
-              // Hafta 2 - Cyan
-              { background: 'linear-gradient(135deg, #e0f7fa 0%, #80deea 100%)', borderColor: '#00bcd4', textColor: '#006064' },
-              // Hafta 3 - Teal
-              { background: 'linear-gradient(135deg, #e0f2f1 0%, #80cbc4 100%)', borderColor: '#009688', textColor: '#004d40' },
-              // Hafta 4 - Yeşil
-              { background: 'linear-gradient(135deg, #e8f5e8 0%, #a5d6a7 100%)', borderColor: '#4caf50', textColor: '#1b5e20' },
-              // Hafta 5 - Açık Yeşil
-              { background: 'linear-gradient(135deg, #f1f8e9 0%, #c5e1a5 100%)', borderColor: '#8bc34a', textColor: '#33691e' },
-              // Hafta 6 - Lime
-              { background: 'linear-gradient(135deg, #f9fbe7 0%, #dcedc8 100%)', borderColor: '#cddc39', textColor: '#827717' },
-              // Hafta 7 - Sarı
-              { background: 'linear-gradient(135deg, #fffde7 0%, #fff176 100%)', borderColor: '#ffeb3b', textColor: '#f57f17' },
-              // Hafta 8 - Amber
-              { background: 'linear-gradient(135deg, #fff8e1 0%, #ffcc02 100%)', borderColor: '#ffc107', textColor: '#ff6f00' },
-              // Hafta 9 - Turuncu
-              { background: 'linear-gradient(135deg, #fff3e0 0%, #ffb74d 100%)', borderColor: '#ff9800', textColor: '#e65100' },
-              // Hafta 10 - Koyu Turuncu
-              { background: 'linear-gradient(135deg, #fbe9e7 0%, #ffab91 100%)', borderColor: '#ff5722', textColor: '#d84315' },
-              // Hafta 11 - Kırmızı
-              { background: 'linear-gradient(135deg, #ffebee 0%, #ef9a9a 100%)', borderColor: '#f44336', textColor: '#c62828' },
-              // Hafta 12 - Pink
-              { background: 'linear-gradient(135deg, #fce4ec 0%, #f48fb1 100%)', borderColor: '#e91e63', textColor: '#ad1457' },
-              // Hafta 13 - Mor
-              { background: 'linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%)', borderColor: '#9c27b0', textColor: '#6a1b9a' }
-            ];
-
-            if (haftaNo === 0) {
-              return renkPaleti[0];
-            } else if (haftaNo >= 1 && haftaNo <= 13) {
-              return renkPaleti[haftaNo];
-            } else {
-              // 14+ hafta için özel altın renk (başarı ve deneyim)
-              return {
-                background: 'linear-gradient(135deg, #fff8e1 0%, #ffd54f 100%)',
-                borderColor: '#ff8f00',
-                textColor: '#e65100'
-              };
-            }
-          };
-
-          const renkSemasi = getHaftaRengi(hasta.maxHafta);
-
-          li.style.cssText = `cursor: pointer; padding: 8px 12px; border-radius: 8px; margin-bottom: 3px; 
-                             background: ${renkSemasi.background}; 
-                             border-left: 4px solid ${renkSemasi.borderColor}; 
-                             border: 1px solid ${renkSemasi.borderColor}20;
-                             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                             transition: all 0.3s ease;`;
-
-          // Hover efekti için
-          li.onmouseenter = () => {
-            li.style.transform = 'translateX(3px)';
-            li.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-          };
-          li.onmouseleave = () => {
-            li.style.transform = 'translateX(0)';
-            li.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-          };
-
-          // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
-          const isimDiv = document.createElement('div');
-          isimDiv.classList.add('hasta-ad-wrapper');
-          isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : renkSemasi.textColor}; font-size: 13px;`;
-
-          // Sıra numarasını ekle
-          const siraSpan = document.createElement('span');
-          siraSpan.style.cssText = `color: ${renkSemasi.textColor}80; font-weight: normal; margin-right: 8px;`;
-          siraSpan.textContent = `${index + 1}.`;
-          isimDiv.appendChild(siraSpan);
-
-          // İsim kısmını ekle
-          const isimSpan = document.createElement('span');
-          isimSpan.classList.add('hasta-ad-isim');
-          isimSpan.textContent = hasta.hastaIsim;
-          if (hasta.arsiv) {
-            isimSpan.textContent = '📦 ' + isimSpan.textContent;
+          if (haftaNo === 0) {
+            return renkPaleti[0];
+          } else if (haftaNo >= 1 && haftaNo <= 13) {
+            return renkPaleti[haftaNo];
+          } else {
+            // 14+ hafta için özel altın renk (başarı ve deneyim)
+            return {
+              background: 'linear-gradient(135deg, #fff8e1 0%, #ffd54f 100%)',
+              borderColor: '#ff8f00',
+              textColor: '#e65100'
+            };
           }
-          isimDiv.appendChild(isimSpan);
+        };
 
-          // Telefon ikonu - hasta.telefonAranacak (GitHub eşzamanlı) baz alınır
-          const hastaIdKey = normalizeIdKey(hasta.id);
-          const telefonFlagMap = window.telefonBilgileriYedek || {};
-          let telefonIconGorunecek = Boolean(telefonFlagMap[hastaIdKey] || hasta.telefonAranacak);
-          // Ek güvence: seçili hasta bu id ise ve seciliHasta.telefonAranacak true ise ikonu göster (buton durumu)
-          try {
-            if (!telefonIconGorunecek && seciliHasta && normalizeIdKey(seciliHasta.id) === hastaIdKey && seciliHasta.telefonAranacak === true) {
-              telefonIconGorunecek = true;
+        // CHUNKED RENDER LOGIC for performance
+        const BATCH_SIZE = 20;
+        let renderedCount = 0;
+
+        const renderBatch = () => {
+          const fragment = document.createDocumentFragment();
+          const limit = Math.min(renderedCount + BATCH_SIZE, hastalarVeriAnaliziIle.length);
+
+          for (let i = renderedCount; i < limit; i++) {
+            const hasta = hastalarVeriAnaliziIle[i];
+            const index = i; // Endeks olarak i kullan
+
+            const li = document.createElement('li');
+
+            const renkSemasi = getHaftaRengi(hasta.maxHafta);
+
+            li.style.cssText = `cursor: pointer; padding: 8px 12px; border-radius: 8px; margin-bottom: 3px; 
+                               background: ${renkSemasi.background}; 
+                               border-left: 4px solid ${renkSemasi.borderColor}; 
+                               border: 1px solid ${renkSemasi.borderColor}20;
+                               box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                               transition: all 0.3s ease;`;
+
+            // Hover efekti için
+            li.onmouseenter = () => {
+              li.style.transform = 'translateX(3px)';
+              li.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+            };
+            li.onmouseleave = () => {
+              li.style.transform = 'translateX(0)';
+              li.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            };
+
+            // İsim div'ini ayrı oluştur - hafta bilgisiyle birlikte
+            const isimDiv = document.createElement('div');
+            isimDiv.classList.add('hasta-ad-wrapper');
+            isimDiv.style.cssText = `font-weight: bold; color: ${hasta.arsiv ? '#6c757d' : renkSemasi.textColor}; font-size: 13px;`;
+
+            // Sıra numarasını ekle
+            const siraSpan = document.createElement('span');
+            siraSpan.style.cssText = `color: ${renkSemasi.textColor}80; font-weight: normal; margin-right: 8px;`;
+            siraSpan.textContent = `${index + 1}.`;
+            isimDiv.appendChild(siraSpan);
+
+            // İsim kısmını ekle
+            const isimSpan = document.createElement('span');
+            isimSpan.classList.add('hasta-ad-isim');
+            isimSpan.textContent = hasta.hastaIsim;
+            if (hasta.arsiv) {
+              isimSpan.textContent = '📦 ' + isimSpan.textContent;
             }
+            isimDiv.appendChild(isimSpan);
+
+            // Telefon ikonu - hasta.telefonAranacak (GitHub eşzamanlı) baz alınır
+            const hastaIdKey = normalizeIdKey(hasta.id);
+            const telefonFlagMap = window.telefonBilgileriYedek || {};
+            let telefonIconGorunecek = Boolean(telefonFlagMap[hastaIdKey] || hasta.telefonAranacak);
+
+            // Ek güvence: seçili hasta bu id ise ve seciliHasta.telefonAranacak true ise ikonu göster
+            try {
+              if (!telefonIconGorunecek && seciliHasta && normalizeIdKey(seciliHasta.id) === hastaIdKey && seciliHasta.telefonAranacak === true) {
+                telefonIconGorunecek = true;
+              }
+              if (telefonIconGorunecek) {
+                window.telefonDurumOverride[hastaIdKey] = true;
+              }
+            } catch (_) { }
+            console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek} (ID: ${hasta.id})`);
+
             if (telefonIconGorunecek) {
-              window.telefonDurumOverride[hastaIdKey] = true;
+              const telefonSpan = document.createElement('span');
+              telefonSpan.classList.add('telefon-icon');
+              telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
+              telefonSpan.textContent = '📞';
+              telefonSpan.title = 'Telefon ile aranacak!';
+              isimDiv.appendChild(telefonSpan);
             }
-          } catch (_) { }
-          console.log(`🔎 Sidebar render - ${hasta.hastaIsim}: telefonAranacak=${telefonIconGorunecek} (ID: ${hasta.id})`);
-          if (telefonIconGorunecek) {
-            const telefonSpan = document.createElement('span');
-            telefonSpan.classList.add('telefon-icon');
-            telefonSpan.style.cssText = `margin-left: 6px; color: #ff6b6b; font-size: 14px; font-weight: bold;`;
-            telefonSpan.textContent = '📞';
-            telefonSpan.title = 'Telefon ile aranacak!';
-            isimDiv.appendChild(telefonSpan);
-            console.log('📞 Telefon ikonu eklendi:', hasta.hastaIsim);
-          } else {
-            console.log('❌ Telefon ikonu eklenmedi:', hasta.hastaIsim);
+
+            // Hafta bilgisini ekle (renkli)
+            const haftaSpan = document.createElement('span');
+            haftaSpan.classList.add('hasta-hafta-bilgi');
+            haftaSpan.style.cssText = `color: ${renkSemasi.borderColor}; font-weight: bold; font-size: 11px;`; // Border renginde ve bold
+            if (hasta.maxHafta > 0) {
+              haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
+            } else {
+              haftaSpan.textContent = ` (pdf yok)`;
+            }
+            isimDiv.appendChild(haftaSpan);
+
+            li.appendChild(isimDiv);
+
+            li.onclick = () => hastaSecYeniSistem(hasta);
+            li.dataset.hastaId = normalizeIdKey(hasta.id);
+            li.classList.add('hasta-item'); // CSS vurgulama için
+
+            fragment.appendChild(li);
           }
 
-          // Hafta bilgisini ekle (renkli)
-          const haftaSpan = document.createElement('span');
-          haftaSpan.classList.add('hasta-hafta-bilgi');
-          haftaSpan.style.cssText = `color: ${renkSemasi.borderColor}; font-weight: bold; font-size: 11px;`; // Border renginde ve bold
-          if (hasta.maxHafta > 0) {
-            haftaSpan.textContent = ` (${hasta.maxHafta}. hafta)`;
+          ul.appendChild(fragment);
+          renderedCount = limit;
+
+          if (renderedCount < hastalarVeriAnaliziIle.length) {
+            requestAnimationFrame(renderBatch);
           } else {
-            haftaSpan.textContent = ` (pdf yok)`;
+            console.log(`✅ Tüm hastalar (${renderedCount}) chunked render ile yüklendi`);
+            try {
+              const overrideMap = window.telefonDurumOverride || {};
+              const yedekMap = window.telefonBilgileriYedek || {};
+              ul.querySelectorAll('li[data-hasta-id]').forEach(li => {
+                const hastaKey = li.dataset.hastaId;
+                const aranacak = Boolean((overrideMap && overrideMap[hastaKey]) || (yedekMap && yedekMap[hastaKey]));
+                updateSidebarTelefonIkonu(hastaKey, aranacak);
+              });
+            } catch (topluTelefonIkonHatasi) {
+              console.warn('📞 Toplu telefon ikonu sonrası güncelleme uyarısı:', topluTelefonIkonHatasi?.message || topluTelefonIkonHatasi);
+            }
           }
-          isimDiv.appendChild(haftaSpan);
+        };
 
-          li.appendChild(isimDiv);
-
-          // Not kısmı kaldırıldı - sadece üst kısımda görünsün
-          // if (hasta.not) {
-          //   const notDiv = document.createElement('div');
-          //   notDiv.style.cssText = `font-size: 11px; color: ${renkSemasi.textColor}90; margin-top: 2px;`;
-          //   notDiv.textContent = hasta.not;
-          //   li.appendChild(notDiv);
-          // }
-
-          li.onclick = () => hastaSecYeniSistem(hasta);
-          li.dataset.hastaId = normalizeIdKey(hasta.id);
-          li.classList.add('hasta-item'); // CSS vurgulama için
-          ul.appendChild(li);
-        });
-
-        try {
-          const overrideMap = window.telefonDurumOverride || {};
-          const yedekMap = window.telefonBilgileriYedek || {};
-          ul.querySelectorAll('li[data-hasta-id]').forEach(li => {
-            const hastaKey = li.dataset.hastaId;
-            const aranacak = Boolean((overrideMap && overrideMap[hastaKey]) || (yedekMap && yedekMap[hastaKey]));
-            updateSidebarTelefonIkonu(hastaKey, aranacak);
-          });
-        } catch (topluTelefonIkonHatasi) {
-          console.warn('📞 Toplu telefon ikonu sonrası güncelleme uyarısı:', topluTelefonIkonHatasi?.message || topluTelefonIkonHatasi);
-        }
+        // Render işlemini başlat
+        renderBatch();
 
         console.log(`✅ Yeni sistem hasta listesi güncellendi: ${filtreliHastalar.length} hasta gösteriliyor`);
 
@@ -15282,22 +15307,30 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               try {
                 const response = await fetch(fixKart.url);
                 const blob = await response.blob();
-                let prefix = '';
-                // Sadece prefixi olmayan eski dosyalar için _Bilgilendirme_ ekle
-                // Yeni dosyalar zaten prefixli geliyor (Ramazan_..., EK_... vb)
-                if (fixKart.type === 'upload') {
-                  const db = getFixKartData();
-                  const settingsPrefixes = db.settings?.prefixes || ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
-                  const hasKnownPrefix = settingsPrefixes.some(p => fixKart.name.startsWith(p));
+                // Per-card prefix: kartın geldiği context'in prefix'ini kullan
+                const db = getFixKartData();
+                let cardPrefixTarif = db.settings?.lastUsedPrefixTarif || 'EK_';
+                let cardPrefixUpload = db.settings?.lastUsedPrefixUpload || '_Bilgilendirme_';
 
-                  if (!hasKnownPrefix) {
-                    prefix = '_Bilgilendirme_';
+                // Kartın kaynak context'indeki prefix'i bul
+                if (fixKart._sourceCtx && db.settings?.contextPrefixes) {
+                  const srcCtx = db.settings.contextPrefixes[fixKart._sourceCtx];
+                  if (srcCtx && typeof srcCtx === 'object') {
+                    if (srcCtx.tarif) cardPrefixTarif = srcCtx.tarif;
+                    if (srcCtx.upload) cardPrefixUpload = srcCtx.upload;
                   }
                 }
-                const ekName = `${prefix}${fixKart.name}`;
+
+                // cleanName varsa kullan, yoksa helper ile strip et
+                const baseName = fixKart.cleanName || fixKartStripPrefix(fixKart.name);
+
+                // Kartın türüne göre doğru prefix'i uygula
+                const activePrefix = fixKart.type === 'upload' ? cardPrefixUpload : cardPrefixTarif;
+                const ekName = activePrefix + baseName;
+                console.log(`📌 Fix kart prefix: [${fixKart._sourceCtx}] → ${activePrefix} + ${baseName}`);
                 zip.file(ekName, blob);
                 fileCount++;
-                eklenenKartlar.add(fixKart.name.toLowerCase());
+                eklenenKartlar.add(baseName.toLowerCase());
                 console.log('✅ Ek kart eklendi:', ekName);
               } catch (e) {
                 console.warn('⚠️ Ek kart eklenemedi:', fixKart.name, e);
@@ -17630,19 +17663,23 @@ ${mesajlar.join('\n')}
                         const response = await fetch(fixKart.url);
                         if (response.ok) {
                           const blob = await response.blob();
-                          let prefix = '';
-                          // Sadece prefixi olmayan eski dosyalar için _Bilgilendirme_
-                          if (fixKart.type === 'upload') {
-                            const db = getFixKartData();
-                            const settingsPrefixes = db.settings?.prefixes || ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
-                            const hasKnownPrefix = settingsPrefixes.some(p => fixKart.name.startsWith(p));
-                            if (!hasKnownPrefix) {
-                              prefix = '_Bilgilendirme_';
+                          // Per-card prefix: kartın kaynak context'inden al
+                          const db = getFixKartData();
+                          let cardPrefixTarif = db.settings?.lastUsedPrefixTarif || 'EK_';
+                          let cardPrefixUpload = db.settings?.lastUsedPrefixUpload || '_Bilgilendirme_';
+                          if (fixKart._sourceCtx && db.settings?.contextPrefixes) {
+                            const srcCtx = db.settings.contextPrefixes[fixKart._sourceCtx];
+                            if (srcCtx && typeof srcCtx === 'object') {
+                              if (srcCtx.tarif) cardPrefixTarif = srcCtx.tarif;
+                              if (srcCtx.upload) cardPrefixUpload = srcCtx.upload;
                             }
                           }
-                          anaZip.file(`${hastaKlasorAdi}/${prefix}${fixKart.name}`, blob);
-                          eklenenKartlar.add(fixKart.name.toLowerCase());
-                          console.log(`✅ ${hasta.isim} - Ek kart eklendi: ${fixKart.name}`);
+                          const baseName = fixKart.cleanName || fixKartStripPrefix(fixKart.name);
+                          const activePrefix = fixKart.type === 'upload' ? cardPrefixUpload : cardPrefixTarif;
+                          const ekName = activePrefix + baseName;
+                          anaZip.file(`${hastaKlasorAdi}/${ekName}`, blob);
+                          eklenenKartlar.add(baseName.toLowerCase());
+                          console.log(`✅ ${hasta.isim} - Ek kart eklendi: ${ekName} [${fixKart._sourceCtx}]`);
                         }
                       } catch (e) {
                         console.warn(`⚠️ ${hasta.isim} - Ek kart eklenemedi: ${fixKart.name}`, e);
@@ -19493,101 +19530,99 @@ ${mesajlar.join('\n')}
                 </div>
 
                 <!-- Seçim Yapıldığında (gizli başlar) -->
-                <div id="fixKartIcerik" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+                <div id="fixKartIcerik" style="display: none; flex-direction: column; gap: 8px; height: 100%;">
 
-                  <!-- Prefix Yönetimi -->
-                  <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
-                    <label
-                      style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px; display: block;">Tarif
-                      Kartı Öneki (Prefix):</label>
-                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                      <input type="text" id="yeniPrefixInput" placeholder="Önek ekle (örn: Ramazan_)"
-                        style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                      <button onclick="fixKartPrefixEkle()"
-                        style="padding: 6px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">+</button>
+                  <!-- Prefix Sections (Tarif + Upload yan yana) -->
+                  <div style="display: flex; gap: 8px;">
+                    <!-- Tarif Prefix -->
+                    <div
+                      style="flex: 1; background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;">
+                      <label
+                        style="font-size: 11px; font-weight: bold; color: #e91e63; margin-bottom: 4px; display: block;">🔍
+                        Tarif Kartı Öneki:</label>
+                      <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                        <input type="text" id="yeniPrefixInput" placeholder="Önek ekle..."
+                          style="flex: 1; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
+                        <button onclick="fixKartPrefixEkle()"
+                          style="padding: 4px 8px; background: #e91e63; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">+</button>
+                      </div>
+                      <div id="fixKartPrefixChips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
                     </div>
-                    <div id="fixKartPrefixChips" style="display: flex; flex-wrap: wrap; gap: 5px;">
-                      <!-- Chips buraya gelecek -->
+                    <!-- Upload Prefix -->
+                    <div
+                      style="flex: 1; background: #faf3fc; border: 1px solid #ce93d8; border-radius: 6px; padding: 8px;">
+                      <label
+                        style="font-size: 11px; font-weight: bold; color: #9c27b0; margin-bottom: 4px; display: block;">📤
+                        Yükleme Kartı Öneki:</label>
+                      <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                        <input type="text" id="yeniPrefixInputUpload" placeholder="Önek ekle..."
+                          style="flex: 1; padding: 4px 6px; border: 1px solid #ce93d8; border-radius: 4px; font-size: 11px;">
+                        <button onclick="fixKartPrefixEkleUpload()"
+                          style="padding: 4px 8px; background: #9c27b0; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">+</button>
+                      </div>
+                      <div id="fixKartPrefixChipsUpload" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
                     </div>
                   </div>
 
                   <!-- Tarif Arama -->
-                  <div style="background: #fff0f5; border: 1px solid #f8bbd0; border-radius: 8px; padding: 12px;">
+                  <div style="background: #fff0f5; border: 1px solid #f8bbd0; border-radius: 6px; padding: 8px;">
                     <div
-                      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                      <label style="font-size: 12px; font-weight: bold; color: #e91e63;">🔍 Tarif Kartı Ara (tarifler
-                        klasöründen):</label>
+                      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <label style="font-size: 11px; font-weight: bold; color: #e91e63;">🔍 Tarif Kartı Ara:</label>
                       <button
                         onclick="fixKartTarifListesiYukle(true).then(() => { fixKartAra(document.getElementById('fixKartSearchInput').value); alert('✅ Tarif listesi güncellendi!'); })"
-                        style="padding: 2px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
-                        🔄 Listeyi Yenile
-                      </button>
+                        style="padding: 2px 6px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 9px;">🔄
+                        Yenile</button>
                     </div>
-                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                    <div style="display: flex; gap: 5px; margin-bottom: 4px;">
                       <select id="fixKartSearchType"
                         onchange="fixKartAra(document.getElementById('fixKartSearchInput').value)"
-                        style="padding: 8px; border: 1px solid #f8bbd0; border-radius: 4px; font-size: 12px; background: white; color: #e91e63; cursor: pointer; outline: none;">
+                        style="padding: 5px; border: 1px solid #f8bbd0; border-radius: 4px; font-size: 11px; background: white; color: #e91e63; cursor: pointer;">
                         <option value="name" selected>Yemek Adı</option>
-                        <option value="tag">Etiket (Tag)</option>
+                        <option value="tag">Etiket</option>
                       </select>
                       <input type="text" id="fixKartSearchInput" oninput="fixKartAra(this.value)"
                         placeholder="Aranacak kelimeleri yazın..."
-                        style="flex: 1; padding: 8px 12px; border: 1px solid #f8bbd0; border-radius: 4px; background: white; font-size: 13px;">
+                        style="flex: 1; padding: 5px 8px; border: 1px solid #f8bbd0; border-radius: 4px; background: white; font-size: 12px;">
                       <span id="fixKartSearchResultCount"
-                        style="font-size: 11px; color: #666; align-self: center; min-width: 60px; text-align: right;"></span>
+                        style="font-size: 10px; color: #666; align-self: center;"></span>
                     </div>
                     <div id="fixKartSearchResults"
-                      style="max-height: 150px; overflow-y: auto; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">
-                      <!-- Arama sonuçları burada görünecek -->
-                    </div>
+                      style="max-height: 120px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px;"></div>
                   </div>
 
-                  <!-- Resim Yükleme -->
-                  <!-- Resim Yükleme -->
-                  <div style="background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 8px; padding: 12px;">
-                    <!-- Upload Prefix -->
-                    <div style="margin-bottom: 8px; border-bottom: 1px dashed #ce93d8; padding-bottom: 8px;">
-                      <label
-                        style="font-size: 11px; font-weight: bold; color: #9c27b0; margin-bottom: 4px; display: block;">
-                        Yükleme Kartı Öneki (Prefix):
-                      </label>
-                      <div id="fixKartPrefixChipsUpload" style="display: flex; flex-wrap: wrap; gap: 5px;">
-                        <!-- Chips buraya gelecek -->
-                      </div>
-                    </div>
-
+                  <!-- Resim Yükleme (Compact) -->
+                  <div style="background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 6px; padding: 8px;">
                     <label
-                      style="display: block; font-size: 12px; font-weight: bold; color: #9c27b0; margin-bottom: 6px;">📤
-                      Bilgi/Tarif Kartı Yükle (JPG/PNG):</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                      style="display: block; font-size: 11px; font-weight: bold; color: #9c27b0; margin-bottom: 4px;">📤
+                      Bilgi/Tarif Kartı Yükle:</label>
+                    <div style="display: flex; gap: 6px; align-items: center;">
                       <input type="text" id="fixKartUploadName" placeholder="Kart adı (örn: atistirmalik_tarifi)"
-                        style="flex: 1; padding: 8px; border: 1px solid #ce93d8; border-radius: 4px; font-size: 12px;">
+                        style="flex: 1; padding: 5px 8px; border: 1px solid #ce93d8; border-radius: 4px; font-size: 11px;">
                       <label
-                        style="padding: 8px 12px; background: #9c27b0; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                        style="padding: 5px 10px; background: #9c27b0; color: white; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">
                         📁 Dosya Seç
                         <input type="file" id="fixKartFileInput" accept="image/jpeg,image/png"
                           onchange="fixKartDosyaSec(this)" style="display: none;">
                       </label>
                     </div>
-                    <div id="fixKartUploadPreview" style="margin-top: 8px; display: none;">
-                      <img id="fixKartUploadImg" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd;">
+                    <div id="fixKartUploadPreview" style="margin-top: 6px; display: none; align-items: center;">
+                      <img id="fixKartUploadImg" style="max-height: 60px; border-radius: 4px; border: 1px solid #ddd;">
                       <button onclick="fixKartYukle()"
-                        style="margin-left: 8px; padding: 6px 14px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                        ✅ Yükle & Ekle
-                      </button>
+                        style="margin-left: 8px; padding: 5px 12px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✅
+                        Yükle & Ekle</button>
                     </div>
                   </div>
 
-                  <!-- Atanmış Kartlar Listesi -->
+                  <!-- Atanmış Kartlar -->
                   <div
-                    style="flex: 1; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; overflow-y: auto;">
+                    style="flex: 1; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; overflow-y: auto; min-height: 80px;">
                     <label
-                      style="display: block; font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;">📋
+                      style="display: block; font-size: 11px; font-weight: bold; color: #333; margin-bottom: 6px;">📋
                       Atanmış Kartlar:</label>
-                    <div id="fixKartAtanmislar" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                      <div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">
-                        Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.
-                      </div>
+                    <div id="fixKartAtanmislar" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                      <div style="color: #aaa; font-size: 12px; text-align: center; width: 100%; padding: 15px;">Henüz
+                        kart atanmadı.</div>
                     </div>
                   </div>
                 </div>
@@ -26394,10 +26429,26 @@ IMPORTANT RULES:
     async function fixKartlarInit() {
       // Önce GitHub'dan yükle (en güncel halini al)
       await fixKartGithubYukle();
+
+      // ⚡ Global prefix'leri config'den geri yükle
+      const db = getFixKartData();
+      if (db.settings) {
+        // Eski format migrasyon: prefixes → prefixesTarif + prefixesUpload
+        if (db.settings.prefixes && !db.settings.prefixesTarif) {
+          db.settings.prefixesTarif = [...db.settings.prefixes];
+          db.settings.prefixesUpload = [...db.settings.prefixes];
+          delete db.settings.prefixes;
+          saveFixKartData(db);
+          console.log('🔄 Prefix listesi migrasyonu yapıldı (prefixes → prefixesTarif + prefixesUpload)');
+        }
+        if (db.settings.lastUsedPrefixTarif) fixKartSeciliPrefixTarif = db.settings.lastUsedPrefixTarif;
+        if (db.settings.lastUsedPrefixUpload) fixKartSeciliPrefixUpload = db.settings.lastUsedPrefixUpload;
+      }
+
       // Sonra UI'ı oluştur
       fixKartHaftaPaneliOlustur();
       fixKartTarifListesiYukle(); // Arka planda yükle
-      console.log('✅ Fix kartlar sistemi başlatıldı');
+      console.log('✅ Fix kartlar sistemi başlatıldı (Tarif prefix:', fixKartSeciliPrefixTarif, ', Upload prefix:', fixKartSeciliPrefixUpload, ')');
     }
 
     // Sayfa yüklenince fix kartlar panelini hazırla
@@ -26606,10 +26657,10 @@ IMPORTANT RULES:
       fixKartSeciliMod = 'hafta';
       fixKartSeciliAnahtar = String(haftaNo);
 
-      // Context Prefix Yükle
+      // Context Prefix Yükle + global lastUsed güncelle
       const data = getFixKartData();
-      fixKartSeciliPrefixTarif = 'EK_';
-      fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+      fixKartSeciliPrefixTarif = data.settings?.lastUsedPrefixTarif || 'EK_';
+      fixKartSeciliPrefixUpload = data.settings?.lastUsedPrefixUpload || '_Bilgilendirme_';
 
       if (data.settings && data.settings.contextPrefixes) {
         const key = `hafta_${haftaNo}`;
@@ -26622,6 +26673,12 @@ IMPORTANT RULES:
           }
         }
       }
+
+      // Global lastUsed'ı güncelle
+      if (!data.settings) data.settings = {};
+      data.settings.lastUsedPrefixTarif = fixKartSeciliPrefixTarif;
+      data.settings.lastUsedPrefixUpload = fixKartSeciliPrefixUpload;
+      saveFixKartData(data);
 
       fixKartPrefixPaneliGuncelle();
       fixKartAtanmislariGoster();
@@ -26654,10 +26711,10 @@ IMPORTANT RULES:
       fixKartSeciliMod = 'tarih';
       fixKartSeciliAnahtar = tarihString;
 
-      // Context Prefix Yükle
+      // Context Prefix Yükle + global lastUsed güncelle
       const data = getFixKartData();
-      fixKartSeciliPrefixTarif = 'EK_';
-      fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+      fixKartSeciliPrefixTarif = data.settings?.lastUsedPrefixTarif || 'EK_';
+      fixKartSeciliPrefixUpload = data.settings?.lastUsedPrefixUpload || '_Bilgilendirme_';
 
       if (data.settings && data.settings.contextPrefixes) {
         const key = `tarih_${tarihString}`;
@@ -26670,6 +26727,12 @@ IMPORTANT RULES:
           }
         }
       }
+
+      // Global lastUsed'ı güncelle
+      if (!data.settings) data.settings = {};
+      data.settings.lastUsedPrefixTarif = fixKartSeciliPrefixTarif;
+      data.settings.lastUsedPrefixUpload = fixKartSeciliPrefixUpload;
+      saveFixKartData(data);
 
       fixKartPrefixPaneliGuncelle();
       fixKartAtanmislariGoster();
@@ -26847,23 +26910,30 @@ IMPORTANT RULES:
     function fixKartPrefixPaneliGuncelle() {
       const db = getFixKartData();
       if (!db.settings) db.settings = {};
-      if (!db.settings.prefixes) db.settings.prefixes = ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
-      // Yeni özellik: _Bilgilendirme_ yoksa ekle (Upload için)
-      if (!db.settings.prefixes.includes('_Bilgilendirme_')) {
-        db.settings.prefixes.push('_Bilgilendirme_');
+
+      // Migrasyon: Eski tek liste → ayrı listeler
+      if (db.settings.prefixes && !db.settings.prefixesTarif) {
+        db.settings.prefixesTarif = [...db.settings.prefixes];
+        db.settings.prefixesUpload = [...db.settings.prefixes];
+        delete db.settings.prefixes;
+        saveFixKartData(db);
       }
+
+      // Ayrı prefix listeleri (varsayılanlar)
+      if (!db.settings.prefixesTarif) db.settings.prefixesTarif = ['EK_', 'Ramazan_', 'Detoks_'];
+      if (!db.settings.prefixesUpload) db.settings.prefixesUpload = ['_Bilgilendirme_', 'EK_'];
 
       // 1. Tarif Prefix Paneli
       const containerTarif = document.getElementById('fixKartPrefixChips');
       if (containerTarif) {
-        containerTarif.innerHTML = db.settings.prefixes.map(p => {
+        containerTarif.innerHTML = db.settings.prefixesTarif.map(p => {
           const isSelected = p === fixKartSeciliPrefixTarif;
           return `
               <div onclick="fixKartPrefixSec('${p}', 'tarif')" style="
                 display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
                 background: ${isSelected ? '#e91e63' : '#f0f0f0'}; color: ${isSelected ? 'white' : '#333'}; border: 1px solid ${isSelected ? '#e91e63' : '#ddd'};">
                 ${p}
-                ${p !== 'EK_' && p !== '_Bilgilendirme_' ? `<span onclick="event.stopPropagation(); fixKartPrefixSil('${p}')" style="font-weight: bold; margin-left: 2px;">×</span>` : ''}
+                ${p !== 'EK_' ? `<span onclick="event.stopPropagation(); fixKartPrefixSilTarif('${p}')" style="font-weight: bold; margin-left: 2px; cursor: pointer;">×</span>` : ''}
               </div>
             `;
         }).join('');
@@ -26872,19 +26942,21 @@ IMPORTANT RULES:
       // 2. Upload Prefix Paneli
       const containerUpload = document.getElementById('fixKartPrefixChipsUpload');
       if (containerUpload) {
-        containerUpload.innerHTML = db.settings.prefixes.map(p => {
+        containerUpload.innerHTML = db.settings.prefixesUpload.map(p => {
           const isSelected = p === fixKartSeciliPrefixUpload;
           return `
               <div onclick="fixKartPrefixSec('${p}', 'upload')" style="
                 display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
                 background: ${isSelected ? '#9c27b0' : '#f0f0f0'}; color: ${isSelected ? 'white' : '#333'}; border: 1px solid ${isSelected ? '#9c27b0' : '#ddd'};">
                 ${p}
+                ${p !== '_Bilgilendirme_' ? `<span onclick="event.stopPropagation(); fixKartPrefixSilUpload('${p}')" style="font-weight: bold; margin-left: 2px; cursor: pointer;">×</span>` : ''}
               </div>
             `;
         }).join('');
       }
     }
 
+    // Tarif prefix ekle
     function fixKartPrefixEkle() {
       const input = document.getElementById('yeniPrefixInput');
       const val = input.value.trim();
@@ -26892,32 +26964,59 @@ IMPORTANT RULES:
 
       const db = getFixKartData();
       if (!db.settings) db.settings = {};
-      if (!db.settings.prefixes) db.settings.prefixes = ['EK_'];
+      if (!db.settings.prefixesTarif) db.settings.prefixesTarif = ['EK_'];
 
-      if (!db.settings.prefixes.includes(val)) {
-        db.settings.prefixes.push(val);
-        saveFixKartData(db); // Sync
-        fixKartPrefixSec(val, 'tarif'); // Yeni ekleneni tarif için seç
+      if (!db.settings.prefixesTarif.includes(val)) {
+        db.settings.prefixesTarif.push(val);
+        saveFixKartData(db);
+        fixKartPrefixSec(val, 'tarif');
       }
       input.value = '';
     }
 
-    function fixKartPrefixSil(val) {
-      if (!confirm(`'${val}' öneki silinsin mi ? `)) return;
+    // Upload prefix ekle
+    function fixKartPrefixEkleUpload() {
+      const input = document.getElementById('yeniPrefixInputUpload');
+      const val = input.value.trim();
+      if (!val) return;
+
       const db = getFixKartData();
-      if (db.settings && db.settings.prefixes) {
-        db.settings.prefixes = db.settings.prefixes.filter(p => p !== val);
-        saveFixKartData(db); // Sync
+      if (!db.settings) db.settings = {};
+      if (!db.settings.prefixesUpload) db.settings.prefixesUpload = ['_Bilgilendirme_'];
 
-        // Silinen prefix seçiliyse varsayılanlara dön
-        if (fixKartSeciliPrefixTarif === val) fixKartSeciliPrefixTarif = 'EK_';
-        if (fixKartSeciliPrefixUpload === val) fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+      if (!db.settings.prefixesUpload.includes(val)) {
+        db.settings.prefixesUpload.push(val);
+        saveFixKartData(db);
+        fixKartPrefixSec(val, 'upload');
+      }
+      input.value = '';
+    }
 
-        fixKartPrefixPaneliGuncelle();
+    // Tarif prefix sil
+    function fixKartPrefixSilTarif(val) {
+      if (!confirm(`'${val}' tarif öneki silinsin mi?`)) return;
+      const db = getFixKartData();
+      if (db.settings && db.settings.prefixesTarif) {
+        db.settings.prefixesTarif = db.settings.prefixesTarif.filter(p => p !== val);
+        saveFixKartData(db);
+        if (fixKartSeciliPrefixTarif === val) fixKartPrefixSec('EK_', 'tarif');
+        else fixKartPrefixPaneliGuncelle();
       }
     }
 
-    // Prefix Seç ve Context'e Kaydet
+    // Upload prefix sil
+    function fixKartPrefixSilUpload(val) {
+      if (!confirm(`'${val}' yükleme öneki silinsin mi?`)) return;
+      const db = getFixKartData();
+      if (db.settings && db.settings.prefixesUpload) {
+        db.settings.prefixesUpload = db.settings.prefixesUpload.filter(p => p !== val);
+        saveFixKartData(db);
+        if (fixKartSeciliPrefixUpload === val) fixKartPrefixSec('_Bilgilendirme_', 'upload');
+        else fixKartPrefixPaneliGuncelle();
+      }
+    }
+
+    // Prefix Seç ve Context'e Kaydet + Global last-used kaydet
     function fixKartPrefixSec(val, type = 'tarif') {
       if (type === 'tarif') {
         fixKartSeciliPrefixTarif = val;
@@ -26925,32 +27024,37 @@ IMPORTANT RULES:
         fixKartSeciliPrefixUpload = val;
       }
 
-      // Context'e kaydet
+      // Global last-used ve context'e kaydet
       const db = getFixKartData();
       if (!db.settings) db.settings = {};
       if (!db.settings.contextPrefixes) db.settings.contextPrefixes = {};
 
-      const contextKey = fixKartSeciliMod === 'hafta' ? `hafta_${fixKartSeciliAnahtar}` : `tarih_${fixKartSeciliAnahtar}`;
+      // ⚡ Global last-used prefix kaydet (sayfa yenilendiğinde geri yüklenecek)
+      if (type === 'tarif') db.settings.lastUsedPrefixTarif = val;
+      else db.settings.lastUsedPrefixUpload = val;
 
-      // Mevcut veriyi al (String ise objeye çevir)
-      let currentContext = db.settings.contextPrefixes[contextKey];
-      if (typeof currentContext !== 'object' || currentContext === null) {
-        // String geldiyse (eski veri) veya yoksa
-        currentContext = { tarif: typeof currentContext === 'string' ? currentContext : 'EK_', upload: '_Bilgilendirme_' };
+      // Context-specific prefix kaydet (hafta/tarih bazında)
+      if (fixKartSeciliAnahtar) {
+        const contextKey = fixKartSeciliMod === 'hafta' ? `hafta_${fixKartSeciliAnahtar}` : `tarih_${fixKartSeciliAnahtar}`;
+
+        let currentContext = db.settings.contextPrefixes[contextKey];
+        if (typeof currentContext !== 'object' || currentContext === null) {
+          currentContext = { tarif: typeof currentContext === 'string' ? currentContext : 'EK_', upload: '_Bilgilendirme_' };
+        }
+
+        if (type === 'tarif') currentContext.tarif = val;
+        else currentContext.upload = val;
+
+        db.settings.contextPrefixes[contextKey] = currentContext;
       }
 
-      // İlgili değeri güncelle
-      if (type === 'tarif') currentContext.tarif = val;
-      else currentContext.upload = val;
-
-      db.settings.contextPrefixes[contextKey] = currentContext;
       saveFixKartData(db);
       fixKartPrefixPaneliGuncelle();
     }
 
 
 
-    // Kart ekle (Prefix ile ve Double Prefix Korumalı)
+    // Kart ekle (cleanName + prefix ayrı saklanır)
     function fixKartEkle(name, url, type, customName = null) {
       const data = getFixKartData();
       let key = null;
@@ -26965,111 +27069,80 @@ IMPORTANT RULES:
         if (!data.tarih[key]) data.tarih[key] = [];
       }
 
-
       const list = fixKartSeciliMod === 'hafta' ? data.hafta[key] : data.tarih[key];
 
-      // Prefix mantığı (sadece tarifler için, bilgi kartlarında manuel isim geliyor)
-      // Eğer type 'tarif' ise seçili prefix'i kullan.
-      // Eğer type 'bilgi' ise prefix yok (zaten manuel giriliyor genelde)
-
-      let finalName = customName || name;
-
-      if (type === 'tarif') {
-        // Zaten EK_ varsa kaldırmayı dene ama dosya adında olmayabilir.
-        // Tarif listesindeki 'name' ham dosya adıdır (örn: kabak.jpg)
-        // Biz bunu kaydederken prefix ekleyeceğiz.
-
-        // Önemli: Eklenecek kartın "name" özelliği display için kullanılır. 
-        // Ancak ZIP indirirken prefix buradan alınmazsa karışabilir.
-        // Mevcut yapıda: kart objesi { name: "...", url: "..." }
-        // getFixCardsForWeek fonksiyonu bunları döner.
-        // zipEslesenGorseller fonksiyonu ise bu kart listesini alır.
-
-        // SORUN: zipEslesenGorseller fonksiyonu `EK_` ön ekini hardcode luyor olabilir mi?
-        // Kontrol edelim. (Evet, muhtemelen).
-        // Eğer öyleyse, prefixi buradaki `name`'e GÖMMEMELİYİZ, yoksa zip fonksiyonu EK_ + Ramazan_... yapar.
-        // YA DA zip fonksiyonunu güncellemeliyiz.
-
-        // KULLANICI İSTEĞİ: "kart isminde o ek olur başta".
-        // O zaman display name'i değiştirmek en mantıklısı.
-
-        // Bir dakika, zip fonksiyonu:
-        // if (kart.url && kart.url.includes('tarifler')) -> zip.file("EK_" + kart.name, ...)
-
-        // O yüzden prefixi 'name' içine gömersen "EK_Ramazan_kabak.jpg" olur.
-        // Kullanıcı "default EK_ olsun ama değiştirebileyim" dedi.
-        // Yani EK_ yerine Ramazan_ olmalı.
-
-        // ÇÖZÜM: Kart objesine `prefix` alanı ekleyelim mi? Veya name'i direk değiştirelim ve zip fonksiyonunu güncelleyelim.
-        // "fix kartlar ZIP indirirken otomatik dahil edilir" -> zipEslesenGorseller fonksiyonuna bakmam lazım.
-        // Ama şu an göremiyorum. Muhtemelen önceki adımlarda vardı.
-
-        // Varsayım: `name` alanını prefixli yaparsam (örn: Ramazan_kabak.jpg), zip fonksiyonu bunu `EK_Ramazan_kabak.jpg` yapabilir.
-        // Bu yüzden zip fonksiyonunu da güncellemem gerekecek.
-        // Ama şimdilik kart ekleme mantığını yapıyorum.
-
-        // SMART PREFIX: Çift prefix oluşmasını engelle
-        // Regex ile baştaki bilinen prefixleri temizle (EK_, Ramazan_, Detoks_ vb.)
-        let cleanName = name;
-
-        // 1. Ayarlardaki prefixleri ve varsayılanları birleştir
-        const knownPrefixes = new Set([...(data.settings.prefixes || []), 'EK_', 'Ramazan_', 'Detoks_']);
-        // Regex oluştur: ^(EK_|Ramazan_|...)+
-        // Özel karakterleri escape et
-        const escapedPrefixes = [...knownPrefixes].map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        if (escapedPrefixes.length > 0) {
-          const regex = new RegExp(`^(${escapedPrefixes.join('|')})+`, 'g');
-          cleanName = cleanName.replace(regex, '');
-        }
-
-        // 2. Seçili prefixi ekle
-        finalName = fixKartSeciliPrefixTarif + cleanName;
+      // Clean name: bilinen prefixleri temizle
+      let cleanName = customName || name;
+      const knownPrefixes = new Set([...(data.settings?.prefixesTarif || []), ...(data.settings?.prefixesUpload || []), 'EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_']);
+      const escapedPrefixes = [...knownPrefixes].map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      if (escapedPrefixes.length > 0) {
+        const regex = new RegExp(`^(${escapedPrefixes.join('|')})+`, 'g');
+        cleanName = cleanName.replace(regex, '');
       }
+
+      // Mevcut prefix'i kaydet
+      const currentPrefix = type === 'tarif' ? fixKartSeciliPrefixTarif : fixKartSeciliPrefixUpload;
+      const finalName = currentPrefix + cleanName;
 
       list.push({
         name: finalName,
+        cleanName: cleanName,   // Prefixsiz dosya adı
+        prefix: currentPrefix,  // Eklendiği andaki prefix
         url: url,
-        type: type, // 'tarif' veya 'bilgi'
+        type: type,
         addedAt: new Date().toISOString()
       });
 
       saveFixKartData(data);
 
-      // UI güncelle
-      fixKartHaftaSec(fixKartSeciliAnahtar); // veya fixKartTarihSec
+      // UI güncelle — doğru moda göre çağır!
+      if (fixKartSeciliMod === 'tarih') {
+        fixKartTarihSec(fixKartSeciliAnahtar);
+      } else {
+        fixKartHaftaSec(fixKartSeciliAnahtar);
+      }
 
-      // Arama sonuçlarını güncelle (disabled durumunu görsün)
+      // Arama sonuçlarını güncelle
       const searchInput = document.getElementById('fixKartSearchInput');
       if (searchInput && searchInput.value) {
         fixKartAra(searchInput.value);
       }
     }
-    // Kart sil
-    function fixKartSil(name) {
+    // Kart sil (index bazlı — güvenilir)
+    function fixKartSil(index) {
       const data = getFixKartData();
       const kategori = fixKartSeciliMod;
       const anahtar = fixKartSeciliAnahtar;
 
       if (data[kategori] && data[kategori][anahtar]) {
-        data[kategori][anahtar] = data[kategori][anahtar].filter(k => k.name !== name);
+        const silinen = data[kategori][anahtar].splice(index, 1);
         if (data[kategori][anahtar].length === 0) {
           delete data[kategori][anahtar];
         }
         saveFixKartData(data);
+        console.log(`🗑️ Fix kart silindi:`, silinen[0]?.name);
       }
 
       fixKartAtanmislariGoster();
       if (fixKartSeciliMod === 'hafta') fixKartHaftaPaneliOlustur();
       else fixKartTarihListesiGuncelle();
 
-      // Arama sonuçlarını da güncelle
       const searchInput = document.getElementById('fixKartSearchInput');
       if (searchInput && searchInput.value) fixKartAra(searchInput.value);
-
-      console.log(`🗑️ Fix kart silindi: ${name} `);
     }
 
-    // Atanmış kartları göster
+    // Yardımcı: bilinen prefixleri kartın name'inden temizle
+    function fixKartStripPrefix(name) {
+      const db = getFixKartData();
+      const allP = [...(db.settings?.prefixesTarif || []), ...(db.settings?.prefixesUpload || []), 'EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
+      const escaped = allP.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      if (escaped.length > 0) {
+        return name.replace(new RegExp(`^(${escaped.join('|')})+`, 'g'), '');
+      }
+      return name;
+    }
+
+    // Atanmış kartları göster — dinamik prefix ile
     function fixKartAtanmislariGoster() {
       const container = document.getElementById('fixKartAtanmislar');
       if (!container || !fixKartSeciliAnahtar) return;
@@ -27078,25 +27151,34 @@ IMPORTANT RULES:
       const kartlar = (data[fixKartSeciliMod] && data[fixKartSeciliMod][fixKartSeciliAnahtar]) || [];
 
       if (kartlar.length === 0) {
-        container.innerHTML = '<div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.</div>';
+        container.innerHTML = '<div style="color: #aaa; font-size: 12px; text-align: center; width: 100%; padding: 15px;">Henüz kart atanmadı.</div>';
         return;
       }
 
-      container.innerHTML = kartlar.map(kart => {
-        const displayName = kart.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
-        const typeBadge = kart.type === 'upload'
-          ? '<span style="background: #9c27b0; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">📤 Yüklendi</span>'
-          : '<span style="background: #e91e63; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">🔍 Tarif</span>';
+      // Aktif prefix'i belirle
+      const activePrefixTarif = fixKartSeciliPrefixTarif;
+      const activePrefixUpload = fixKartSeciliPrefixUpload;
 
-        return `<div style="position: relative; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; background: white; width: 130px; text-align: center;">
-          <img src="${kart.url}" alt="${kart.name}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"
+      container.innerHTML = kartlar.map((kart, idx) => {
+        // cleanName yoksa eski kartlar için prefix'i strip et
+        const cleanName = kart.cleanName || fixKartStripPrefix(kart.name);
+        const activePrefix = kart.type === 'upload' ? activePrefixUpload : activePrefixTarif;
+        const dynamicName = activePrefix + cleanName.replace(/\.(jpg|jpeg|png)$/i, '');
+        const displayName = dynamicName.replace(/_/g, ' ');
+
+        const typeBadge = kart.type === 'upload'
+          ? '<span style="background: #9c27b0; color: white; padding: 1px 4px; border-radius: 6px; font-size: 8px;">📤</span>'
+          : '<span style="background: #e91e63; color: white; padding: 1px 4px; border-radius: 6px; font-size: 8px;">🔍</span>';
+
+        return `<div style="position: relative; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px; background: white; width: 110px; text-align: center;">
+          <img src="${kart.url}" alt="${cleanName}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; margin-bottom: 3px;"
             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E📷%3C/text%3E%3C/svg%3E'">
-            <div style="font-size: 10px; color: #333; word-break: break-word; margin-bottom: 3px;" title="${kart.name}">${displayName.substring(0, 25)}${displayName.length > 25 ? '...' : ''}</div>
+            <div style="font-size: 9px; color: #333; word-break: break-word; margin-bottom: 2px; line-height: 1.2;" title="${dynamicName}">${displayName.substring(0, 30)}${displayName.length > 30 ? '...' : ''}</div>
             ${typeBadge}
-            <button onclick="fixKartSil('${kart.name.replace(/'/g, "\\'")}')" style="
-            position: absolute; top: 2px; right: 2px; background: #ff5252; color: white;
-            border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px;
-            cursor: pointer; line-height: 20px; padding: 0;" title="Kartı kaldır">✕</button>
+            <button onclick="fixKartSil(${idx})" style="
+            position: absolute; top: 1px; right: 1px; background: #ff5252; color: white;
+            border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 9px;
+            cursor: pointer; line-height: 18px; padding: 0;" title="Kartı kaldır">✕</button>
         </div>`;
       }).join('');
     }
@@ -27238,12 +27320,14 @@ IMPORTANT RULES:
       const data = getFixKartData();
       let kartlar = [];
 
-      // 1) Hafta bazlı kartlar
+      // 1) Hafta bazlı kartlar — kaynak context'i etiketle
       if (data.hafta && data.hafta[haftaNo]) {
-        kartlar = kartlar.concat(data.hafta[haftaNo]);
+        data.hafta[haftaNo].forEach(k => {
+          kartlar.push(Object.assign({}, k, { _sourceCtx: `hafta_${haftaNo}` }));
+        });
       }
 
-      // 2) Tarih bazlı kartlar - tarih aralığına bakarak eşleştir
+      // 2) Tarih bazlı kartlar — tarih aralığına bakarak eşleştir, kaynak context etiketle
       if (data.tarih && haftaBaslangic && haftaBitis) {
         const start = new Date(haftaBaslangic + (haftaBaslangic.includes('T') ? '' : 'T00:00:00'));
         const end = new Date(haftaBitis + (haftaBitis.includes('T') ? '' : 'T23:59:59'));
@@ -27251,17 +27335,20 @@ IMPORTANT RULES:
         Object.keys(data.tarih).forEach(tarihStr => {
           const tarih = new Date(tarihStr + 'T12:00:00');
           if (tarih >= start && tarih <= end) {
-            kartlar = kartlar.concat(data.tarih[tarihStr]);
+            data.tarih[tarihStr].forEach(k => {
+              kartlar.push(Object.assign({}, k, { _sourceCtx: `tarih_${tarihStr}` }));
+            });
           }
         });
       }
 
-      // Çift kartları kaldır (aynı isme sahip olanlar)
+      // Çift kartları kaldır (URL bazlı — en güvenilir, prefix değişse bile çalışır)
       const unique = [];
       const seen = new Set();
       kartlar.forEach(k => {
-        if (!seen.has(k.name)) {
-          seen.add(k.name);
+        const dedupeKey = k.url || k.cleanName || k.name;
+        if (!seen.has(dedupeKey)) {
+          seen.add(dedupeKey);
           unique.push(k);
         }
       });
