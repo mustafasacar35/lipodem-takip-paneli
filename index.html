@@ -4971,10 +4971,8 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const repo = githubSettings.repo || 'lipodem-takip-paneli';
         const branch = githubSettings.branch || 'main';
 
-        // Dosya adı oluştur
-        // Türkçe karakterleri ve boşlukları temizle
-        const safeName = (hasta.isim || '').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ ]/g, '').trim().replace(/\s+/g, '_');
-        const fileName = `hasta_${hasta.id}_${safeName || 'isimsiz'}.json`;
+        // Dosya adı oluştur - generateFileName ile tutarlılık sağla
+        const fileName = generateFileName(hasta);
 
         // İçeriği hazırla
         const hastaKopyasi = JSON.parse(JSON.stringify(hasta));
@@ -5017,7 +5015,45 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         });
 
         if (response.ok) {
-          console.log(`✅ ${hasta.isim} ayrı dosya olarak kaydedildi`);
+          console.log(`✅ ${hasta.isim} ayrı dosya olarak kaydedildi: ${fileName}`);
+
+          // 🔄 MİGRASYON: Eski format dosyaları temizle (Türkçe karakter içerenler)
+          try {
+            const safeName = (hasta.isim || '').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ ]/g, '').trim().replace(/\s+/g, '_');
+            const eskiFileName = `hasta_${hasta.id}_${safeName || 'isimsiz'}.json`;
+
+            if (eskiFileName !== fileName) {
+              // Eski dosya var mı kontrol et
+              const eskiCheck = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${encodeURIComponent(eskiFileName)}?ref=${branch}&t=${Date.now()}`, {
+                headers: { 'Authorization': `token ${token}` }
+              });
+
+              if (eskiCheck.ok) {
+                const eskiData = await eskiCheck.json();
+                // Eski dosyayı sil
+                const silResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${encodeURIComponent(eskiFileName)}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    message: `Eski format dosya silindi: ${eskiFileName} → ${fileName}`,
+                    sha: eskiData.sha,
+                    branch: branch
+                  })
+                });
+
+                if (silResponse.ok) {
+                  console.log(`🗑️ Eski format dosya silindi: ${eskiFileName}`);
+                } else {
+                  console.warn(`⚠️ Eski dosya silinemedi: ${eskiFileName}`, silResponse.status);
+                }
+              }
+            }
+          } catch (migrationError) {
+            console.warn('⚠️ Migrasyon temizlik hatası (kritik değil):', migrationError.message);
+          }
 
           // Hasta listesine de ekle/güncelle (Sadece ID ve temel bilgiler)
           // Bu fonksiyon mevcut değilse hata vermesin
@@ -8440,8 +8476,16 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               bitis: h.bitis,
               pdfName: h.pdfName,
               pdfYolu: h.pdfYolu,
+              pdfOrijinalIsim: h.pdfOrijinalIsim,
+              githubUrl: h.githubUrl,
+              indirmeUrl: h.indirmeUrl,
+              kayitTarihi: h.kayitTarihi,
+              aciklama: h.aciklama,
+              kilitli: h.kilitli,
+              ozelTabFormat: h.ozelTabFormat,
+              gptMesaj: h.gptMesaj,
               // pdfFile KALDIRILDI - çok büyük!
-              // tarifKartlar, tarifler, gptMesaj KALDIRILDI - GitHub'da var
+              // tarifKartlar, tarifler KALDIRILDI - GitHub'da var
             })) : []
           };
         }).filter(h => h !== null);
@@ -9037,29 +9081,21 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             console.log('🔍 MEVCUT HAFTALAR (localStorage - Temel):', mevcutHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
             console.log('🔍 GITHUB HAFTALAR (Sadece PDF link için):', gitHubHaftalar.map(h => ({ haftaNo: h.haftaNo, baslangic: h.baslangic, bitis: h.bitis })));
 
-            // LocalStorage verilerini temel al, sadece GitHub'dan PDF linklerini al
-            const birlesikHaftalar = mevcutHaftalar.map(mevcutHafta => {
-              const githubHafta = gitHubHaftalar.find(gh => gh.haftaNo === mevcutHafta.haftaNo);
-              if (githubHafta) {
-                // Sadece PDF ile ilgili alanları GitHub'dan al
+            // ⚡ FIX: GitHub verisini temel al (kaynak gerçeği), localStorage'dan sadece ekstra alanları al
+            hastaDetay.haftalar = gitHubHaftalar.map(githubHafta => {
+              const mevcutHafta = mevcutHaftalar.find(mh => mh.haftaNo === githubHafta.haftaNo);
+              if (mevcutHafta) {
+                // localStorage'daki ekstra alanları koru ama GitHub temelini kullan
                 return {
-                  ...mevcutHafta, // localStorage verisi öncelikli
-                  // GitHub'dan sadece PDF linklerini al
-                  ...(githubHafta.githubUrl && { githubUrl: githubHafta.githubUrl }),
-                  ...(githubHafta.githubLink && { githubLink: githubHafta.githubLink }),
-                  ...(githubHafta.indirmeUrl && { indirmeUrl: githubHafta.indirmeUrl }),
-                  ...(githubHafta.githubRawLink && { githubRawLink: githubHafta.githubRawLink }),
-                  ...(githubHafta.pdfGithubPath && { pdfGithubPath: githubHafta.pdfGithubPath })
+                  ...githubHafta, // GitHub verisi temel
+                  // localStorage'dan sadece geçici UI alanlarını al
+                  ...(mevcutHafta.pdfFile && { pdfFile: mevcutHafta.pdfFile }),
                 };
               }
-              return mevcutHafta;
+              return githubHafta;
             });
 
-            console.log('✅ Hafta verileri localStorage temel alınarak hazırlandı:', birlesikHaftalar.length, 'hafta');
-
-            // Hasta verisini güncelle (localStorage öncelikli)
-            hastaDetay.haftalar = birlesikHaftalar;
-            seciliHasta.haftalar = birlesikHaftalar;
+            console.log('✅ Hafta verileri GitHub temel alınarak hazırlandı:', hastaDetay.haftalar.length, 'hafta');
 
           } else {
             // Yeni hasta veya hafta verisi yok - GitHub verisini al
@@ -9758,7 +9794,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       return sorted;
     }
 
-    function haftaEkle() {
+    async function haftaEkle() {
       if (!seciliHasta) return;
       if (!seciliHasta.haftalar) seciliHasta.haftalar = [];
 
@@ -9888,18 +9924,19 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       // Otomatik kaydetme - hafta eklendi
       autoSaveHastaData(seciliHasta);
 
-      // ⚡ ÖNEMLİ: GitHub'a da kaydet (hemen)
+      // ⚡ ÖNEMLİ: GitHub'a da kaydet (AWAIT ile - veri kaybını önle)
       console.log('💾 Yeni hafta GitHub\'a kaydediliyor...');
-      hastayiAyriKaydet(seciliHasta).then(() => {
+      try {
+        await hastayiAyriKaydet(seciliHasta);
         console.log('✅ Yeni hafta GitHub\'a kaydedildi');
         // ⚡ ÖNEMLİ: Hasta listesini güncelle (yan taraftaki hafta numarası için)
         console.log('🔄 Hasta listesi güncelleniyor (hafta numarası için)...');
         renderHastalar();
-      }).catch(e => {
+      } catch (e) {
         console.warn('⚠️ GitHub kaydı başarısız:', e);
         // Başarısız olsa bile listeyi güncelle
         renderHastalar();
-      });
+      }
 
       // Tab sistemini yeniden yükle ve yeni tab'a geç
       gosterHaftalar();
@@ -10132,7 +10169,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         tabDiv.onclick = () => switchTab(i);
 
         // Status göstergeleri
-        const hasPdf = hafta.pdf ? 'status-pdf' : 'status-empty';
+        const hasPdf = (hafta.pdf || hafta.pdfYolu || hafta.pdfName) ? 'status-pdf' : 'status-empty';
         const hasKartlar = (hafta.tarifKartlar && hafta.tarifKartlar.length > 0) ? 'status-kartlar' : 'status-empty';
         const hasEslesen = (hafta.tarifler && hafta.tarifler.length > 0) ? 'status-eslesen' : 'status-empty';
         const isLocked = hafta.kilitli ? 'status-locked' : 'status-empty';
