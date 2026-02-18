@@ -3900,7 +3900,7 @@
         // Her dosya adını dene
         for (const dosyaAdi of benzersizDosyaAdlari) {
           try {
-            const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${dosyaAdi}`, {
+            const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${dosyaAdi}?t=${new Date().getTime()}`, {
               headers: {
                 'Authorization': `token ${token}`
               }
@@ -3919,7 +3919,7 @@
 
         // Eski sistem de deneyelim (backward compatibility)
         try {
-          const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json`, {
+          const response = await fetch(`https://api.github.com/repos/${repo}/contents/patients/${hastaId}/hasta_data.json?t=${new Date().getTime()}`, {
             headers: {
               'Authorization': `token ${token}`
             }
@@ -4465,7 +4465,7 @@
         const manuelUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/manuel_eslestirmeler.json';
 
         try {
-          const manuelResp = await fetch(manuelUrl);
+          const manuelResp = await fetch(manuelUrl + `?t=${new Date().getTime()}`);
           if (manuelResp.ok) {
             const manuelData = await manuelResp.json();
             if (manuelData.eslestirmeler) {
@@ -4485,7 +4485,7 @@
         const yasakUrl = 'https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/data/eslesmeme_kurallari.json';
 
         try {
-          const yasakResp = await fetch(yasakUrl);
+          const yasakResp = await fetch(yasakUrl + `?t=${new Date().getTime()}`);
           if (yasakResp.ok) {
             const yasakData = await yasakResp.json();
             if (yasakData.kurallar) {
@@ -4601,7 +4601,7 @@
 
         const owner = 'mustafasacar35';
         const repo = 'lipodem-takip-paneli';
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/hastalar_listesi.json`, {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/hastalar_listesi.json?t=${new Date().getTime()}`, {
           headers: { 'Authorization': `token ${token}` }
         });
 
@@ -4730,7 +4730,7 @@
       const mevcutListe = await hastaListesiYukle();
 
       // Hasta objesi veya string kontrolü
-      let hastaIsim, hastaId, hastaNot, hastaArsiv, maxHafta;
+      let hastaIsim, hastaId, hastaNot, hastaArsiv;
 
       if (typeof hasta === 'string') {
         // String olarak geçirildiyse (eski kullanım)
@@ -4738,21 +4738,12 @@
         hastaId = generatePatientId(hastaIsim);
         hastaNot = '';
         hastaArsiv = false;
-        maxHafta = 0;
       } else {
         // Obje olarak geçirildiyse
         hastaIsim = hasta.isim || hasta.ad || hasta.name;
         hastaId = hasta.id || generatePatientId(hastaIsim);
         hastaNot = hasta.not || hasta.notes || '';
         hastaArsiv = hasta.arsiv || hasta.archived || false;
-
-        // Max hafta sayısını hesapla
-        if (hasta.haftalar && Array.isArray(hasta.haftalar)) {
-          const haftaNumaralari = hasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
-          maxHafta = Math.max(0, ...haftaNumaralari);
-        } else {
-          maxHafta = 0;
-        }
       }
 
       if (!hastaIsim) {
@@ -4770,10 +4761,9 @@
           isim: hastaIsim,
           not: hastaNot,
           arsiv: hastaArsiv,
-          maxHafta: maxHafta, // ⚡ EKLENDİ: Sidebar'da göstermek için
           sonGuncelleme: new Date().toISOString()
         };
-        console.log('📝 Mevcut hasta güncellendi:', hastaIsim, `(MaxHafta: ${maxHafta})`);
+        console.log('📝 Mevcut hasta güncellendi:', hastaIsim);
       } else {
         // Yeni hasta ekle
         mevcutListe.push({
@@ -4781,11 +4771,10 @@
           isim: hastaIsim,
           not: hastaNot,
           arsiv: hastaArsiv,
-          maxHafta: maxHafta, // ⚡ EKLENDİ
           olusturma: new Date().toISOString(),
           sonGuncelleme: new Date().toISOString()
         });
-        console.log('➕ Yeni hasta eklendi:', hastaIsim, `(MaxHafta: ${maxHafta})`);
+        console.log('➕ Yeni hasta eklendi:', hastaIsim);
       }
 
       // Listeyi sırala (arsiv olmayanlar önce, sonra alfabetik)
@@ -4968,57 +4957,49 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
       }
     }
 
-    // Tek hasta kaydetme fonksiyonu
-    async function hastayiAyriKaydet(hasta) {
-      // Güvenlik kontrolü
-      if (!hasta || !hasta.isim) {
-        alert('❌ Geçersiz hasta verisi! Lütfen önce bir hasta seçin.');
-        return false;
-      }
 
-      const token = document.getElementById('githubToken').value.trim();
-      if (!token) {
-        alert('❌ GitHub token gerekli! Lütfen GitHub token girin.');
-        return false;
-      }
+    // Tek bir hastayı ayrı JSON dosyası olarak kaydetme
+    async function hastayiAyriKaydet(hasta, retryCount = 0) {
+      if (!hasta || !hasta.id) return false;
 
       try {
-        console.log(`💾 ${hasta.isim} hastası kaydediliyor...`);
+        const token = localStorage.getItem('github_api_token') || JSON.parse(localStorage.getItem('githubSettings') || '{}').token;
+        if (!token) return false; // Token yoksa sessizce çık (local storage zaten güncel)
 
-        const owner = 'mustafasacar35';
-        const repo = 'lipodem-takip-paneli';
-        const branch = 'main';
+        const githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        const owner = githubSettings.owner || 'mustafasacar35';
+        const repo = githubSettings.repo || 'lipodem-takip-paneli';
+        const branch = githubSettings.branch || 'main';
 
-        // Son güncelleme tarihini ekle
-        hasta.sonGuncelleme = new Date().toISOString();
-        hasta.githubKaydedildi = true;
+        // Dosya adı oluştur
+        // Türkçe karakterleri ve boşlukları temizle
+        const safeName = (hasta.isim || '').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ ]/g, '').trim().replace(/\s+/g, '_');
+        const fileName = `hasta_${hasta.id}_${safeName || 'isimsiz'}.json`;
 
-        const fileName = generateFileName(hasta);
+        // İçeriği hazırla
+        const hastaKopyasi = JSON.parse(JSON.stringify(hasta));
+        hastaKopyasi.sonGuncelleme = new Date().toISOString();
+        hastaKopyasi.githubKaydedildi = true;
 
-        // Hasta verilerini kaydetmeden önce hafta verilerinde GitHub linklerini güncelle
-        if (hasta.haftalar && hasta.haftalar.length > 0) {
-          hasta.haftalar.forEach(hafta => {
-            if (hafta.pdf) { // PDF varsa link oluştur
-              hafta.githubLink = `https://github.com/${owner}/${repo}/blob/${branch}/patients/${fileName}`;
-              hafta.githubRawLink = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/patients/${fileName}`;
-            }
-          });
-        }
+        // Base64 encode (UTF-8 safe)
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(hastaKopyasi, null, 2))));
 
-        // UTF-8 için doğru encoding
-        const content = encodeUTF8ToBase64(hasta);
-
-        // Önce dosyanın SHA'sını kontrol et
+        // Önce dosyanın SHA'sını kontrol et (Cache busting ile)
         let sha = undefined;
         try {
-          const checkResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${fileName}`, {
-            headers: { 'Authorization': `token ${token}` }
+          const checkResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${fileName}?ref=${branch}&t=${Date.now()}`, {
+            headers: {
+              'Authorization': `token ${token}`
+            }
           });
           if (checkResponse.ok) {
             const data = await checkResponse.json();
             sha = data.sha;
+            console.log(`📄 Mevcut dosya SHA: ${sha}`);
           }
-        } catch (e) { }
+        } catch (e) {
+          console.warn('SHA kontrol hatası:', e);
+        }
 
         // Dosyayı kaydet
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${fileName}`, {
@@ -5028,21 +5009,33 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            message: `Hasta kaydı güncellendi: ${hasta.isim}`,
+            message: `Hasta kaydı güncellendi: ${hasta.isim} (Auto-Save)`,
             content: content,
-            sha: sha
+            sha: sha,
+            branch: branch
           })
         });
 
         if (response.ok) {
           console.log(`✅ ${hasta.isim} ayrı dosya olarak kaydedildi`);
 
-          // Hasta listesine de ekle/güncelle
-          await hastaListesineEkle(hasta);
+          // Hasta listesine de ekle/güncelle (Sadece ID ve temel bilgiler)
+          // Bu fonksiyon mevcut değilse hata vermesin
+          if (typeof hastaListesineEkle === 'function') {
+            await hastaListesineEkle(hasta);
+          }
 
           return true;
         } else {
-          throw new Error(`GitHub API hatası: ${response.status}`);
+          // 409 Conflict Hatası ve Retry Hakkı Varsa
+          if (response.status === 409 && retryCount < 2) {
+            console.warn(`⚠️ 409 Conflict (Çakışma) hatası, 1 saniye sonra tekrar deneniyor... (Deneme: ${retryCount + 1})`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return hastayiAyriKaydet(hasta, retryCount + 1);
+          }
+
+          const errorText = await response.text();
+          throw new Error(`GitHub API hatası: ${response.status} - ${errorText}`);
         }
 
       } catch (error) {
@@ -6294,7 +6287,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         let mevcutVersion = '1.0';
 
         // Mevcut dosyayı oku
-        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
           headers: { 'Authorization': `token ${token}` }
         });
 
@@ -6374,7 +6367,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         let mevcutKurallar = {};
         let mevcutVersion = '1.0';
 
-        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+        const getResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
           headers: { 'Authorization': `token ${token}` }
         });
 
@@ -6470,7 +6463,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Önce mevcut dosyanın SHA'sını al (güncelleme için gerekli)
         let sha = undefined;
         try {
-          const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+          const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
             headers: { Authorization: `token ${token}` }
           });
           if (resp.ok) {
@@ -6523,7 +6516,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
           console.log('🔄 SHA conflict, tekrar deneniyor...');
           try {
             // En güncel SHA'yı al
-            const sharedResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            const sharedResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}&t=${Date.now()}`, {
               headers: { 'Authorization': `token ${token}` }
             });
 
@@ -8645,130 +8638,74 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         console.log(`📊 Yeni sistem hasta sayıları: Aktif=${aktifSayisi}, Arşiv=${arsivSayisi}, Toplam=${yuklenmisList.length}`);
 
         // Filtreleme ve hasta hafta verilerini analiz etme
-        // ⚡ YENİ: patients/ dizin listesini TEK SEFERDE al (N ayrı dosya adı tahmini yerine)
-        let patientsDirFiles = [];
-        try {
-          const dirResponse = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/patients?t=${Date.now()}`, {
-            headers: { 'Authorization': `token ${token}` }
-          });
-          if (dirResponse.ok) {
-            patientsDirFiles = await dirResponse.json();
-            patientsDirFiles = patientsDirFiles.filter(f => f.name.endsWith('.json') && f.name !== 'README.md');
-            console.log(`📂 patients/ dizininden ${patientsDirFiles.length} hasta dosyası listelendi`);
-          }
-        } catch (dirErr) {
-          console.warn('⚠️ patients/ dizin listesi alınamadı:', dirErr.message);
-        }
-
-        // ID→dosya eşleme haritası oluştur
-        const idToDosyaMap = {};
-        patientsDirFiles.forEach(f => {
-          // Dosya adından ID çıkar: hasta_[ID]_[ISIM].json
-          const match = f.name.match(/^hasta_(.+?)_[^_].*\.json$/);
-          if (match) {
-            idToDosyaMap[match[1]] = f;
-          }
-          // İsim bazlı eşleme için de sakla
-          idToDosyaMap['__file__' + f.name] = f;
-        });
-
-        // Listeyi güncellememiz gerekip gerekmediğini takip et
-        const listeGuncellemeleri = [];
-
         const hastalarVeriAnaliziIle = await Promise.all(filtreliHastalar.map(async (hasta) => {
           const hastaIsim = hasta.isim || hasta.ad || 'Bilinmeyen Hasta';
 
-          // En büyük hafta sayısını bul
-          let maxHafta = hasta.maxHafta || 0; // ⚡ LİSTEDEN AL (hastaListesineEkle ile kaydedilen)
-          let hastaDetayiBulundu = maxHafta > 0;
+          // En büyük hafta sayısını bul - sadece localStorage'a bak (güvenilir kaynak)
+          let maxHafta = 0;
+          let hastaDetayiBulundu = false;
 
-          if (hastaDetayiBulundu) {
-            console.log(`📊 Hasta ${hastaIsim} - Listeden (hastalar_listesi.json) hafta bilgisi alındı: maxHafta=${maxHafta}`);
-          }
-
-          // Önce localStorage'dan kontrol et (local değişiklikler varsa)
+          // Önce localStorage'dan kontrol et (ÖNCELIK: localStorage)
           const localHasta = hastalar.find(h => h && h.id === hasta.id);
           if (localHasta && localHasta.haftalar && localHasta.haftalar.length > 0) {
             const haftaNumaralari = localHasta.haftalar.map(h => h.haftaNo || h.hafta || 0);
-            const localMax = Math.max(...haftaNumaralari);
-            if (localMax > maxHafta) {
-              maxHafta = localMax;
-              hastaDetayiBulundu = true;
-              console.log(`📊 Hasta ${hastaIsim} - localStorage'dan GÜNCEL hafta bilgisi alındı: maxHafta=${maxHafta}`);
-            }
+            maxHafta = Math.max(...haftaNumaralari);
+            hastaDetayiBulundu = true;
+            console.log(`📊 Hasta ${hastaIsim} - localStorage'dan hafta bilgisi alındı: maxHafta=${maxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
           }
 
-          // ⚡ YENİ YAKLAŞIM: Listede maxHafta yoksa, dizin haritasından dosya bul ve oku
-          if (!hastaDetayiBulundu && hasta.id && patientsDirFiles.length > 0) {
+          // localStorage'da bulunamadıysa GitHub'dan dene (opsiyonel ve sadece yedek)
+          if (!hastaDetayiBulundu && hasta.id) {
             try {
-              // 1. ID ile eşleşen dosyayı bul
-              const hastaIdStr = String(hasta.id);
-              let matchFile = idToDosyaMap[hastaIdStr];
+              const dosyaAdlari = [
+                generateFileName({ id: hasta.id, isim: hasta.isim }),
+                generateFileName({ isim: hasta.isim })
+              ];
 
-              // 2. ID ile bulunamadıysa, isim slug ile dene
-              if (!matchFile) {
-                const slug = turkceKarakterDuzelt(hastaIsim);
-                matchFile = patientsDirFiles.find(f => f.name.toLowerCase().includes(slug.toLowerCase()));
-              }
-
-              // 3. Hâlâ bulunamadıysa, generateFileName ile dene
-              if (!matchFile) {
-                const dosyaAdi1 = generateFileName({ id: hasta.id, isim: hasta.isim });
-                const dosyaAdi2 = generateFileName({ isim: hasta.isim });
-                matchFile = patientsDirFiles.find(f => f.name === dosyaAdi1 || f.name === dosyaAdi2);
-              }
-
-              if (matchFile) {
-                // Dosyayı oku (download_url varsa raw üzerinden, yoksa API ile)
-                let hastaDetay = null;
+              for (const dosyaAdi of dosyaAdlari) {
                 try {
-                  if (matchFile.download_url) {
-                    const fileResp = await fetch(matchFile.download_url);
-                    if (fileResp.ok) {
-                      hastaDetay = await fileResp.json();
-                    }
-                  }
-                  if (!hastaDetay) {
-                    const fileResp = await fetch(matchFile.url, {
-                      headers: { 'Authorization': `token ${token}` }
-                    });
-                    if (fileResp.ok) {
-                      const data = await fileResp.json();
-                      hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
-                    }
-                  }
-                } catch (fetchErr) {
-                  console.warn(`⚠️ ${hastaIsim} dosyası okunamadı:`, fetchErr.message);
-                }
-
-                if (hastaDetay && hastaDetay.haftalar && hastaDetay.haftalar.length > 0) {
-                  const haftaNumaralari = hastaDetay.haftalar.map(h => h.haftaNo || h.hafta || 0);
-                  const githubMaxHafta = Math.max(...haftaNumaralari);
-                  maxHafta = githubMaxHafta;
-                  hastaDetayiBulundu = true;
-
-                  // Memory'de hasta array'ini güncelle
-                  const arrayIndexHasta = hastalar.findIndex(h => h && h.id === hasta.id);
-                  if (arrayIndexHasta === -1) {
-                    hastalar.push(hastaDetay);
-                  } else {
-                    hastalar[arrayIndexHasta] = hastaDetay;
-                  }
-
-                  // Listeyi güncellemek için kaydet (batch update için)
-                  listeGuncellemeleri.push({
-                    id: hasta.id,
-                    isim: hastaIsim,
-                    maxHafta: githubMaxHafta
+                  const response = await fetch(`https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/patients/${dosyaAdi}?t=${new Date().getTime()}`, {
+                    headers: { 'Authorization': `token ${token}` }
                   });
 
-                  console.log(`📊 Hasta ${hastaIsim} - GitHub'dan hafta bilgisi alındı: maxHafta=${githubMaxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
+                  if (response.ok) {
+                    const data = await response.json();
+                    const hastaDetay = JSON.parse(decodeBase64UTF8(data.content));
+                    if (hastaDetay.haftalar && hastaDetay.haftalar.length > 0) {
+                      const haftaNumaralari = hastaDetay.haftalar.map(h => h.haftaNo || h.hafta || 0);
+                      const githubMaxHafta = Math.max(...haftaNumaralari);
+
+                      // ⚠️ UYARI: GitHub verisi localStorage'ı geçersiz kılmasın
+                      // Sadece localStorage boşsa GitHub verisini kullan
+                      maxHafta = githubMaxHafta;
+                      hastaDetayiBulundu = true;
+
+                      // ⚡ YENİ: GitHub'dan yüklenen hastayı hastalar array'ine de ekle (SADECE MEMORY'DE - localStorage'a kaydetme!)
+                      const arrayIndexHasta = hastalar.findIndex(h => h && h.id === hasta.id);
+                      if (arrayIndexHasta === -1) {
+                        // Henüz yok, ekle (sadece memory'e)
+                        hastalar.push(hastaDetay);
+                        console.log(`✅ GitHub'dan yüklenen hasta hastalar array'ine eklendi (memory): ${hastaIsim}`);
+                      } else {
+                        // Var ama güncel değil, güncelle (sadece memory'de)
+                        hastalar[arrayIndexHasta] = hastaDetay;
+                        console.log(`✅ GitHub'dan yüklenen hasta ile hastalar array'i güncellendi (memory): ${hastaIsim}`);
+                      }
+                      // ❌ saveToStorage() KALDIRILDI - Sayfa yüklenirken localStorage dolmasın!
+
+                      console.log(`📊 Hasta ${hastaIsim} - GitHub'dan yedek hafta bilgisi alındı: maxHafta=${githubMaxHafta}, haftalar: [${haftaNumaralari.join(', ')}]`);
+                      break;
+                    }
+                  } else if (response.status === 404) {
+                    // Hasta dosyası bulunamadı, diğer dosya adlarını dene
+                    continue;
+                  }
+                } catch (e) {
+                  // Sessizce geç
                 }
-              } else {
-                console.log(`⚠️ ${hastaIsim} için patients/ dizininde dosya bulunamadı`);
               }
             } catch (e) {
-              console.warn(`⚠️ ${hastaIsim} GitHub fallback hatası:`, e.message);
+              // Sessizce geç
             }
           }
 
@@ -8985,37 +8922,6 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         // Toplu ZIP butonunu ekle
         ekleTopluZipButonu();
 
-        // ⚡ BATCH UPDATE: GitHub'dan bulunan maxHafta değerlerini hastalar_listesi.json'a yaz
-        // Bu sayede bir sonraki yüklemede tekrar tek tek dosya okumaya gerek kalmaz
-        if (listeGuncellemeleri.length > 0) {
-          try {
-            console.log(`🔄 ${listeGuncellemeleri.length} hasta için hastalar_listesi.json güncelleniyor (maxHafta batch update)...`);
-            const guncelListe = await hastaListesiYukle();
-            let degistiMi = false;
-
-            listeGuncellemeleri.forEach(guncelleme => {
-              const idx = guncelListe.findIndex(h => h.id === guncelleme.id || h.isim === guncelleme.isim);
-              if (idx !== -1) {
-                if (guncelListe[idx].maxHafta !== guncelleme.maxHafta) {
-                  guncelListe[idx].maxHafta = guncelleme.maxHafta;
-                  guncelListe[idx].sonGuncelleme = new Date().toISOString();
-                  degistiMi = true;
-                  console.log(`  ✅ ${guncelleme.isim}: maxHafta=${guncelleme.maxHafta} yazıldı`);
-                }
-              }
-            });
-
-            if (degistiMi) {
-              await hastaListesiKaydet(guncelListe);
-              console.log('✅ hastalar_listesi.json batch update tamamlandı');
-            } else {
-              console.log('ℹ️ hastalar_listesi.json zaten güncel, batch update gerekmedi');
-            }
-          } catch (batchErr) {
-            console.warn('⚠️ Batch update uyarısı:', batchErr.message);
-          }
-        }
-
       } catch (error) {
         console.error('❌ Yeni sistem hasta listesi yükleme hatası:', error);
         ul.innerHTML = '<li style="padding: 10px; text-align: center; color: #dc3545;">Hasta listesi yüklenemedi</li>';
@@ -9056,7 +8962,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             console.log(`🔍 Denenen dosya: ${dosyaAdi}`);
             const token = document.getElementById('githubToken').value.trim();
             const headers = token ? { 'Authorization': `token ${token}` } : {};
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${dosyaAdi}`, { headers });
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/patients/${dosyaAdi}?t=${new Date().getTime()}`, { headers });
 
             if (response.ok) {
               const data = await response.json();
@@ -11893,7 +11799,7 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         for (let lenfHaftaIndex = 0; lenfHaftaIndex < 8; lenfHaftaIndex++) {
           const gercekHaftaNo = lenfHaftaIndex + 5; // 5. haftadan başlar
           // 9. hafta tabındaki başlangıçtan itibaren haftaları sırala
-          const haftaBaslangic = new Date(haftaBaslangici.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 1000));
+          const haftaBaslangic = new Date(haftaBaslangici.getTime() + ((lenfHaftaIndex - 4) * 7 * 24 * 60 * 60 * 1000));
           // Sayfa sonu kontrolü - hafta başlığı için yer var mı?
           if (currentY > 270) {
             doc.addPage();
@@ -14319,6 +14225,27 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         syncTextarea.value = gptMesaj;
       }
 
+      // Manuel kayıtta ** işaretlerini temizle
+      if (kaynak === 'manuel') {
+        // Log original message
+        console.log('📝 Orijinal mesaj:', gptMesaj);
+
+        // Remove ALL double asterisks globally
+        gptMesaj = gptMesaj.replace(/\*\*/g, '');
+
+        // Log cleaned message
+        console.log('🧹 Temizlenmiş mesaj:', gptMesaj);
+
+        // Temizlenmiş hali textarea'lara geri yansıt - update both explicitly
+        if (anaTextarea) {
+          anaTextarea.value = gptMesaj;
+          // Trigger change event if needed, but value set is enough for visual update
+        }
+        if (syncTextarea) {
+          syncTextarea.value = gptMesaj;
+        }
+      }
+
       hafta.gptMesaj = gptMesaj;
       saveToStorage();
 
@@ -15192,9 +15119,10 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
         const hasPdf = hafta.pdf;
         const hasGptMessage = hafta.gptMesaj && hafta.gptMesaj.trim();
         const hasImages = imgs.length > 0;
+        const hasFixCards = getFixCardsForWeek(haftaNo, hafta.baslangic || '', hafta.bitis || '').length > 0;
 
-        if (!hasImages && !hasPdf && !hasGptMessage) {
-          alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• GPT mesajı');
+        if (!hasImages && !hasPdf && !hasGptMessage && !hasFixCards) {
+          alert('İndirilecek içerik yok!\n\n• PDF dosyası\n• Eşleşen tarif kartları\n• GPT mesajı\n• Fix kartlar');
           return;
         }
 
@@ -15290,6 +15218,57 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
               }
             }
           }
+        }
+
+        // 2d. Fix kartları (sabit kartlar / ek kartlar) ZIP'e ekle - çift ekleme kontrolü ile
+        try {
+          const fixCards = getFixCardsForWeek(haftaNo, hafta.baslangic || '', hafta.bitis || '');
+          if (fixCards.length > 0) {
+            // Zaten eklenen kart isimlerini topla (eşleşen + manuel + çoklu PDF)
+            const eklenenKartlar = new Set();
+            for (let img of imgs) {
+              const name = img.title || img.alt || '';
+              if (name) eklenenKartlar.add(name.toLowerCase());
+            }
+            if (hafta.manuelKartlar) hafta.manuelKartlar.forEach(k => eklenenKartlar.add(k.name.toLowerCase()));
+            if (hafta.cokluPdfVerileri) hafta.cokluPdfVerileri.forEach(v => {
+              if (v.tarifKartlar) v.tarifKartlar.forEach(k => eklenenKartlar.add(k.name.toLowerCase()));
+            });
+
+            console.log(`📌 ${fixCards.length} ek kart kontrol ediliyor (mevcut: ${eklenenKartlar.size})...`);
+            for (let fixKart of fixCards) {
+              // Çift ekleme kontrolü
+              if (eklenenKartlar.has(fixKart.name.toLowerCase())) {
+                console.log(`⏭️ Ek kart zaten mevcut, atlanıyor: ${fixKart.name}`);
+                continue;
+              }
+              try {
+                const response = await fetch(fixKart.url);
+                const blob = await response.blob();
+                let prefix = '';
+                // Sadece prefixi olmayan eski dosyalar için _Bilgilendirme_ ekle
+                // Yeni dosyalar zaten prefixli geliyor (Ramazan_..., EK_... vb)
+                if (fixKart.type === 'upload') {
+                  const db = getFixKartData();
+                  const settingsPrefixes = db.settings?.prefixes || ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
+                  const hasKnownPrefix = settingsPrefixes.some(p => fixKart.name.startsWith(p));
+
+                  if (!hasKnownPrefix) {
+                    prefix = '_Bilgilendirme_';
+                  }
+                }
+                const ekName = `${prefix}${fixKart.name}`;
+                zip.file(ekName, blob);
+                fileCount++;
+                eklenenKartlar.add(fixKart.name.toLowerCase());
+                console.log('✅ Ek kart eklendi:', ekName);
+              } catch (e) {
+                console.warn('⚠️ Ek kart eklenemedi:', fixKart.name, e);
+              }
+            }
+          }
+        } catch (fixErr) {
+          console.warn('⚠️ Ek kartlar yüklenemedi:', fixErr);
         }
 
         // 3. PDF dosyasını ekle
@@ -17579,6 +17558,64 @@ ${mesajlar.join('\n')}
                   }
                 }
 
+                // Ek kartları (sabit kartlar) ekle - çift ekleme kontrolü ile
+                try {
+                  const fixCards = getFixCardsForWeek(enBuyukHaftaNo, enBuyukHafta.baslangic || '', enBuyukHafta.bitis || '');
+                  if (fixCards.length > 0) {
+                    // Zaten eklenen kart isimlerini topla
+                    const eklenenKartlar = new Set();
+                    if (enBuyukHafta.tarifKartlar) enBuyukHafta.tarifKartlar.forEach(k => {
+                      const url = k.kartData || k.data || '';
+                      const name = url.split('/').pop() || k.tarifAdi || '';
+                      if (name) eklenenKartlar.add(name.toLowerCase());
+                    });
+                    if (enBuyukHafta.manuelKartlar) enBuyukHafta.manuelKartlar.forEach(k => {
+                      const url = k.kartData || k.data || '';
+                      const name = url.split('/').pop() || k.tarifAdi || '';
+                      if (name) eklenenKartlar.add(name.toLowerCase());
+                    });
+                    if (enBuyukHafta.cokluPdfVerileri) enBuyukHafta.cokluPdfVerileri.forEach(v => {
+                      if (v.tarifKartlar) v.tarifKartlar.forEach(k => {
+                        const url = k.kartData || k.data || '';
+                        const name = url.split('/').pop() || k.tarifAdi || '';
+                        if (name) eklenenKartlar.add(name.toLowerCase());
+                      });
+                    });
+
+                    console.log(`📌 ${hasta.isim} - ${fixCards.length} ek kart kontrol ediliyor (mevcut: ${eklenenKartlar.size})...`);
+                    for (const fixKart of fixCards) {
+                      // Çift ekleme kontrolü
+                      if (eklenenKartlar.has(fixKart.name.toLowerCase())) {
+                        console.log(`⏭️ ${hasta.isim} - Ek kart zaten mevcut, atlanıyor: ${fixKart.name}`);
+                        continue;
+                      }
+                      try {
+                        const response = await fetch(fixKart.url);
+                        if (response.ok) {
+                          const blob = await response.blob();
+                          let prefix = '';
+                          // Sadece prefixi olmayan eski dosyalar için _Bilgilendirme_
+                          if (fixKart.type === 'upload') {
+                            const db = getFixKartData();
+                            const settingsPrefixes = db.settings?.prefixes || ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
+                            const hasKnownPrefix = settingsPrefixes.some(p => fixKart.name.startsWith(p));
+                            if (!hasKnownPrefix) {
+                              prefix = '_Bilgilendirme_';
+                            }
+                          }
+                          anaZip.file(`${hastaKlasorAdi}/${prefix}${fixKart.name}`, blob);
+                          eklenenKartlar.add(fixKart.name.toLowerCase());
+                          console.log(`✅ ${hasta.isim} - Ek kart eklendi: ${fixKart.name}`);
+                        }
+                      } catch (e) {
+                        console.warn(`⚠️ ${hasta.isim} - Ek kart eklenemedi: ${fixKart.name}`, e);
+                      }
+                    }
+                  }
+                } catch (fixErr) {
+                  console.warn(`⚠️ ${hasta.isim} - Ek kartlar yüklenemedi:`, fixErr);
+                }
+
                 // GPT mesajını ekle
                 if (enBuyukHafta.gptMesaj && enBuyukHafta.gptMesaj.trim()) {
                   anaZip.file(`${hastaKlasorAdi}/GPT_MESAJI.txt`, enBuyukHafta.gptMesaj.trim());
@@ -19341,6 +19378,180 @@ ${mesajlar.join('\n')}
                   <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
                     💡 Her hafta için özel beslenme teması belirleyerek hastalarınıza daha odaklı öneriler
                     verebilirsiniz.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Haftalık Fix Kartlar -->
+        <div style="margin-bottom: 25px;">
+          <h3 style="margin: 0 0 15px 0; color: #e91e63; display: flex; align-items: center; gap: 8px;">
+            <span>📌</span> Haftalık Fix Kartlar (Sabit Kartlar)
+            <button onclick="fixKartlarInit().then(()=>alert('✅ GitHub\'dan yüklendi!'))"
+              style="margin-left: auto; padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: normal;">☁️
+              GitHub'dan Yenile</button>
+          </h3>
+          <p style="margin: 0 0 15px 0; color: #999; font-size: 13px;">
+            Belirli haftalara veya tarihlere sabit tarif/bilgi kartları atayın. ZIP indirirken otomatik dahil edilir.
+          </p>
+
+          <div style="display: flex; height: 500px; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+
+            <!-- Sol Panel - Hafta/Tarih Seçimi -->
+            <div
+              style="width: 250px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column;">
+              <!-- Tab Seçici -->
+              <div style="display: flex; border-bottom: 1px solid #dee2e6;">
+                <button id="fixKartTabHafta" onclick="fixKartTabDegistir('hafta')"
+                  style="flex: 1; padding: 10px; border: none; background: #e91e63; color: white; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s;">
+                  📋 Hafta Bazlı
+                </button>
+                <button id="fixKartTabTarih" onclick="fixKartTabDegistir('tarih')"
+                  style="flex: 1; padding: 10px; border: none; background: #f8f9fa; color: #666; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+                  📅 Tarih Bazlı
+                </button>
+              </div>
+
+              <!-- Hafta Bazlı Panel -->
+              <div id="fixKartHaftaPanel" style="flex: 1; overflow-y: auto; padding: 10px;">
+                <!-- 16 hafta butonları dinamik olarak oluşturulacak -->
+              </div>
+
+              <!-- Tarih Bazlı Panel -->
+              <div id="fixKartTarihPanel" style="flex: 1; overflow-y: auto; padding: 10px; display: none;">
+                <div style="margin-bottom: 10px;">
+                  <label style="display: block; font-size: 12px; color: #666; margin-bottom: 5px;">Tarih Seçin:</label>
+                  <input type="date" id="fixKartTarihInput" onchange="fixKartTarihSec(this.value)"
+                    style="width: 100%; padding: 8px; border: 1px solid #e91e63; border-radius: 4px; background: #fff0f5; font-size: 13px;">
+                </div>
+                <div id="fixKartTarihListesi" style="margin-top: 10px;">
+                  <!-- Tarih kartları listesi -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Sağ Panel - Kart Ekleme & Listesi -->
+            <div style="flex: 1; display: flex; flex-direction: column; background: white;">
+              <!-- Üst Bar -->
+              <div style="padding: 12px 15px; background: #fff; border-bottom: 1px solid #dee2e6;">
+                <strong id="fixKartBaslik" style="color: #e91e63;">Hafta veya tarih seçiniz</strong>
+              </div>
+
+              <!-- İçerik Alanı -->
+              <div style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+
+                <!-- Seçim Yapılmadığında -->
+                <div id="fixKartBosMsg" style="text-align: center; color: #6c757d; padding: 50px 20px;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">📌</div>
+                  <h4 style="margin-bottom: 10px; color: #e91e63;">Haftalık Fix Kartlar</h4>
+                  <p style="margin: 0; line-height: 1.6;">Sol panelden bir hafta veya tarih seçerek o döneme ait sabit
+                    kartları yönetebilirsiniz.</p>
+                  <div style="margin-top: 20px; font-size: 12px; color: #adb5bd;">
+                    💡 Fix kartlar ZIP indirirken otomatik olarak eklenir.
+                  </div>
+                </div>
+
+                <!-- Seçim Yapıldığında (gizli başlar) -->
+                <div id="fixKartIcerik" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+
+                  <!-- Prefix Yönetimi -->
+                  <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
+                    <label
+                      style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px; display: block;">Tarif
+                      Kartı Öneki (Prefix):</label>
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                      <input type="text" id="yeniPrefixInput" placeholder="Önek ekle (örn: Ramazan_)"
+                        style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                      <button onclick="fixKartPrefixEkle()"
+                        style="padding: 6px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">+</button>
+                    </div>
+                    <div id="fixKartPrefixChips" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                      <!-- Chips buraya gelecek -->
+                    </div>
+                  </div>
+
+                  <!-- Tarif Arama -->
+                  <div style="background: #fff0f5; border: 1px solid #f8bbd0; border-radius: 8px; padding: 12px;">
+                    <div
+                      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <label style="font-size: 12px; font-weight: bold; color: #e91e63;">🔍 Tarif Kartı Ara (tarifler
+                        klasöründen):</label>
+                      <button
+                        onclick="fixKartTarifListesiYukle(true).then(() => { fixKartAra(document.getElementById('fixKartSearchInput').value); alert('✅ Tarif listesi güncellendi!'); })"
+                        style="padding: 2px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                        🔄 Listeyi Yenile
+                      </button>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                      <select id="fixKartSearchType"
+                        onchange="fixKartAra(document.getElementById('fixKartSearchInput').value)"
+                        style="padding: 8px; border: 1px solid #f8bbd0; border-radius: 4px; font-size: 12px; background: white; color: #e91e63; cursor: pointer; outline: none;">
+                        <option value="name" selected>Yemek Adı</option>
+                        <option value="tag">Etiket (Tag)</option>
+                      </select>
+                      <input type="text" id="fixKartSearchInput" oninput="fixKartAra(this.value)"
+                        placeholder="Aranacak kelimeleri yazın..."
+                        style="flex: 1; padding: 8px 12px; border: 1px solid #f8bbd0; border-radius: 4px; background: white; font-size: 13px;">
+                      <span id="fixKartSearchResultCount"
+                        style="font-size: 11px; color: #666; align-self: center; min-width: 60px; text-align: right;"></span>
+                    </div>
+                    <div id="fixKartSearchResults"
+                      style="max-height: 150px; overflow-y: auto; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">
+                      <!-- Arama sonuçları burada görünecek -->
+                    </div>
+                  </div>
+
+                  <!-- Resim Yükleme -->
+                  <!-- Resim Yükleme -->
+                  <div style="background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 8px; padding: 12px;">
+                    <!-- Upload Prefix -->
+                    <div style="margin-bottom: 8px; border-bottom: 1px dashed #ce93d8; padding-bottom: 8px;">
+                      <label
+                        style="font-size: 11px; font-weight: bold; color: #9c27b0; margin-bottom: 4px; display: block;">
+                        Yükleme Kartı Öneki (Prefix):
+                      </label>
+                      <div id="fixKartPrefixChipsUpload" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                        <!-- Chips buraya gelecek -->
+                      </div>
+                    </div>
+
+                    <label
+                      style="display: block; font-size: 12px; font-weight: bold; color: #9c27b0; margin-bottom: 6px;">📤
+                      Bilgi/Tarif Kartı Yükle (JPG/PNG):</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <input type="text" id="fixKartUploadName" placeholder="Kart adı (örn: atistirmalik_tarifi)"
+                        style="flex: 1; padding: 8px; border: 1px solid #ce93d8; border-radius: 4px; font-size: 12px;">
+                      <label
+                        style="padding: 8px 12px; background: #9c27b0; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                        📁 Dosya Seç
+                        <input type="file" id="fixKartFileInput" accept="image/jpeg,image/png"
+                          onchange="fixKartDosyaSec(this)" style="display: none;">
+                      </label>
+                    </div>
+                    <div id="fixKartUploadPreview" style="margin-top: 8px; display: none;">
+                      <img id="fixKartUploadImg" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd;">
+                      <button onclick="fixKartYukle()"
+                        style="margin-left: 8px; padding: 6px 14px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        ✅ Yükle & Ekle
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Atanmış Kartlar Listesi -->
+                  <div
+                    style="flex: 1; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; overflow-y: auto;">
+                    <label
+                      style="display: block; font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;">📋
+                      Atanmış Kartlar:</label>
+                    <div id="fixKartAtanmislar" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                      <div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">
+                        Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -26011,6 +26222,1019 @@ IMPORTANT RULES:
     document.addEventListener('DOMContentLoaded', function () {
       console.log('Sayfa yüklendi - GPT ayarları modal açıldığında yüklenecek');
     });
+
+    // =============================================
+    // 📌 FIX KARTLAR (SABİT KARTLAR) SİSTEMİ
+    // =============================================
+
+    // Global state
+    let fixKartTarifListesi = []; // tarifler/list.json cache
+    let fixKartSeciliMod = 'hafta'; // 'hafta' veya 'tarih'
+    let fixKartSeciliAnahtar = null; // seçili hafta no veya tarih string
+    let fixKartSeciliPrefixTarif = 'EK_';
+    let fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+    let fixKartGithubSha = null; // config.json SHA for updates
+    let fixKartSaveTimer = null; // debounce timer
+
+    // Fix kartlar verisini localStorage'dan al (senkron, hızlı)
+    function getFixKartData() {
+      try {
+        return JSON.parse(localStorage.getItem('fixKartlar') || '{"hafta":{},"tarih":{}}');
+      } catch (e) {
+        return { hafta: {}, tarih: {} };
+      }
+    }
+
+    // Fix kartlar verisini hem localStorage'a hem GitHub'a kaydet
+    function saveFixKartData(data) {
+      // 1) localStorage'a hemen kaydet (anlık)
+      localStorage.setItem('fixKartlar', JSON.stringify(data));
+      console.log('💾 Fix kartlar localStorage\'a kaydedildi');
+
+      // 2) GitHub'a debounce ile kaydet (1.5 sn bekle, art arda kayıtlarda sadece son hali gönder)
+      if (fixKartSaveTimer) clearTimeout(fixKartSaveTimer);
+      fixKartSaveTimer = setTimeout(() => {
+        fixKartGithubKaydet(data);
+      }, 1500);
+    }
+
+    // GitHub'a config.json olarak kaydet
+    async function fixKartGithubKaydet(data) {
+      try {
+        const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+        if (!token) {
+          console.warn('⚠️ GitHub token yok, fix kartlar sadece localStorage\'da');
+          return;
+        }
+
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = 'fix_kartlar/config.json';
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+
+        const body = {
+          message: 'Fix kartlar güncellendi',
+          content: content
+        };
+        if (fixKartGithubSha) {
+          body.sha = fixKartGithubSha;
+        }
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          fixKartGithubSha = result.content.sha;
+          console.log('☁️ Fix kartlar GitHub\'a kaydedildi (SHA:', fixKartGithubSha, ')');
+        } else if (response.status === 409) {
+          // SHA conflict - yeniden yükle
+          console.warn('⚠️ SHA conflict, GitHub\'dan yeniden yükleniyor...');
+          await fixKartGithubYukle();
+          // Tekrar kaydet (merge yok, son yazan kazanır)
+          await fixKartGithubKaydet(data);
+        } else {
+          console.error('❌ GitHub kayıt hatası:', response.status, await response.text());
+        }
+      } catch (e) {
+        console.error('❌ Fix kartlar GitHub\'a kaydedilemedi:', e);
+      }
+    }
+
+    // GitHub'dan config.json'u yükle
+    async function fixKartGithubYukle() {
+      try {
+        const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = 'fix_kartlar/config.json';
+
+        // Token varsa API ile (SHA alabilmek için)
+        if (token) {
+          const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${new Date().getTime()}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (response.ok) {
+            const fileData = await response.json();
+            fixKartGithubSha = fileData.sha;
+            const cleanBase64 = fileData.content.replace(/\s/g, ''); // GitHub API base64 newline temizle
+            const content = decodeURIComponent(escape(atob(cleanBase64)));
+            const data = JSON.parse(content);
+            localStorage.setItem('fixKartlar', JSON.stringify(data));
+            console.log('☁️ Fix kartlar GitHub\'dan yüklendi (SHA:', fixKartGithubSha, ')');
+            return data;
+          } else if (response.status === 404) {
+            console.log('ℹ️ GitHub\'da fix_kartlar/config.json bulunamadı, yeni oluşturulacak');
+            fixKartGithubSha = null;
+            // localStorage'da veri varsa GitHub'a at
+            const localData = getFixKartData();
+            if (Object.keys(localData.hafta).length > 0 || Object.keys(localData.tarih).length > 0) {
+              console.log('📤 Mevcut localStorage verisi GitHub\'a yükleniyor...');
+              await fixKartGithubKaydet(localData);
+            }
+            return localData;
+          }
+        }
+
+        // Token yoksa raw ile dene (sadece okuma, SHA yok)
+        const rawResponse = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/${path}?t=${new Date().getTime()}`);
+        if (rawResponse.ok) {
+          const data = await rawResponse.json();
+          localStorage.setItem('fixKartlar', JSON.stringify(data));
+          console.log('☁️ Fix kartlar raw GitHub\'dan yüklendi');
+          return data;
+        }
+      } catch (e) {
+        console.warn('⚠️ GitHub\'dan fix kart yüklenemedi, localStorage kullanılıyor:', e);
+      }
+      return getFixKartData();
+    }
+
+    // Fix Kartlar panelini başlat (sayfa yüklendiğinde)
+    async function fixKartlarInit() {
+      // Önce GitHub'dan yükle (en güncel halini al)
+      await fixKartGithubYukle();
+      // Sonra UI'ı oluştur
+      fixKartHaftaPaneliOlustur();
+      fixKartTarifListesiYukle(); // Arka planda yükle
+      console.log('✅ Fix kartlar sistemi başlatıldı');
+    }
+
+    // Sayfa yüklenince fix kartlar panelini hazırla
+    window.addEventListener('load', () => {
+      setTimeout(fixKartlarInit, 2000);
+    });
+
+    // Tab değiştir
+    function fixKartTabDegistir(mod) {
+      fixKartSeciliMod = mod;
+      fixKartSeciliAnahtar = null;
+
+      const haftaTab = document.getElementById('fixKartTabHafta');
+      const tarihTab = document.getElementById('fixKartTabTarih');
+      const haftaPanel = document.getElementById('fixKartHaftaPanel');
+      const tarihPanel = document.getElementById('fixKartTarihPanel');
+
+      if (mod === 'hafta') {
+        haftaTab.style.background = '#e91e63';
+        haftaTab.style.color = 'white';
+        haftaTab.style.fontWeight = 'bold';
+        tarihTab.style.background = '#f8f9fa';
+        tarihTab.style.color = '#666';
+        tarihTab.style.fontWeight = 'normal';
+        haftaPanel.style.display = 'block';
+        tarihPanel.style.display = 'none';
+      } else {
+        tarihTab.style.background = '#e91e63';
+        tarihTab.style.color = 'white';
+        tarihTab.style.fontWeight = 'bold';
+        haftaTab.style.background = '#f8f9fa';
+        haftaTab.style.color = '#666';
+        haftaTab.style.fontWeight = 'normal';
+        haftaPanel.style.display = 'none';
+        tarihPanel.style.display = 'block';
+        fixKartTarihListesiGuncelle();
+      }
+
+      // Sağ paneli sıfırla
+      document.getElementById('fixKartBosMsg').style.display = 'block';
+      document.getElementById('fixKartIcerik').style.display = 'none';
+      document.getElementById('fixKartBaslik').textContent = 'Hafta veya tarih seçiniz';
+    }
+
+    // Hafta panelini oluştur (Dinamik 1-16 + Eklenenler)
+    function fixKartHaftaPaneliOlustur() {
+      const panel = document.getElementById('fixKartHaftaPanel');
+      if (!panel) return;
+
+      const data = getFixKartData();
+
+      // Mevcut haftaları topla: [1..16] + data.hafta keys
+      const haftalarSet = new Set();
+      for (let i = 1; i <= 16; i++) haftalarSet.add(i);
+      if (data.hafta) {
+        Object.keys(data.hafta).forEach(k => haftalarSet.add(parseInt(k)));
+      }
+      const haftalar = Array.from(haftalarSet).sort((a, b) => a - b);
+
+      // Ekleme Arayüzü (Input + Button)
+      let html = `
+        <div style="display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #dee2e6; background: #fff;">
+          <input type="number" id="yeniHaftaNo" placeholder="Hafta No" min="1" 
+            style="width: 70px; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+          <button onclick="fixKartHaftaEkle()" 
+            style="flex: 1; background: #e91e63; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+            + Ekle
+          </button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 10px;">
+      `;
+
+      // Liste
+      haftalar.forEach(i => {
+        const kartSayisi = (data.hafta && data.hafta[i]) ? data.hafta[i].length : 0;
+        const isActive = fixKartSeciliMod === 'hafta' && fixKartSeciliAnahtar === String(i);
+        const badge = kartSayisi > 0 ? `<span style="background: #e91e63; color: white; border-radius: 50%; padding: 1px 6px; font-size: 10px; margin-left: 5px;">${kartSayisi}</span>` : '';
+
+        // Sadece 16. haftadan sonrakiler için silme/düzenleme butonları göster
+        // Ayrıca kullanıcı "2026" gibi yanlış haftalar eklediyse onları da silebilirsin (16'dan büyük hepsi)
+        const isCustom = parseInt(i) > 16;
+        const controls = isCustom ? `
+          <div style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px;">
+            <button onclick="event.stopPropagation(); fixKartHaftaDuzenle('${i}')" title="Hafta No Düzenle"
+              style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;">✏️</button>
+            <button onclick="event.stopPropagation(); fixKartHaftaSil('${i}')" title="Haftayı Sil"
+              style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;">🗑️</button>
+          </div>
+        ` : '';
+
+        html += `<div style="position: relative;">
+          <button onclick="fixKartHaftaSec(${i})" style="
+            display: block; width: 100%; text-align: left; padding: 8px 35px 8px 12px; margin-bottom: 4px;
+            border: 1px solid ${isActive ? '#e91e63' : '#dee2e6'}; border-radius: 4px;
+            background: ${isActive ? '#fce4ec' : 'white'}; cursor: pointer; font-size: 13px;
+            color: ${isActive ? '#e91e63' : '#333'}; font-weight: ${isActive ? 'bold' : 'normal'};
+            transition: all 0.15s;">
+            📋 Hafta ${i} ${badge}
+          </button>
+          ${controls}
+        </div>`;
+      });
+
+      html += '</div>';
+      panel.innerHTML = html;
+    }
+
+    // Yeni hafta ekle
+    function fixKartHaftaEkle() {
+      const input = document.getElementById('yeniHaftaNo');
+      const val = parseInt(input.value);
+
+      if (!val || val < 1) {
+        alert('Geçerli bir hafta numarası giriniz!');
+        return;
+      }
+
+      const data = getFixKartData();
+      if (!data.hafta) data.hafta = {};
+
+      if (!data.hafta[val]) {
+        data.hafta[val] = [];
+        saveFixKartData(data); // GitHub'a da gider
+      }
+
+      input.value = '';
+      fixKartHaftaPaneliOlustur();
+      fixKartHaftaSec(val);
+    }
+
+    // Hafta sil
+    // Hafta sil - string support added
+    function fixKartHaftaSil(haftaNo) {
+      if (!confirm(`${haftaNo}. haftayı silmek istiyor musunuz? içindeki kartlar da silinecek.`)) return;
+
+      const data = getFixKartData();
+      if (data.hafta) {
+        const targetStr = String(haftaNo).trim();
+        const targetNum = parseInt(haftaNo);
+        let deletedKeys = [];
+
+        Object.keys(data.hafta).forEach(k => {
+          const kStr = String(k).trim();
+          const kNum = parseInt(k);
+
+          // Çok gevşek eşleşme kontrolü (boşluklar, tip farkı vb. yoksay)
+          if (kStr == targetStr || kNum == targetNum || k.includes(targetStr)) {
+            delete data.hafta[k];
+            deletedKeys.push(k);
+          }
+        });
+
+        if (deletedKeys.length > 0) {
+          saveFixKartData(data); // Sync to GitHub
+
+          // UI temizle
+          if (fixKartSeciliMod === 'hafta' && (String(fixKartSeciliAnahtar) === targetStr || parseInt(fixKartSeciliAnahtar) === targetNum)) {
+            fixKartSeciliAnahtar = null;
+            fixKartSeciliMod = null; // Modu da sıfırla ki eski buton seçili kalmasın
+            document.getElementById('fixKartBosMsg').style.display = 'block';
+            document.getElementById('fixKartIcerik').style.display = 'none';
+          }
+
+          fixKartHaftaPaneliOlustur();
+          alert(`${haftaNo}. hafta silindi.`);
+        } else {
+          alert('Hafta bulunamadı veya zaten silinmiş.');
+        }
+      }
+    }
+
+    // Hafta düzenle (Yeniden adlandır)
+    function fixKartHaftaDuzenle(oldNo) {
+      const newNoStr = prompt(`${oldNo}. hafta için yeni numarayı girin:`, oldNo);
+      if (newNoStr === null) return;
+      const newNo = parseInt(newNoStr);
+
+      if (!newNo || newNo < 1) {
+        alert('Geçerli bir sayı giriniz!');
+        return;
+      }
+
+      if (newNo === oldNo) return;
+
+      const data = getFixKartData();
+      // Hedef hafta zaten varsa bir şey yapma veya uyar
+      if (data.hafta[newNo]) {
+        alert(`${newNo}. hafta zaten var! Lütfen başka bir numara seçin.`);
+        return;
+      }
+
+      // Taşı
+      data.hafta[newNo] = data.hafta[oldNo] || [];
+      delete data.hafta[oldNo];
+      saveFixKartData(data); // Sync
+
+      fixKartHaftaPaneliOlustur();
+      // Eğer seçiliyse yeni numaraya geç
+      if (fixKartSeciliMod === 'hafta' && fixKartSeciliAnahtar === String(oldNo)) {
+        fixKartHaftaSec(newNo);
+      }
+    }
+
+    // Hafta seç
+    function fixKartHaftaSec(haftaNo) {
+      fixKartSeciliMod = 'hafta';
+      fixKartSeciliAnahtar = String(haftaNo);
+
+      // Context Prefix Yükle
+      const data = getFixKartData();
+      fixKartSeciliPrefixTarif = 'EK_';
+      fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+
+      if (data.settings && data.settings.contextPrefixes) {
+        const key = `hafta_${haftaNo}`;
+        const val = data.settings.contextPrefixes[key];
+        if (val) {
+          if (typeof val === 'string') fixKartSeciliPrefixTarif = val;
+          else {
+            if (val.tarif) fixKartSeciliPrefixTarif = val.tarif;
+            if (val.upload) fixKartSeciliPrefixUpload = val.upload;
+          }
+        }
+      }
+
+      fixKartPrefixPaneliGuncelle();
+      fixKartAtanmislariGoster();
+
+      // Buton stili
+      document.querySelectorAll('#fixKartHaftaPanel button').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#333';
+        btn.style.fontWeight = 'normal';
+        btn.style.borderColor = '#dee2e6';
+      });
+      const selectedButton = document.querySelector(`#fixKartHaftaPanel button[onclick="fixKartHaftaSec(${haftaNo})"]`);
+      if (selectedButton) {
+        selectedButton.style.background = '#fce4ec';
+        selectedButton.style.color = '#e91e63';
+        selectedButton.style.fontWeight = 'bold';
+        selectedButton.style.borderColor = '#e91e63';
+      }
+
+      document.getElementById('fixKartBaslik').textContent = `📋 Hafta ${haftaNo} - Fix Kartlar`;
+      document.getElementById('fixKartBosMsg').style.display = 'none';
+      document.getElementById('fixKartIcerik').style.display = 'flex';
+      document.getElementById('fixKartSearchInput').value = '';
+      document.getElementById('fixKartSearchResults').innerHTML = '';
+    }
+
+    // Tarih seç
+    function fixKartTarihSec(tarihString) {
+      if (!tarihString) return;
+      fixKartSeciliMod = 'tarih';
+      fixKartSeciliAnahtar = tarihString;
+
+      // Context Prefix Yükle
+      const data = getFixKartData();
+      fixKartSeciliPrefixTarif = 'EK_';
+      fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+
+      if (data.settings && data.settings.contextPrefixes) {
+        const key = `tarih_${tarihString}`;
+        const val = data.settings.contextPrefixes[key];
+        if (val) {
+          if (typeof val === 'string') fixKartSeciliPrefixTarif = val;
+          else {
+            if (val.tarif) fixKartSeciliPrefixTarif = val.tarif;
+            if (val.upload) fixKartSeciliPrefixUpload = val.upload;
+          }
+        }
+      }
+
+      fixKartPrefixPaneliGuncelle();
+      fixKartAtanmislariGoster();
+
+      // Tarihi formatla
+      const d = new Date(tarihString + 'T00:00:00');
+      const formatted = d.toLocaleDateString('tr-TR');
+
+      document.getElementById('fixKartBaslik').textContent = `📅 ${formatted} - Fix Kartlar`;
+      document.getElementById('fixKartBosMsg').style.display = 'none';
+      document.getElementById('fixKartIcerik').style.display = 'flex';
+      document.getElementById('fixKartSearchInput').value = '';
+      document.getElementById('fixKartSearchResults').innerHTML = '';
+
+      fixKartTarihListesiGuncelle();
+    }
+
+    // Tarih listesini güncelle (mevcut tarih kartlarını göster)
+    function fixKartTarihListesiGuncelle() {
+      const container = document.getElementById('fixKartTarihListesi');
+      if (!container) return;
+
+      const data = getFixKartData();
+      const tarihler = Object.keys(data.tarih || {}).sort();
+
+      if (tarihler.length === 0) {
+        container.innerHTML = '<div style="color: #aaa; font-size: 12px; padding: 10px;">Henüz tarih bazlı kart eklenmedi.</div>';
+        return;
+      }
+
+      let html = '<div style="font-size: 11px; color: #888; margin-bottom: 6px;">Mevcut tarihler:</div>';
+      tarihler.forEach(tarih => {
+        const kartSayisi = data.tarih[tarih].length;
+        const isActive = fixKartSeciliAnahtar === tarih;
+        const d = new Date(tarih + 'T00:00:00');
+        const formatted = d.toLocaleDateString('tr-TR');
+
+        html += `<button onclick="fixKartTarihSec('${tarih}')" style="
+          display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px;
+          border: 1px solid ${isActive ? '#e91e63' : '#dee2e6'}; border-radius: 4px;
+          background: ${isActive ? '#fce4ec' : 'white'}; cursor: pointer; font-size: 12px;
+          color: ${isActive ? '#e91e63' : '#333'}; font-weight: ${isActive ? 'bold' : 'normal'};">
+          📅 ${formatted}
+          <span style="background: #e91e63; color: white; border-radius: 50%; padding: 1px 6px; font-size: 10px; margin-left: 5px;">${kartSayisi}</span>
+        </button>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // Tarifler listesini yükle (cache ile - Enhanced parsing)
+    async function fixKartTarifListesiYukle(forceReload = false) {
+      if (!forceReload && fixKartTarifListesi.length > 0) return fixKartTarifListesi;
+
+      const ts = Date.now(); // Cache busting
+
+      try {
+        const response = await fetch(`https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/list.json?t=${ts}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Hem string hem object formatını destekle
+          // Object: { "file": "adana.jpg", "tags": [] }
+          fixKartTarifListesi = data.map(item => {
+            let name, tags = [];
+
+            if (typeof item === 'string') {
+              name = item;
+            } else if (typeof item === 'object' && item !== null) {
+              name = item.file || item.filename || item.name;
+              tags = item.tags || [];
+            }
+
+            if (!name || !name.match(/\.(jpg|jpeg|png)$/i)) return null;
+
+            return {
+              name: name,
+              url: `https://raw.githubusercontent.com/mustafasacar35/lipodem-takip-paneli/main/tarifler/${name}`,
+              tags: tags
+            };
+          }).filter(Boolean);
+          console.log(`✅ Fix Kart: ${fixKartTarifListesi.length} tarif yüklendi`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Tarif listesi yüklenemedi:', e);
+        // Fallback: GitHub API ile dene
+        try {
+          const response = await fetch('https://api.github.com/repos/mustafasacar35/lipodem-takip-paneli/contents/tarifler');
+          if (response.ok) {
+            const files = await response.json();
+            fixKartTarifListesi = files
+              .filter(f => f.name.match(/\.(jpg|jpeg|png)$/i))
+              .map(f => ({ name: f.name, url: f.download_url, tags: [] }));
+            console.log(`✅ Fix Kart (API): ${fixKartTarifListesi.length} tarif yüklendi`);
+          }
+        } catch (e2) {
+          console.error('❌ Tarif listesi hiç yüklenemedi:', e2);
+        }
+      }
+
+      return fixKartTarifListesi;
+    }
+
+    // Tarif ara (Smart Search + Tag Support + Filter)
+    async function fixKartAra(query) {
+      const resultsDiv = document.getElementById('fixKartSearchResults');
+      const countSpan = document.getElementById('fixKartSearchResultCount');
+
+      if (!query || query.length < 2) {
+        resultsDiv.innerHTML = '<div style="color: #aaa; font-size: 12px;">En az 2 karakter yazın...</div>';
+        if (countSpan) countSpan.textContent = '';
+        return;
+      }
+
+      const searchType = document.getElementById('fixKartSearchType')?.value || 'name';
+
+      // Listeyi yükle
+      const tarifler = await fixKartTarifListesiYukle();
+
+      // Smart Search: Query'i boşluklara göre böl ve her parça için eşleşme ara
+      const tokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+
+      const sonuclar = tarifler.filter(t => {
+        const nameClean = t.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ').toLowerCase();
+        const tagsLower = t.tags ? t.tags.map(tag => tag.toLowerCase()) : [];
+
+        if (searchType === 'name') {
+          // İsim Modu: Tokenlar isimde geçmeli
+          return tokens.every(token => nameClean.includes(token));
+        } else {
+          // Tag Modu: Tokenlar taglerde geçmeli (Smart Tag Search)
+          // Örn: "mer tah" -> mercimek AND tahıl
+          return tokens.every(token => tagsLower.some(tag => tag.includes(token)));
+        }
+      });
+
+      if (countSpan) countSpan.textContent = `(${sonuclar.length} sonuç)`;
+
+      const gosterilecekler = sonuclar.slice(0, 30); // Maksimum 30 sonuç göster
+
+      if (gosterilecekler.length === 0) {
+        resultsDiv.innerHTML = '<div style="color: #aaa; font-size: 12px;">Sonuç bulunamadı.</div>';
+        return;
+      }
+
+      // Mevcut kartları kontrol et (çift eklemeyi önle)
+      const data = getFixKartData();
+      const mevcutKartlar = fixKartSeciliMod === 'hafta'
+        ? (data.hafta[fixKartSeciliAnahtar] || [])
+        : (data.tarih[fixKartSeciliAnahtar] || []);
+      const mevcutIsimler = new Set(mevcutKartlar.map(k => k.name));
+
+      resultsDiv.innerHTML = gosterilecekler.map(tarif => {
+        const zatenVar = mevcutIsimler.has(tarif.name);
+        const displayName = tarif.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        // Etiketleri göster (opsiyonel, hover'da veya altında gösterilebilir)
+        const tagsBadge = (tarif.tags && tarif.tags.length > 0)
+          ? `<div style="font-size: 9px; color: #666; margin-top: 2px;">🏷️ ${tarif.tags.join(', ')}</div>`
+          : '';
+
+        return `<button onclick="${zatenVar ? '' : `fixKartEkle('${tarif.name}','${tarif.url}','tarif')`}"
+          style="padding: 6px 10px; border-radius: 12px; font-size: 11px; cursor: ${zatenVar ? 'default' : 'pointer'};
+          border: 1px solid ${zatenVar ? '#ccc' : '#e91e63'}; background: ${zatenVar ? '#f0f0f0' : 'white'};
+          color: ${zatenVar ? '#aaa' : '#e91e63'}; transition: all 0.15s; display: block; width: 100%; text-align: left; margin-bottom: 4px;"
+          ${zatenVar ? 'disabled' : ''}
+          title="${zatenVar ? 'Zaten ekli' : 'Tıklayarak ekle'}">
+          <div>${zatenVar ? '✓' : '+'} ${displayName}</div>
+          ${tagsBadge}
+        </button>`;
+      }).join('');
+    }
+
+    // Prefix Yönetimi
+
+
+    function fixKartPrefixPaneliGuncelle() {
+      const db = getFixKartData();
+      if (!db.settings) db.settings = {};
+      if (!db.settings.prefixes) db.settings.prefixes = ['EK_', 'Ramazan_', 'Detoks_', '_Bilgilendirme_'];
+      // Yeni özellik: _Bilgilendirme_ yoksa ekle (Upload için)
+      if (!db.settings.prefixes.includes('_Bilgilendirme_')) {
+        db.settings.prefixes.push('_Bilgilendirme_');
+      }
+
+      // 1. Tarif Prefix Paneli
+      const containerTarif = document.getElementById('fixKartPrefixChips');
+      if (containerTarif) {
+        containerTarif.innerHTML = db.settings.prefixes.map(p => {
+          const isSelected = p === fixKartSeciliPrefixTarif;
+          return `
+              <div onclick="fixKartPrefixSec('${p}', 'tarif')" style="
+                display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
+                background: ${isSelected ? '#e91e63' : '#f0f0f0'}; color: ${isSelected ? 'white' : '#333'}; border: 1px solid ${isSelected ? '#e91e63' : '#ddd'};">
+                ${p}
+                ${p !== 'EK_' && p !== '_Bilgilendirme_' ? `<span onclick="event.stopPropagation(); fixKartPrefixSil('${p}')" style="font-weight: bold; margin-left: 2px;">×</span>` : ''}
+              </div>
+            `;
+        }).join('');
+      }
+
+      // 2. Upload Prefix Paneli
+      const containerUpload = document.getElementById('fixKartPrefixChipsUpload');
+      if (containerUpload) {
+        containerUpload.innerHTML = db.settings.prefixes.map(p => {
+          const isSelected = p === fixKartSeciliPrefixUpload;
+          return `
+              <div onclick="fixKartPrefixSec('${p}', 'upload')" style="
+                display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
+                background: ${isSelected ? '#9c27b0' : '#f0f0f0'}; color: ${isSelected ? 'white' : '#333'}; border: 1px solid ${isSelected ? '#9c27b0' : '#ddd'};">
+                ${p}
+              </div>
+            `;
+        }).join('');
+      }
+    }
+
+    function fixKartPrefixEkle() {
+      const input = document.getElementById('yeniPrefixInput');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const db = getFixKartData();
+      if (!db.settings) db.settings = {};
+      if (!db.settings.prefixes) db.settings.prefixes = ['EK_'];
+
+      if (!db.settings.prefixes.includes(val)) {
+        db.settings.prefixes.push(val);
+        saveFixKartData(db); // Sync
+        fixKartPrefixSec(val, 'tarif'); // Yeni ekleneni tarif için seç
+      }
+      input.value = '';
+    }
+
+    function fixKartPrefixSil(val) {
+      if (!confirm(`'${val}' öneki silinsin mi ? `)) return;
+      const db = getFixKartData();
+      if (db.settings && db.settings.prefixes) {
+        db.settings.prefixes = db.settings.prefixes.filter(p => p !== val);
+        saveFixKartData(db); // Sync
+
+        // Silinen prefix seçiliyse varsayılanlara dön
+        if (fixKartSeciliPrefixTarif === val) fixKartSeciliPrefixTarif = 'EK_';
+        if (fixKartSeciliPrefixUpload === val) fixKartSeciliPrefixUpload = '_Bilgilendirme_';
+
+        fixKartPrefixPaneliGuncelle();
+      }
+    }
+
+    // Prefix Seç ve Context'e Kaydet
+    function fixKartPrefixSec(val, type = 'tarif') {
+      if (type === 'tarif') {
+        fixKartSeciliPrefixTarif = val;
+      } else {
+        fixKartSeciliPrefixUpload = val;
+      }
+
+      // Context'e kaydet
+      const db = getFixKartData();
+      if (!db.settings) db.settings = {};
+      if (!db.settings.contextPrefixes) db.settings.contextPrefixes = {};
+
+      const contextKey = fixKartSeciliMod === 'hafta' ? `hafta_${fixKartSeciliAnahtar}` : `tarih_${fixKartSeciliAnahtar}`;
+
+      // Mevcut veriyi al (String ise objeye çevir)
+      let currentContext = db.settings.contextPrefixes[contextKey];
+      if (typeof currentContext !== 'object' || currentContext === null) {
+        // String geldiyse (eski veri) veya yoksa
+        currentContext = { tarif: typeof currentContext === 'string' ? currentContext : 'EK_', upload: '_Bilgilendirme_' };
+      }
+
+      // İlgili değeri güncelle
+      if (type === 'tarif') currentContext.tarif = val;
+      else currentContext.upload = val;
+
+      db.settings.contextPrefixes[contextKey] = currentContext;
+      saveFixKartData(db);
+      fixKartPrefixPaneliGuncelle();
+    }
+
+
+
+    // Kart ekle (Prefix ile ve Double Prefix Korumalı)
+    function fixKartEkle(name, url, type, customName = null) {
+      const data = getFixKartData();
+      let key = null;
+
+      if (fixKartSeciliMod === 'hafta') {
+        key = fixKartSeciliAnahtar;
+        if (!data.hafta) data.hafta = {};
+        if (!data.hafta[key]) data.hafta[key] = [];
+      } else if (fixKartSeciliMod === 'tarih') {
+        key = fixKartSeciliAnahtar;
+        if (!data.tarih) data.tarih = {};
+        if (!data.tarih[key]) data.tarih[key] = [];
+      }
+
+
+      const list = fixKartSeciliMod === 'hafta' ? data.hafta[key] : data.tarih[key];
+
+      // Prefix mantığı (sadece tarifler için, bilgi kartlarında manuel isim geliyor)
+      // Eğer type 'tarif' ise seçili prefix'i kullan.
+      // Eğer type 'bilgi' ise prefix yok (zaten manuel giriliyor genelde)
+
+      let finalName = customName || name;
+
+      if (type === 'tarif') {
+        // Zaten EK_ varsa kaldırmayı dene ama dosya adında olmayabilir.
+        // Tarif listesindeki 'name' ham dosya adıdır (örn: kabak.jpg)
+        // Biz bunu kaydederken prefix ekleyeceğiz.
+
+        // Önemli: Eklenecek kartın "name" özelliği display için kullanılır. 
+        // Ancak ZIP indirirken prefix buradan alınmazsa karışabilir.
+        // Mevcut yapıda: kart objesi { name: "...", url: "..." }
+        // getFixCardsForWeek fonksiyonu bunları döner.
+        // zipEslesenGorseller fonksiyonu ise bu kart listesini alır.
+
+        // SORUN: zipEslesenGorseller fonksiyonu `EK_` ön ekini hardcode luyor olabilir mi?
+        // Kontrol edelim. (Evet, muhtemelen).
+        // Eğer öyleyse, prefixi buradaki `name`'e GÖMMEMELİYİZ, yoksa zip fonksiyonu EK_ + Ramazan_... yapar.
+        // YA DA zip fonksiyonunu güncellemeliyiz.
+
+        // KULLANICI İSTEĞİ: "kart isminde o ek olur başta".
+        // O zaman display name'i değiştirmek en mantıklısı.
+
+        // Bir dakika, zip fonksiyonu:
+        // if (kart.url && kart.url.includes('tarifler')) -> zip.file("EK_" + kart.name, ...)
+
+        // O yüzden prefixi 'name' içine gömersen "EK_Ramazan_kabak.jpg" olur.
+        // Kullanıcı "default EK_ olsun ama değiştirebileyim" dedi.
+        // Yani EK_ yerine Ramazan_ olmalı.
+
+        // ÇÖZÜM: Kart objesine `prefix` alanı ekleyelim mi? Veya name'i direk değiştirelim ve zip fonksiyonunu güncelleyelim.
+        // "fix kartlar ZIP indirirken otomatik dahil edilir" -> zipEslesenGorseller fonksiyonuna bakmam lazım.
+        // Ama şu an göremiyorum. Muhtemelen önceki adımlarda vardı.
+
+        // Varsayım: `name` alanını prefixli yaparsam (örn: Ramazan_kabak.jpg), zip fonksiyonu bunu `EK_Ramazan_kabak.jpg` yapabilir.
+        // Bu yüzden zip fonksiyonunu da güncellemem gerekecek.
+        // Ama şimdilik kart ekleme mantığını yapıyorum.
+
+        // SMART PREFIX: Çift prefix oluşmasını engelle
+        // Regex ile baştaki bilinen prefixleri temizle (EK_, Ramazan_, Detoks_ vb.)
+        let cleanName = name;
+
+        // 1. Ayarlardaki prefixleri ve varsayılanları birleştir
+        const knownPrefixes = new Set([...(data.settings.prefixes || []), 'EK_', 'Ramazan_', 'Detoks_']);
+        // Regex oluştur: ^(EK_|Ramazan_|...)+
+        // Özel karakterleri escape et
+        const escapedPrefixes = [...knownPrefixes].map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        if (escapedPrefixes.length > 0) {
+          const regex = new RegExp(`^(${escapedPrefixes.join('|')})+`, 'g');
+          cleanName = cleanName.replace(regex, '');
+        }
+
+        // 2. Seçili prefixi ekle
+        finalName = fixKartSeciliPrefixTarif + cleanName;
+      }
+
+      list.push({
+        name: finalName,
+        url: url,
+        type: type, // 'tarif' veya 'bilgi'
+        addedAt: new Date().toISOString()
+      });
+
+      saveFixKartData(data);
+
+      // UI güncelle
+      fixKartHaftaSec(fixKartSeciliAnahtar); // veya fixKartTarihSec
+
+      // Arama sonuçlarını güncelle (disabled durumunu görsün)
+      const searchInput = document.getElementById('fixKartSearchInput');
+      if (searchInput && searchInput.value) {
+        fixKartAra(searchInput.value);
+      }
+    }
+    // Kart sil
+    function fixKartSil(name) {
+      const data = getFixKartData();
+      const kategori = fixKartSeciliMod;
+      const anahtar = fixKartSeciliAnahtar;
+
+      if (data[kategori] && data[kategori][anahtar]) {
+        data[kategori][anahtar] = data[kategori][anahtar].filter(k => k.name !== name);
+        if (data[kategori][anahtar].length === 0) {
+          delete data[kategori][anahtar];
+        }
+        saveFixKartData(data);
+      }
+
+      fixKartAtanmislariGoster();
+      if (fixKartSeciliMod === 'hafta') fixKartHaftaPaneliOlustur();
+      else fixKartTarihListesiGuncelle();
+
+      // Arama sonuçlarını da güncelle
+      const searchInput = document.getElementById('fixKartSearchInput');
+      if (searchInput && searchInput.value) fixKartAra(searchInput.value);
+
+      console.log(`🗑️ Fix kart silindi: ${name} `);
+    }
+
+    // Atanmış kartları göster
+    function fixKartAtanmislariGoster() {
+      const container = document.getElementById('fixKartAtanmislar');
+      if (!container || !fixKartSeciliAnahtar) return;
+
+      const data = getFixKartData();
+      const kartlar = (data[fixKartSeciliMod] && data[fixKartSeciliMod][fixKartSeciliAnahtar]) || [];
+
+      if (kartlar.length === 0) {
+        container.innerHTML = '<div style="color: #aaa; font-size: 13px; text-align: center; width: 100%; padding: 20px;">Henüz kart atanmadı. Yukarıdan arayarak veya yükleyerek ekleyin.</div>';
+        return;
+      }
+
+      container.innerHTML = kartlar.map(kart => {
+        const displayName = kart.name.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_/g, ' ');
+        const typeBadge = kart.type === 'upload'
+          ? '<span style="background: #9c27b0; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">📤 Yüklendi</span>'
+          : '<span style="background: #e91e63; color: white; padding: 1px 5px; border-radius: 8px; font-size: 9px;">🔍 Tarif</span>';
+
+        return `<div style="position: relative; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; background: white; width: 130px; text-align: center;">
+          <img src="${kart.url}" alt="${kart.name}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"
+            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E📷%3C/text%3E%3C/svg%3E'">
+            <div style="font-size: 10px; color: #333; word-break: break-word; margin-bottom: 3px;" title="${kart.name}">${displayName.substring(0, 25)}${displayName.length > 25 ? '...' : ''}</div>
+            ${typeBadge}
+            <button onclick="fixKartSil('${kart.name.replace(/'/g, "\\'")}')" style="
+            position: absolute; top: 2px; right: 2px; background: #ff5252; color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px;
+            cursor: pointer; line-height: 20px; padding: 0;" title="Kartı kaldır">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    // Dosya seçildiğinde önizleme göster
+    function fixKartDosyaSec(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const preview = document.getElementById('fixKartUploadPreview');
+      const img = document.getElementById('fixKartUploadImg');
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        preview.style.display = 'flex';
+        preview.style.alignItems = 'center';
+
+        // İsim alanını dosya adından otomatik doldur
+        const nameInput = document.getElementById('fixKartUploadName');
+        if (!nameInput.value) {
+          nameInput.value = file.name.replace(/\.(jpg|jpeg|png)$/i, '');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Dosyayı GitHub'a yükle ve kart olarak ekle
+    async function fixKartYukle() {
+      if (!fixKartSeciliAnahtar) {
+        alert('Lütfen önce bir hafta veya tarih seçin!');
+        return;
+      }
+
+      const fileInput = document.getElementById('fixKartFileInput');
+      const nameInput = document.getElementById('fixKartUploadName');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Lütfen bir dosya seçin!');
+        return;
+      }
+
+      const kartAdi = (nameInput.value.trim() || file.name).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+      const ext = file.name.match(/\.(jpg|jpeg|png)$/i)?.[0] || '.jpg';
+      let finalName = kartAdi.endsWith(ext) ? kartAdi : kartAdi + ext;
+
+      // Prefix Uygula (Seçili prefix ne ise onu başa ekle)
+      if (fixKartSeciliPrefixUpload) {
+        // Çifte prefix olmasın diye kontrol
+        if (!finalName.startsWith(fixKartSeciliPrefixUpload)) {
+          finalName = fixKartSeciliPrefixUpload + finalName;
+        }
+      }
+
+      // GitHub'a yükle
+      const token = localStorage.getItem('github_api_token') || (JSON.parse(localStorage.getItem('githubSettings') || '{}').token);
+      if (!token) {
+        alert('GitHub token bulunamadı! Kart sadece lokal olarak ekleniyor.');
+        // Lokal olarak da ekleyebiliriz (base64 URL kullanarak)
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          fixKartEkle(finalName, e.target.result, 'upload');
+          fixKartUploadTemizle();
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      try {
+        // Dosyayı base64'e çevir
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+
+        const owner = (JSON.parse(localStorage.getItem('githubSettings') || '{}').owner) || 'mustafasacar35';
+        const repo = (JSON.parse(localStorage.getItem('githubSettings') || '{}').repo) || 'lipodem-takip-paneli';
+        const path = `fix_kartlar / ${finalName} `;
+
+        // Önce SHA kontrol
+        let sha = undefined;
+        try {
+          const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+            headers: { 'Authorization': `token ${token}` }
+          });
+          if (check.ok) {
+            const d = await check.json();
+            sha = d.sha;
+          }
+        } catch (e) { }
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `Fix kart eklendi: ${finalName}`,
+            content: base64,
+            sha: sha
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const url = result.content.download_url || `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+          fixKartEkle(finalName, url, 'upload');
+          fixKartUploadTemizle();
+          console.log('✅ Fix kart GitHub\'a yüklendi:', finalName);
+        } else {
+          throw new Error(`GitHub yanıtı: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Fix kart yükleme hatası:', error);
+        alert('GitHub yükleme başarısız oldu. Kart lokal olarak ekleniyor.');
+        // Fallback: lokal ekle
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          fixKartEkle(finalName, e.target.result, 'upload');
+          fixKartUploadTemizle();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Upload formunu temizle
+    function fixKartUploadTemizle() {
+      document.getElementById('fixKartFileInput').value = '';
+      document.getElementById('fixKartUploadName').value = '';
+      document.getElementById('fixKartUploadPreview').style.display = 'none';
+    }
+
+    // =============================================
+    // 📌 ZIP ENTEGRASYONU İÇİN HELPER FONKSİYONLAR
+    // =============================================
+
+    // Belirli bir hafta için fix kartları getir (hafta bazlı + tarih bazlı)
+    function getFixCardsForWeek(haftaNo, haftaBaslangic, haftaBitis) {
+      const data = getFixKartData();
+      let kartlar = [];
+
+      // 1) Hafta bazlı kartlar
+      if (data.hafta && data.hafta[haftaNo]) {
+        kartlar = kartlar.concat(data.hafta[haftaNo]);
+      }
+
+      // 2) Tarih bazlı kartlar - tarih aralığına bakarak eşleştir
+      if (data.tarih && haftaBaslangic && haftaBitis) {
+        const start = new Date(haftaBaslangic + (haftaBaslangic.includes('T') ? '' : 'T00:00:00'));
+        const end = new Date(haftaBitis + (haftaBitis.includes('T') ? '' : 'T23:59:59'));
+
+        Object.keys(data.tarih).forEach(tarihStr => {
+          const tarih = new Date(tarihStr + 'T12:00:00');
+          if (tarih >= start && tarih <= end) {
+            kartlar = kartlar.concat(data.tarih[tarihStr]);
+          }
+        });
+      }
+
+      // Çift kartları kaldır (aynı isme sahip olanlar)
+      const unique = [];
+      const seen = new Set();
+      kartlar.forEach(k => {
+        if (!seen.has(k.name)) {
+          seen.add(k.name);
+          unique.push(k);
+        }
+      });
+
+      return unique;
+    }
+
+
+
+
   </script>
 
 </body>
