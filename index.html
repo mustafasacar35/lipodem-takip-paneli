@@ -7895,17 +7895,24 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
 
         if (yeniFormatKullan) {
           // Yeni format: obje array
-          yeniListe = mevcutListe.filter(item => item.file !== dosyaAdi);
+          yeniListe = mevcutListe.filter(item => {
+            const fileName = item?.file || '';
+            return fileName !== dosyaAdi;
+          });
           yeniListe.push({
             file: dosyaAdi,
             tags: tags
           });
-          yeniListe.sort((a, b) => a.file.localeCompare(b.file, 'tr-TR'));
+          yeniListe.sort((a, b) => {
+            const fileA = a?.file || '';
+            const fileB = b?.file || '';
+            return fileA.localeCompare(fileB, 'tr-TR');
+          });
         } else {
           // Eski format: string array - yeni formata dönüştür
           yeniListe = mevcutListe
             .filter(item => {
-              const fileName = typeof item === 'string' ? item : item.file;
+              const fileName = typeof item === 'string' ? item : (item?.file || '');
               return fileName !== dosyaAdi;
             })
             .map(item => {
@@ -7919,7 +7926,11 @@ Kullanıcı 13+ hafta olan hastaları manuel olarak arşivler.
             file: dosyaAdi,
             tags: tags
           });
-          yeniListe.sort((a, b) => a.file.localeCompare(b.file, 'tr-TR'));
+          yeniListe.sort((a, b) => {
+            const fileA = a?.file || '';
+            const fileB = b?.file || '';
+            return fileA.localeCompare(fileB, 'tr-TR');
+          });
         }
 
         // Güncellenmiş listeyi yükle
